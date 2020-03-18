@@ -1,0 +1,52 @@
+resolver: lts-14.15
+
+packages:
+- .
+
+extra-deps:
+- git:
+    https://gitlab.com/morley-framework/morley.git
+    # ^ CI cannot use ssh, so we use http clone here
+  commit:
+    48cbeec76b6126802d10e1d51da128982bae58e6 # master
+  subdirs:
+    - code/morley
+    - code/indigo
+    - code/morley-ledgers
+    - code/morley-ledgers-test
+    - code/lorentz
+    - code/morley-upgradeable
+    - code/morley-multisig
+    - code/morley-client
+    - code/morley-nettest
+
+- git:
+    https://gitlab.com/obsidian.systems/tezos-bake-monitor-lib.git
+  commit:
+    19a9ce57a0510bc3ad8a3f639d0a968a65024b86
+  subdirs:
+    - tezos-bake-monitor-lib
+
+# Stable parts of morley available from Hackage
+- morley-prelude-0.3.0
+- tasty-hunit-compat-0.2
+
+# Required by morley
+- show-type-0.1.1@sha256:24f681a3481b3f9630e619d816054804ba1bd6cc05b5978ddd2cece8499ff2fa
+- aeson-options-0.1.0
+- base58-bytestring-0.1.0
+- hex-text-0.1.0.0
+- constraints-0.11@sha256:44f80a313d5d4fcfb3c18eb6625dd3db4bb845d5ca8d3b1f62125a4b7241e590
+- o-clock-1.1.0@sha256:941ac2bc1732e6622b165831c4badb1a8e846f451620bd028064339f5b284224
+- pretty-terminal-0.1.0.0@sha256:e9135d86ebb2a8e3aaf5a79088de4628dbd49988388e0fbfc26c5ecb3c399ad9
+- git: https://github.com/int-index/caps.git
+  commit: ab4345eabd58fc6f05d3b46bea2c5acdba3ec6f8
+# Required by tezos-bake-monitor-lib
+- functor-infix-0.0.5@sha256:cea21a321031f556d7a21b51e049493e7cb78baf64dd63f0d1a36de01c4c735b
+- hashing-0.1.0.1@sha256:98861f16791946cdf28e3c7a6ee9ac8b72d546d6e33c569c7087ef18253294e7
+- dependent-sum-0.6.2.0
+- dependent-sum-template-0.1.0.0
+- constraints-extras-0.3.0.2@sha256:bf6884be65958e9188ae3c9e5547abfd6d201df021bff8a4704c2c4fe1e1ae5b
+
+nix:
+  shell-file: shell.nix

@@ -1,0 +1,9 @@
+.DS_Store
+.stack-work/
+
+TAGS
+
+*.hie	
+
+# hpack
+**/*.cabal

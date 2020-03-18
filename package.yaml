@@ -1,0 +1,42 @@
+<<: !include "./hpack/module.yaml"
+
+name:                stablecoin
+version:             0.1.0.0
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+synopsis:            FA2-based tezos stablecoin smart contract
+category:            Blockchain
+
+description:         Please see the README on GitHub at <https://github.com/tqtezos/stablecoin#readme>
+
+verbatim:
+  cabal-version: 2.2
+
+library:
+  <<: *lib-common
+
+  default-extensions:
+    - RebindableSyntax
+
+  dependencies:
+    - morley-prelude
+
+executables:
+  stablecoin:
+    <<: *exec-common
+
+    dependencies:
+      - morley-prelude
+
+tests:
+  stablecoin-test:
+    <<: *test-common
+
+    dependencies:
+      - HUnit
+      - morley-prelude
+      - tasty
+      - tasty-hunit-compat
