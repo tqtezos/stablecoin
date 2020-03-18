@@ -3,7 +3,7 @@
 
 TAGS
 
-*.hie	
+*.hie
 
 # hpack
 **/*.cabal
