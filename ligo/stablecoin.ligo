@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2020 tqtezos
+// SPDX-License-Identifier: MIT
+
 type parameter is nat
 
 type storage is nat

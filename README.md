@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2020 tqtezos
+SPDX-License-Identifier: MIT
+-->
+
 # Tezos Stablecoin
 
 Tezos Stablecoin project describes FA2-compatible token smart contract.

@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2020 tqtezos
+# SPDX-License-Identifier: MIT
+
 .PHONY: build test test-ci haddock haddock-no-deps stylish lint clean all
 
 .DEFAULT_GOAL = test-ligo

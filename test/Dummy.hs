@@ -1,3 +1,6 @@
+-- SPDX-FileCopyrightText: 2020 tqtezos
+-- SPDX-License-Identifier: MIT
+
 module Dummy
   ( test_dummy
   ) where

@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2020 tqtezos
+# SPDX-License-Identifier: MIT
+
 with import (builtins.fetchGit {
   url = "https://github.com/NixOS/nixpkgs-channels";
   ref = "nixos-unstable";

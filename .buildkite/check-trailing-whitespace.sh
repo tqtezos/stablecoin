@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2020 tqtezos
+# SPDX-License-Identifier: MIT
 #!/usr/bin/env bash
 files=$(git ls-files -- . | xargs grep --files-with-matches --binary-files=without-match '[[:blank:]]$')
 if [[ ! -z $files ]];then

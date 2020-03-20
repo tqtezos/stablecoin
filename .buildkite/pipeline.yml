@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2020 tqtezos
+# SPDX-License-Identifier: MIT
 env:
   NIX_PATH: nixpkgs=https://github.com/nixos/nixpkgs/archive/b640dbd00877f51616750e347a32fbcb49d2968c.tar.gz
 

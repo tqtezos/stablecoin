@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2020 tqtezos
+SPDX-License-Identifier: MIT
+-->
+
 ---
 name: Task
 about: Suggest a task for this project

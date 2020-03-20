@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2020 tqtezos
+# SPDX-License-Identifier: MIT
+
 #!/usr/bin/env bash
 
 export TERM="${TERM:-xterm}"

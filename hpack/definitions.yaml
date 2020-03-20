@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2020 tqtezos
+# SPDX-License-Identifier: MIT
+
 # This file defines sensible defaults but does not actually apply
 # any of them, so it can be safely included.
 

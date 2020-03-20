@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2020 tqtezos
+SPDX-License-Identifier: MIT
+-->
+
 ---
 name: Bug report
 about: If you think our software behaves not the way it should, report a bug
