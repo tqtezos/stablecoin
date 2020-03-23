@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: 2020 tqtezos
+# SPDX-License-Identifier: MIT
+env:
+  NIX_PATH: nixpkgs=https://github.com/nixos/nixpkgs/archive/b640dbd00877f51616750e347a32fbcb49d2968c.tar.gz
+
+steps:
+ - command: nix run nixpkgs.reuse -c reuse lint
+   label: reuse lint
+ - command: .buildkite/check-trailing-whitespace.sh
+   label: check trailing whitespace
+ - command: "nix run -f https://github.com/serokell/xrefcheck/archive/b54c38d91bd45e5c402ebf51d68c653faf959c2c.tar.gz -c xrefcheck"
+   label: xrefcheck
+   soft_fail: true
+ - commands:
+   - nix-shell --run "make test-ci"
+   - echo +++ Weeder
+   - nix-shell --run "nix run nixpkgs.haskellPackages.weeder -c weeder ."
+   label: test && weeder

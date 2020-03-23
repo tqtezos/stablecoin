@@ -1,0 +1,11 @@
+# SPDX-FileCopyrightText: 2020 tqtezos
+# SPDX-License-Identifier: MIT
+.DS_Store
+.stack-work/
+
+TAGS
+
+*.hie
+
+# hpack
+**/*.cabal

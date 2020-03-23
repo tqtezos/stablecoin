@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2020 tqtezos
+# SPDX-License-Identifier: MIT
+- package:
+  - name: stablecoin
+  - section:
+    - name: exe:stablecoin
+    - message:
+      - name: Redundant build-depends entry
+      - depends: base-noprelude
+  - section:
+    - name: library
+    - message:
+      - name: Redundant build-depends entry
+      - depends: base-noprelude
+  - section:
+    - name: test:stablecoin-test
+    - message:
+      - name: Weeds exported
+      - module:
+        - name: Tree
+        - identifier:
+          - ingredients
+          - main
+    - message:
+      - name: Redundant build-depends entry
+      - depends: base-noprelude
