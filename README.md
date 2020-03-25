@@ -20,5 +20,4 @@ Run `stack exec -- stablecoin --help` to see available commands.
 We use [GitHub](https://github.com/tqtezos/stablecoin/issues)
 
 ## License
-
-© 2020 tqtezos, all rights reserved.
+MIT
