@@ -40,21 +40,23 @@ Below we define some roles for stablecoin contract token.
 
 **owner**
 
-- Can re-assign any role of the token
+- Can re-assign any role of the token.
 
 **masterMinter**
 
-- Can add and remove minters
+- Can add and remove minters.
 
-- Can increase minting allowance for any minter
+- Can increase minting allowance for any minter if that is present in 
+  its list of minters.
 
 - Stores the list of current minters within itself, rather
   than exposing the map of master minter and its minters globally
-  for the whole token
+  for the whole token.
 
 **minter**
 
-- Can create and destroy coins (that are allowed by their current minting allowance)
+- Can create and destroy coins (that are allowed by their current 
+  minting allowance).
 
 - Minting allowance is stored locally within the address
   allowing for multiple minters creating and destroying tokens.
@@ -63,13 +65,13 @@ Below we define some roles for stablecoin contract token.
 
 - Can pause transferring, burning and minting operations.
   During the pause, these operations cannot be performed
-  and remain unaffected
+  and remain unaffected.
 
 **blacklister (TBD)**
 
 - Can blacklist a particular address preventing it from
   transferring, minting,burning and receiving tokens by
-  removing them from whitelist
+  removing them from whitelist.
 
 **Token Functions**
 ===================
@@ -997,7 +999,7 @@ Role reassigning functions
 **Owner**
 ---------
 
-**transferOnership**
+**transferOwnership**
 
 Types
 ```
