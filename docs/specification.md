@@ -26,7 +26,7 @@ These specifications were assembled with the following references:
 ==========
 
 Every address that is stored in ledger is associated with its
-current balance, current allowance and a list of minters.
+current balance and current spending allowance.
 
 **Roles**
 =========
@@ -65,12 +65,12 @@ Below we define some roles for stablecoin contract token.
 
 - Can pause transferring, burning and minting operations.
   During the pause, these operations cannot be performed
-  and remain unaffected.
+  and fail with an error if the user decides to try them.
 
 **blacklister (TBD)**
 
 - Can blacklist a particular address preventing it from
-  transferring, minting,burning and receiving tokens by
+  transferring, minting, burning and receiving tokens by
   removing them from whitelist.
 
 **Token Functions**
@@ -135,8 +135,6 @@ Parameter (in Michelson):
 - Core transfer behavior must update token balances exactly as the
   operation parameters specify it. No changes to amount values or
   additional transfers are allowed.
-
-- Sender must be a minter.
 
 - Sender and receiver addresses must be whitelisted.
 
@@ -364,9 +362,10 @@ Parameter (in Michelson)
   API which can be implemented either within FA2 token contract
   itself or in a separate contract.
 
-Each minter is separated into 2 types of addresses: `operator` and
-`owner`. `operator` is a Tezos address that initiates token tranfser
-operation on behalf of the `owner` that actually holds tokens.
+Each address that participates in transfer is separated into 2 types: 
+`operator` and `owner`. `operator` is a Tezos address that initiates 
+token tranfser operation on behalf of the `owner` that actually holds 
+tokens.
 
 **updateOperators**
 
@@ -426,8 +425,6 @@ Parameter (in Michelson)
 - It's possible to update an operator for some specific tokens, or
   to all tokens (TODO: discuss).
 
-- Sender must be minter.
-
 - Sender and operation receiver must be whitelisted.
 
 - Contract must not be paused.
@@ -480,7 +477,7 @@ Parameter (in Michelson):
 
 - Enables `operator` to operate on tokens held by `owner`.
 
-- `owner` and `operator` must be whitelisted.
+- `owner` must be whitelisted.
 
 - Contract must not be paused.
 
@@ -542,21 +539,14 @@ Parameter (in Michelson):
 )
 ```
 
-- Inspect if an address is an operator for the specified owner and    token types.
+- Inspect if an address is an operator for the specified owner and 
+  token types.
 
 - If the adddress is not an operator for at least one
   requested token type, then the result is `false`.
 
 - It's possible to make this query for some specific tokens, or to
   all tokens.
-
-**Managed Ledger Functions (TBD)**
-----------------------------
-
-TODO: Maybe it's better to omit these mentions since all that left from
-ManagedLedger is their semantics?
-
-Functions for the TZUSDC token implementation found in Tezos [*ManagedLedger*](https://gitlab.com/tzip/tzip/blob/ae2f1e7ebb3454d811a2bea3cd0698b0e64ccea5/proposals/tzip-7/ManagedLedger.md)
 
 **pause**
 
@@ -573,7 +563,7 @@ Parameter (in Michelson)
 )
 ```
 
-- Pauses transferring, burning, minting and allowance operations so
+- Pauses transferring, burning and minting operations so
   that they cannot be performed. All other operations remain
   unaffected.
 
@@ -596,9 +586,8 @@ Parameter (in Michelson)
 )
 ```
 
-- Unpauses the contract so that transferring, burning, minting and
-  allowance operations can be performed by users with corresponding
-  roles.
+- Unpauses the contract so that transferring, burning and minting
+  operations can be performed by users with corresponding roles.
 
 - Cannot be called multiple times.
 
@@ -673,15 +662,13 @@ Parameter (in Michelson)
 ))
 ```
 
-- Adds `minter` to sender's minter list to allow him mint tokens of specific
+- Adds `minter` to global minter list to allow him mint tokens of specific
   token type.
 
-- Sender must master minter.
+- Sender must be master minter.
 
 - Minter cannot mint tokens untill `setMintingAllowance`
   is specified.
-
-- Cannot add minter if present in someone else's minter list.
 
 **removeMinter**
 
@@ -706,13 +693,11 @@ Parameter (in Michelson)
 ))
 ```
 
-- Removes minter from the sender's minter list for some specific token type
+- Removes minter from the global minter list for some specific token type
   and sets its minting allowance to 0. Once minter is removed it will no
   longer be able to mint or burn tokens.
 
 - Sender must be master minter.
-
-- Minter address must present in sender's minter list.
 
 **setMintingAllowance**
 
@@ -860,15 +845,15 @@ Parameter (in Michelson)
 
 - Set to 0 to make disable minting allowance reset by stablecoin token.
 
-**mint (TBD)**
+**mint**
 
 Types
 ```
 tokenId = nat
 
 mintParam
-  ( address :sender
-  , address :minter
+  ( address :minter
+  , address :recipient
   , tokenId :tokenId
   , nat     :value
   )
@@ -880,9 +865,9 @@ Parameter (in Michelson):
 ```
 (list %mint
   (pair
-    (address %sender)
+    (address %minter)
     (pair
-      (address %minter)
+      (address %recipient)
       (pair
         (nat %tokenId)
         (nat %value)
@@ -893,24 +878,24 @@ Parameter (in Michelson):
 - Produces the given amounts of tokens to the wallets associated with the
   given addresses.
 
-- Each minting must happen atomically, si if one of them fails, then the whole
+- Each minting must happen atomically, so if one of them fails, then the whole
   operation must fail.
 
 - The operation must follow permission policies described above.
 
 - Receiving addresses must be whitelisted.
 
-- Sender must be master minter.
+- Sender must be minter.
 
 - The total amount of minted coins must not exceed the current
-  minting allowance specified for each recepient individually.
+  minting allowance specified for each minter individually.
 
 - Minting allowance will decrease by the amount of tokens minted
   and increase the balance of receiver and total minted value.
 
 - Contract must not be paused.
 
-**burn (TBD)**
+**burn**
 
 Types
 ```
@@ -918,7 +903,6 @@ tokenId = nat
 
 burnParam
   ( address :sender
-  , address :minter
   , tokenId :tokenId
   , nat     :value
   )
@@ -932,23 +916,21 @@ Parameter (in Michelson):
   (pair
     (address %sender)
     (pair
-      (address %minter)
-      (pair
-        (nat %tokenId)
-        (nat %value)
-  )))
+      (nat %tokenId)
+      (nat %value)
+  ))
 )
 ```
 
-- Decreases balances for specified wallets and their token types and the total   supply of tokens by the given amount.
+- Decreases balances for senders and their token types and the total supply of tokens by the given amount.
 
-- Each minting must happen atomically, si if one of them fails, then the whole
-  operation must fail.
+- Each burning operation must happen atomically, so if one of them fails, 
+  then the whole operation must fail.
 
 - The operation must follow permission policies described above.
 
-- Sender must be minter and the receiver must have a sufficient amount of
-  funds to be destroyed and be in a sender's minter list.
+- Sender must be minter and must have a sufficient amount of
+  funds to be destroyed and also be in glboal minter list.
 
 - A minter with 0 minting allowance is allowed to burn tokens.
 
@@ -957,7 +939,7 @@ Parameter (in Michelson):
 **Whitelisting (TBD)**
 ----------------
 
-Functions for the TZUSDC token implementation which are outside the FA1.2 Tezos Token Standard.
+Whitelisting unctions for the TZUSDC token implementation which are outside the FA1.2 Tezos Token Standard.
 
 **addToWhitelist** address
 
