@@ -26,7 +26,7 @@ These specifications were assembled with the following references:
 ==========
 
 Every address that is stored in ledger is associated with its
-current balance and current spending allowance.
+current balance, token id and current minting allowance.
 
 **Roles**
 =========
@@ -46,7 +46,7 @@ Below we define some roles for stablecoin contract token.
 
 - Can add and remove minters.
 
-- Can increase minting allowance for any minter if that is present in 
+- Can change minting allowance for any minter if that is present in
   its list of minters.
 
 - Stores the list of current minters within itself, rather
@@ -55,7 +55,7 @@ Below we define some roles for stablecoin contract token.
 
 **minter**
 
-- Can create and destroy coins (that are allowed by their current 
+- Can create and destroy coins (that are allowed by their current
   minting allowance).
 
 - Minting allowance is stored locally within the address
@@ -362,9 +362,9 @@ Parameter (in Michelson)
   API which can be implemented either within FA2 token contract
   itself or in a separate contract.
 
-Each address that participates in transfer is separated into 2 types: 
-`operator` and `owner`. `operator` is a Tezos address that initiates 
-token tranfser operation on behalf of the `owner` that actually holds 
+Each address that participates in transfer is separated into 2 types:
+`operator` and `owner`. `operator` is a Tezos address that initiates
+token tranfser operation on behalf of the `owner` that actually holds
 tokens.
 
 **updateOperators**
@@ -539,7 +539,7 @@ Parameter (in Michelson):
 )
 ```
 
-- Inspect if an address is an operator for the specified owner and 
+- Inspect if an address is an operator for the specified owner and
   token types.
 
 - If the adddress is not an operator for at least one
@@ -924,13 +924,13 @@ Parameter (in Michelson):
 
 - Decreases balances for senders and their token types and the total supply of tokens by the given amount.
 
-- Each burning operation must happen atomically, so if one of them fails, 
+- Each burning operation must happen atomically, so if one of them fails,
   then the whole operation must fail.
 
 - The operation must follow permission policies described above.
 
 - Sender must be minter and must have a sufficient amount of
-  funds to be destroyed and also be in glboal minter list.
+  funds to be destroyed and also be in global minter list.
 
 - A minter with 0 minting allowance is allowed to burn tokens.
 
@@ -939,7 +939,7 @@ Parameter (in Michelson):
 **Whitelisting (TBD)**
 ----------------
 
-Whitelisting unctions for the TZUSDC token implementation which are outside the FA1.2 Tezos Token Standard.
+Whitelisting functions for the TZUSDC token implementation which are outside the FA1.2 Tezos Token Standard.
 
 **addToWhitelist** address
 
@@ -1042,71 +1042,6 @@ Parameter (in Michelson):
 - Accept ownership privileges.
 
 - Sender must be a pending owner.
-
-**Admin**
----------
-
-**changeTokenAdmin** address
-
-Types
-```
-changeTokenAdmin =
-  ( address :owner
-  , address :receiver
-  )
-```
-
-Parameter (in Michelson):
-```
-(pair %changeTokenAdmin
-  (address %owner)
-  (address %receiver)
-)
-```
-
-- Set token administrator to a new address.
-
-- Sender must be current token admin.
-
-- The current administrator retains his priveleges up until
-  `acceptAdminRole` is called.
-
-- Can be called multiple times, each call replaces pending
-  administrator with the new one. Note, that if proposed
-  administrator is the same as the current one, then the call
-  is simply invalidated.
-
-**getAdmin**
-
-Types
-```
-getAdmin = (contract address :callback)
-```
-
-Parameter (in Michelson):
-```
-(pair %getAdmin
-  (contract %callback address)
-)
-```
-
-- Returns current token administrator address.
-
-**acceptAdminRole**
-
-Types
-```
-acceptAdminRole = unit
-```
-
-Parameter (in Michelson):
-```
-(unit %acceptAdminRole)
-```
-
-- Accept administrator privileges.
-
-- Sender must be a pending administrator.
 
 **Master Minter**
 ---------------
