@@ -241,6 +241,7 @@ type approvals is map (address, nat)
 
 type ledger_value is record
   balance   : nat
+; operator  : address
 ; approvals : approvals
 end
 
