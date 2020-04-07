@@ -34,7 +34,7 @@ build:
 
 # Compile LIGO contract into its michelson representation
 build-ligo:
-	$(LIGO) compile-contract ligo/stablecoin.ligo main
+	$(LIGO) compile-contract ligo/stablecoin/core.ligo main
 
 test:
 	$(call call_test,"",$(STACK_DEV_TEST_OPTIONS))
