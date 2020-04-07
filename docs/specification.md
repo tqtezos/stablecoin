@@ -89,15 +89,11 @@ its result.
 
 Types
 ```
-tokenId = nat
-
 transferParam
   ( address :from_
   , address :to_
-  , tokenId :tokenId
   , nat     :value
   )
-
 transfer = list transferParam
 ```
 
@@ -108,14 +104,12 @@ Parameter (in Michelson):
     (address %from_)
     (pair
       (address %to_)
-      (pair
-        (nat %tokenId)
-        (nat %amount)
-  )))
+      (nat %amount)
+  ))
 )
 ```
 
-- Transfers given amounts of tokens between addresses.
+- Transfers the given amounts of tokens between addresses.
 
 - Each transfer must happen atomically, if one of them fails, then
   the whole transaction fail.
@@ -123,9 +117,8 @@ Parameter (in Michelson):
 - Transfers must follow permission policies that are described above.
 
 - The amount of a token transfer must not exceed the existing token
-  owner's balance. If the transfer amount for the particular token
-  type and token owner exceeds the existing balance, then the whole
-  transfer operation fail.
+  owner's balance. If the transfer amount exceeds the existing balance,
+  then the whole transfer operation fail.
 
 - Core transfer behavior may be extended. If additional constraints on tokens
   transfer are required, FA2 token contract implementation may invoke
@@ -144,42 +137,26 @@ Parameter (in Michelson):
 
 Types
 ```
-tokenId = nat
-
-getBalanceRequest =
-  ( address :owner
-  , tokenId :tokenId
-  )
-
+getBalanceRequest = address
 getBalanceResponse =
   ( getBalanceRequest :request
   , nat               :balance
   )
-
 getBalanceParam =
   ( list getBalanceRequest             :requests
   , contract (list getBalanceResponse) :callback
   )
-
 getBalance = getBalanceParam
 ```
 
 Parameter (in Michelson):
 ```
 (pair %getBalance
-  (list %requests
-    (pair
-      (address %owner)
-      (nat %tokenId)
-    )
-  )
+  (list %requests address)
   (contract %callback
     (list
       (pair
-        (pair %request
-          (address %owner)
-          (nat %tokenId)
-        )
+        (address %owner)
         (nat %balance)
       )
     )
@@ -195,93 +172,16 @@ Parameter (in Michelson):
 
 Types
 ```
-tokenId = nat
-
-getTotalSupplyResponse =
-  ( tokenId :tokenId
-  , nat     :totalSupply
-  )
-
-getTotalSupplyParam =
-  ( list tokenId                           :tokenIds
-  , contract (list getTotalSupplyResponse) :callback
-  )
-
-getTotalSupply = getTotalSupplyParam
+getTotalSupply = (contract nat)
 ```
 
 Parameter (in Michelson)
 ```
-(pair %getTotalSupply
-  (list %tokenIds nat)
-  (contract %callback
-    (list
-      (pair %getTotalSupplyResponse
-        (nat %tokenId)
-        (nat %totalSupply)
-      )
-    )
-  )
-)
+(contract %getTotalSupply nat)
 ```
 
-- Returns total supply for multiple tokens. It accepts a list of
-  token ids and a callback which accepts a list of
-  `getTotalSupplyResponse` which is conequently passed to it.
-
-**getTokenMetadata**
-
-Types
-```
-tokenId = nat
-
-getTokenMetadataResponse =
-  ( tokenId              :tokenId
-  , string               :symbol
-  , string               :name
-  , nat                  :decimals
-  , map (string, string) :extras
-  )
-
-getTokenMetadataParam =
-  ( list tokenId                             :tokenIds
-  , contract (list getTokenMetadataResponse) :callback
-  )
-
-getTokenMetadata = getTokenMetadataParam
-```
-
-Parameter (in Michelson)
-```
-(pair %tokenMetadata
-  (list %tokenIds nat)
-  (contract %callback
-    (list
-      (pair %getTokenMetadataResponse
-        (nat %tokenId)
-        (pair
-          (string %symbol)
-          (pair
-            (string %name)
-            (pair
-              (nat %decimals)
-              (map %extras string string)
-      ))))
-    )
-  )
-)
-```
-
-- Get a list of token metadata for multiple tokens. It accepts a
-  list of token ids and a callback which accepts a list of
-  `getTokenMetadataResponse` which is consequently passed to it.
-
-- The smallest amount of tokens which may be transferred, burned or
-  minted is always 1.
-
-- `decimals` describe the number of digits to use after the decimal
-  point when displaying the token amounts and must not affect
-  transaction in any way.
+- Returns total supply for the token. It accepts a callback which
+  accepts current total supply amount.
 
 **permissionsDescriptor**
 
@@ -290,21 +190,17 @@ Types
 selfTransferPolicy =
   | SelfTransferPermitted
   | SelfTransferDenied
-
 operatorTransferPolicy =
   | OperatorTransferPermitted
   | OperatorTransferDenied
-
 ownerTransferPolicy =
   | OwnerNoOp
   | OptionalOwnerHook
   | RequiredOwnerHook
-
 customPermissionPolicy =
   ( string         :tag
   , option address :configApi
   )
-
 permissionsDescriptorParam
   ( selfTransferPolicy            :self
   , operatorTransferPolicy        :receiver
@@ -312,7 +208,6 @@ permissionsDescriptorParam
   , ownerTransferPolicy           :sender
   , option customPermissionPolicy :custom
   )
-
 permissionsDescriptor = contract permissionsDescriptorParam
 ```
 
@@ -371,22 +266,9 @@ tokens.
 
 Types
 ```
-tokenId = nat
-
-operatorTokens =
-  | AllTokens
-  | SomeTokens (set tokenId)
-
-operatorParam =
-  ( address        :owner
-  , address        :operator
-  , operatorTokens :tokens
-  )
-
 updateOperatorParam =
-  | AddOperator    operatorParam
-  | RemoveOperator operatorParam
-
+  | AddOperator    address
+  | RemoveOperator address
 updateOperators = list updateOperatorParam
 ```
 
@@ -394,90 +276,36 @@ Parameter (in Michelson)
 ```
 (list %updateOperators
   (or
-    (pair %addOperator
-      (address %owner)
-      (pair
-        (address %operator)
-        (or %tokens
-          (unit %allTokens)
-          (set %someTokens nat)
-        )
-    ))
-    (pair %removeOperator
-      (address %owner)
-      (pair
-        (address %operator)
-        (or %tokens
-          (unit %allTokens)
-          (set %someTokens nat)
-        )
-    ))
+    (address %addOperator)
+    (address %removeOperator)
   )
 )
 ```
 
-- Add or Remove token operators for the specified owners and token
-  types.
+- Add or Remove operators for sender.
 
 - If two different commands in the list add and remove an operator
   for the same token type, then the last one must take effect.
-
-- It's possible to update an operator for some specific tokens, or
-  to all tokens (TODO: discuss).
 
 - Sender and operation receiver must be whitelisted.
 
 - Contract must not be paused.
 
-**approveOperatorUpdate (TODO)**
+**approveOperatorUpdate**
 
 Types
 ```
-tokenId
-
-operatorTokens =
-  | AllTokens
-  | SomeTokens (set tokenId)
-
-operatorParam =
-  ( address        :owner
-  , address        :operator
-  , operatorTokens :tokens
-  )
-
-approveOperatorUpdate = operatorParam
+approveOperatorUpdate = address
 ```
 
 Parameter (in Michelson):
 ```
-(pair %approveOperatorUpdate
-  (pair %operator
-      (address %owner)
-      (pair
-        (address %operator)
-        (or %tokens
-          (unit %allTokens)
-          (set %someTokens nat)
-        )
-    ))
-  (contract %callback
-    (pair %operator
-      (address %owner)
-      (pair
-        (address %operator)
-        (or %tokens
-          (unit %allTokens)
-          (set %someTokens nat)
-        )
-      )
-    )
-  )
-)
+(address %approveOperatorUpdate)
 ```
 
-- Enables `operator` to operate on tokens held by `owner`.
+- Enables given address to operate on tokens held by sender.
 
-- `owner` must be whitelisted.
+- Sender must be whitelisted.
 
 - Contract must not be paused.
 
@@ -485,82 +313,42 @@ Parameter (in Michelson):
 
 Types
 ```
-tokenId = nat
-
-operatorTokens =
-  | AllTokens
-  | SomeTokens (set tokenId)
-
-operatorParam =
-  ( address        :owner
-  , address        :operator
-  , operatorTokens :tokens
-  )
-
 isOperatorResponse =
-  ( operatorParam :operator
-  , bool          :isOperator
+  ( address :operator
+  , bool    :isOperator
   )
-
 isOperatorParam =
-  ( operatorParam               :operator
+  ( address                     :operator
   , contract isOperatorResponse :callback
   )
-
 isOperator = isOperatorParam
 ```
 
 Parameter (in Michelson):
 ```
 (pair %isOperator
-  (pair %operator
-    (address %owner)
-    (pair
-      (address %operator)
-      (or %tokens
-        (unit %allTokens)
-        (set %someTokens nat)
-      )
-  ))
+  (address %operator)
   (contract %callback
-    (pair
-      (pair %operator
-        (address %owner)
-        (pair
-          (address %operator)
-          (or %tokens
-            (unit %allTokens)
-            (set %someTokens nat)
-          )
-      ))
+    (pair %isOperatorResponse
+      (address %operator)
       (bool %isOperator)
     )
   )
 )
 ```
 
-- Inspect if an address is an operator for the specified owner and
-  token types.
-
-- If the adddress is not an operator for at least one
-  requested token type, then the result is `false`.
-
-- It's possible to make this query for some specific tokens, or to
-  all tokens.
+- Inspect if an address is an operator for sender.
 
 **pause**
 
 Types
 ```
-pause = (address :sender)
+pause = unit
 ```
 
 Parameter (in Michelson)
 ```
-(pair %pause
-  (address %sender)
-  unit
-)
+unit
 ```
 
 - Pauses transferring, burning and minting operations so
@@ -575,15 +363,12 @@ Parameter (in Michelson)
 
 Types
 ```
-unpause = (address :sender)
+unpause = unit
 ```
 
 Parameter (in Michelson)
 ```
-(pair %unpause
-  (address %sender)
-  unit
-)
+unit
 ```
 
 - Unpauses the contract so that transferring, burning and minting
@@ -597,39 +382,15 @@ Parameter (in Michelson)
 
 Types
 ```
-tokenId = nat
-
-getPausedResponse =
-  ( tokenId :tokenId
-  , nat     :paused
-  )
-
-getPausedParam =
-  ( list tokenId                      :tokenIds
-  , contract (list getPausedResponse) :callback
-  )
-
-getPaused = getPausedParam
+getPaused = contract bool
 ```
 
 Parameter (in Michelson)
 ```
-(pair %getTotalPaused
-  (list %tokenIds nat)
-  (contract %callback
-    (list
-      (pair %getPausedResponse
-        (nat %tokenId)
-        (bool %paused)
-      )
-    )
-  )
-)
+(contract bool)
 ```
 
 - Returns token pause status.
-
-- *Note: It's not a part of ManagedLedger interface*.
 
 **Custom token functions**
 ==========================
@@ -641,61 +402,36 @@ Parameter (in Michelson)
 
 Types
 ```
-tokenId = nat
-
-configureMinterParam =
-  ( address :sender
-  , address :minter
-  , tokenId :tokenId
-  )
-
-configureMinter = configureMinterParam
+configureMinter = address
 ```
 
 Parameter (in Michelson)
 ```
-(pair %configureMinter
-  (address %sender)
-  (pair
-    (address %minter)
-    (nat %tokenId)
-))
+address
 ```
 
-- Adds `minter` to global minter list to allow him mint tokens of specific
-  token type.
+- Adds `minter` to global minter list to allow him mint tokens.
 
 - Sender must be master minter.
 
-- Minter cannot mint tokens untill `setMintingAllowance`
+- Minter cannot mint tokens until `setMintingAllowance`
   is specified.
 
 **removeMinter**
 
 Types
 ```
-tokenId = nat
-
-removeMinter =
-  ( address :sender
-  , address :minter
-  , tokenId :tokenId
-  )
+removeMinter = address
 ```
 
 Parameter (in Michelson)
 ```
-(pair %removeMinter
-  (address %sender)
-  (pair
-    (address %minter)
-    (nat %tokenId)
-))
+address
 ```
 
-- Removes minter from the global minter list for some specific token type
-  and sets its minting allowance to 0. Once minter is removed it will no
-  longer be able to mint or burn tokens.
+- Removes minter from the global minter list and sets its minting
+  allowance to 0. Once minter is removed it will no longer be able
+  to mint or burn tokens.
 
 - Sender must be master minter.
 
@@ -703,34 +439,23 @@ Parameter (in Michelson)
 
 Types
 ```
-tokenId = nat
-
-setMintingAllowanceParam =
-  ( address :sender
-  , address :minter
-  , tokenId :tokenId
+setMintingAllowance =
+  ( address :minter
   , nat     :amount
   )
-
-setMintingAllowance = setMintingAllowanceParam
 ```
 
 Parameter (in Michelson)
 ```
 (pair %setMintingAllowance
-  (address %sender)
-  (pair
-    (address %minter)
-    (pair
-      (nat %tokenId)
-      (nat %amount)
-)))
+  (address %minter)
+  (nat %amount)
+)
 ```
 
-- Set the amount of allowed minting allowance for an address with some
-  specific token type.
+- Set the amount of allowed minting allowance for an address.
 
-- Minter must present in sender's minter list.
+- Minter must be in minter list.
 
 - Sender and minter must be whitelisted.
 
@@ -738,42 +463,25 @@ Parameter (in Michelson)
 
 Types
 ```
-tokenId = nat
-
-getMintingAllowanceRequest =
-  ( address :owner
-  , tokenId :tokenId
-  )
-
 getMintingAllowanceResponse =
-  ( getMintingAllowanceRequest :request
-  , nat                        :allowance
+  ( address :minter
+  , nat     :allowance
   )
-
 getMintingAllowanceParam =
-  ( list getMintingAllowanceRequest             :requests
+  ( list address                                :requests
   , contract (list getMintingAllowanceResponse) :callback
   )
-
 getMintingAllowance = getMintingAllowanceParam
 ```
 
 Parameter (in Michelson):
 ```
 (pair %getMintingAllowance
-  (list %requests
-    (pair
-      (address %owner)
-      (nat %tokenId)
-    )
-  )
+  (list %requests address)
   (contract %callback
-    (list
+    (list %getMintingAllowanceResponse
       (pair
-        (pair %request
-          (address %owner)
-          (nat %tokenId)
-        )
+        (address %owner)
         (nat %allowance)
       )
     )
@@ -781,83 +489,51 @@ Parameter (in Michelson):
 )
 ```
 
-- Returns current minting allowance for address with a specific token type.
+- Returns current minting allowance for a list of addresses and a
+  callback which accepts pairs of addresses and their allowances.
 
 **getTotalMinted**
 
 Types
 ```
-tokenId = nat
-
-getTotalMintedResponse =
-  ( tokenId :tokenId
-  , nat     :totalMinted
-  )
-
-getTotalMintedParam =
-  ( list tokenId                           :tokenIds
-  , contract (list getTotalMintedResponse) :callback
-  )
-
-getTotalMinted = getTotalMintedParam
+getTotalMinted = contract nat
 ```
 
 Parameter (in Michelson)
 ```
-(pair %getTotalMinted
-  (list %tokenIds nat)
-  (contract %callback
-    (list
-      (pair %getTotalMintedResponse
-        (nat %tokenId)
-        (nat %totalMinted)
-      )
-    )
-  )
-)
+(contract nat)
 ```
-- Returns current amount of minted coins for an address with a specific token
-  type.
+- Returns current amount of minted coins for a token.
 
 -- TODO: clarify under which conditions and how should
 -- token reset this allowance
 
-**setMintingAllowanceResetInterval** timestamp
+**setMintingAllowanceResetInterval**
 
 Types
 ```
-setMintingAllowanceResetInterval =
-  ( tokenId   :tokenId
-  , timestamp :interval
-  )
-
+setMintingAllowanceResetInterval = timestamp
 ```
 
 Parameter (in Michelson)
 ```
-(pair %setMintingAllowanceResetInterval
-  (address %sender)
-  (timestamp %interval)
-)
+(timestamp %setMintingAllowanceResetInterval)
 ```
 
 - Set the default interval of minting allowance reset.
 
 - Set to 0 to make disable minting allowance reset by stablecoin token.
 
+TODO: minting parameter probably should be a pair which also accepts a callback
+
 **mint**
 
 Types
 ```
-tokenId = nat
-
 mintParam
-  ( address :minter
-  , address :recipient
-  , tokenId :tokenId
+  ( address :recipient
   , nat     :value
   )
-
 mint = list mintParam
 ```
 
@@ -865,17 +541,13 @@ Parameter (in Michelson):
 ```
 (list %mint
   (pair
-    (address %minter)
-    (pair
-      (address %recipient)
-      (pair
-        (nat %tokenId)
-        (nat %value)
-  )))
+    (address %recipient)
+    (nat %value)
+  )
 )
 ```
 
-- Produces the given amounts of tokens to the wallets associated with the
+- Produces the given amount of tokens to the wallets associated with the
   given addresses.
 
 - Each minting must happen atomically, so if one of them fails, then the whole
@@ -885,7 +557,7 @@ Parameter (in Michelson):
 
 - Receiving addresses must be whitelisted.
 
-- Sender must be minter.
+- Sender must be minter and be in global minter list.
 
 - The total amount of minted coins must not exceed the current
   minting allowance specified for each minter individually.
@@ -899,33 +571,15 @@ Parameter (in Michelson):
 
 Types
 ```
-tokenId = nat
-
-burnParam
-  ( address :sender
-  , tokenId :tokenId
-  , nat     :value
-  )
-
-burn = list burnParam
+burn = nat
 ```
 
 Parameter (in Michelson):
 ```
-(list %burn
-  (pair
-    (address %sender)
-    (pair
-      (nat %tokenId)
-      (nat %value)
-  ))
-)
+nat
 ```
 
-- Decreases balances for senders and their token types and the total supply of tokens by the given amount.
-
-- Each burning operation must happen atomically, so if one of them fails,
-  then the whole operation must fail.
+- Decreases balance of sender wallet specified by the given amount.
 
 - The operation must follow permission policies described above.
 
@@ -985,18 +639,12 @@ Role reassigning functions
 
 Types
 ```
-transferOwnership =
-  ( address :owner
-  , address :receiver
-  )
+transferOwnership = address
 ```
 
 Parameter (in Michelson):
 ```
-(pair %transferOwnership
-  (address %owner)
-  (address %receiver)
-)
+address
 ```
 
 - Set token owner to a new address.
@@ -1015,14 +663,12 @@ Parameter (in Michelson):
 
 Types
 ```
-getOwner = (contract address :callback)
+getOwner = contract address
 ```
 
 Parameter (in Michelson):
 ```
-(pair %getOwner
-  (contract %callback address)
-)
+contract address
 ```
 
 - Returns current token owner address.
@@ -1036,7 +682,7 @@ acceptOwnership = unit
 
 Parameter (in Michelson):
 ```
-(unit %acceptOwnership)
+unit
 ```
 
 - Accept ownership privileges.
@@ -1050,18 +696,12 @@ Parameter (in Michelson):
 
 Types
 ```
-changeMasterMinter =
-  ( address :owner
-  , address :receiver
-  )
+changeMasterMinter = address
 ```
 
 Parameter (in Michelson):
 ```
-(pair %changeMasterMinter
-  (address %owner)
-  (address %receiver)
-)
+address
 ```
 
 - Set master minter to a new address.
@@ -1080,14 +720,12 @@ Parameter (in Michelson):
 
 Types
 ```
-getMasterMinter = (contract address :callback)
+getMasterMinter = contract address
 ```
 
 Parameter (in Michelson):
 ```
-(pair %getMasterMinter
-  (contract %callback address)
-)
+contract address
 ```
 
 - Return current master minter address.
@@ -1101,7 +739,7 @@ acceptMasterMinterRole = unit
 
 Parameter (in Michelson):
 ```
-(unit %acceptMasterMinterRole)
+unit
 ```
 
 - Accept master minter privileges.
@@ -1115,18 +753,12 @@ Parameter (in Michelson):
 
 Types
 ```
-changePauser =
-  ( address :owner
-  , address :receiver
-  )
+changePauser = address
 ```
 
 Parameter (in Michelson):
 ```
-(pair %changePauser
-  (address %owner)
-  (address %receiver)
-)
+address
 ```
 - Set pauser to a new address.
 
@@ -1144,14 +776,12 @@ Parameter (in Michelson):
 
 Types
 ```
-getPauser = (contract address :callback)
+getPauser = contract address
 ```
 
 Parameter (in Michelson):
 ```
-(pair %getPauser
-  (contract %callback address)
-)
+contract address
 ```
 
 - Return current pauser address.
@@ -1165,7 +795,7 @@ acceptPauserRole = unit
 
 Parameter (in Michelson):
 ```
-(unit %acceptPauserRole)
+unit
 ```
 - Accept pauser privileges.
 
