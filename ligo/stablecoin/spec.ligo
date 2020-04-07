@@ -205,6 +205,7 @@ end
 
 type storageSkeleton is record
   roles       : roles
+; minters     : list (address)
 ; paused      : bool
 ; totalSupply : nat
 end
