@@ -79,8 +79,8 @@ Below we define some roles for stablecoin contract token.
 **Token Functions**
 ===================
 
-**Standard Token Functions**
-----------------------------
+**Standard FA2 Token Functions**
+--------------------------------
 
 Functions for the stablecoin token implementation which are common to the [*FA2 Tezos
 Token Standard*](https://gitlab.com/tzip/tzip/-/blob/76d5f3791bfbfe3c9bf95ad5ec5fc6cbeeca2d0e/proposals/tzip-12/tzip-12.md). The
@@ -447,58 +447,6 @@ Parameter (in Michelson)
 - Since the contract supports only a single token type, `tokenId` must be 0.
   It is passed because FA2 requires that.
 
-**approveOperatorUpdate (TODO)**
-
-Types
-```
-tokenId
-
-operatorTokens =
-  | AllTokens
-  | SomeTokens (set tokenId)
-
-operatorParam =
-  ( address        :owner
-  , address        :operator
-  , operatorTokens :tokens
-  )
-
-approveOperatorUpdate = operatorParam
-```
-
-Parameter (in Michelson):
-```
-(pair %approveOperatorUpdate
-  (pair %operator
-      (address %owner)
-      (pair
-        (address %operator)
-        (or %tokens
-          (unit %allTokens)
-          (set %someTokens nat)
-        )
-    ))
-  (contract %callback
-    (pair %operator
-      (address %owner)
-      (pair
-        (address %operator)
-        (or %tokens
-          (unit %allTokens)
-          (set %someTokens nat)
-        )
-      )
-    )
-  )
-)
-```
-
-- Enables `operator` to operate on tokens held by `owner`.
-
-- `owner` must be whitelisted.
-
-- Contract must not be paused.
-
 **isOperator**
 
 Types
@@ -569,6 +517,65 @@ Parameter (in Michelson):
 - Since the contract supports only a single token type, `tokenId` must be 0.
   It is passed because FA2 requires that.
 
+**Custom (non-FA2) token functions**
+====================================
+
+Functions for the stablecoin token implementation not present in FA2, but related to token transfers.
+
+**approveOperatorUpdate (TODO)**
+
+Types
+```
+tokenId
+
+operatorTokens =
+  | AllTokens
+  | SomeTokens (set tokenId)
+
+operatorParam =
+  ( address        :owner
+  , address        :operator
+  , operatorTokens :tokens
+  )
+
+approveOperatorUpdate = operatorParam
+```
+
+Parameter (in Michelson):
+```
+(pair %approveOperatorUpdate
+  (pair %operator
+      (address %owner)
+      (pair
+        (address %operator)
+        (or %tokens
+          (unit %allTokens)
+          (set %someTokens nat)
+        )
+    ))
+  (contract %callback
+    (pair %operator
+      (address %owner)
+      (pair
+        (address %operator)
+        (or %tokens
+          (unit %allTokens)
+          (set %someTokens nat)
+        )
+      )
+    )
+  )
+)
+```
+
+- Enables `operator` to operate on tokens held by `owner`.
+
+- `owner` must be whitelisted.
+
+- Contract must not be paused.
+
+**Pausing**
+-----------
 **pause**
 
 Types
@@ -651,9 +658,6 @@ Parameter (in Michelson)
 - Returns token pause status.
 
 - *Note: It's not a part of ManagedLedger interface*.
-
-**Custom token functions**
-==========================
 
 **Issuing and destroyng tokens**
 --------------------------
