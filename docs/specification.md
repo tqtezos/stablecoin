@@ -19,20 +19,23 @@ These specifications were assembled with the following references:
 **General Requirements**
 ------------------------
 
-- The token(s) must be and FA2 compatible as to facilitate listing on
-  exchanges and interaction with services which support FA2
+- The token contract must be FA2 compatible as to facilitate listing on
+  exchanges and interaction with services which support FA2.
+
+- The token contract must store tokens of a single type.
 
 **Ledger**
 ==========
 
 Every address that is stored in ledger is associated with its
-current balance, token id and current minting allowance.
+current balance and current minting allowance.
 
 **Roles**
 =========
 
 The token supports the following list of user roles as is described in
-CENTRE Fiat Token specification and the taxonomy of permission policies that are described in FA2 token specification.
+CENTRE Fiat Token specification and the taxonomy of permission policies
+that are described in FA2 token specification.
 
 <!-- Here're the roles that are present in current version of stablecoin token.  -->
 
@@ -117,6 +120,9 @@ Parameter (in Michelson):
 
 - Transfers given amounts of tokens between addresses.
 
+- Since the contract supports only a single token type, `tokenId` must be 0.
+  It is passed because FA2 requires that.
+
 - Each transfer must happen atomically, if one of them fails, then
   the whole transaction fail.
 
@@ -191,6 +197,9 @@ Parameter (in Michelson):
   of `getBalanceRequest` and a callback which accepts a list of
   `getBalanceResponse` which is conequently passed to it.
 
+- Since the contract supports only a single token type, `tokenId` must be 0.
+  It is passed because FA2 requires that.
+
 **getTotalSupply**
 
 Types
@@ -228,6 +237,9 @@ Parameter (in Michelson)
 - Returns total supply for multiple tokens. It accepts a list of
   token ids and a callback which accepts a list of
   `getTotalSupplyResponse` which is conequently passed to it.
+
+- Since the contract supports only a single token type, `tokenId` must be 0.
+  It is passed because FA2 requires that.
 
 **getTokenMetadata**
 
@@ -282,6 +294,9 @@ Parameter (in Michelson)
 - `decimals` describe the number of digits to use after the decimal
   point when displaying the token amounts and must not affect
   transaction in any way.
+
+- Since the contract supports only a single token type, `tokenId` must be 0.
+  It is passed because FA2 requires that.
 
 **permissionsDescriptor**
 
@@ -429,6 +444,9 @@ Parameter (in Michelson)
 
 - Contract must not be paused.
 
+- Since the contract supports only a single token type, `tokenId` must be 0.
+  It is passed because FA2 requires that.
+
 **approveOperatorUpdate (TODO)**
 
 Types
@@ -547,6 +565,9 @@ Parameter (in Michelson):
 
 - It's possible to make this query for some specific tokens, or to
   all tokens.
+
+- Since the contract supports only a single token type, `tokenId` must be 0.
+  It is passed because FA2 requires that.
 
 **pause**
 
