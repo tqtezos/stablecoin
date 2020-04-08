@@ -142,8 +142,6 @@ Parameter (in Michelson):
   operation parameters specify it. No changes to amount values or
   additional transfers are allowed.
 
-- Sender and receiver addresses must be whitelisted.
-
 - Contract must not be paused.
 
 **getBalance**
@@ -440,8 +438,6 @@ Parameter (in Michelson)
 - It's possible to update an operator for some specific tokens, or
   to all tokens (TODO: discuss).
 
-- Sender and operation receiver must be whitelisted.
-
 - Contract must not be paused.
 
 - Since the contract supports only a single token type, `tokenId` must be 0.
@@ -553,8 +549,6 @@ Parameter (in Michelson):
 ```
 
 - Enables `operator` to operate on tokens held by `owner`.
-
-- `owner` must be whitelisted.
 
 - Contract must not be paused.
 
@@ -710,8 +704,6 @@ Parameter (in Michelson)
 
 - Minter must present in sender's minter list.
 
-- Sender and minter must be whitelisted.
-
 **getMintingAllowance**
 
 Types
@@ -821,8 +813,6 @@ Parameter (in Michelson):
 
 - The operation must follow permission policies described above.
 
-- Receiving addresses must be whitelisted.
-
 - Sender must be minter.
 
 - The total amount of minted coins must not exceed the current
@@ -868,45 +858,6 @@ Parameter (in Michelson):
 - A minter with 0 minting allowance is allowed to burn tokens.
 
 - Contract must not be paused.
-
-**Whitelisting (TBD)**
-----------------
-
-Whitelisting functions for the TZUSDC token implementation which are outside the FA1.2 Tezos Token Standard.
-
-**addToWhitelist** address
-
-- Add an address to whitelist, enabling it to transfer and
-  approve tokens as well as modify allowances.
-
-- Sender must be a blacklister.
-
-**addToWhitelistBatch** (list address)
-
-- Adds each address to whitelist, enabling it to transfer and
-  approve tokens as well as modify allowances.
-
-- Sender must be a blacklister.
-
-**removeFromWhitelist** address
-
-- Remove address from whitelist.
-
-- Sender must be a blacklister.
-
-**removeFromWhitelistBatch** (list address)
-
-- Remove provided addresses from whitelist.
-
-- If some of specified addresses are not in whitelist, then
-  it fails returning list of those addresses.
-
-- Sender must be a blacklister.
-
-**checkWhitelisted** (void address bool)
-
-- Return a boolean value describing whether the
-  given address is present in whitelist.
 
 Role reassigning functions
 ==========================
@@ -1103,30 +1054,3 @@ Parameter (in Michelson):
 - Accept pauser privileges.
 
 - Sender must be a pending pauser.
-
-**Blacklister (TBD)**
----------------
-
-**changeBlacklister** address
-
-- Set pauser to a new address.
-
-- Sender must be token owner.
-
-- The current pauser retains his priveleges up until
-  `acceptBlacklister` is called.
-
-- Can be called multiple times, each call replaces pending
-  blacklister with the new one. Note, that if proposed
-  blacklister is the same as the current one, then the call
-  is simply invalidated.
-
-**getBlacklister** (view unit address)
-
-- Return current blacklister address.
-
-**acceptBlacklisterRole** unit
-
-- Accept blacklister privileges.
-
-- Sender must be a pending blacklister.
