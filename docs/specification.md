@@ -819,6 +819,8 @@ Parameter (in Michelson):
 
 - A minter with 0 minting allowance is allowed to burn tokens.
 
+- Burning tokens will not increase the mintingAllowance of the address doing the burning.
+
 - Contract must not be paused.
 
 Role reassigning functions
