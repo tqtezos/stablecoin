@@ -3,8 +3,7 @@ SPDX-FileCopyrightText: 2020 tqtezos
 SPDX-License-Identifier: MIT
 -->
 
-**Overview**
-------------
+# Overview
 
 These specifications were assembled with the following references:
 
@@ -15,22 +14,19 @@ These specifications were assembled with the following references:
 
 - [*Michelson Contract Interfaces and Conventions*](https://gitlab.com/tzip/tzip/blob/ae2f1e7ebb3454d811a2bea3cd0698b0e64ccea5/proposals/tzip-4/tzip-4.md) TZIP which defines `view` and `void` type synonyms
 
-**General Requirements**
-------------------------
+# General Requirements
 
 - The token contract must be FA2 compatible as to facilitate listing on
   exchanges and interaction with services which support FA2.
 
 - The token contract must store tokens of a single type.
 
-**Ledger**
-==========
+# Ledger
 
 Every address that is stored in ledger is associated with its
 current balance and current minting allowance.
 
-**Roles**
-=========
+# Roles
 
 The token supports the following list of user roles as is described in
 CENTRE Fiat Token specification and the taxonomy of permission policies
@@ -75,11 +71,9 @@ Below we define some roles for stablecoin contract token.
   transferring, minting, burning and receiving tokens by
   removing them from whitelist.
 
-**Token Functions**
-===================
+# Entrypoints
 
-**Standard FA2 Token Functions**
---------------------------------
+## Standard FA2 Token Functions
 
 Functions for the stablecoin token implementation which are common to the [*FA2 Tezos
 Token Standard*](https://gitlab.com/tzip/tzip/-/blob/76d5f3791bfbfe3c9bf95ad5ec5fc6cbeeca2d0e/proposals/tzip-12/tzip-12.md). The
@@ -512,14 +506,13 @@ Parameter (in Michelson):
 - Since the contract supports only a single token type, `token_id` must be 0.
   It is passed because FA2 requires that.
 
-**Custom (non-FA2) token functions**
-====================================
+## Custom (non-FA2) token functions
 
 Functions for the stablecoin token implementation not present in FA2, but related to token transfers.
 They do not have `token_id` argument because it is redundant (always must be 0) and not necessary (since they are not part of FA2).
 
-**Pausing**
------------
+### Pausing
+
 **pause**
 
 Parameter (in Michelson): `unit`.
@@ -565,8 +558,7 @@ Parameter (in Michelson)
 
 - Returns token pause status.
 
-**Issuing and destroying tokens**
---------------------------
+### Issuing and destroying tokens
 
 **configure_minter**
 
@@ -759,11 +751,9 @@ Parameter (in Michelson):
 
 - Contract must not be paused.
 
-Role reassigning functions
-==========================
+## Role reassigning functions
 
-**Owner**
----------
+### Owner
 
 **transfer_ownership**
 
@@ -812,8 +802,7 @@ Parameter (in Michelson):
 
 - Sender must be a pending owner.
 
-**Master Minter**
----------------
+### Master Minter
 
 **change_master_minter**
 
@@ -839,8 +828,7 @@ Parameter (in Michelson):
 
 - Return current master minter address.
 
-**Pauser**
-----------
+### Pauser
 
 **change_pauser**
 
