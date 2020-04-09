@@ -15,17 +15,14 @@ type tokenId is nat
 
 
 
-type transferDescriptor is record
+type transferParam is record
   id          : tokenId
 ; fromAddress : address
 ; toAddress   : address
 ; amount      : nat
 end
 
-type transferParams is record
-  batch    : list (transferDescriptor)
-; operator : address
-end
+type transferParams is list (transferParam)
 
 
 
@@ -135,8 +132,8 @@ type getPermissionsDescriptorParams is
  * working with lambdas properly
  */
 type setTransferHookParams is record
-// hook : unit -> transfer_descriptor_param contract
-  permissionsDescriptor : permissionsDescriptor
+  hook : unit -> contract (transferParam)
+; permissionsDescriptor : permissionsDescriptor
 end
 
 /* ------------------------------------------------------------- */
@@ -214,6 +211,7 @@ type approvals is map (address, nat)
 
 type ledgerValue is record
   balance   : nat
+; operator  : address
 ; approvals : approvals
 end
 
