@@ -21,6 +21,20 @@ These specifications were assembled with the following references:
 
 - The token contract must store tokens of a single type.
 
+# Questions
+
+1. How many addresses can be assigned to each role?
+We have made some assumptions, see the [Roles](#roles) section below, please check them.
+For non-unique roles: is there an upper limit on the number of addresses?
+For unique roles: can there be no address with a certain role (e. g. no pauser)?
+2. Can one address have more than one role?
+3. Do we want to rename the "owner" role to something different given that FA2 also uses this word?
+4. Are any getter entrypoints not present in FA2 required?
+Should they be `void` or `view`?
+Note that the contract will have storage annotations and each getter entrypoint increases contract's size and gas costs.
+At this point it's hard to predict whether we will have issues with the contract's size and gas costs since we've never used LIGO, but it's quite likely that we will.
+5. Should the contract reject transfers with non-zero XTZ AMOUNT (when someone calls the contract with non-zero amount)?
+
 # Differences with CENTRE
 
 The stablecoin contract is based on the CENTRE fiat token design, but diverges from it in several aspects:
