@@ -21,6 +21,22 @@ These specifications were assembled with the following references:
 
 - The token contract must store tokens of a single type.
 
+# Differences with CENTRE
+
+The stablecoin contract is based on the CENTRE fiat token design, but diverges from it in several aspects:
+1. CENTRE token implements the ERC-20 interface.
+Tezos version of it is FA1.2.
+The stablecoin contract does not implement the FA1.2 interface, it implements the FA2 interface.
+2. Since the names in FA2 are snake\_cased, the names in the stablecoin contract also snake\_cased.
+3. FA2 uses the word "owner" to refer to the address that owns some tokens.
+At the same time, CENTRE calls the central entity who can manage roles the "owner".
+It leads to ambiguity, but the meaning of the word "owner" should be clear from the context.
+It is not a difference per se, but due to this ambiguity we may rename the "owner" role.
+4. `mint` and `burn` entrypoints take lists of pairs/amounts respectively.
+They follow FA2 style where most entrypoints operate on lists.
+In CENTRE they take a single item (a pair or an amount).
+5. TODO: whitelisting and blacklisting.
+
 # Ledger
 
 Every address that is stored in ledger is associated with its
