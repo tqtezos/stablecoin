@@ -71,10 +71,10 @@ Below we define some roles for stablecoin contract token.
 ## Standard FA2 Token Functions
 
 Functions for the stablecoin token implementation which are common to the [*FA2 Tezos
-Token Standard*](https://gitlab.com/tzip/tzip/-/blob/76d5f3791bfbfe3c9bf95ad5ec5fc6cbeeca2d0e/proposals/tzip-12/tzip-12.md). The
-token implementation in general follows an [*event loop*](https://en.wikipedia.org/wiki/Event_loop) pattern meaning that every parameter
-handles an additional callback call describing what needs to be done with
-its result.
+Token Standard*](https://gitlab.com/tzip/tzip/-/blob/76d5f3791bfbfe3c9bf95ad5ec5fc6cbeeca2d0e/proposals/tzip-12/tzip-12.md).
+Some entrypoints (e. g. getters) follow an [*event loop*](https://en.wikipedia.org/wiki/Event_loop)
+pattern meaning that their arguments have an additional callback call
+describing what needs to be done with its result.
 
 **transfer**
 
