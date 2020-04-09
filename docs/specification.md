@@ -632,46 +632,6 @@ Parameter (in Michelson):
 
 - Returns current minting allowance for each address in a list.
 
-**get_total_minted**
-
-Types
-```
-get_total_minted_param =
-  ( unit         :dummy
-  , contract nat :callback
-  )
-
-get_total_minted = get_total_minted_param
-```
-
-Parameter (in Michelson)
-```
-(pair %get_total_minted
-  (unit %dummy)
-  (contract %callback nat)
-)
-```
-- Returns current amount of minted coins.
-
--- TODO: clarify under which conditions and how should
--- token reset this allowance
-
-**set_minting_allowance_reset_interval** timestamp
-
-Types
-```
-set_minting_allowance_reset_interval = timestamp :interval
-```
-
-Parameter (in Michelson)
-```
-(timestamp %set_minting_allowance_reset_interval)
-```
-
-- Set the default interval of minting allowance reset.
-
-- Set to 0 to make disable minting allowance reset by stablecoin token.
-
 **mint**
 
 Types
