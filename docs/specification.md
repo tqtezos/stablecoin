@@ -52,12 +52,13 @@ In CENTRE they take a single item (a pair or an amount).
 5. `configure_minter` takes an additional argument – current minting allowance – to prevent front-running attacks.
 6. TODO: whitelisting and blacklisting.
 
-# Ledger
+# State model
 
-Every address that is stored in ledger is associated with its
-current balance and current minting allowance.
+This chapter provides a high-level overview of the contract's state.
+Note that the actual storage type is implementation detail and is not specified here.
+The contract maintans a ledger of addresses and manages some special roles as described below.
 
-# Roles
+## Roles
 
 The token supports the following list of user roles as is described in
 CENTRE Fiat Token specification:
@@ -90,6 +91,11 @@ CENTRE Fiat Token specification:
     transferring, minting, burning and receiving tokens by
     removing them from whitelist.
   - There are no clear requirements yet. It can be modified or even removed.
+
+## Ledger
+
+Every address that is stored in ledger is associated with its current balance.
+Additionally, each minter is associated with its current minting allowance.
 
 # Entrypoints
 
