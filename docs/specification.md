@@ -93,6 +93,19 @@ CENTRE Fiat Token specification:
 
 # Entrypoints
 
+Format:
+```
+**entrypoint_name**
+
+<optional pseudocode description of the parameter type>
+Parameter (in Michelson): X
+
+<description>
+```
+
+Top-level contracts parameter type MUST have all entrypoints listed below.
+Each entrypoint MUST be callable using the default entrypoints machinery of Michelson by specifying **entrypoint_name** and a value of the type `X` (its argument).
+
 ## Standard FA2 Token Functions
 
 Functions for the stablecoin token implementation which are common to the [*FA2 Tezos
@@ -695,17 +708,7 @@ Parameter (in Michelson):
 
 **burn**
 
-Types
-```
-burn_param = nat :amount
-
-burn = list burn_param
-```
-
-Parameter (in Michelson):
-```
-(list %burn address)
-```
+Parameter (in Michelson): `list amount`.
 
 - Decreases balances for senders and the total supply of tokens by the given amount.
 
@@ -746,31 +749,13 @@ Parameter (in Michelson): `address`.
 
 **get_owner**
 
-Types
-```
-get_owner = (contract address :callback)
-```
-
-Parameter (in Michelson):
-```
-(pair %get_owner
-  (contract %callback address)
-)
-```
+Parameter (in Michelson): `contract address`
 
 - Returns current token owner address.
 
 **accept_ownership**
 
-Types
-```
-accept_ownership = unit
-```
-
-Parameter (in Michelson):
-```
-(unit %accept_ownership)
-```
+Parameter: `unit`.
 
 - Accept ownership privileges.
 
@@ -788,17 +773,7 @@ Parameter (in Michelson): `address`.
 
 **get_master_minter**
 
-Types
-```
-get_master_minter = (contract address :callback)
-```
-
-Parameter (in Michelson):
-```
-(pair %get_master_minter
-  (contract %callback address)
-)
-```
+Parameter (in Michelson): `contract address`.
 
 - Return current master minter address.
 
@@ -814,16 +789,6 @@ Parameter (in Michelson): `address`.
 
 **get_pauser**
 
-Types
-```
-get_pauser = (contract address :callback)
-```
-
-Parameter (in Michelson):
-```
-(pair %get_pauser
-  (contract %callback address)
-)
-```
+Parameter (in Michelson): `contract address`.
 
 - Return current pauser address.
