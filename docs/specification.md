@@ -29,42 +29,36 @@ current balance and current minting allowance.
 # Roles
 
 The token supports the following list of user roles as is described in
-CENTRE Fiat Token specification and the taxonomy of permission policies
-that are described in FA2 token specification.
+CENTRE Fiat Token specification:
 
-<!-- Here're the roles that are present in current version of stablecoin token.  -->
+* **owner**
+  - Can assign and re-assign any role of the token.
+  - There always must be exactly one owner.
 
-Below we define some roles for stablecoin contract token.
+* **master minter**
+  - Can add and remove minters.
+  - Can change minting allowance for any minter.
+  - There always must be exactly one master minter.
 
-**owner**
+* **minter**
+  - Can create and destroy coins (that are allowed by their current
+    minting allowance).
+  - Minting allowance is stored locally within the address
+    allowing for multiple minters creating and destroying tokens.
+  - There can be any number of minters.
+<!-- TODO: clarify with the customer whether there is an upper limit -->
 
-- Can re-assign any role of the token.
+* **pauser**
+  - Can pause transferring, burning and minting operations.
+    During the pause, these operations cannot be performed
+    and fail with an error if the user decides to try them.
+  - There always must be exactly one pauser.
 
-**master minter**
-
-- Can add and remove minters.
-
-- Can change minting allowance for any minter.
-
-**minter**
-
-- Can create and destroy coins (that are allowed by their current
-  minting allowance).
-
-- Minting allowance is stored locally within the address
-  allowing for multiple minters creating and destroying tokens.
-
-**pauser**
-
-- Can pause transferring, burning and minting operations.
-  During the pause, these operations cannot be performed
-  and fail with an error if the user decides to try them.
-
-**blacklister (TBD)**
-
-- Can blacklist a particular address preventing it from
-  transferring, minting, burning and receiving tokens by
-  removing them from whitelist.
+* **blacklister (TBD)**
+  - Can blacklist a particular address preventing it from
+    transferring, minting, burning and receiving tokens by
+    removing them from whitelist.
+  - There are no clear requirements yet. It can be modified or even removed.
 
 # Entrypoints
 
