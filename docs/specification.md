@@ -551,14 +551,27 @@ Parameter (in Michelson)
 
 **configure_minter**
 
-Parameter (in Michelson): `address :minter`.
+Types
+```
+configure_minter =
+  ( address :minter
+  , nat     :minting_allowance
+  )
+```
 
-- Adds `minter` to global minter list to allow him mint tokens.
+Parameter (in Michelson)
+```
+(pair %configure_minter
+  (address %minter)
+  (nat %minting_allowance)
+)
+```
+
+- Adds `minter` to the global minter list to allow him to mint tokens.
+
+- Sets the specified minting allowance for this minter.
 
 - Sender must be master minter.
-
-- Minter cannot mint tokens untill `set_minting_allowance`
-  is specified.
 
 **remove_minter**
 
@@ -569,28 +582,6 @@ Parameter (in Michelson): `address :minter`.
   mint or burn tokens.
 
 - Sender must be master minter.
-
-**set_minting_allowance**
-
-Types
-```
-set_minting_allowance_param =
-  ( address :minter
-  , nat     :amount
-  )
-
-set_minting_allowance = set_minting_allowance_param
-```
-
-Parameter (in Michelson)
-```
-(pair %set_minting_allowance
-  (address %minter)
-  (nat %amount)
-)
-```
-
-- Set the amount of allowed minting allowance for an address.
 
 **get_minting_allowance**
 
