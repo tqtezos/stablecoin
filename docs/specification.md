@@ -522,18 +522,7 @@ They do not have `token_id` argument because it is redundant (always must be 0) 
 -----------
 **pause**
 
-Types
-```
-pause = (address :sender)
-```
-
-Parameter (in Michelson)
-```
-(pair %pause
-  (address %sender)
-  unit
-)
-```
+Parameter (in Michelson): `unit`.
 
 - Pauses transferring, burning and minting operations so
   that they cannot be performed. All other operations remain
@@ -545,18 +534,7 @@ Parameter (in Michelson)
 
 **unpause**
 
-Types
-```
-unpause = (address :sender)
-```
-
-Parameter (in Michelson)
-```
-(pair %unpause
-  (address %sender)
-  unit
-)
-```
+Parameter (in Michelson): `unit`.
 
 - Unpauses the contract so that transferring, burning and minting
   operations can be performed by users with corresponding roles.
@@ -592,23 +570,7 @@ Parameter (in Michelson)
 
 **configure_minter**
 
-Types
-```
-configure_minter_param =
-  ( address :sender
-  , address :minter
-  )
-
-configure_minter = configure_minter_param
-```
-
-Parameter (in Michelson)
-```
-(pair %configure_minter
-  (address %sender)
-  (address %minter)
-)
-```
+Parameter (in Michelson): `address :minter`.
 
 - Adds `minter` to global minter list to allow him mint tokens.
 
@@ -619,21 +581,7 @@ Parameter (in Michelson)
 
 **remove_minter**
 
-Types
-```
-remove_minter =
-  ( address :sender
-  , address :minter
-  )
-```
-
-Parameter (in Michelson)
-```
-(pair %remove_minter
-  (address %sender)
-  (address %minter)
-)
-```
+Parameter (in Michelson): `address :minter`.
 
 - Removes minter from the global minter list and sets its minting
   allowance to 0. Once minter is removed it will no longer be able to
@@ -646,8 +594,7 @@ Parameter (in Michelson)
 Types
 ```
 set_minting_allowance_param =
-  ( address :sender
-  , address :minter
+  ( address :minter
   , nat     :amount
   )
 
@@ -657,11 +604,9 @@ set_minting_allowance = set_minting_allowance_param
 Parameter (in Michelson)
 ```
 (pair %set_minting_allowance
-  (address %sender)
-  (pair
-    (address %minter)
-    (nat %amount)
-))
+  (address %minter)
+  (nat %amount)
+)
 ```
 
 - Set the amount of allowed minting allowance for an address.
@@ -747,8 +692,7 @@ Parameter (in Michelson)
 Types
 ```
 mint_param
-  ( address :minter
-  , address :recipient
+  ( address :recipient
   , nat     :value
   )
 
@@ -759,11 +703,9 @@ Parameter (in Michelson):
 ```
 (list %mint
   (pair
-    (address %minter)
-    (pair
-      (address %recipient)
-      (nat %value)
-  ))
+    (address %recipient)
+    (nat %value)
+  )
 )
 ```
 
@@ -789,22 +731,14 @@ Parameter (in Michelson):
 
 Types
 ```
-burn_param
-  ( address :sender
-  , nat     :value
-  )
+burn_param = nat :amount
 
 burn = list burn_param
 ```
 
 Parameter (in Michelson):
 ```
-(list %burn
-  (pair
-    (address %sender)
-    (nat %value)
-  )
-)
+(list %burn address)
 ```
 
 - Decreases balances for senders and the total supply of tokens by the given amount.
@@ -816,6 +750,8 @@ Parameter (in Michelson):
 
 - Sender must be minter and must have a sufficient amount of
   funds to be destroyed and also be in global minter list.
+
+- A minter can only burn tokens which it owns.
 
 - A minter with 0 minting allowance is allowed to burn tokens.
 
@@ -831,21 +767,7 @@ Role reassigning functions
 
 **transfer_ownership**
 
-Types
-```
-transfer_ownership =
-  ( address :owner
-  , address :receiver
-  )
-```
-
-Parameter (in Michelson):
-```
-(pair %transfer_ownership
-  (address %owner)
-  (address %receiver)
-)
-```
+Parameter (in Michelson): `address`.
 
 - Set token owner to a new address.
 
@@ -854,10 +776,9 @@ Parameter (in Michelson):
 - The current owner retains his priveleges up until
   `accept_ownership` is called.
 
-- Can be called multiple times, each call replaces pending
-  owner with the new one. Note, that if proposed
-  owner is the same as the current one, then the call
-  is simply invalidated.
+- Can be called multiple times, each call replaces pending owner with
+  the new one. Note, that if proposed owner is the same as the current
+  one, then the pending owner is simply invalidated.
 
 **get_owner**
 
@@ -896,21 +817,7 @@ Parameter (in Michelson):
 
 **change_master_minter**
 
-Types
-```
-change_master_minter =
-  ( address :owner
-  , address :receiver
-  )
-```
-
-Parameter (in Michelson):
-```
-(pair %change_master_minter
-  (address %owner)
-  (address %receiver)
-)
-```
+Parameter (in Michelson): `address`.
 
 - Set master minter to a new address.
 
@@ -937,21 +844,8 @@ Parameter (in Michelson):
 
 **change_pauser**
 
-Types
-```
-change_pauser =
-  ( address :owner
-  , address :receiver
-  )
-```
+Parameter (in Michelson): `address`.
 
-Parameter (in Michelson):
-```
-(pair %change_pauser
-  (address %owner)
-  (address %receiver)
-)
-```
 - Set pauser to a new address.
 
 - Sender must be token owner.
