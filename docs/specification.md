@@ -44,12 +44,7 @@ Below we define some roles for stablecoin contract token.
 
 - Can add and remove minters.
 
-- Can change minting allowance for any minter if that is present in
-  its list of minters.
-
-- Stores the list of current minters within itself, rather
-  than exposing the map of master minter and its minters globally
-  for the whole token.
+- Can change minting allowance for any minter.
 
 **minter**
 
@@ -603,8 +598,6 @@ Parameter (in Michelson)
 
 - Set the amount of allowed minting allowance for an address.
 
-- Minter must present in sender's minter list.
-
 **get_minting_allowance**
 
 Types
@@ -740,8 +733,8 @@ Parameter (in Michelson):
 
 - The operation must follow permission policies described above.
 
-- Sender must be minter and must have a sufficient amount of
-  funds to be destroyed and also be in global minter list.
+- Sender must be a minter and must have a sufficient amount of
+  funds to be destroyed.
 
 - A minter can only burn tokens which it owns.
 
