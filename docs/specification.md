@@ -49,7 +49,8 @@ It is not a difference per se, but due to this ambiguity we may rename the "owne
 4. `mint` and `burn` entrypoints take lists of pairs/amounts respectively.
 They follow FA2 style where most entrypoints operate on lists.
 In CENTRE they take a single item (a pair or an amount).
-5. TODO: whitelisting and blacklisting.
+5. `configure_minter` takes an additional argument – current minting allowance – to prevent front-running attacks.
+6. TODO: whitelisting and blacklisting.
 
 # Ledger
 
@@ -585,7 +586,8 @@ Types
 ```
 configure_minter =
   ( address :minter
-  , nat     :minting_allowance
+  , nat     :current_minting_allowance
+  , nat     :new_minting_allowance
   )
 ```
 
@@ -593,13 +595,17 @@ Parameter (in Michelson)
 ```
 (pair %configure_minter
   (address %minter)
-  (nat %minting_allowance)
+  (pair (nat %current_minting_allowance) (nat %new_minting_allowance))
 )
 ```
 
-- Adds `minter` to the global minter list to allow him to mint tokens.
+- Adds `minter` to the global minter list to allow him to mint tokens (if `minter` is not in the list already).
 
-- Sets the specified minting allowance for this minter.
+- Sets the specified minting allowance (`new_minting_allowance`) for this minter.
+
+- `current_minting_allowance` must be explicitly passed.
+If it does not match the actual minting allowance, the transaction MUST fail.
+It is done to prevent front-running attacks.
 
 - Sender must be master minter.
 
