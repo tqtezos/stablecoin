@@ -518,39 +518,6 @@ Parameter (in Michelson):
 Functions for the stablecoin token implementation not present in FA2, but related to token transfers.
 They do not have `token_id` argument because it is redundant (always must be 0) and not necessary (since they are not part of FA2).
 
-**approve_operator_update (TODO)**
-
-Types
-```
-operator_param =
-  ( address :owner
-  , address :operator
-  )
-
-approve_operator_update = operator_param
-```
-
-TODO: note that it does not match what's written above, but this whole entrypoint is in TODO state.
-Parameter (in Michelson):
-```
-(pair %approve_operator_update
-  (pair %operator
-      (address %owner)
-      (address %operator)
-   )
-  (contract %callback
-    (pair %operator
-      (address %owner)
-      (address %operator)
-    )
-  )
-)
-```
-
-- Enables `operator` to operate on tokens held by `owner`.
-
-- Contract must not be paused.
-
 **Pausing**
 -----------
 **pause**
@@ -947,14 +914,6 @@ Parameter (in Michelson):
 
 - Sender must be token owner.
 
-- The current master minter retains his priveleges up until
-  `accept_master_minter_role` is called.
-
-- Can be called multiple times, each call replaces pending
-  master minter with the new one. Note, that if proposed
-  master minter is the same as the current one, then the call
-  is simply invalidated.
-
 **get_master_minter**
 
 Types
@@ -970,22 +929,6 @@ Parameter (in Michelson):
 ```
 
 - Return current master minter address.
-
-**accept_master_minter_role**
-
-Types
-```
-accept_master_minter_role = unit
-```
-
-Parameter (in Michelson):
-```
-(unit %accept_master_minter_role)
-```
-
-- Accept master minter privileges.
-
-- Sender must be a pending master minter.
 
 **Pauser**
 ----------
@@ -1011,14 +954,6 @@ Parameter (in Michelson):
 
 - Sender must be token owner.
 
-- The current pauser retains his priveleges up until
-  `accept_pauser_role` is called.
-
-- Can be called multiple times, each call replaces pending
-  pauser with the new one. Note, that if proposed pauser is
-  the same as the current one, then the call is simply
-  invalidated.
-
 **get_pauser**
 
 Types
@@ -1034,18 +969,3 @@ Parameter (in Michelson):
 ```
 
 - Return current pauser address.
-
-**accept_pauser_role**
-
-Types
-```
-accept_pauser_role = unit
-```
-
-Parameter (in Michelson):
-```
-(unit %accept_pauser_role)
-```
-- Accept pauser privileges.
-
-- Sender must be a pending pauser.
