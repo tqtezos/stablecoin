@@ -11,28 +11,30 @@ These specifications were assembled with the following references:
 - [*CENTRE Fiat Token design*](https://github.com/centrehq/centre-tokens/blob/78d964a1a8d481ffd8152772d7a66e47df54b3db/doc/tokendesign.md) which is served as a reference specification to tezos stablecoin smart contract.
 
 - Tezos Token Standard:
-  [*FA2*](https://gitlab.com/tzip/tzip/-/blob/76d5f3791bfbfe3c9bf95ad5ec5fc6cbeeca2d0e/proposals/tzip-12/tzip-12.md) and
-  [*ManagedLedger*](https://gitlab.com/tzip/tzip/blob/ae2f1e7ebb3454d811a2bea3cd0698b0e64ccea5/proposals/tzip-7/ManagedLedger.md)
+  [*FA2*](https://gitlab.com/tzip/tzip/-/blob/76d5f3791bfbfe3c9bf95ad5ec5fc6cbeeca2d0e/proposals/tzip-12/tzip-12.md)
 
 - [*Michelson Contract Interfaces and Conventions*](https://gitlab.com/tzip/tzip/blob/ae2f1e7ebb3454d811a2bea3cd0698b0e64ccea5/proposals/tzip-4/tzip-4.md) TZIP which defines `view` and `void` type synonyms
 
 **General Requirements**
 ------------------------
 
-- The token(s) must be and FA2 compatible as to facilitate listing on
-  exchanges and interaction with services which support FA2
+- The token contract must be FA2 compatible as to facilitate listing on
+  exchanges and interaction with services which support FA2.
+
+- The token contract must store tokens of a single type.
 
 **Ledger**
 ==========
 
 Every address that is stored in ledger is associated with its
-current balance, token id and current minting allowance.
+current balance and current minting allowance.
 
 **Roles**
 =========
 
 The token supports the following list of user roles as is described in
-CENTRE Fiat Token specification and the taxonomy of permission policies that are described in FA2 token specification.
+CENTRE Fiat Token specification and the taxonomy of permission policies
+that are described in FA2 token specification.
 
 <!-- Here're the roles that are present in current version of stablecoin token.  -->
 
@@ -42,7 +44,7 @@ Below we define some roles for stablecoin contract token.
 
 - Can re-assign any role of the token.
 
-**masterMinter**
+**master minter**
 
 - Can add and remove minters.
 
@@ -76,8 +78,8 @@ Below we define some roles for stablecoin contract token.
 **Token Functions**
 ===================
 
-**Standard Token Functions**
-----------------------------
+**Standard FA2 Token Functions**
+--------------------------------
 
 Functions for the stablecoin token implementation which are common to the [*FA2 Tezos
 Token Standard*](https://gitlab.com/tzip/tzip/-/blob/76d5f3791bfbfe3c9bf95ad5ec5fc6cbeeca2d0e/proposals/tzip-12/tzip-12.md). The
@@ -89,16 +91,16 @@ its result.
 
 Types
 ```
-tokenId = nat
+token_id = nat
 
-transferParam
+transfer_param
   ( address :from_
   , address :to_
-  , tokenId :tokenId
+  , token_id :token_id
   , nat     :value
   )
 
-transfer = list transferParam
+transfer = list transfer_param
 ```
 
 Parameter (in Michelson):
@@ -109,13 +111,16 @@ Parameter (in Michelson):
     (pair
       (address %to_)
       (pair
-        (nat %tokenId)
+        (nat %token_id)
         (nat %amount)
   )))
 )
 ```
 
 - Transfers given amounts of tokens between addresses.
+
+- Since the contract supports only a single token type, `token_id` must be 0.
+  It is passed because FA2 requires that.
 
 - Each transfer must happen atomically, if one of them fails, then
   the whole transaction fail.
@@ -136,41 +141,39 @@ Parameter (in Michelson):
   operation parameters specify it. No changes to amount values or
   additional transfers are allowed.
 
-- Sender and receiver addresses must be whitelisted.
-
 - Contract must not be paused.
 
-**getBalance**
+**balance_of**
 
 Types
 ```
-tokenId = nat
+token_id = nat
 
-getBalanceRequest =
+balance_of_request =
   ( address :owner
-  , tokenId :tokenId
+  , token_id :token_id
   )
 
-getBalanceResponse =
-  ( getBalanceRequest :request
-  , nat               :balance
+balance_of_response =
+  ( balance_of_request :request
+  , nat :balance
   )
 
-getBalanceParam =
-  ( list getBalanceRequest             :requests
-  , contract (list getBalanceResponse) :callback
+balance_of_param =
+  ( list balance_of_request :requests
+  , contract (list balance_of_response) :callback
   )
 
-getBalance = getBalanceParam
+balance_of = balance_of_param
 ```
 
 Parameter (in Michelson):
 ```
-(pair %getBalance
+(pair %balance_of
   (list %requests
     (pair
       (address %owner)
-      (nat %tokenId)
+      (nat %token_id)
     )
   )
   (contract %callback
@@ -178,7 +181,7 @@ Parameter (in Michelson):
       (pair
         (pair %request
           (address %owner)
-          (nat %tokenId)
+          (nat %token_id)
         )
         (nat %balance)
       )
@@ -188,37 +191,40 @@ Parameter (in Michelson):
 ```
 
 - Returns current balance of mutliple addresses. It accepts a list
-  of `getBalanceRequest` and a callback which accepts a list of
-  `getBalanceResponse` which is conequently passed to it.
+  of `balance_of_request` and a callback which accepts a list of
+  `balance_of_response` which is conequently passed to it.
 
-**getTotalSupply**
+- Since the contract supports only a single token type, `token_id` must be 0.
+  It is passed because FA2 requires that.
+
+**total_supply**
 
 Types
 ```
-tokenId = nat
+token_id = nat
 
-getTotalSupplyResponse =
-  ( tokenId :tokenId
-  , nat     :totalSupply
+total_supply_response =
+  ( token_id :token_id
+  , nat :total_supply
   )
 
-getTotalSupplyParam =
-  ( list tokenId                           :tokenIds
-  , contract (list getTotalSupplyResponse) :callback
+total_supply_param =
+  ( list token_id :token_ids
+  , contract (list total_supply_response) :callback
   )
 
-getTotalSupply = getTotalSupplyParam
+total_supply = total_supply_param
 ```
 
 Parameter (in Michelson)
 ```
-(pair %getTotalSupply
-  (list %tokenIds nat)
+(pair %total_supply
+  (list %token_ids nat)
   (contract %callback
     (list
-      (pair %getTotalSupplyResponse
-        (nat %tokenId)
-        (nat %totalSupply)
+      (pair
+        (nat %token_id)
+        (nat %total_supply)
       )
     )
   )
@@ -227,38 +233,41 @@ Parameter (in Michelson)
 
 - Returns total supply for multiple tokens. It accepts a list of
   token ids and a callback which accepts a list of
-  `getTotalSupplyResponse` which is conequently passed to it.
+  `total_supply_response` which is conequently passed to it.
 
-**getTokenMetadata**
+- Since the contract supports only a single token type, `token_id` must be 0.
+  It is passed because FA2 requires that.
+
+**get_token_metadata**
 
 Types
 ```
-tokenId = nat
+token_id = nat
 
-getTokenMetadataResponse =
-  ( tokenId              :tokenId
+get_token_metadata_response =
+  ( token_id             :token_id
   , string               :symbol
   , string               :name
   , nat                  :decimals
   , map (string, string) :extras
   )
 
-getTokenMetadataParam =
-  ( list tokenId                             :tokenIds
-  , contract (list getTokenMetadataResponse) :callback
+get_token_metadata_param =
+  ( list token_id                               :token_ids
+  , contract (list get_token_metadata_response) :callback
   )
 
-getTokenMetadata = getTokenMetadataParam
+get_token_metadata = get_token_metadata_param
 ```
 
 Parameter (in Michelson)
 ```
-(pair %tokenMetadata
-  (list %tokenIds nat)
+(pair %token_metadata
+  (list %token_ids nat)
   (contract %callback
     (list
-      (pair %getTokenMetadataResponse
-        (nat %tokenId)
+      (pair %get_token_metadata_response
+        (nat %token_id)
         (pair
           (string %symbol)
           (pair
@@ -274,7 +283,7 @@ Parameter (in Michelson)
 
 - Get a list of token metadata for multiple tokens. It accepts a
   list of token ids and a callback which accepts a list of
-  `getTokenMetadataResponse` which is consequently passed to it.
+  `get_token_metadata_response` which is consequently passed to it.
 
 - The smallest amount of tokens which may be transferred, burned or
   minted is always 1.
@@ -283,70 +292,73 @@ Parameter (in Michelson)
   point when displaying the token amounts and must not affect
   transaction in any way.
 
-**permissionsDescriptor**
+- Since the contract supports only a single token type, `token_id` must be 0.
+  It is passed because FA2 requires that.
+
+**permissions_descriptor**
 
 Types
 ```
-selfTransferPolicy =
-  | SelfTransferPermitted
-  | SelfTransferDenied
+self_transfer_policy =
+  | Self_transfer_permitted
+  | Self_transfer_denied
 
-operatorTransferPolicy =
-  | OperatorTransferPermitted
-  | OperatorTransferDenied
+operator_transfer_policy =
+  | Operator_transfer_permitted
+  | Operator_transfer_denied
 
-ownerTransferPolicy =
-  | OwnerNoOp
-  | OptionalOwnerHook
-  | RequiredOwnerHook
+owner_transfer_policty =
+  | Owner_no_op
+  | Optional_owner_hook
+  | Required_owner_hook
 
-customPermissionPolicy =
+custom_permission_policy =
   ( string         :tag
-  , option address :configApi
+  , option address :config_api
   )
 
-permissionsDescriptorParam
-  ( selfTransferPolicy            :self
-  , operatorTransferPolicy        :receiver
-  , ownerTransferPolicy           :operator
-  , ownerTransferPolicy           :sender
-  , option customPermissionPolicy :custom
+permissions_descriptor_param
+  ( self_transfer_policy            :self
+  , operator_transfer_policy        :receiver
+  , owner_transfer_policty          :operator
+  , owner_transfer_policty          :sender
+  , option custom_permission_policy :custom
   )
 
-permissionsDescriptor = contract permissionsDescriptorParam
+permissions_descriptor = contract permissions_descriptor_param
 ```
 
 Parameter (in Michelson)
 ```
-(contract %permissionsDescriptor
+(contract %permissions_descriptor
   (pair
     (or %self
-      (unit %selfTransferPermitted)
-      (unit %selfTransferDenied)
+      (unit %self_transfer_permitted)
+      (unit %self_transfer_denied)
     )
     (pair
       (or %operator
-        (unit %operatorTransferPermitted)
-        (unit %operatorTransferDenied)
+        (unit %operator_transfer_permitted)
+        (unit %operator_transfer_denied)
       )
       (pair
         (or %receiver
-          (unit %ownerNoOp)
+          (unit %owner_no_op)
           (or
-            (unit %optionalOwnerHook)
-            (unit %requiredOwnerHook)
+            (unit %optional_owner_hook)
+            (unit %required_owner_hook)
         ))
         (pair
           (or %sender
-            (unit %ownerNoOp)
+            (unit %owner_no_op)
             (or
-              (unit %optionalOwnerHook)
-              (unit %requiredOwnerHook)
+              (unit %optional_owner_hook)
+              (unit %required_owner_hook)
           ))
         (option %custom
           (pair
             (string %tag)
-            (option %configApi address)
+            (option %config_api address)
           )
         )
   ))))
@@ -367,49 +379,49 @@ Each address that participates in transfer is separated into 2 types:
 token tranfser operation on behalf of the `owner` that actually holds
 tokens.
 
-**updateOperators**
+**update_operators**
 
 Types
 ```
-tokenId = nat
+token_id = nat
 
-operatorTokens =
-  | AllTokens
-  | SomeTokens (set tokenId)
+operator_tokens =
+  | All_tokens
+  | Some_tokens (set token_id)
 
-operatorParam =
-  ( address        :owner
-  , address        :operator
-  , operatorTokens :tokens
+operator_param =
+  ( address         :owner
+  , address         :operator
+  , operator_tokens :tokens
   )
 
-updateOperatorParam =
-  | AddOperator    operatorParam
-  | RemoveOperator operatorParam
+update_operator_param =
+  | Add_operator    operator_param
+  | Remove_operator operator_param
 
-updateOperators = list updateOperatorParam
+update_operators = list update_operator_param
 ```
 
 Parameter (in Michelson)
 ```
-(list %updateOperators
+(list %update_operators
   (or
-    (pair %addOperator
+    (pair %add_operator
       (address %owner)
       (pair
         (address %operator)
         (or %tokens
-          (unit %allTokens)
-          (set %someTokens nat)
+          (unit %all_tokens)
+          (set %some_tokens nat)
         )
     ))
-    (pair %removeOperator
+    (pair %remove_operator
       (address %owner)
       (pair
         (address %operator)
         (or %tokens
-          (unit %allTokens)
-          (set %someTokens nat)
+          (unit %all_tokens)
+          (set %some_tokens nat)
         )
     ))
   )
@@ -425,101 +437,50 @@ Parameter (in Michelson)
 - It's possible to update an operator for some specific tokens, or
   to all tokens (TODO: discuss).
 
-- Sender and operation receiver must be whitelisted.
-
 - Contract must not be paused.
 
-**approveOperatorUpdate (TODO)**
+- Since the contract supports only a single token type, `token_id` must be 0.
+  It is passed because FA2 requires that.
+
+**is_operator**
 
 Types
 ```
-tokenId
+token_id = nat
 
-operatorTokens =
-  | AllTokens
-  | SomeTokens (set tokenId)
+operator_tokens =
+  | All_tokens
+  | Some_tokens (set token_id)
 
-operatorParam =
-  ( address        :owner
-  , address        :operator
-  , operatorTokens :tokens
+operator_param =
+  ( address         :owner
+  , address         :operator
+  , operator_tokens :tokens
   )
 
-approveOperatorUpdate = operatorParam
+is_operator_response =
+  ( operator_param :operator
+  , bool           :is_operator
+  )
+
+is_operator_param =
+  ( operator_param                :operator
+  , contract is_operator_response :callback
+  )
+
+is_operator = is_operator_param
 ```
 
 Parameter (in Michelson):
 ```
-(pair %approveOperatorUpdate
-  (pair %operator
-      (address %owner)
-      (pair
-        (address %operator)
-        (or %tokens
-          (unit %allTokens)
-          (set %someTokens nat)
-        )
-    ))
-  (contract %callback
-    (pair %operator
-      (address %owner)
-      (pair
-        (address %operator)
-        (or %tokens
-          (unit %allTokens)
-          (set %someTokens nat)
-        )
-      )
-    )
-  )
-)
-```
-
-- Enables `operator` to operate on tokens held by `owner`.
-
-- `owner` must be whitelisted.
-
-- Contract must not be paused.
-
-**isOperator**
-
-Types
-```
-tokenId = nat
-
-operatorTokens =
-  | AllTokens
-  | SomeTokens (set tokenId)
-
-operatorParam =
-  ( address        :owner
-  , address        :operator
-  , operatorTokens :tokens
-  )
-
-isOperatorResponse =
-  ( operatorParam :operator
-  , bool          :isOperator
-  )
-
-isOperatorParam =
-  ( operatorParam               :operator
-  , contract isOperatorResponse :callback
-  )
-
-isOperator = isOperatorParam
-```
-
-Parameter (in Michelson):
-```
-(pair %isOperator
+(pair %is_operator
   (pair %operator
     (address %owner)
     (pair
       (address %operator)
       (or %tokens
-        (unit %allTokens)
-        (set %someTokens nat)
+        (unit %all_tokens)
+        (set %some_tokens nat)
       )
   ))
   (contract %callback
@@ -529,11 +490,11 @@ Parameter (in Michelson):
         (pair
           (address %operator)
           (or %tokens
-            (unit %allTokens)
-            (set %someTokens nat)
+            (unit %all_tokens)
+            (set %some_tokens nat)
           )
       ))
-      (bool %isOperator)
+      (bool %is_operator)
     )
   )
 )
@@ -548,6 +509,17 @@ Parameter (in Michelson):
 - It's possible to make this query for some specific tokens, or to
   all tokens.
 
+- Since the contract supports only a single token type, `token_id` must be 0.
+  It is passed because FA2 requires that.
+
+**Custom (non-FA2) token functions**
+====================================
+
+Functions for the stablecoin token implementation not present in FA2, but related to token transfers.
+They do not have `token_id` argument because it is redundant (always must be 0) and not necessary (since they are not part of FA2).
+
+**Pausing**
+-----------
 **pause**
 
 Types
@@ -593,187 +565,134 @@ Parameter (in Michelson)
 
 - Sender must be a pauser.
 
-**getPaused**
+**get_paused**
 
 Types
 ```
-tokenId = nat
-
-getPausedResponse =
-  ( tokenId :tokenId
-  , nat     :paused
+get_paused_param =
+  ( unit :unit
+  , contract bool :callback
   )
 
-getPausedParam =
-  ( list tokenId                      :tokenIds
-  , contract (list getPausedResponse) :callback
-  )
-
-getPaused = getPausedParam
+get_paused = get_paused_param
 ```
 
 Parameter (in Michelson)
 ```
-(pair %getTotalPaused
-  (list %tokenIds nat)
-  (contract %callback
-    (list
-      (pair %getPausedResponse
-        (nat %tokenId)
-        (bool %paused)
-      )
-    )
-  )
+(pair %get_total_paused
+  (unit %dummy)
+  (contract %callback bool)
 )
 ```
 
 - Returns token pause status.
 
-- *Note: It's not a part of ManagedLedger interface*.
-
-**Custom token functions**
-==========================
-
-**Issuing and destroyng tokens**
+**Issuing and destroying tokens**
 --------------------------
 
-**configureMinter**
+**configure_minter**
 
 Types
 ```
-tokenId = nat
-
-configureMinterParam =
+configure_minter_param =
   ( address :sender
   , address :minter
-  , tokenId :tokenId
   )
 
-configureMinter = configureMinterParam
+configure_minter = configure_minter_param
 ```
 
 Parameter (in Michelson)
 ```
-(pair %configureMinter
+(pair %configure_minter
   (address %sender)
-  (pair
-    (address %minter)
-    (nat %tokenId)
-))
+  (address %minter)
+)
 ```
 
-- Adds `minter` to global minter list to allow him mint tokens of specific
-  token type.
+- Adds `minter` to global minter list to allow him mint tokens.
 
 - Sender must be master minter.
 
-- Minter cannot mint tokens untill `setMintingAllowance`
+- Minter cannot mint tokens untill `set_minting_allowance`
   is specified.
 
-**removeMinter**
+**remove_minter**
 
 Types
 ```
-tokenId = nat
-
-removeMinter =
+remove_minter =
   ( address :sender
   , address :minter
-  , tokenId :tokenId
   )
 ```
 
 Parameter (in Michelson)
 ```
-(pair %removeMinter
+(pair %remove_minter
   (address %sender)
-  (pair
-    (address %minter)
-    (nat %tokenId)
-))
+  (address %minter)
+)
 ```
 
-- Removes minter from the global minter list for some specific token type
-  and sets its minting allowance to 0. Once minter is removed it will no
-  longer be able to mint or burn tokens.
+- Removes minter from the global minter list and sets its minting
+  allowance to 0. Once minter is removed it will no longer be able to
+  mint or burn tokens.
 
 - Sender must be master minter.
 
-**setMintingAllowance**
+**set_minting_allowance**
 
 Types
 ```
-tokenId = nat
-
-setMintingAllowanceParam =
+set_minting_allowance_param =
   ( address :sender
   , address :minter
-  , tokenId :tokenId
   , nat     :amount
   )
 
-setMintingAllowance = setMintingAllowanceParam
+set_minting_allowance = set_minting_allowance_param
 ```
 
 Parameter (in Michelson)
 ```
-(pair %setMintingAllowance
+(pair %set_minting_allowance
   (address %sender)
   (pair
     (address %minter)
-    (pair
-      (nat %tokenId)
-      (nat %amount)
-)))
+    (nat %amount)
+))
 ```
 
-- Set the amount of allowed minting allowance for an address with some
-  specific token type.
+- Set the amount of allowed minting allowance for an address.
 
 - Minter must present in sender's minter list.
 
-- Sender and minter must be whitelisted.
-
-**getMintingAllowance**
+**get_minting_allowance**
 
 Types
 ```
-tokenId = nat
-
-getMintingAllowanceRequest =
+get_minting_allowance_response =
   ( address :owner
-  , tokenId :tokenId
+  , nat :allowance
   )
 
-getMintingAllowanceResponse =
-  ( getMintingAllowanceRequest :request
-  , nat                        :allowance
+get_minting_allowance_param =
+  ( list address :requests
+  , contract (list get_minting_allowance_response) :callback
   )
 
-getMintingAllowanceParam =
-  ( list getMintingAllowanceRequest             :requests
-  , contract (list getMintingAllowanceResponse) :callback
-  )
-
-getMintingAllowance = getMintingAllowanceParam
+get_minting_allowance = get_minting_allowance_param
 ```
 
 Parameter (in Michelson):
 ```
-(pair %getMintingAllowance
-  (list %requests
-    (pair
-      (address %owner)
-      (nat %tokenId)
-    )
-  )
+(pair %get_minting_allowance
+  (list %requests address)
   (contract %callback
     (list
       (pair
-        (pair %request
-          (address %owner)
-          (nat %tokenId)
-        )
+        (address %owner)
         (nat %allowance)
       )
     )
@@ -781,64 +700,42 @@ Parameter (in Michelson):
 )
 ```
 
-- Returns current minting allowance for address with a specific token type.
+- Returns current minting allowance for each address in a list.
 
-**getTotalMinted**
+**get_total_minted**
 
 Types
 ```
-tokenId = nat
-
-getTotalMintedResponse =
-  ( tokenId :tokenId
-  , nat     :totalMinted
+get_total_minted_param =
+  ( unit         :dummy
+  , contract nat :callback
   )
 
-getTotalMintedParam =
-  ( list tokenId                           :tokenIds
-  , contract (list getTotalMintedResponse) :callback
-  )
-
-getTotalMinted = getTotalMintedParam
+get_total_minted = get_total_minted_param
 ```
 
 Parameter (in Michelson)
 ```
-(pair %getTotalMinted
-  (list %tokenIds nat)
-  (contract %callback
-    (list
-      (pair %getTotalMintedResponse
-        (nat %tokenId)
-        (nat %totalMinted)
-      )
-    )
-  )
+(pair %get_total_minted
+  (unit %dummy)
+  (contract %callback nat)
 )
 ```
-- Returns current amount of minted coins for an address with a specific token
-  type.
+- Returns current amount of minted coins.
 
 -- TODO: clarify under which conditions and how should
 -- token reset this allowance
 
-**setMintingAllowanceResetInterval** timestamp
+**set_minting_allowance_reset_interval** timestamp
 
 Types
 ```
-setMintingAllowanceResetInterval =
-  ( tokenId   :tokenId
-  , timestamp :interval
-  )
-
+set_minting_allowance_reset_interval = timestamp :interval
 ```
 
 Parameter (in Michelson)
 ```
-(pair %setMintingAllowanceResetInterval
-  (address %sender)
-  (timestamp %interval)
-)
+(timestamp %set_minting_allowance_reset_interval)
 ```
 
 - Set the default interval of minting allowance reset.
@@ -849,16 +746,13 @@ Parameter (in Michelson)
 
 Types
 ```
-tokenId = nat
-
-mintParam
+mint_param
   ( address :minter
   , address :recipient
-  , tokenId :tokenId
   , nat     :value
   )
 
-mint = list mintParam
+mint = list mint_param
 ```
 
 Parameter (in Michelson):
@@ -868,10 +762,8 @@ Parameter (in Michelson):
     (address %minter)
     (pair
       (address %recipient)
-      (pair
-        (nat %tokenId)
-        (nat %value)
-  )))
+      (nat %value)
+  ))
 )
 ```
 
@@ -882,8 +774,6 @@ Parameter (in Michelson):
   operation must fail.
 
 - The operation must follow permission policies described above.
-
-- Receiving addresses must be whitelisted.
 
 - Sender must be minter.
 
@@ -899,15 +789,12 @@ Parameter (in Michelson):
 
 Types
 ```
-tokenId = nat
-
-burnParam
+burn_param
   ( address :sender
-  , tokenId :tokenId
   , nat     :value
   )
 
-burn = list burnParam
+burn = list burn_param
 ```
 
 Parameter (in Michelson):
@@ -915,14 +802,12 @@ Parameter (in Michelson):
 (list %burn
   (pair
     (address %sender)
-    (pair
-      (nat %tokenId)
-      (nat %value)
-  ))
+    (nat %value)
+  )
 )
 ```
 
-- Decreases balances for senders and their token types and the total supply of tokens by the given amount.
+- Decreases balances for senders and the total supply of tokens by the given amount.
 
 - Each burning operation must happen atomically, so if one of them fails,
   then the whole operation must fail.
@@ -934,46 +819,9 @@ Parameter (in Michelson):
 
 - A minter with 0 minting allowance is allowed to burn tokens.
 
+- Burning tokens will not increase the mintingAllowance of the address doing the burning.
+
 - Contract must not be paused.
-
-**Whitelisting (TBD)**
-----------------
-
-Whitelisting functions for the TZUSDC token implementation which are outside the FA1.2 Tezos Token Standard.
-
-**addToWhitelist** address
-
-- Add an address to whitelist, enabling it to transfer and
-  approve tokens as well as modify allowances.
-
-- Sender must be a blacklister.
-
-**addToWhitelistBatch** (list address)
-
-- Adds each address to whitelist, enabling it to transfer and
-  approve tokens as well as modify allowances.
-
-- Sender must be a blacklister.
-
-**removeFromWhitelist** address
-
-- Remove address from whitelist.
-
-- Sender must be a blacklister.
-
-**removeFromWhitelistBatch** (list address)
-
-- Remove provided addresses from whitelist.
-
-- If some of specified addresses are not in whitelist, then
-  it fails returning list of those addresses.
-
-- Sender must be a blacklister.
-
-**checkWhitelisted** (void address bool)
-
-- Return a boolean value describing whether the
-  given address is present in whitelist.
 
 Role reassigning functions
 ==========================
@@ -981,11 +829,11 @@ Role reassigning functions
 **Owner**
 ---------
 
-**transferOwnership**
+**transfer_ownership**
 
 Types
 ```
-transferOwnership =
+transfer_ownership =
   ( address :owner
   , address :receiver
   )
@@ -993,7 +841,7 @@ transferOwnership =
 
 Parameter (in Michelson):
 ```
-(pair %transferOwnership
+(pair %transfer_ownership
   (address %owner)
   (address %receiver)
 )
@@ -1004,39 +852,39 @@ Parameter (in Michelson):
 - Sender must be current token owner.
 
 - The current owner retains his priveleges up until
-  `acceptOwnership` is called.
+  `accept_ownership` is called.
 
 - Can be called multiple times, each call replaces pending
   owner with the new one. Note, that if proposed
   owner is the same as the current one, then the call
   is simply invalidated.
 
-**getOwner**
+**get_owner**
 
 Types
 ```
-getOwner = (contract address :callback)
+get_owner = (contract address :callback)
 ```
 
 Parameter (in Michelson):
 ```
-(pair %getOwner
+(pair %get_owner
   (contract %callback address)
 )
 ```
 
 - Returns current token owner address.
 
-**acceptOwnership**
+**accept_ownership**
 
 Types
 ```
-acceptOwnership = unit
+accept_ownership = unit
 ```
 
 Parameter (in Michelson):
 ```
-(unit %acceptOwnership)
+(unit %accept_ownership)
 ```
 
 - Accept ownership privileges.
@@ -1046,11 +894,11 @@ Parameter (in Michelson):
 **Master Minter**
 ---------------
 
-**changeMasterMinter**
+**change_master_minter**
 
 Types
 ```
-changeMasterMinter =
+change_master_minter =
   ( address :owner
   , address :receiver
   )
@@ -1058,7 +906,7 @@ changeMasterMinter =
 
 Parameter (in Michelson):
 ```
-(pair %changeMasterMinter
+(pair %change_master_minter
   (address %owner)
   (address %receiver)
 )
@@ -1068,54 +916,30 @@ Parameter (in Michelson):
 
 - Sender must be token owner.
 
-- The current master minter retains his priveleges up until
-  `acceptMasterMinterRole` is called.
-
-- Can be called multiple times, each call replaces pending
-  master minter with the new one. Note, that if proposed
-  master minter is the same as the current one, then the call
-  is simply invalidated.
-
-**getMasterMinter**
+**get_master_minter**
 
 Types
 ```
-getMasterMinter = (contract address :callback)
+get_master_minter = (contract address :callback)
 ```
 
 Parameter (in Michelson):
 ```
-(pair %getMasterMinter
+(pair %get_master_minter
   (contract %callback address)
 )
 ```
 
 - Return current master minter address.
 
-**acceptMasterMinterRole**
-
-Types
-```
-acceptMasterMinterRole = unit
-```
-
-Parameter (in Michelson):
-```
-(unit %acceptMasterMinterRole)
-```
-
-- Accept master minter privileges.
-
-- Sender must be a pending master minter.
-
 **Pauser**
 ----------
 
-**changePauser**
+**change_pauser**
 
 Types
 ```
-changePauser =
+change_pauser =
   ( address :owner
   , address :receiver
   )
@@ -1123,7 +947,7 @@ changePauser =
 
 Parameter (in Michelson):
 ```
-(pair %changePauser
+(pair %change_pauser
   (address %owner)
   (address %receiver)
 )
@@ -1132,68 +956,18 @@ Parameter (in Michelson):
 
 - Sender must be token owner.
 
-- The current pauser retains his priveleges up until
-  `acceptPauserRole` is called.
-
-- Can be called multiple times, each call replaces pending
-  pauser with the new one. Note, that if proposed pauser is
-  the same as the current one, then the call is simply
-  invalidated.
-
-**getPauser**
+**get_pauser**
 
 Types
 ```
-getPauser = (contract address :callback)
+get_pauser = (contract address :callback)
 ```
 
 Parameter (in Michelson):
 ```
-(pair %getPauser
+(pair %get_pauser
   (contract %callback address)
 )
 ```
 
 - Return current pauser address.
-
-**acceptPauserRole**
-
-Types
-```
-acceptPauserRole = unit
-```
-
-Parameter (in Michelson):
-```
-(unit %acceptPauserRole)
-```
-- Accept pauser privileges.
-
-- Sender must be a pending pauser.
-
-**Blacklister (TBD)**
----------------
-
-**changeBlacklister** address
-
-- Set pauser to a new address.
-
-- Sender must be token owner.
-
-- The current pauser retains his priveleges up until
-  `acceptBlacklister` is called.
-
-- Can be called multiple times, each call replaces pending
-  blacklister with the new one. Note, that if proposed
-  blacklister is the same as the current one, then the call
-  is simply invalidated.
-
-**getBlacklister** (view unit address)
-
-- Return current blacklister address.
-
-**acceptBlacklisterRole** unit
-
-- Accept blacklister privileges.
-
-- Sender must be a pending blacklister.
