@@ -1,0 +1,1004 @@
+{ parameter
+    (or (or (or (or (pair %balance_of
+                       (contract %callback
+                          (list (pair (nat %balance) (pair %request (address %owner) (nat %token_id)))))
+                       (list %requests (pair (address %owner) (nat %token_id))))
+                    (pair %burn (nat %amount) (address %from_)))
+                (or (address %configure_minter)
+                    (pair %get_token_metadata
+                       (contract %callback
+                          (list (pair (pair (pair (nat %decimals) (map %extras string string))
+                                            (pair (string %name) (string %symbol)))
+                                      (nat %token_id))))
+                       (list %token_ids nat))))
+            (or (or (pair %is_operator
+                       (contract %callback
+                          (pair (bool %is_operator)
+                                (pair %operator
+                                   (pair (address %operator) (address %owner))
+                                   (or %tokens (unit %all_tokens) (set %some_tokens nat)))))
+                       (pair %operator
+                          (pair (address %operator) (address %owner))
+                          (or %tokens (unit %all_tokens) (set %some_tokens nat))))
+                    (pair %mint (nat %amount) (address %to_)))
+                (or (unit %pause)
+                    (contract %permissions_descriptor
+                       (pair (pair (pair (option %custom (pair (option %config_api address) (string %tag)))
+                                         (or %operator
+                                            (unit %operator_transfer_denied)
+                                            (unit %operator_transfer_permitted)))
+                                   (pair (or %receiver
+                                            (or (unit %optional_owner_hook) (unit %owner_no_op))
+                                            (unit %required_owner_hook))
+                                         (or %self (unit %self_transfer_denied) (unit %self_transfer_permitted))))
+                             (or %sender
+                                (or (unit %optional_owner_hook) (unit %owner_no_op))
+                                (unit %required_owner_hook)))))))
+        (or (or (or (address %remove_minter)
+                    (pair %set_minting_allowance (nat %amount) (address %minter)))
+                (or (pair %total_supply
+                       (contract %callback (list (pair (nat %token_id) (nat %total_supply))))
+                       (list %token_ids nat))
+                    (list %transfer
+                       (pair (pair (nat %amount) (address %from_)) (pair (address %to_) (nat %token_id))))))
+            (or (unit %unpause)
+                (list %update_operators
+                   (or (pair %add_operator
+                          (pair (address %operator) (address %owner))
+                          (or %tokens (unit %all_tokens) (set %some_tokens nat)))
+                       (pair %remove_operator
+                          (pair (address %operator) (address %owner))
+                          (or %tokens (unit %all_tokens) (set %some_tokens nat)))))))) ;
+  storage
+    (pair (pair (pair %fields
+                   (pair (big_map %operators
+                            (pair address address)
+                            (or (or (unit %all_operator_tokens) (set %all_operator_tokens_except nat))
+                                (set %some_operator_tokens nat)))
+                         (bool %paused))
+                   (pair (pair %roles (pair (address %master_minter) (address %owner)) (address %pauser))
+                         (nat %total_supply)))
+                (map %ledger address (pair (map %approvals address nat) (nat %balance))))
+          (pair (pair %permissions
+                   (pair (pair (option %custom (pair (option %config_api address) (string %tag)))
+                               (or %operator
+                                  (unit %operator_transfer_denied)
+                                  (unit %operator_transfer_permitted)))
+                         (pair (or %receiver
+                                  (or (unit %optional_owner_hook) (unit %owner_no_op))
+                                  (unit %required_owner_hook))
+                               (or %self (unit %self_transfer_denied) (unit %self_transfer_permitted))))
+                   (or %sender
+                      (or (unit %optional_owner_hook) (unit %owner_no_op))
+                      (unit %required_owner_hook)))
+                (pair %token_metadata
+                   (pair (pair (nat %decimals) (map %extras string string))
+                         (pair (string %name) (string %symbol)))
+                   (nat %token_id)))) ;
+  code { PUSH int 0 ;
+         ABS ;
+         DUP ;
+         LAMBDA
+           (pair (pair %0
+                    (pair (address %operator) (address %owner))
+                    (or %tokens (unit %all_tokens) (set %some_tokens nat)))
+                 (big_map %1
+                    (pair (address %0) (address %1))
+                    (or (or (unit %all_operator_tokens) (set %all_operator_tokens_except nat))
+                        (set %some_operator_tokens nat))))
+           bool
+           { DUP ;
+             CAR ;
+             DUP ;
+             CAR ;
+             CDR ;
+             DIP { DUP ; CAR ; CAR } ;
+             PAIR ;
+             DIP { DIP { DUP } ; SWAP ; CDR } ;
+             GET ;
+             IF_NONE
+               { PUSH bool False }
+               { DUP ;
+                 DIP { DIP { DUP } ; SWAP ; CDR } ;
+                 PAIR ;
+                 DUP ;
+                 CDR ;
+                 DIP { DUP } ;
+                 SWAP ;
+                 CAR ;
+                 IF_LEFT
+                   { DUP ;
+                     IF_LEFT
+                       { DROP ; PUSH bool True }
+                       { DIP 2 { DUP } ;
+                         DIG 2 ;
+                         IF_LEFT
+                           { DROP ; PUSH bool False }
+                           { DIP { DUP } ;
+                             SWAP ;
+                             PUSH bool True ;
+                             SWAP ;
+                             ITER { SWAP ;
+                                    PAIR ;
+                                    DUP ;
+                                    CDR ;
+                                    DIP { DIP { DUP } ; SWAP } ;
+                                    MEM ;
+                                    IF { PUSH bool False } { DUP ; CAR } ;
+                                    DIP { DROP } } ;
+                             DIP { DROP } } ;
+                         DIP { DROP } } ;
+                     DIP { DROP } }
+                   { DIP { DUP } ;
+                     SWAP ;
+                     IF_LEFT
+                       { DROP ; PUSH bool False }
+                       { DIP { DUP } ;
+                         SWAP ;
+                         PUSH bool True ;
+                         SWAP ;
+                         ITER { SWAP ;
+                                PAIR ;
+                                DUP ;
+                                CDR ;
+                                DIP { DIP { DUP } ; SWAP } ;
+                                MEM ;
+                                IF { DUP ; CAR } { PUSH bool False } ;
+                                DIP { DROP } } ;
+                         DIP { DROP } } ;
+                     DIP { DROP } } ;
+                 DIP { DROP 3 } } ;
+             DIP { DROP 2 } } ;
+         SWAP ;
+         LAMBDA
+           (pair (string %0)
+                 (pair %1
+                    (pair (pair %fields
+                             (pair (big_map %operators
+                                      (pair (address %0) (address %1))
+                                      (or (or (unit %all_operator_tokens) (set %all_operator_tokens_except nat))
+                                          (set %some_operator_tokens nat)))
+                                   (bool %paused))
+                             (pair (pair %roles (pair (address %master_minter) (address %owner)) (address %pauser))
+                                   (nat %total_supply)))
+                          (map %ledger address (pair (map %approvals address nat) (nat %balance))))
+                    (pair (pair %permissions
+                             (pair (pair (option %custom (pair (option %config_api address) (string %tag)))
+                                         (or %operator
+                                            (unit %operator_transfer_denied)
+                                            (unit %operator_transfer_permitted)))
+                                   (pair (or %receiver
+                                            (or (unit %optional_owner_hook) (unit %owner_no_op))
+                                            (unit %required_owner_hook))
+                                         (or %self (unit %self_transfer_denied) (unit %self_transfer_permitted))))
+                             (or %sender
+                                (or (unit %optional_owner_hook) (unit %owner_no_op))
+                                (unit %required_owner_hook)))
+                          (pair %token_metadata
+                             (pair (pair (nat %decimals) (map %extras string string))
+                                   (pair (string %name) (string %symbol)))
+                             (nat %token_id)))))
+           unit
+           { DUP ;
+             CDR ;
+             CAR ;
+             CAR ;
+             CDR ;
+             CAR ;
+             CAR ;
+             CAR ;
+             SENDER ;
+             COMPARE ;
+             NEQ ;
+             IF { DUP ;
+                  CAR ;
+                  PUSH string ": Sender is not master minter" ;
+                  SWAP ;
+                  CONCAT ;
+                  FAILWITH }
+                { UNIT } ;
+             DIP { DROP } } ;
+         SWAP ;
+         LAMBDA
+           (pair nat (pair (string %0) (nat %1)))
+           unit
+           { DUP ;
+             CAR ;
+             SWAP ;
+             CDR ;
+             DUP ;
+             CDR ;
+             DIP { DIP { DUP } ; SWAP } ;
+             COMPARE ;
+             NEQ ;
+             IF { DUP ;
+                  CAR ;
+                  PUSH string ": Call does not support multiple token types" ;
+                  SWAP ;
+                  CONCAT ;
+                  FAILWITH }
+                { UNIT } ;
+             DIP { DROP 2 } } ;
+         SWAP ;
+         APPLY ;
+         DUP ;
+         LAMBDA
+           (pair (lambda (pair (string %0) (nat %1)) unit) (pair (string %0) (list %1 nat)))
+           unit
+           { DUP ;
+             CAR ;
+             SWAP ;
+             CDR ;
+             DUP ;
+             CDR ;
+             MAP { DIP { DUP } ;
+                   SWAP ;
+                   CAR ;
+                   DIP { DUP } ;
+                   PAIR ;
+                   DIP { DIP 2 { DUP } ; DIG 2 } ;
+                   EXEC ;
+                   DIP { DROP } } ;
+             DROP 3 ;
+             UNIT } ;
+         SWAP ;
+         APPLY ;
+         LAMBDA
+           (pair (pair %0 (nat %amount) (address %from_))
+                 (pair %1
+                    (pair (pair %fields
+                             (pair (big_map %operators
+                                      (pair (address %0) (address %1))
+                                      (or (or (unit %all_operator_tokens) (set %all_operator_tokens_except nat))
+                                          (set %some_operator_tokens nat)))
+                                   (bool %paused))
+                             (pair (pair %roles (pair (address %master_minter) (address %owner)) (address %pauser))
+                                   (nat %total_supply)))
+                          (map %ledger address (pair (map %approvals address nat) (nat %balance))))
+                    (pair (pair %permissions
+                             (pair (pair (option %custom (pair (option %config_api address) (string %tag)))
+                                         (or %operator
+                                            (unit %operator_transfer_denied)
+                                            (unit %operator_transfer_permitted)))
+                                   (pair (or %receiver
+                                            (or (unit %optional_owner_hook) (unit %owner_no_op))
+                                            (unit %required_owner_hook))
+                                         (or %self (unit %self_transfer_denied) (unit %self_transfer_permitted))))
+                             (or %sender
+                                (or (unit %optional_owner_hook) (unit %owner_no_op))
+                                (unit %required_owner_hook)))
+                          (pair %token_metadata
+                             (pair (pair (nat %decimals) (map %extras string string))
+                                   (pair (string %name) (string %symbol)))
+                             (nat %token_id)))))
+           (pair (pair (pair %fields
+                          (pair (big_map %operators
+                                   (pair (address %0) (address %1))
+                                   (or (or (unit %all_operator_tokens) (set %all_operator_tokens_except nat))
+                                       (set %some_operator_tokens nat)))
+                                (bool %paused))
+                          (pair (pair %roles (pair (address %master_minter) (address %owner)) (address %pauser))
+                                (nat %total_supply)))
+                       (map %ledger address (pair (map %approvals address nat) (nat %balance))))
+                 (pair (pair %permissions
+                          (pair (pair (option %custom (pair (option %config_api address) (string %tag)))
+                                      (or %operator
+                                         (unit %operator_transfer_denied)
+                                         (unit %operator_transfer_permitted)))
+                                (pair (or %receiver
+                                         (or (unit %optional_owner_hook) (unit %owner_no_op))
+                                         (unit %required_owner_hook))
+                                      (or %self (unit %self_transfer_denied) (unit %self_transfer_permitted))))
+                          (or %sender
+                             (or (unit %optional_owner_hook) (unit %owner_no_op))
+                             (unit %required_owner_hook)))
+                       (pair %token_metadata
+                          (pair (pair (nat %decimals) (map %extras string string))
+                                (pair (string %name) (string %symbol)))
+                          (nat %token_id))))
+           { DUP ;
+             CAR ;
+             DIP { DUP } ;
+             SWAP ;
+             CDR ;
+             DIP { DUP } ;
+             SWAP ;
+             DIP { DUP } ;
+             PAIR ;
+             DIP 2 { DUP } ;
+             DIG 2 ;
+             CDR ;
+             DIP { DIP { DUP } ; SWAP ; CAR ; CDR } ;
+             GET ;
+             IF_NONE
+               { PUSH string "Given address is not present in ledger" ; FAILWITH }
+               { DUP ;
+                 DIP { DIP 3 { DUP } ; DIG 3 } ;
+                 PAIR ;
+                 DIP { DIP 2 { DUP } ; DIG 2 } ;
+                 PAIR ;
+                 DIP { DUP } ;
+                 SWAP ;
+                 CDR ;
+                 DIP { DIP 4 { DUP } ; DIG 4 ; CAR } ;
+                 COMPARE ;
+                 LT ;
+                 IF { PUSH string "Not enough balance to debit from the given wallet" ; FAILWITH }
+                    { DIP { DUP } ;
+                      SWAP ;
+                      DIP 2 { DUP } ;
+                      DIG 2 ;
+                      CDR ;
+                      DIP { DIP 5 { DUP } ; DIG 5 ; CAR } ;
+                      SUB ;
+                      ABS ;
+                      SWAP ;
+                      CAR ;
+                      PAIR ;
+                      DIP 4 { DUP } ;
+                      DIG 4 ;
+                      DIP 5 { DUP } ;
+                      DIG 5 ;
+                      CAR ;
+                      CAR ;
+                      DIP 6 { DUP } ;
+                      DIG 6 ;
+                      CAR ;
+                      CAR ;
+                      CDR ;
+                      CDR ;
+                      DIP { DIP 7 { DUP } ; DIG 7 ; CAR } ;
+                      SUB ;
+                      ABS ;
+                      DIP { DUP ; CAR ; SWAP ; CDR ; CAR } ;
+                      SWAP ;
+                      PAIR ;
+                      SWAP ;
+                      PAIR ;
+                      DIP { DUP ; CDR ; SWAP ; CAR ; CDR } ;
+                      PAIR ;
+                      PAIR ;
+                      DIP 2 { DUP } ;
+                      DIG 2 ;
+                      DIP 2 { DUP } ;
+                      DIG 2 ;
+                      DIP { DUP ; CDR ; SWAP ; CAR ; CDR } ;
+                      PAIR ;
+                      PAIR ;
+                      CAR ;
+                      DIP { DUP } ;
+                      PAIR ;
+                      DIP { DROP 2 } } ;
+                 DIP 3 { DUP } ;
+                 DIG 3 ;
+                 DIP { DUP } ;
+                 SWAP ;
+                 CDR ;
+                 SWAP ;
+                 CAR ;
+                 PAIR ;
+                 DIP { DUP } ;
+                 SWAP ;
+                 CAR ;
+                 CDR ;
+                 SWAP ;
+                 CDR ;
+                 SWAP ;
+                 PAIR ;
+                 DIP { DROP 3 } } ;
+             DUP ;
+             CDR ;
+             DIP { DROP 5 } } ;
+         LAMBDA
+           (pair (pair %0 (nat %amount) (address %to_))
+                 (pair %1
+                    (pair (pair %fields
+                             (pair (big_map %operators
+                                      (pair (address %0) (address %1))
+                                      (or (or (unit %all_operator_tokens) (set %all_operator_tokens_except nat))
+                                          (set %some_operator_tokens nat)))
+                                   (bool %paused))
+                             (pair (pair %roles (pair (address %master_minter) (address %owner)) (address %pauser))
+                                   (nat %total_supply)))
+                          (map %ledger address (pair (map %approvals address nat) (nat %balance))))
+                    (pair (pair %permissions
+                             (pair (pair (option %custom (pair (option %config_api address) (string %tag)))
+                                         (or %operator
+                                            (unit %operator_transfer_denied)
+                                            (unit %operator_transfer_permitted)))
+                                   (pair (or %receiver
+                                            (or (unit %optional_owner_hook) (unit %owner_no_op))
+                                            (unit %required_owner_hook))
+                                         (or %self (unit %self_transfer_denied) (unit %self_transfer_permitted))))
+                             (or %sender
+                                (or (unit %optional_owner_hook) (unit %owner_no_op))
+                                (unit %required_owner_hook)))
+                          (pair %token_metadata
+                             (pair (pair (nat %decimals) (map %extras string string))
+                                   (pair (string %name) (string %symbol)))
+                             (nat %token_id)))))
+           (pair (pair (pair %fields
+                          (pair (big_map %operators
+                                   (pair (address %0) (address %1))
+                                   (or (or (unit %all_operator_tokens) (set %all_operator_tokens_except nat))
+                                       (set %some_operator_tokens nat)))
+                                (bool %paused))
+                          (pair (pair %roles (pair (address %master_minter) (address %owner)) (address %pauser))
+                                (nat %total_supply)))
+                       (map %ledger address (pair (map %approvals address nat) (nat %balance))))
+                 (pair (pair %permissions
+                          (pair (pair (option %custom (pair (option %config_api address) (string %tag)))
+                                      (or %operator
+                                         (unit %operator_transfer_denied)
+                                         (unit %operator_transfer_permitted)))
+                                (pair (or %receiver
+                                         (or (unit %optional_owner_hook) (unit %owner_no_op))
+                                         (unit %required_owner_hook))
+                                      (or %self (unit %self_transfer_denied) (unit %self_transfer_permitted))))
+                          (or %sender
+                             (or (unit %optional_owner_hook) (unit %owner_no_op))
+                             (unit %required_owner_hook)))
+                       (pair %token_metadata
+                          (pair (pair (nat %decimals) (map %extras string string))
+                                (pair (string %name) (string %symbol)))
+                          (nat %token_id))))
+           { DUP ;
+             CAR ;
+             DIP { DUP } ;
+             SWAP ;
+             CDR ;
+             DIP { DUP } ;
+             SWAP ;
+             DIP { DUP } ;
+             PAIR ;
+             DIP 2 { DUP } ;
+             DIG 2 ;
+             CDR ;
+             DIP { DIP { DUP } ; SWAP ; CAR ; CDR } ;
+             GET ;
+             IF_NONE
+               { PUSH string "Given address is not present in ledger" ; FAILWITH }
+               { DUP ;
+                 DIP { DUP } ;
+                 SWAP ;
+                 CDR ;
+                 DIP { DIP 4 { DUP } ; DIG 4 ; CAR } ;
+                 ADD ;
+                 SWAP ;
+                 CAR ;
+                 PAIR ;
+                 DIP 3 { DUP } ;
+                 DIG 3 ;
+                 DIP 4 { DUP } ;
+                 DIG 4 ;
+                 CAR ;
+                 CAR ;
+                 DIP 5 { DUP } ;
+                 DIG 5 ;
+                 CAR ;
+                 CAR ;
+                 CDR ;
+                 CDR ;
+                 DIP { DIP 6 { DUP } ; DIG 6 ; CAR } ;
+                 ADD ;
+                 DIP { DUP ; CAR ; SWAP ; CDR ; CAR } ;
+                 SWAP ;
+                 PAIR ;
+                 SWAP ;
+                 PAIR ;
+                 DIP { DUP ; CDR ; SWAP ; CAR ; CDR } ;
+                 PAIR ;
+                 PAIR ;
+                 DIP 3 { DUP } ;
+                 DIG 3 ;
+                 CAR ;
+                 DIP { DUP } ;
+                 PAIR ;
+                 DIP { DROP 3 } } ;
+             DUP ;
+             CDR ;
+             DIP { DROP 5 } } ;
+         DIP 7 { DUP } ;
+         DIG 7 ;
+         CDR ;
+         DIP 8 { DUP } ;
+         DIG 8 ;
+         CAR ;
+         IF_LEFT
+           { DUP ;
+             IF_LEFT
+               { DUP ;
+                 IF_LEFT
+                   { DUP ;
+                     IF_LEFT
+                       { DUP ;
+                         DIP { DIP 4 { DUP } ; DIG 4 } ;
+                         PAIR ;
+                         DUP ;
+                         CAR ;
+                         DIP { DUP } ;
+                         SWAP ;
+                         CDR ;
+                         DIP { DUP } ;
+                         SWAP ;
+                         CDR ;
+                         MAP { DUP ;
+                               CDR ;
+                               PUSH string "balance_of" ;
+                               PAIR ;
+                               DIP { DIP 12 { DUP } ; DIG 12 } ;
+                               EXEC ;
+                               PUSH int 0 ;
+                               ABS ;
+                               DIP 2 { DUP } ;
+                               DIG 2 ;
+                               CAR ;
+                               DIP { DIP 3 { DUP } ; DIG 3 ; CAR ; CDR } ;
+                               GET ;
+                               IF_NONE
+                                 { DUP }
+                                 { DIP { DUP } ; SWAP ; DIP { DUP } ; SWAP ; CDR ; DIP { DROP 2 } } ;
+                               DIP { DIP 2 { DUP } ; DIG 2 } ;
+                               PAIR ;
+                               DIP { DROP 3 } } ;
+                         DUP ;
+                         DIP { DIP 2 { DUP } ; DIG 2 ; CAR ; PUSH mutez 0 } ;
+                         TRANSFER_TOKENS ;
+                         DIP 2 { DUP } ;
+                         DIG 2 ;
+                         NIL operation ;
+                         PAIR ;
+                         DIP { DROP 6 } }
+                       { DUP ;
+                         DIP { DIP 4 { DUP } ; DIG 4 } ;
+                         PAIR ;
+                         DUP ;
+                         CDR ;
+                         DUP ;
+                         PUSH string "burn" ;
+                         PAIR ;
+                         DIP { DIP 11 { DUP } ; DIG 11 } ;
+                         EXEC ;
+                         DIP 2 { DUP } ;
+                         DIG 2 ;
+                         CAR ;
+                         DIP { DIP { DUP } ; SWAP } ;
+                         PAIR ;
+                         DIP { DIP 9 { DUP } ; DIG 9 } ;
+                         EXEC ;
+                         NIL operation ;
+                         PAIR ;
+                         DIP { DROP 4 } } ;
+                     DIP { DROP } }
+                   { DUP ;
+                     IF_LEFT
+                       { DUP ;
+                         DIP { DIP 4 { DUP } ; DIG 4 } ;
+                         PAIR ;
+                         DUP ;
+                         CDR ;
+                         DUP ;
+                         PUSH string "configure_minter" ;
+                         PAIR ;
+                         DIP { DIP 11 { DUP } ; DIG 11 } ;
+                         EXEC ;
+                         DIP { DUP } ;
+                         SWAP ;
+                         DIP 3 { DUP } ;
+                         DIG 3 ;
+                         CAR ;
+                         DIP { DUP } ;
+                         SWAP ;
+                         CAR ;
+                         CDR ;
+                         SENDER ;
+                         GET ;
+                         IF_NONE
+                           { PUSH string "Sender address is not present in ledger" ; FAILWITH }
+                           { DIP { DUP } ; SWAP ; DIP { DROP } } ;
+                         DIP 2 { DUP } ;
+                         DIG 2 ;
+                         NIL operation ;
+                         PAIR ;
+                         DIP { DROP 7 } }
+                       { DUP ;
+                         DIP { DIP 4 { DUP } ; DIG 4 } ;
+                         PAIR ;
+                         DUP ;
+                         CAR ;
+                         DIP { DUP } ;
+                         SWAP ;
+                         CDR ;
+                         DIP { DUP } ;
+                         SWAP ;
+                         CDR ;
+                         PUSH string "get_token_metadata" ;
+                         PAIR ;
+                         DIP { DIP 10 { DUP } ; DIG 10 } ;
+                         EXEC ;
+                         DIP { DUP } ;
+                         SWAP ;
+                         CDR ;
+                         CDR ;
+                         NIL (pair (pair (pair (nat %decimals) (map %extras string string))
+                                         (pair (string %name) (string %symbol)))
+                                   (nat %token_id)) ;
+                         SWAP ;
+                         CONS ;
+                         DIP { DIP 2 { DUP } ; DIG 2 ; CAR ; PUSH mutez 0 } ;
+                         TRANSFER_TOKENS ;
+                         NIL operation ;
+                         SWAP ;
+                         CONS ;
+                         DIP { DIP { DUP } ; SWAP } ;
+                         PAIR ;
+                         DIP { DROP 5 } } ;
+                     DIP { DROP } } ;
+                 DIP { DROP } }
+               { DUP ;
+                 IF_LEFT
+                   { DUP ;
+                     IF_LEFT
+                       { DIP 4 { DUP } ; DIG 4 ; NIL operation ; PAIR ; DIP { DROP } }
+                       { DUP ;
+                         DIP { DIP 4 { DUP } ; DIG 4 } ;
+                         PAIR ;
+                         DUP ;
+                         CDR ;
+                         DUP ;
+                         PUSH string "mint" ;
+                         PAIR ;
+                         DIP { DIP 11 { DUP } ; DIG 11 } ;
+                         EXEC ;
+                         DIP 2 { DUP } ;
+                         DIG 2 ;
+                         CAR ;
+                         DIP { DIP { DUP } ; SWAP } ;
+                         PAIR ;
+                         DIP { DIP 8 { DUP } ; DIG 8 } ;
+                         EXEC ;
+                         NIL operation ;
+                         PAIR ;
+                         DIP { DROP 4 } } ;
+                     DIP { DROP } }
+                   { DUP ;
+                     IF_LEFT
+                       { DIP 4 { DUP } ;
+                         DIG 4 ;
+                         DUP ;
+                         CAR ;
+                         CAR ;
+                         CAR ;
+                         CDR ;
+                         IF { PUSH string "Contract is already paused" ; FAILWITH }
+                            { PUSH unit Unit } ;
+                         DIP { DUP } ;
+                         SWAP ;
+                         DIP 2 { DUP } ;
+                         DIG 2 ;
+                         CAR ;
+                         CAR ;
+                         DUP ;
+                         CDR ;
+                         SWAP ;
+                         CAR ;
+                         CAR ;
+                         PUSH bool True ;
+                         SWAP ;
+                         PAIR ;
+                         PAIR ;
+                         DIP { DUP ; CDR ; SWAP ; CAR ; CDR } ;
+                         PAIR ;
+                         PAIR ;
+                         NIL operation ;
+                         PAIR ;
+                         DIP { DROP 3 } }
+                       { DUP ;
+                         DIP { DIP 4 { DUP } ; DIG 4 } ;
+                         PAIR ;
+                         DUP ;
+                         CDR ;
+                         DUP ;
+                         CDR ;
+                         CAR ;
+                         DIP { DIP { DUP } ; SWAP ; CAR ; PUSH mutez 0 } ;
+                         TRANSFER_TOKENS ;
+                         NIL operation ;
+                         SWAP ;
+                         CONS ;
+                         DIP { DUP } ;
+                         PAIR ;
+                         DIP { DROP 3 } } ;
+                     DIP { DROP } } ;
+                 DIP { DROP } } ;
+             DIP { DROP } }
+           { DUP ;
+             IF_LEFT
+               { DUP ;
+                 IF_LEFT
+                   { DUP ;
+                     IF_LEFT
+                       { DUP ;
+                         DIP { DIP 4 { DUP } ; DIG 4 } ;
+                         PAIR ;
+                         DUP ;
+                         CAR ;
+                         DIP { DUP } ;
+                         SWAP ;
+                         CDR ;
+                         DUP ;
+                         PUSH string "remove_minter" ;
+                         PAIR ;
+                         DIP { DIP 12 { DUP } ; DIG 12 } ;
+                         EXEC ;
+                         DIP { DUP } ;
+                         SWAP ;
+                         DIP 3 { DUP } ;
+                         DIG 3 ;
+                         DIP { DUP } ;
+                         SWAP ;
+                         CAR ;
+                         CDR ;
+                         SENDER ;
+                         GET ;
+                         IF_NONE
+                           { PUSH string "Sender address is not present in ledger" ; FAILWITH }
+                           { DUP ;
+                             DIP 6 { DUP } ;
+                             DIG 6 ;
+                             DIP { DIP { DUP } ; SWAP ; CAR ; NONE nat } ;
+                             UPDATE ;
+                             SWAP ;
+                             CDR ;
+                             SWAP ;
+                             PAIR ;
+                             DIP 2 { DUP } ;
+                             DIG 2 ;
+                             DIP { DROP 2 } } ;
+                         DIP 2 { DUP } ;
+                         DIG 2 ;
+                         NIL operation ;
+                         PAIR ;
+                         DIP { DROP 8 } }
+                       { DUP ;
+                         DIP { DIP 4 { DUP } ; DIG 4 } ;
+                         PAIR ;
+                         DUP ;
+                         CDR ;
+                         DUP ;
+                         PUSH string "set_minting_allowance" ;
+                         PAIR ;
+                         DIP { DIP 11 { DUP } ; DIG 11 } ;
+                         EXEC ;
+                         DIP { DUP } ;
+                         SWAP ;
+                         DIP 3 { DUP } ;
+                         DIG 3 ;
+                         CAR ;
+                         DIP { DUP } ;
+                         SWAP ;
+                         CAR ;
+                         CDR ;
+                         SENDER ;
+                         GET ;
+                         IF_NONE
+                           { PUSH string "Sender address is not present in ledger" ; FAILWITH }
+                           { DIP { DUP } ; SWAP ; DIP { DROP } } ;
+                         DIP 2 { DUP } ;
+                         DIG 2 ;
+                         NIL operation ;
+                         PAIR ;
+                         DIP { DROP 7 } } ;
+                     DIP { DROP } }
+                   { DUP ;
+                     IF_LEFT
+                       { DUP ;
+                         DIP { DIP 4 { DUP } ; DIG 4 } ;
+                         PAIR ;
+                         DUP ;
+                         CAR ;
+                         DIP { DUP } ;
+                         SWAP ;
+                         CDR ;
+                         DIP { DUP } ;
+                         SWAP ;
+                         CDR ;
+                         PUSH string "total_supply" ;
+                         PAIR ;
+                         DIP { DIP 10 { DUP } ; DIG 10 } ;
+                         EXEC ;
+                         DIP 15 { DUP } ;
+                         DIG 15 ;
+                         DIP { DIP { DUP } ; SWAP ; CAR ; CAR ; CDR ; CDR } ;
+                         PAIR ;
+                         NIL (pair (nat %token_id) (nat %total_supply)) ;
+                         SWAP ;
+                         CONS ;
+                         DIP { DIP 2 { DUP } ; DIG 2 ; CAR ; PUSH mutez 0 } ;
+                         TRANSFER_TOKENS ;
+                         DUP ;
+                         NIL operation ;
+                         SWAP ;
+                         CONS ;
+                         DIP { DIP 2 { DUP } ; DIG 2 } ;
+                         PAIR ;
+                         DIP { DROP 6 } }
+                       { DUP ;
+                         DIP { DIP 4 { DUP } ; DIG 4 } ;
+                         PAIR ;
+                         DUP ;
+                         CAR ;
+                         DIP { DUP } ;
+                         SWAP ;
+                         CDR ;
+                         DUP ;
+                         CDR ;
+                         CAR ;
+                         CAR ;
+                         CDR ;
+                         CDR ;
+                         DIP { DIP { DUP } ; SWAP } ;
+                         PAIR ;
+                         DIP { DUP ; CAR ; CAR ; CAR ; CAR } ;
+                         PAIR ;
+                         DUP ;
+                         CDR ;
+                         DIP { DUP } ;
+                         SWAP ;
+                         CAR ;
+                         CDR ;
+                         EMPTY_MAP address (set nat) ;
+                         SWAP ;
+                         ITER { SWAP ;
+                                PAIR ;
+                                DUP ;
+                                CAR ;
+                                DIP { DUP } ;
+                                SWAP ;
+                                CDR ;
+                                DUP ;
+                                CAR ;
+                                CDR ;
+                                DIP { DUP ;
+                                      CAR ;
+                                      CDR ;
+                                      DIP { DIP { DUP } ; SWAP } ;
+                                      GET ;
+                                      IF_NONE
+                                        { DUP ; CDR ; CDR ; DIP { EMPTY_SET nat ; PUSH bool True } ; UPDATE }
+                                        { DIP { DUP } ;
+                                          SWAP ;
+                                          CDR ;
+                                          CDR ;
+                                          DIP { DUP ; PUSH bool True } ;
+                                          UPDATE ;
+                                          DIP { DROP } } ;
+                                      SOME ;
+                                      DIP { DIP { DUP } ; SWAP } } ;
+                                UPDATE ;
+                                DIP { DROP 3 } } ;
+                         DUP ;
+                         ITER { DUP ;
+                                CAR ;
+                                DIP { DUP } ;
+                                SWAP ;
+                                CDR ;
+                                DIP 19 { DUP } ;
+                                DIG 19 ;
+                                PUSH bool False ;
+                                PAIR ;
+                                DIP { DIP 4 { DUP } ; DIG 4 ; DIP { DIP { DUP } ; SWAP } ; PAIR } ;
+                                PAIR ;
+                                DIP { DUP } ;
+                                PAIR ;
+                                DIP 6 { DUP } ;
+                                DIG 6 ;
+                                CAR ;
+                                CAR ;
+                                IF_LEFT { DROP ; PUSH bool True } { DROP ; PUSH bool False } ;
+                                DIP { DIP 2 { DUP } ; DIG 2 ; SENDER ; SWAP ; COMPARE ; EQ } ;
+                                AND ;
+                                IF { DUP }
+                                   { DIP 2 { DUP } ;
+                                     DIG 2 ;
+                                     SENDER ;
+                                     PAIR ;
+                                     DIP { DIP { DUP } ; SWAP ; RIGHT unit } ;
+                                     PAIR ;
+                                     DUP ;
+                                     DIP { DIP 6 { DUP } ; DIG 6 } ;
+                                     PAIR ;
+                                     DIP { DIP 21 { DUP } ; DIG 21 } ;
+                                     EXEC ;
+                                     DIP 2 { DUP } ;
+                                     DIG 2 ;
+                                     DIP { DUP } ;
+                                     SWAP ;
+                                     DIP { DUP ; CDR ; SWAP ; CAR ; DUP ; CDR ; SWAP ; CAR ; CDR } ;
+                                     PAIR ;
+                                     PAIR ;
+                                     PAIR ;
+                                     DIP { DROP 2 } } ;
+                                DUP ;
+                                CAR ;
+                                CAR ;
+                                CAR ;
+                                IF { UNIT }
+                                   { PUSH string "validate_operator: not permitted operator given" ; FAILWITH } ;
+                                DROP 6 } ;
+                         DROP 3 ;
+                         PUSH unit Unit ;
+                         DIP 2 { DUP } ;
+                         DIG 2 ;
+                         DIP { DIP { DUP } ; SWAP } ;
+                         ITER { SWAP ;
+                                PAIR ;
+                                DUP ;
+                                CAR ;
+                                DIP { DUP } ;
+                                SWAP ;
+                                CDR ;
+                                DUP ;
+                                CAR ;
+                                CAR ;
+                                DIP { DUP ; CAR ; CDR } ;
+                                PAIR ;
+                                DIP { DIP { DUP } ; SWAP } ;
+                                PAIR ;
+                                DIP { DIP 13 { DUP } ; DIG 13 } ;
+                                EXEC ;
+                                DIP { DUP } ;
+                                SWAP ;
+                                CAR ;
+                                CAR ;
+                                DIP { DIP { DUP } ; SWAP ; CDR ; CAR } ;
+                                PAIR ;
+                                DIP { DIP 2 { DUP } ; DIG 2 } ;
+                                PAIR ;
+                                DIP { DIP 13 { DUP } ; DIG 13 } ;
+                                EXEC ;
+                                DUP ;
+                                DIP { DROP 5 } } ;
+                         DUP ;
+                         NIL operation ;
+                         PAIR ;
+                         DIP { DROP 6 } } ;
+                     DIP { DROP } } ;
+                 DIP { DROP } }
+               { DUP ;
+                 IF_LEFT
+                   { DIP 3 { DUP } ;
+                     DIG 3 ;
+                     DUP ;
+                     CAR ;
+                     CAR ;
+                     CAR ;
+                     CDR ;
+                     IF { PUSH unit Unit }
+                        { PUSH string "Contract is already unpaused" ; FAILWITH } ;
+                     DIP { DUP } ;
+                     SWAP ;
+                     DIP 2 { DUP } ;
+                     DIG 2 ;
+                     CAR ;
+                     CAR ;
+                     DUP ;
+                     CDR ;
+                     SWAP ;
+                     CAR ;
+                     CAR ;
+                     PUSH bool False ;
+                     SWAP ;
+                     PAIR ;
+                     PAIR ;
+                     DIP { DUP ; CDR ; SWAP ; CAR ; CDR } ;
+                     PAIR ;
+                     PAIR ;
+                     NIL operation ;
+                     PAIR ;
+                     DIP { DROP 3 } }
+                   { DIP 3 { DUP } ; DIG 3 ; NIL operation ; PAIR ; DIP { DROP } } ;
+                 DIP { DROP } } ;
+             DIP { DROP } } ;
+         DIP { DROP 9 } } }
+

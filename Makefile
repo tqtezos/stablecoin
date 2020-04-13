@@ -3,7 +3,7 @@
 
 .PHONY: build-haskell build-ligo test test-ci haddock haddock-no-deps stylish lint clean all
 
-.DEFAULT_GOAL = test-ligo
+.DEFAULT_GOAL = compile-ligo
 
 MAKE_HASKELL = $(MAKE) -C haskell/
 MAKE_LIGO = $(MAKE) -C ligo/

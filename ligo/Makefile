@@ -6,11 +6,8 @@
 .DEFAULT_GOAL = test-ligo
 
 # Ligo executable
-LIGO = docker run ligolang/ligo:next
+LIGO = ligo
 
 # Compile LIGO contract into its michelson representation
 build-ligo:
-	$(LIGO) compile-contract ligo/stablecoin.ligo main
-
-test-ligo:
-	$(LIGO) run-function ligo/stablecoin-test.ligo test "()"
+	$(LIGO) compile-contract stablecoin/core.ligo main
