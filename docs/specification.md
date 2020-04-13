@@ -618,7 +618,7 @@ Parameter (in Michelson)
 )
 ```
 
-- Adds `minter` to the global minter list to allow him to mint tokens (if `minter` is not in the list already).
+- Adds `minter` to the minter list to allow him to mint tokens (if `minter` is not in the list already).
 
 - Sets the specified minting allowance (`new_minting_allowance`) for this minter.
 
@@ -633,9 +633,8 @@ It MUST be set to `None` iff the minter is not in the list of minters.
 
 Parameter (in Michelson): `address :minter`.
 
-- Removes minter from the global minter list and sets its minting
-  allowance to 0. Once minter is removed it will no longer be able to
-  mint or burn tokens.
+- Removes minter from the minter list and sets its minting allowance to 0.
+  Once minter is removed it will no longer be able to mint or burn tokens.
 
 - Sender must be master minter.
 
