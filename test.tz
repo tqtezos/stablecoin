@@ -1,0 +1,25 @@
+{ parameter
+    (big_map
+       bool
+       (pair (lambda %0
+                (pair (pair %0 (int %0) (int %1)) (int %1))
+                (pair (list %0 operation) (int %1)))
+             (pair %1 (int %0) (int %1)))) ;
+  storage int ;
+  code { DUP ;
+         CAR ;
+         DIP { DUP ; CDR } ;
+         PAIR ;
+         DUP ;
+         CAR ;
+         PUSH bool True ;
+         GET ;
+         IF_NONE { PUSH string "memems" ; FAILWITH } { DUP ; DIP { DROP } } ;
+         DUP ;
+         CDR ;
+         DIP { DIP { DUP } ; SWAP ; CDR } ;
+         PAIR ;
+         DIP { DUP ; CAR } ;
+         EXEC ;
+         DIP { DROP 3 } } }
+

@@ -13,7 +13,7 @@ type put_arg is int
 type sum_lambda is (sum_arg * storage) -> entrypoint
 type put_lambda is (put_arg * storage) -> entrypoint
 
-type sum_param is big_map (unit, (sum_lambda * sum_arg))
+type sum_param is big_map (bool, (sum_lambda * sum_arg))
 type put_param is big_map (unit, (put_lambda * put_arg))
 
 type parameter is
@@ -44,7 +44,7 @@ function execute_sum
   ( const s : sum_param
   ) : (sum_lambda * sum_arg) is block
 {
-  const f : option (sum_lambda * sum_arg) = Big_map.find_opt (unit, s);
+  const f : option (sum_lambda * sum_arg) = Big_map.find_opt (True, s);
 } with case f of
     Some (r) -> r
   | None -> (failwith ("memems") : sum_lambda * sum_arg)
