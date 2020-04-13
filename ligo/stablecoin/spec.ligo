@@ -218,8 +218,11 @@ type operator_actions is
 | Some_operator_tokens of set (token_id)
 | All_operator_tokens_except of set (token_id)
 
+type owner is address
+type operator is address
+
 type operator_storage is
-  big_map ((address * address), operator_actions)
+  big_map ((owner * operator), operator_actions)
 
 type roles is record
   owner         : address
