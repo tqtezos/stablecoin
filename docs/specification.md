@@ -60,8 +60,9 @@ The contract maintans a ledger of addresses and manages some special roles as de
 
 ## Roles
 
-The token supports the following list of user roles as is described in
-CENTRE Fiat Token specification:
+The token supports a number of "global" user roles as is described in
+CENTRE Fiat Token specification. These roles apply to the whole contract
+(hence "global"):
 
 * **owner**
   - Can assign and re-assign any role of the token.
@@ -91,6 +92,10 @@ CENTRE Fiat Token specification:
     transferring, minting, burning and receiving tokens by
     removing them from whitelist.
   - There are no clear requirements yet. It can be modified or even removed.
+
+Additionally, the contract inherits the **operator** role from FA2.
+This role is "local" to a particular address.
+Each address can have any number of operators and be an operator of any number of addresses.
 
 ## Ledger
 
