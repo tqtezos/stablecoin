@@ -605,8 +605,8 @@ Types
 ```
 configure_minter =
   ( address :minter
-  , nat     :current_minting_allowance
-  , nat     :new_minting_allowance
+  , (option nat) :current_minting_allowance
+  , nat :new_minting_allowance
   )
 ```
 
@@ -625,6 +625,7 @@ Parameter (in Michelson)
 - `current_minting_allowance` must be explicitly passed.
 If it does not match the actual minting allowance, the transaction MUST fail.
 It is done to prevent front-running attacks.
+It MUST be set to `None` iff the minter is not in the list of minters.
 
 - Sender must be master minter.
 
@@ -644,7 +645,7 @@ Types
 ```
 get_minting_allowance_response =
   ( address :owner
-  , nat :allowance
+  , (option nat) :allowance
   )
 
 get_minting_allowance_param =
@@ -671,6 +672,7 @@ Parameter (in Michelson):
 ```
 
 - Returns current minting allowance for each address in a list.
+`None` value should be used for addresses that are not minters.
 
 **mint**
 
