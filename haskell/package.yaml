@@ -51,6 +51,7 @@ tests:
       - DeriveAnyClass
 
     dependencies:
+      - stablecoin
       - HUnit
       - hspec
       - containers
@@ -59,6 +60,7 @@ tests:
       - morley-ledgers
       - morley-ledgers-test
       - lorentz
+      - filepath
       - tasty
       - tasty-hunit-compat
       - tasty-hspec
