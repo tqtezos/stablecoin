@@ -3,89 +3,127 @@ SPDX-FileCopyrightText: 2020 tqtezos
 SPDX-License-Identifier: MIT
 -->
 
-**Overview**
-------------
+# Overview
 
 These specifications were assembled with the following references:
 
 - [*CENTRE Fiat Token design*](https://github.com/centrehq/centre-tokens/blob/78d964a1a8d481ffd8152772d7a66e47df54b3db/doc/tokendesign.md) which is served as a reference specification to tezos stablecoin smart contract.
 
 - Tezos Token Standard:
-  [*FA2*](https://gitlab.com/tzip/tzip/-/blob/76d5f3791bfbfe3c9bf95ad5ec5fc6cbeeca2d0e/proposals/tzip-12/tzip-12.md)
+  [*FA2*][FA2]
 
 - [*Michelson Contract Interfaces and Conventions*](https://gitlab.com/tzip/tzip/blob/ae2f1e7ebb3454d811a2bea3cd0698b0e64ccea5/proposals/tzip-4/tzip-4.md) TZIP which defines `view` and `void` type synonyms
 
-**General Requirements**
-------------------------
+# General Requirements
 
 - The token contract must be FA2 compatible as to facilitate listing on
   exchanges and interaction with services which support FA2.
 
 - The token contract must store tokens of a single type.
 
-**Ledger**
-==========
+# Questions
 
-Every address that is stored in ledger is associated with its
-current balance and current minting allowance.
+1. How many addresses can be assigned to each role?
+We have made some assumptions, see the [Roles](#roles) section below, please check them.
+For non-unique roles: is there an upper limit on the number of addresses?
+For unique roles: can there be no address with a certain role (e. g. no pauser)?
+2. Can one address have more than one role?
+3. Do we want to rename the "owner" role to something different given that FA2 also uses this word?
+4. Are any getter entrypoints not present in FA2 required?
+Should they be `void` or `view`?
+Note that the contract will have storage annotations and each getter entrypoint increases contract's size and gas costs.
+At this point it's hard to predict whether we will have issues with the contract's size and gas costs since we've never used LIGO, but it's quite likely that we will.
+5. Should the contract reject transfers with non-zero XTZ AMOUNT (when someone calls the contract with non-zero amount)?
 
-**Roles**
-=========
+# Differences with CENTRE
 
-The token supports the following list of user roles as is described in
-CENTRE Fiat Token specification and the taxonomy of permission policies
-that are described in FA2 token specification.
+The stablecoin contract is based on the CENTRE fiat token design, but diverges from it in several aspects:
+1. CENTRE token implements the ERC-20 interface.
+Tezos version of it is FA1.2.
+The stablecoin contract does not implement the FA1.2 interface, it implements the FA2 interface.
+2. Since the names in FA2 are snake\_cased, the names in the stablecoin contract also snake\_cased.
+3. FA2 uses the word "owner" to refer to the address that owns some tokens.
+At the same time, CENTRE calls the central entity who can manage roles the "owner".
+It leads to ambiguity, but the meaning of the word "owner" should be clear from the context.
+It is not a difference per se, but due to this ambiguity we may rename the "owner" role.
+4. `mint` and `burn` entrypoints take lists of pairs/amounts respectively.
+They follow FA2 style where most entrypoints operate on lists.
+In CENTRE they take a single item (a pair or an amount).
+5. `configure_minter` takes an additional argument – current minting allowance – to prevent front-running attacks.
+6. TODO: whitelisting and blacklisting.
 
-<!-- Here're the roles that are present in current version of stablecoin token.  -->
+# State model
 
-Below we define some roles for stablecoin contract token.
+This chapter provides a high-level overview of the contract's state.
+Note that the actual storage type is implementation detail and is not specified here.
+The contract maintans a ledger of addresses and manages some special roles as described below.
 
-**owner**
+## Roles
 
-- Can re-assign any role of the token.
+The token supports a number of "global" user roles as is described in
+CENTRE Fiat Token specification. These roles apply to the whole contract
+(hence "global"):
 
-**master minter**
+* **owner**
+  - Can assign and re-assign any role of the token.
+  - There always must be exactly one owner.
 
-- Can add and remove minters.
+* **master minter**
+  - Can add and remove minters.
+  - Can change minting allowance for any minter.
+  - There always must be exactly one master minter.
 
-- Can change minting allowance for any minter if that is present in
-  its list of minters.
+* **minter**
+  - Can create and destroy coins (that are allowed by their current
+    minting allowance).
+  - Minting allowance is stored locally within the address
+    allowing for multiple minters creating and destroying tokens.
+  - There can be any number of minters.
+<!-- TODO: clarify with the customer whether there is an upper limit -->
 
-- Stores the list of current minters within itself, rather
-  than exposing the map of master minter and its minters globally
-  for the whole token.
+* **pauser**
+  - Can pause transferring, burning and minting operations.
+    During the pause, these operations cannot be performed
+    and fail with an error if the user decides to try them.
+  - There always must be exactly one pauser.
 
-**minter**
+* **blacklister (TBD)**
+  - Can blacklist a particular address preventing it from
+    transferring, minting, burning and receiving tokens by
+    removing them from whitelist.
+  - There are no clear requirements yet. It can be modified or even removed.
 
-- Can create and destroy coins (that are allowed by their current
-  minting allowance).
+Additionally, the contract inherits the **operator** role from FA2.
+This role is "local" to a particular address.
+Each address can have any number of operators and be an operator of any number of addresses.
 
-- Minting allowance is stored locally within the address
-  allowing for multiple minters creating and destroying tokens.
+## Ledger
 
-**pauser**
+Every address that is stored in ledger is associated with its current balance.
+Additionally, each minter is associated with its current minting allowance.
 
-- Can pause transferring, burning and minting operations.
-  During the pause, these operations cannot be performed
-  and fail with an error if the user decides to try them.
+# Entrypoints
 
-**blacklister (TBD)**
+Format:
+```
+**entrypoint_name**
 
-- Can blacklist a particular address preventing it from
-  transferring, minting, burning and receiving tokens by
-  removing them from whitelist.
+<optional pseudocode description of the parameter type>
+Parameter (in Michelson): X
 
-**Token Functions**
-===================
+<description>
+```
 
-**Standard FA2 Token Functions**
---------------------------------
+Top-level contracts parameter type MUST have all entrypoints listed below.
+Each entrypoint MUST be callable using the default entrypoints machinery of Michelson by specifying **entrypoint_name** and a value of the type `X` (its argument).
 
-Functions for the stablecoin token implementation which are common to the [*FA2 Tezos
-Token Standard*](https://gitlab.com/tzip/tzip/-/blob/76d5f3791bfbfe3c9bf95ad5ec5fc6cbeeca2d0e/proposals/tzip-12/tzip-12.md). The
-token implementation in general follows an [*event loop*](https://en.wikipedia.org/wiki/Event_loop) pattern meaning that every parameter
-handles an additional callback call describing what needs to be done with
-its result.
+## Standard FA2 Token Functions
+
+Functions for the stablecoin token implementation which are common to the
+[*FA2 Tezos Token Standard*][FA2].
+Some entrypoints (e. g. getters) follow an [*event loop*](https://en.wikipedia.org/wiki/Event_loop)
+pattern meaning that their arguments have an additional callback call
+describing what needs to be done with its result.
 
 **transfer**
 
@@ -512,28 +550,16 @@ Parameter (in Michelson):
 - Since the contract supports only a single token type, `token_id` must be 0.
   It is passed because FA2 requires that.
 
-**Custom (non-FA2) token functions**
-====================================
+## Custom (non-FA2) token functions
 
 Functions for the stablecoin token implementation not present in FA2, but related to token transfers.
 They do not have `token_id` argument because it is redundant (always must be 0) and not necessary (since they are not part of FA2).
 
-**Pausing**
------------
+### Pausing
+
 **pause**
 
-Types
-```
-pause = (address :sender)
-```
-
-Parameter (in Michelson)
-```
-(pair %pause
-  (address %sender)
-  unit
-)
-```
+Parameter (in Michelson): `unit`.
 
 - Pauses transferring, burning and minting operations so
   that they cannot be performed. All other operations remain
@@ -545,18 +571,7 @@ Parameter (in Michelson)
 
 **unpause**
 
-Types
-```
-unpause = (address :sender)
-```
-
-Parameter (in Michelson)
-```
-(pair %unpause
-  (address %sender)
-  unit
-)
-```
+Parameter (in Michelson): `unit`.
 
 - Unpauses the contract so that transferring, burning and minting
   operations can be performed by users with corresponding roles.
@@ -587,86 +602,46 @@ Parameter (in Michelson)
 
 - Returns token pause status.
 
-**Issuing and destroying tokens**
---------------------------
+### Issuing and destroying tokens
 
 **configure_minter**
 
 Types
 ```
-configure_minter_param =
-  ( address :sender
-  , address :minter
+configure_minter =
+  ( address :minter
+  , (option nat) :current_minting_allowance
+  , nat :new_minting_allowance
   )
-
-configure_minter = configure_minter_param
 ```
 
 Parameter (in Michelson)
 ```
 (pair %configure_minter
-  (address %sender)
   (address %minter)
+  (pair (nat %current_minting_allowance) (nat %new_minting_allowance))
 )
 ```
 
-- Adds `minter` to global minter list to allow him mint tokens.
+- Adds `minter` to the minter list to allow him to mint tokens (if `minter` is not in the list already).
+
+- Sets the specified minting allowance (`new_minting_allowance`) for this minter.
+
+- `current_minting_allowance` must be explicitly passed.
+If it does not match the actual minting allowance, the transaction MUST fail.
+It is done to prevent front-running attacks.
+It MUST be set to `None` iff the minter is not in the list of minters.
 
 - Sender must be master minter.
-
-- Minter cannot mint tokens untill `set_minting_allowance`
-  is specified.
 
 **remove_minter**
 
-Types
-```
-remove_minter =
-  ( address :sender
-  , address :minter
-  )
-```
+Parameter (in Michelson): `address :minter`.
 
-Parameter (in Michelson)
-```
-(pair %remove_minter
-  (address %sender)
-  (address %minter)
-)
-```
-
-- Removes minter from the global minter list and sets its minting
-  allowance to 0. Once minter is removed it will no longer be able to
-  mint or burn tokens.
+- Removes minter from the minter list and sets its minting allowance to 0.
+  Once minter is removed it will no longer be able to mint or burn tokens.
 
 - Sender must be master minter.
-
-**set_minting_allowance**
-
-Types
-```
-set_minting_allowance_param =
-  ( address :sender
-  , address :minter
-  , nat     :amount
-  )
-
-set_minting_allowance = set_minting_allowance_param
-```
-
-Parameter (in Michelson)
-```
-(pair %set_minting_allowance
-  (address %sender)
-  (pair
-    (address %minter)
-    (nat %amount)
-))
-```
-
-- Set the amount of allowed minting allowance for an address.
-
-- Minter must present in sender's minter list.
 
 **get_minting_allowance**
 
@@ -674,7 +649,7 @@ Types
 ```
 get_minting_allowance_response =
   ( address :owner
-  , nat :allowance
+  , (option nat) :allowance
   )
 
 get_minting_allowance_param =
@@ -701,54 +676,14 @@ Parameter (in Michelson):
 ```
 
 - Returns current minting allowance for each address in a list.
-
-**get_total_minted**
-
-Types
-```
-get_total_minted_param =
-  ( unit         :dummy
-  , contract nat :callback
-  )
-
-get_total_minted = get_total_minted_param
-```
-
-Parameter (in Michelson)
-```
-(pair %get_total_minted
-  (unit %dummy)
-  (contract %callback nat)
-)
-```
-- Returns current amount of minted coins.
-
--- TODO: clarify under which conditions and how should
--- token reset this allowance
-
-**set_minting_allowance_reset_interval** timestamp
-
-Types
-```
-set_minting_allowance_reset_interval = timestamp :interval
-```
-
-Parameter (in Michelson)
-```
-(timestamp %set_minting_allowance_reset_interval)
-```
-
-- Set the default interval of minting allowance reset.
-
-- Set to 0 to make disable minting allowance reset by stablecoin token.
+`None` value should be used for addresses that are not minters.
 
 **mint**
 
 Types
 ```
 mint_param
-  ( address :minter
-  , address :recipient
+  ( address :recipient
   , nat     :value
   )
 
@@ -759,11 +694,9 @@ Parameter (in Michelson):
 ```
 (list %mint
   (pair
-    (address %minter)
-    (pair
-      (address %recipient)
-      (nat %value)
-  ))
+    (address %recipient)
+    (nat %value)
+  )
 )
 ```
 
@@ -787,25 +720,7 @@ Parameter (in Michelson):
 
 **burn**
 
-Types
-```
-burn_param
-  ( address :sender
-  , nat     :value
-  )
-
-burn = list burn_param
-```
-
-Parameter (in Michelson):
-```
-(list %burn
-  (pair
-    (address %sender)
-    (nat %value)
-  )
-)
-```
+Parameter (in Michelson): `list amount`.
 
 - Decreases balances for senders and the total supply of tokens by the given amount.
 
@@ -814,8 +729,10 @@ Parameter (in Michelson):
 
 - The operation must follow permission policies described above.
 
-- Sender must be minter and must have a sufficient amount of
-  funds to be destroyed and also be in global minter list.
+- Sender must be a minter and must have a sufficient amount of
+  funds to be destroyed.
+
+- A minter can only burn tokens which it owns.
 
 - A minter with 0 minting allowance is allowed to burn tokens.
 
@@ -823,29 +740,13 @@ Parameter (in Michelson):
 
 - Contract must not be paused.
 
-Role reassigning functions
-==========================
+## Role reassigning functions
 
-**Owner**
----------
+### Owner
 
 **transfer_ownership**
 
-Types
-```
-transfer_ownership =
-  ( address :owner
-  , address :receiver
-  )
-```
-
-Parameter (in Michelson):
-```
-(pair %transfer_ownership
-  (address %owner)
-  (address %receiver)
-)
-```
+Parameter (in Michelson): `address`.
 
 - Set token owner to a new address.
 
@@ -854,63 +755,29 @@ Parameter (in Michelson):
 - The current owner retains his priveleges up until
   `accept_ownership` is called.
 
-- Can be called multiple times, each call replaces pending
-  owner with the new one. Note, that if proposed
-  owner is the same as the current one, then the call
-  is simply invalidated.
+- Can be called multiple times, each call replaces pending owner with
+  the new one. Note, that if proposed owner is the same as the current
+  one, then the pending owner is simply invalidated.
 
 **get_owner**
 
-Types
-```
-get_owner = (contract address :callback)
-```
-
-Parameter (in Michelson):
-```
-(pair %get_owner
-  (contract %callback address)
-)
-```
+Parameter (in Michelson): `contract address`
 
 - Returns current token owner address.
 
 **accept_ownership**
 
-Types
-```
-accept_ownership = unit
-```
-
-Parameter (in Michelson):
-```
-(unit %accept_ownership)
-```
+Parameter: `unit`.
 
 - Accept ownership privileges.
 
 - Sender must be a pending owner.
 
-**Master Minter**
----------------
+### Master Minter
 
 **change_master_minter**
 
-Types
-```
-change_master_minter =
-  ( address :owner
-  , address :receiver
-  )
-```
-
-Parameter (in Michelson):
-```
-(pair %change_master_minter
-  (address %owner)
-  (address %receiver)
-)
-```
+Parameter (in Michelson): `address`.
 
 - Set master minter to a new address.
 
@@ -918,56 +785,24 @@ Parameter (in Michelson):
 
 **get_master_minter**
 
-Types
-```
-get_master_minter = (contract address :callback)
-```
-
-Parameter (in Michelson):
-```
-(pair %get_master_minter
-  (contract %callback address)
-)
-```
+Parameter (in Michelson): `contract address`.
 
 - Return current master minter address.
 
-**Pauser**
-----------
+### Pauser
 
 **change_pauser**
 
-Types
-```
-change_pauser =
-  ( address :owner
-  , address :receiver
-  )
-```
+Parameter (in Michelson): `address`.
 
-Parameter (in Michelson):
-```
-(pair %change_pauser
-  (address %owner)
-  (address %receiver)
-)
-```
 - Set pauser to a new address.
 
 - Sender must be token owner.
 
 **get_pauser**
 
-Types
-```
-get_pauser = (contract address :callback)
-```
-
-Parameter (in Michelson):
-```
-(pair %get_pauser
-  (contract %callback address)
-)
-```
+Parameter (in Michelson): `contract address`.
 
 - Return current pauser address.
+
+[FA2]: https://gitlab.com/tzip/tzip/-/blob/131b46dd89675bf030489ded9b0b3f5834b70eb6/proposals/tzip-12/tzip-12.md
