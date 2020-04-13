@@ -1,25 +1,78 @@
-{ parameter
-    (big_map
-       bool
-       (pair (lambda %0
-                (pair (pair %0 (int %0) (int %1)) (int %1))
-                (pair (list %0 operation) (int %1)))
-             (pair %1 (int %0) (int %1)))) ;
-  storage int ;
+{ parameter (or (int %put) (pair %sum (int %0) (int %1))) ;
+  storage
+    (pair (pair (big_map %put_entry
+                   bool
+                   (lambda (pair (int %0) (int %1)) (pair (list %0 operation) (int %1))))
+                (int %state))
+          (big_map %sum_entry
+             bool
+             (lambda (pair (pair %0 (int %0) (int %1)) (int %1)) (pair (list %0 operation) (int %1))))) ;
   code { DUP ;
-         CAR ;
-         DIP { DUP ; CDR } ;
-         PAIR ;
-         DUP ;
-         CAR ;
-         PUSH bool True ;
-         GET ;
-         IF_NONE { PUSH string "memems" ; FAILWITH } { DUP ; DIP { DROP } } ;
-         DUP ;
          CDR ;
-         DIP { DIP { DUP } ; SWAP ; CDR } ;
-         PAIR ;
-         DIP { DUP ; CAR } ;
-         EXEC ;
-         DIP { DROP 3 } } }
+         DIP { DUP } ;
+         SWAP ;
+         CAR ;
+         IF_LEFT
+           { DUP ;
+             DIP { DIP { DUP } ; SWAP } ;
+             PAIR ;
+             DUP ;
+             CDR ;
+             DUP ;
+             CAR ;
+             CAR ;
+             PUSH bool True ;
+             GET ;
+             IF_NONE { PUSH string "memems" ; FAILWITH } { DUP ; DIP { DROP } } ;
+             DIP 2 { DUP } ;
+             DIG 2 ;
+             CAR ;
+             DIP { DIP { DUP } ; SWAP ; CAR ; CDR } ;
+             PAIR ;
+             DIP { DUP } ;
+             EXEC ;
+             DUP ;
+             CAR ;
+             DIP { DIP 2 { DUP } ;
+                   DIG 2 ;
+                   DIP { DUP } ;
+                   SWAP ;
+                   CDR ;
+                   DIP { DUP ; CDR ; SWAP ; CAR ; CAR } ;
+                   SWAP ;
+                   PAIR ;
+                   PAIR } ;
+             PAIR ;
+             DIP { DROP 5 } }
+           { DUP ;
+             DIP { DIP { DUP } ; SWAP } ;
+             PAIR ;
+             DUP ;
+             CDR ;
+             DUP ;
+             CDR ;
+             PUSH bool True ;
+             GET ;
+             IF_NONE { PUSH string "memems" ; FAILWITH } { DUP ; DIP { DROP } } ;
+             DIP 2 { DUP } ;
+             DIG 2 ;
+             CAR ;
+             DIP { DIP { DUP } ; SWAP ; CAR ; CDR } ;
+             PAIR ;
+             DIP { DUP } ;
+             EXEC ;
+             DUP ;
+             CAR ;
+             DIP { DIP 2 { DUP } ;
+                   DIG 2 ;
+                   DIP { DUP } ;
+                   SWAP ;
+                   CDR ;
+                   DIP { DUP ; CDR ; SWAP ; CAR ; CAR } ;
+                   SWAP ;
+                   PAIR ;
+                   PAIR } ;
+             PAIR ;
+             DIP { DROP 5 } } ;
+         DIP { DROP 2 } } }
 

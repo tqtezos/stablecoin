@@ -3,67 +3,95 @@
 
 function execute (const u: unit) : unit is unit
 
-type storage is int
+/* ------------------------------------------------------------- */
 
-type entrypoint is list (operation) * storage
+type state is int
+
+type entrypoint is list (operation) * state
 
 type sum_arg is (int * int)
-type put_arg is int
+type sum_lambda is (sum_arg * state) -> entrypoint
+type sum_map is big_map (bool, sum_lambda)
 
-type sum_lambda is (sum_arg * storage) -> entrypoint
-type put_lambda is (put_arg * storage) -> entrypoint
+type put_arg is int 
+type put_lambda is (put_arg * state) -> entrypoint 
+type put_map is big_map (bool, put_lambda)
 
-type sum_param is big_map (bool, (sum_lambda * sum_arg))
-type put_param is big_map (unit, (put_lambda * put_arg))
+type storage is record 
+[ sum_entry : sum_map
+; put_entry : put_map 
+; state     : state
+]
+
+type root_entrypoint is list (operation) * storage
 
 type parameter is
-  Sum of sum_param
-// | Put of put_param
+  Sum of sum_arg
+| Put of put_arg
+
+/* ------------------------------------------------------------- */
 
 function put
-  ( const param : int
+  ( const param : put_arg
   ; const store : storage
   ) : entrypoint is block
-{
-  skip
-} with ((nil : list (operation)), store)
+{ const updated_storage : state = param;
+} with ((nil : list (operation)), updated_storage)
 
-/*
- * I've separated it from `sum_action` to be able to
- * pass this function from cli
- */
+function execute_put
+  ( const s : put_map
+  ) : put_lambda is block
+{
+  const f : option (put_lambda) = Big_map.find_opt (True, s);
+} with case f of
+    Some (r) -> r
+  | None -> (failwith ("memems") : put_lambda)
+  end
+
+function put_action
+  ( const param : put_arg
+  ; const store : storage
+  ) : root_entrypoint is block
+{ const f : put_lambda = execute_put (store.put_entry)
+; const r : entrypoint = f (param, store.state)
+; const s : storage = store with record [ state = r.1 ]
+} with (r.0, s)
+
+/* ------------------------------------------------------------- */
+
 function sum
   ( const param : sum_arg
-  ; const store : storage
+  ; const store : state
   ) : entrypoint is block
-{
-  const updated_storage : storage = param.0 + param.1;
+{ const updated_storage : state = param.0 + param.1;
 } with ((nil : list (operation)), updated_storage)
 
 function execute_sum
-  ( const s : sum_param
-  ) : (sum_lambda * sum_arg) is block
+  ( const s : sum_map
+  ) : sum_lambda is block
 {
-  const f : option (sum_lambda * sum_arg) = Big_map.find_opt (True, s);
+  const f : option (sum_lambda) = Big_map.find_opt (True, s);
 } with case f of
     Some (r) -> r
-  | None -> (failwith ("memems") : sum_lambda * sum_arg)
+  | None -> (failwith ("memems") : sum_lambda)
   end
 
 function sum_action
-  ( const param : sum_param
+  ( const param : sum_arg
   ; const store : storage
-  ) : entrypoint is block
-{
-  const er : sum_lambda * sum_arg = execute_sum (param);
-  const f  : sum_lambda = er.0;
-} with f (er.1, store)
+  ) : root_entrypoint is block
+{ const f : sum_lambda = execute_sum (store.sum_entry)
+; const r : entrypoint = f (param, store.state)
+; const s : storage = store with record [ state = r.1 ]
+} with (r.0, s)
+
+/* ------------------------------------------------------------- */
 
 function main
   ( const action : parameter
   ; const store  : storage
-  ) : entrypoint is
+  ) : root_entrypoint is
   case action of
     Sum (param) -> sum_action (param, store)
-  // | Put (param) -> put (param, store)
+  | Put (param) -> put_action (param, store)
   end
