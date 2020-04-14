@@ -727,7 +727,7 @@ Parameter (in Michelson):
 
 **burn**
 
-Parameter (in Michelson): `list amount`.
+Parameter (in Michelson): `list nat`.
 
 - Decreases balances for senders and the total supply of tokens by the given amount.
 
