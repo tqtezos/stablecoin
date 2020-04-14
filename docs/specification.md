@@ -639,6 +639,8 @@ It MUST be set to `None` iff the minter is not in the list of minters.
 
 - Sender must be master minter.
 
+- Contract must not be paused.
+
 **remove_minter**
 
 Parameter (in Michelson): `address :minter`.
