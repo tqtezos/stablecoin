@@ -160,6 +160,11 @@ Parameter (in Michelson): X
 * The previous bullet point implies that each `X` must have a field annotations with the corresponding entrypoint name.
 In the definitions below it may be omitted, but it is still implied.
 
+Pseudocode is semi-formally defined as a list of assignments where the last assignment has `entrypoint_name` on the left and its argument type (that maps to `X`) on the right.
+
+Note: pseudocode is provided only for readability.
+If Michelson type contradics what's written in pseudocode, the Michelson defition takes precedence.
+
 ## Standard FA2 Token Functions
 
 Functions for the stablecoin token implementation which are common to the
@@ -174,7 +179,7 @@ Types
 ```
 token_id = nat
 
-transfer_param
+transfer_param =
   ( address :from_
   , address :to_
   , token_id :token_id
@@ -223,12 +228,10 @@ balance_of_response =
   , nat :balance
   )
 
-balance_of_param =
+balance_of =
   ( list balance_of_request :requests
   , contract (list balance_of_response) :callback
   )
-
-balance_of = balance_of_param
 ```
 
 Parameter (in Michelson):
@@ -270,12 +273,10 @@ total_supply_response =
   , nat :total_supply
   )
 
-total_supply_param =
+total_supply =
   ( list token_id :token_ids
   , contract (list total_supply_response) :callback
   )
-
-total_supply = total_supply_param
 ```
 
 Parameter (in Michelson)
@@ -312,12 +313,10 @@ get_token_metadata_response =
   , map (string, string) :extras
   )
 
-get_token_metadata_param =
+get_token_metadata =
   ( list token_id                               :token_ids
   , contract (list get_token_metadata_response) :callback
   )
-
-get_token_metadata = get_token_metadata_param
 ```
 
 Parameter (in Michelson)
@@ -510,12 +509,10 @@ is_operator_response =
   , bool           :is_operator
   )
 
-is_operator_param =
+is_operator =
   ( operator_param                :operator
   , contract is_operator_response :callback
   )
-
-is_operator = is_operator_param
 ```
 
 Parameter (in Michelson):
@@ -645,12 +642,10 @@ get_minting_allowance_response =
   , (option nat) :allowance
   )
 
-get_minting_allowance_param =
+get_minting_allowance =
   ( list address :requests
   , contract (list get_minting_allowance_response) :callback
   )
-
-get_minting_allowance = get_minting_allowance_param
 ```
 
 Parameter (in Michelson):
