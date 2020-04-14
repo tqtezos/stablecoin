@@ -156,7 +156,7 @@ Parameter (in Michelson): X
 ```
 
 * Top-level contract parameter type MUST have all entrypoints listed below.
-* Each entrypoint MUST be callable using the default entrypoints machinery of Michelson by specifying **entrypoint_name** and a value of the type `X` (its argument).
+* Each entrypoint MUST be callable using the standard entrypoints machinery of Michelson by specifying **entrypoint_name** and a value of the type `X` (its argument).
 * The previous bullet point implies that each `X` must have a field annotations with the corresponding entrypoint name.
 In the definitions below it may be omitted, but it is still implied.
 
