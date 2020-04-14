@@ -21,6 +21,44 @@ These specifications were assembled with the following references:
 
 - The token contract must store tokens of a single type.
 
+# FA2 Specifics
+
+FA2 provides a framework for defining permission policies, but does not require any particular policy.
+Moreover, it suggests an approach where permission logic is deinfed in a different contract and the token contract can dynamically change the policy.
+For the Stablecoin project we need to answer several questions:
+
+1. FA2 recommends the "transfer hook" design pattern, as opposed to implementing a monolithic contract.
+Are there any requirements whether the stablecoin contract should be monolithic or follow this pattern (i. e. have `set_transfer_hook`)?
+2. For a monolithic contract: which permission policy should we implement?
+Should the whole policy or at least some part of it be hardcoded?
+E. g. can we assume that self transfer will always be permitted and there will be no custom policy?
+What about other policies?
+3. For a modular (non-monolithic) contract: what exactly should be implemented by us and put into the repository?
+Should we implement any particular `transfer_hook`?
+If we should, the questions from (2) apply here.
+4. Should we implement any `owner_hook`?
+
+Overall, the response from TQ was that there are no strict requirements and we should pick the best approaches from the business logic.
+At the early development stage we propose the following:
+1. We will implement both options (starting from the monolithic one because it's simpler), measure gas costs and then will decide what is better.
+The "transfer hook" approach is recommended, but may be infeasible due to gas costs.
+2. We will implement a single permission policy (as part of the token contract or as a separate transfer_hook – that depends on the previous point).
+ + Self transfer is permitted as well as operator transfer.
+ + Owner transfer policy for both sender and receiver is `Optional_owner_hook`.
+ + No custom permission policy.
+3. We will not implement any `owner_hook`.
+The contract is usable without them because we stick to `Optional_owner_hook`.
+
+Apart from that there is some uncertainty regarding the `update_operators` entrypoint that was [reported on GitLab](https://gitlab.com/tzip/tzip/-/issues/16).
+We will stick to the following logic:
+1. In each `update_operator` item `owner` must be equal to `SENDER`.
+2. Each address can have arbitrary number of operators.
+
+One more uncertainty is related to the `get_token_metadata` entrypoint.
+We assume that token metadata is constant.
+
+Note: these decisions may change as the project moves forward.
+
 # Questions
 
 1. How many addresses can be assigned to each role?
