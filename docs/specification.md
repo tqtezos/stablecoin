@@ -626,7 +626,7 @@ It MUST be set to `None` iff the minter is not in the list of minters.
 
 **remove_minter**
 
-Parameter (in Michelson): `address :minter`.
+Parameter (in Michelson): `address`.
 
 - Removes minter from the minter list and sets its minting allowance to 0.
   Once minter is removed it will no longer be able to mint or burn tokens.
