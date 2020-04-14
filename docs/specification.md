@@ -88,7 +88,9 @@ It is not a difference per se, but due to this ambiguity we may rename the "owne
 They follow FA2 style where most entrypoints operate on lists.
 In CENTRE they take a single item (a pair or an amount).
 5. `configure_minter` takes an additional argument – current minting allowance – to prevent front-running attacks.
-6. TODO: whitelisting and blacklisting.
+6. CENTRE does not have `update_operator`, the closest analog is `approve`, but it does not explicitly say whether `approve` is paused by `pause`.
+In this contract `update_operator` IS paused.
+7. TODO: whitelisting and blacklisting.
 
 # State model
 
@@ -194,29 +196,12 @@ Parameter (in Michelson):
 )
 ```
 
-- Transfers given amounts of tokens between addresses.
+- This entrypoint MUST follow the FA2 requirements.
 
-- Since the contract supports only a single token type, `token_id` must be 0.
-  It is passed because FA2 requires that.
+- Permission logic requirements specific to this contract are described in the ["FA2 Specifics"](#FA2-Specifics) chapter.
 
-- Each transfer must happen atomically, if one of them fails, then
-  the whole transaction fail.
-
-- Transfers must follow permission policies that are described above.
-
-- The amount of a token transfer must not exceed the existing token
-  owner's balance. If the transfer amount for the particular token
-  type and token owner exceeds the existing balance, then the whole
-  transfer operation fail.
-
-- Core transfer behavior may be extended. If additional constraints on tokens
-  transfer are required, FA2 token contract implementation may invoke
-  additional permission policies. If the additional permission hook fails,
-  then the whole transfer fail.
-
-- Core transfer behavior must update token balances exactly as the
-  operation parameters specify it. No changes to amount values or
-  additional transfers are allowed.
+- Since the contract supports only a single token type, all `token_id` values MUST be 0.
+  They are passed because FA2 requires that.
 
 - Contract must not be paused.
 
@@ -267,12 +252,10 @@ Parameter (in Michelson):
 )
 ```
 
-- Returns current balance of mutliple addresses. It accepts a list
-  of `balance_of_request` and a callback which accepts a list of
-  `balance_of_response` which is conequently passed to it.
+- This entrypoint MUST follow the FA2 requirements.
 
-- Since the contract supports only a single token type, `token_id` must be 0.
-  It is passed because FA2 requires that.
+- Since the contract supports only a single token type, all `token_id` values MUST be 0.
+  They are passed because FA2 requires that.
 
 **total_supply**
 
@@ -308,12 +291,10 @@ Parameter (in Michelson)
 )
 ```
 
-- Returns total supply for multiple tokens. It accepts a list of
-  token ids and a callback which accepts a list of
-  `total_supply_response` which is conequently passed to it.
+- This entrypoint MUST follow the FA2 requirements.
 
-- Since the contract supports only a single token type, `token_id` must be 0.
-  It is passed because FA2 requires that.
+- Since the contract supports only a single token type, all `token_id` values MUST be 0.
+  They are passed because FA2 requires that.
 
 **get_token_metadata**
 
@@ -358,19 +339,12 @@ Parameter (in Michelson)
 )
 ```
 
-- Get a list of token metadata for multiple tokens. It accepts a
-  list of token ids and a callback which accepts a list of
-  `get_token_metadata_response` which is consequently passed to it.
+- This entrypoint MUST follow the FA2 requirements.
 
-- The smallest amount of tokens which may be transferred, burned or
-  minted is always 1.
+- Since the contract supports only a single token type, all `token_id` values MUST be 0.
+  They are passed because FA2 requires that.
 
-- `decimals` describe the number of digits to use after the decimal
-  point when displaying the token amounts and must not affect
-  transaction in any way.
-
-- Since the contract supports only a single token type, `token_id` must be 0.
-  It is passed because FA2 requires that.
+- Token metadata for 0 `token_id` is constant and should be hardcoded in contract code or put into storage during origination.
 
 **permissions_descriptor**
 
@@ -442,19 +416,12 @@ Parameter (in Michelson)
 )
 ```
 
-- Get the descriptor of the transfer permission policy. This allows
-  for external contracts to discover an FA2 contract's permission
-  policy as well as to configure it. For additional information
-  please refer to FA2 token contract specification.
+- This entrypoint MUST follow the FA2 requirements.
 
-- Some of the permission options require an additional configuration
-  API which can be implemented either within FA2 token contract
-  itself or in a separate contract.
+- Permission logic requirements specific to this contract are described in the ["FA2 Specifics"](#FA2-Specifics) chapter.
 
-Each address that participates in transfer is separated into 2 types:
-`operator` and `owner`. `operator` is a Tezos address that initiates
-token tranfser operation on behalf of the `owner` that actually holds
-tokens.
+- Since the contract supports only a single token type, all `token_id` values MUST be 0.
+  They are passed because FA2 requires that.
 
 **update_operators**
 
@@ -505,19 +472,20 @@ Parameter (in Michelson)
 )
 ```
 
-- Add or Remove token operators for the specified owners and token
-  types.
+- This entrypoint MUST follow the FA2 requirements.
 
-- If two different commands in the list add and remove an operator
-  for the same token type, then the last one must take effect.
+- Permission logic requirements specific to this contract are described in the ["FA2 Specifics"](#FA2-Specifics) chapter.
+Also see [this issue](https://gitlab.com/tzip/tzip/-/issues/16).
 
-- It's possible to update an operator for some specific tokens, or
-  to all tokens (TODO: discuss).
+- Since the contract supports only a single token type, all `token_id` values MUST be 0.
+  They are passed because FA2 requires that.
+  So there are at most three possible valid values of `operator_tokens` type:
+  + `All_tokens`
+  + `Some_tokens ({0})` – equivalent to `All_tokens`.
+  + `Some_tokens ({})` – no-op?
+  See the relevant [issue](https://gitlab.com/tzip/tzip/-/issues/14).
 
 - Contract must not be paused.
-
-- Since the contract supports only a single token type, `token_id` must be 0.
-  It is passed because FA2 requires that.
 
 **is_operator**
 
@@ -577,17 +545,15 @@ Parameter (in Michelson):
 )
 ```
 
-- Inspect if an address is an operator for the specified owner and
-  token types.
+- This entrypoint MUST follow the FA2 requirements.
 
-- If the adddress is not an operator for at least one
-  requested token type, then the result is `false`.
-
-- It's possible to make this query for some specific tokens, or to
-  all tokens.
-
-- Since the contract supports only a single token type, `token_id` must be 0.
-  It is passed because FA2 requires that.
+- Since the contract supports only a single token type, all `token_id` values MUST be 0.
+  They are passed because FA2 requires that.
+  So there are at most three possible valid values of `operator_tokens` type:
+  + `All_tokens`
+  + `Some_tokens ({0})` – equivalent to `All_tokens`?
+  + `Some_tokens ({})` – definitely `True`?
+  See the relevant [issue](https://gitlab.com/tzip/tzip/-/issues/14).
 
 ## Custom (non-FA2) token functions
 
