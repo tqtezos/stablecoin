@@ -57,6 +57,7 @@ In CENTRE they take a single item (a pair or an amount).
 This chapter provides a high-level overview of the contract's state.
 Note that the actual storage type is implementation detail and is not specified here.
 The contract maintans a ledger of addresses and manages some special roles as described below.
+Token operations can be paused, so the contract also knows whether it is paused.
 
 ## Roles
 
