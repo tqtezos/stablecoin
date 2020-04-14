@@ -587,23 +587,7 @@ Parameter (in Michelson): `unit`.
 
 **get_paused**
 
-Types
-```
-get_paused_param =
-  ( unit :unit
-  , contract bool :callback
-  )
-
-get_paused = get_paused_param
-```
-
-Parameter (in Michelson)
-```
-(pair %get_total_paused
-  (unit %dummy)
-  (contract %callback bool)
-)
-```
+Parameter (in Michelson): `contract bool`.
 
 - Returns token pause status.
 
