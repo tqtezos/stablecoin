@@ -155,8 +155,10 @@ Parameter (in Michelson): X
 <description>
 ```
 
-Top-level contracts parameter type MUST have all entrypoints listed below.
-Each entrypoint MUST be callable using the default entrypoints machinery of Michelson by specifying **entrypoint_name** and a value of the type `X` (its argument).
+* Top-level contract parameter type MUST have all entrypoints listed below.
+* Each entrypoint MUST be callable using the default entrypoints machinery of Michelson by specifying **entrypoint_name** and a value of the type `X` (its argument).
+* The previous bullet point implies that each `X` must have a field annotations with the corresponding entrypoint name.
+In the definitions below it may be omitted, but it is still implied.
 
 ## Standard FA2 Token Functions
 
@@ -606,7 +608,7 @@ configure_minter =
 
 Parameter (in Michelson)
 ```
-(pair %configure_minter
+(pair
   (address %minter)
   (pair (nat %current_minting_allowance) (nat %new_minting_allowance))
 )
@@ -653,7 +655,7 @@ get_minting_allowance = get_minting_allowance_param
 
 Parameter (in Michelson):
 ```
-(pair %get_minting_allowance
+(pair
   (list %requests address)
   (contract %callback
     (list
@@ -683,7 +685,7 @@ mint = list mint_param
 
 Parameter (in Michelson):
 ```
-(list %mint
+(list
   (pair
     (address %recipient)
     (nat %value)
