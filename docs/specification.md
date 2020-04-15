@@ -21,6 +21,44 @@ These specifications were assembled with the following references:
 
 - The token contract must store tokens of a single type.
 
+# FA2 Specifics
+
+FA2 provides a framework for defining permission policies, but does not require any particular policy.
+Moreover, it suggests an approach where permission logic is defined in a different contract and the token contract can dynamically change the policy.
+For the Stablecoin project we need to answer several questions:
+
+1. FA2 recommends the "transfer hook" design pattern, as opposed to implementing a monolithic contract.
+Are there any requirements whether the stablecoin contract should be monolithic or follow this pattern (i. e. have `set_transfer_hook`)?
+2. For a monolithic contract: which permission policy should we implement?
+Should the whole policy or at least some part of it be hardcoded?
+E. g. can we assume that self transfer will always be permitted and there will be no custom policy?
+What about other policies?
+3. For a modular (non-monolithic) contract: what exactly should be implemented by us and put into the repository?
+Should we implement any particular `transfer_hook`?
+If we should, the questions from (2) apply here.
+4. Should we implement any `owner_hook`?
+
+Overall, the response from TQ was that there are no strict requirements and we should pick the best approaches from the business logic.
+At the early development stage we propose the following:
+1. We will implement both options (starting from the monolithic one because it's simpler), measure gas costs and then will decide what is better.
+The "transfer hook" approach is recommended, but may be infeasible due to gas costs.
+2. We will implement a single permission policy (as part of the token contract or as a separate transfer_hook – that depends on the previous point).
+ + Self transfer is permitted as well as operator transfer.
+ + Owner transfer policy for both sender and receiver is `Optional_owner_hook`.
+ + No custom permission policy.
+3. We will not implement any `owner_hook`.
+The contract is usable without them because we stick to `Optional_owner_hook`.
+
+Apart from that there is some uncertainty regarding the `update_operators` entrypoint that was [reported on GitLab](https://gitlab.com/tzip/tzip/-/issues/16).
+We will stick to the following logic:
+1. In each `update_operator` item `owner` must be equal to `SENDER`.
+2. Each address can have arbitrary number of operators.
+
+One more uncertainty is related to the `get_token_metadata` entrypoint.
+We assume that token metadata is constant.
+
+Note: these decisions may change as the project moves forward.
+
 # Questions
 
 1. How many addresses can be assigned to each role?
@@ -50,13 +88,16 @@ It is not a difference per se, but due to this ambiguity we may rename the "owne
 They follow FA2 style where most entrypoints operate on lists.
 In CENTRE they take a single item (a pair or an amount).
 5. `configure_minter` takes an additional argument – current minting allowance – to prevent front-running attacks.
-6. TODO: whitelisting and blacklisting.
+6. CENTRE does not have `update_operator`, the closest analog is `approve`, but it does not explicitly say whether `approve` is paused by `pause`.
+In this contract `update_operator` IS paused.
+7. TODO: whitelisting and blacklisting.
 
 # State model
 
 This chapter provides a high-level overview of the contract's state.
 Note that the actual storage type is implementation detail and is not specified here.
 The contract maintans a ledger of addresses and manages some special roles as described below.
+Token operations can be paused, so the contract also knows whether it is paused.
 
 ## Roles
 
@@ -114,8 +155,15 @@ Parameter (in Michelson): X
 <description>
 ```
 
-Top-level contracts parameter type MUST have all entrypoints listed below.
-Each entrypoint MUST be callable using the default entrypoints machinery of Michelson by specifying **entrypoint_name** and a value of the type `X` (its argument).
+* Top-level contract parameter type MUST have all entrypoints listed below.
+* Each entrypoint MUST be callable using the standard entrypoints machinery of Michelson by specifying **entrypoint_name** and a value of the type `X` (its argument).
+* The previous bullet point implies that each `X` must have a field annotations with the corresponding entrypoint name.
+In the definitions below it may be omitted, but it is still implied.
+
+Pseudocode is semi-formally defined as a list of assignments where the last assignment has `entrypoint_name` on the left and its argument type (that maps to `X`) on the right.
+
+Note: pseudocode is provided only for readability.
+If Michelson type contradics what's written in pseudocode, the Michelson defition takes precedence.
 
 ## Standard FA2 Token Functions
 
@@ -131,7 +179,7 @@ Types
 ```
 token_id = nat
 
-transfer_param
+transfer_param =
   ( address :from_
   , address :to_
   , token_id :token_id
@@ -155,29 +203,12 @@ Parameter (in Michelson):
 )
 ```
 
-- Transfers given amounts of tokens between addresses.
+- This entrypoint MUST follow the FA2 requirements.
 
-- Since the contract supports only a single token type, `token_id` must be 0.
-  It is passed because FA2 requires that.
+- Permission logic requirements specific to this contract are described in the ["FA2 Specifics"](#FA2-Specifics) chapter.
 
-- Each transfer must happen atomically, if one of them fails, then
-  the whole transaction fail.
-
-- Transfers must follow permission policies that are described above.
-
-- The amount of a token transfer must not exceed the existing token
-  owner's balance. If the transfer amount for the particular token
-  type and token owner exceeds the existing balance, then the whole
-  transfer operation fail.
-
-- Core transfer behavior may be extended. If additional constraints on tokens
-  transfer are required, FA2 token contract implementation may invoke
-  additional permission policies. If the additional permission hook fails,
-  then the whole transfer fail.
-
-- Core transfer behavior must update token balances exactly as the
-  operation parameters specify it. No changes to amount values or
-  additional transfers are allowed.
+- Since the contract supports only a single token type, all `token_id` values MUST be 0.
+  They are passed because FA2 requires that.
 
 - Contract must not be paused.
 
@@ -197,12 +228,10 @@ balance_of_response =
   , nat :balance
   )
 
-balance_of_param =
+balance_of =
   ( list balance_of_request :requests
   , contract (list balance_of_response) :callback
   )
-
-balance_of = balance_of_param
 ```
 
 Parameter (in Michelson):
@@ -228,12 +257,10 @@ Parameter (in Michelson):
 )
 ```
 
-- Returns current balance of mutliple addresses. It accepts a list
-  of `balance_of_request` and a callback which accepts a list of
-  `balance_of_response` which is conequently passed to it.
+- This entrypoint MUST follow the FA2 requirements.
 
-- Since the contract supports only a single token type, `token_id` must be 0.
-  It is passed because FA2 requires that.
+- Since the contract supports only a single token type, all `token_id` values MUST be 0.
+  They are passed because FA2 requires that.
 
 **total_supply**
 
@@ -246,12 +273,10 @@ total_supply_response =
   , nat :total_supply
   )
 
-total_supply_param =
+total_supply =
   ( list token_id :token_ids
   , contract (list total_supply_response) :callback
   )
-
-total_supply = total_supply_param
 ```
 
 Parameter (in Michelson)
@@ -269,12 +294,10 @@ Parameter (in Michelson)
 )
 ```
 
-- Returns total supply for multiple tokens. It accepts a list of
-  token ids and a callback which accepts a list of
-  `total_supply_response` which is conequently passed to it.
+- This entrypoint MUST follow the FA2 requirements.
 
-- Since the contract supports only a single token type, `token_id` must be 0.
-  It is passed because FA2 requires that.
+- Since the contract supports only a single token type, all `token_id` values MUST be 0.
+  They are passed because FA2 requires that.
 
 **get_token_metadata**
 
@@ -290,12 +313,10 @@ get_token_metadata_response =
   , map (string, string) :extras
   )
 
-get_token_metadata_param =
+get_token_metadata =
   ( list token_id                               :token_ids
   , contract (list get_token_metadata_response) :callback
   )
-
-get_token_metadata = get_token_metadata_param
 ```
 
 Parameter (in Michelson)
@@ -319,19 +340,12 @@ Parameter (in Michelson)
 )
 ```
 
-- Get a list of token metadata for multiple tokens. It accepts a
-  list of token ids and a callback which accepts a list of
-  `get_token_metadata_response` which is consequently passed to it.
+- This entrypoint MUST follow the FA2 requirements.
 
-- The smallest amount of tokens which may be transferred, burned or
-  minted is always 1.
+- Since the contract supports only a single token type, all `token_id` values MUST be 0.
+  They are passed because FA2 requires that.
 
-- `decimals` describe the number of digits to use after the decimal
-  point when displaying the token amounts and must not affect
-  transaction in any way.
-
-- Since the contract supports only a single token type, `token_id` must be 0.
-  It is passed because FA2 requires that.
+- Token metadata for 0 `token_id` is constant and should be hardcoded in contract code or put into storage during origination.
 
 **permissions_descriptor**
 
@@ -403,19 +417,12 @@ Parameter (in Michelson)
 )
 ```
 
-- Get the descriptor of the transfer permission policy. This allows
-  for external contracts to discover an FA2 contract's permission
-  policy as well as to configure it. For additional information
-  please refer to FA2 token contract specification.
+- This entrypoint MUST follow the FA2 requirements.
 
-- Some of the permission options require an additional configuration
-  API which can be implemented either within FA2 token contract
-  itself or in a separate contract.
+- Permission logic requirements specific to this contract are described in the ["FA2 Specifics"](#FA2-Specifics) chapter.
 
-Each address that participates in transfer is separated into 2 types:
-`operator` and `owner`. `operator` is a Tezos address that initiates
-token tranfser operation on behalf of the `owner` that actually holds
-tokens.
+- Since the contract supports only a single token type, all `token_id` values MUST be 0.
+  They are passed because FA2 requires that.
 
 **update_operators**
 
@@ -466,19 +473,20 @@ Parameter (in Michelson)
 )
 ```
 
-- Add or Remove token operators for the specified owners and token
-  types.
+- This entrypoint MUST follow the FA2 requirements.
 
-- If two different commands in the list add and remove an operator
-  for the same token type, then the last one must take effect.
+- Permission logic requirements specific to this contract are described in the ["FA2 Specifics"](#FA2-Specifics) chapter.
+Also see [this issue](https://gitlab.com/tzip/tzip/-/issues/16).
 
-- It's possible to update an operator for some specific tokens, or
-  to all tokens (TODO: discuss).
+- Since the contract supports only a single token type, all `token_id` values MUST be 0.
+  They are passed because FA2 requires that.
+  So there are at most three possible valid values of `operator_tokens` type:
+  + `All_tokens`
+  + `Some_tokens ({0})` – equivalent to `All_tokens`.
+  + `Some_tokens ({})` – no-op?
+  See the relevant [issue](https://gitlab.com/tzip/tzip/-/issues/14).
 
 - Contract must not be paused.
-
-- Since the contract supports only a single token type, `token_id` must be 0.
-  It is passed because FA2 requires that.
 
 **is_operator**
 
@@ -501,12 +509,10 @@ is_operator_response =
   , bool           :is_operator
   )
 
-is_operator_param =
+is_operator =
   ( operator_param                :operator
   , contract is_operator_response :callback
   )
-
-is_operator = is_operator_param
 ```
 
 Parameter (in Michelson):
@@ -538,17 +544,15 @@ Parameter (in Michelson):
 )
 ```
 
-- Inspect if an address is an operator for the specified owner and
-  token types.
+- This entrypoint MUST follow the FA2 requirements.
 
-- If the adddress is not an operator for at least one
-  requested token type, then the result is `false`.
-
-- It's possible to make this query for some specific tokens, or to
-  all tokens.
-
-- Since the contract supports only a single token type, `token_id` must be 0.
-  It is passed because FA2 requires that.
+- Since the contract supports only a single token type, all `token_id` values MUST be 0.
+  They are passed because FA2 requires that.
+  So there are at most three possible valid values of `operator_tokens` type:
+  + `All_tokens`
+  + `Some_tokens ({0})` – equivalent to `All_tokens`?
+  + `Some_tokens ({})` – definitely `True`?
+  See the relevant [issue](https://gitlab.com/tzip/tzip/-/issues/14).
 
 ## Custom (non-FA2) token functions
 
@@ -582,23 +586,7 @@ Parameter (in Michelson): `unit`.
 
 **get_paused**
 
-Types
-```
-get_paused_param =
-  ( unit :unit
-  , contract bool :callback
-  )
-
-get_paused = get_paused_param
-```
-
-Parameter (in Michelson)
-```
-(pair %get_total_paused
-  (unit %dummy)
-  (contract %callback bool)
-)
-```
+Parameter (in Michelson): `contract bool`.
 
 - Returns token pause status.
 
@@ -617,7 +605,7 @@ configure_minter =
 
 Parameter (in Michelson)
 ```
-(pair %configure_minter
+(pair
   (address %minter)
   (pair (nat %current_minting_allowance) (nat %new_minting_allowance))
 )
@@ -634,9 +622,11 @@ It MUST be set to `None` iff the minter is not in the list of minters.
 
 - Sender must be master minter.
 
+- Contract must not be paused.
+
 **remove_minter**
 
-Parameter (in Michelson): `address :minter`.
+Parameter (in Michelson): `address`.
 
 - Removes minter from the minter list and sets its minting allowance to 0.
   Once minter is removed it will no longer be able to mint or burn tokens.
@@ -652,17 +642,15 @@ get_minting_allowance_response =
   , (option nat) :allowance
   )
 
-get_minting_allowance_param =
+get_minting_allowance =
   ( list address :requests
   , contract (list get_minting_allowance_response) :callback
   )
-
-get_minting_allowance = get_minting_allowance_param
 ```
 
 Parameter (in Michelson):
 ```
-(pair %get_minting_allowance
+(pair
   (list %requests address)
   (contract %callback
     (list
@@ -692,7 +680,7 @@ mint = list mint_param
 
 Parameter (in Michelson):
 ```
-(list %mint
+(list
   (pair
     (address %recipient)
     (nat %value)
@@ -720,7 +708,7 @@ Parameter (in Michelson):
 
 **burn**
 
-Parameter (in Michelson): `list amount`.
+Parameter (in Michelson): `list nat`.
 
 - Decreases balances for senders and the total supply of tokens by the given amount.
 
