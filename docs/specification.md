@@ -24,7 +24,7 @@ These specifications were assembled with the following references:
 # FA2 Specifics
 
 FA2 provides a framework for defining permission policies, but does not require any particular policy.
-Moreover, it suggests an approach where permission logic is deinfed in a different contract and the token contract can dynamically change the policy.
+Moreover, it suggests an approach where permission logic is defined in a different contract and the token contract can dynamically change the policy.
 For the Stablecoin project we need to answer several questions:
 
 1. FA2 recommends the "transfer hook" design pattern, as opposed to implementing a monolithic contract.
