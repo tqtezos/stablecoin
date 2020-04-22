@@ -51,13 +51,11 @@ tests:
       - DeriveAnyClass
 
     dependencies:
-      - stablecoin
       - HUnit
       - hspec
       - containers
       - morley-prelude
       - morley
-      - morley-ledgers
       - morley-ledgers-test
       - lorentz
       - filepath
