@@ -1,5 +1,7 @@
 # SPDX-FileCopyrightText: 2020 tqtezos
 # SPDX-License-Identifier: MIT
+# TODO: rewrite it to haskell.nix
+
 env:
   NIX_PATH: nixpkgs=https://github.com/nixos/nixpkgs/archive/b640dbd00877f51616750e347a32fbcb49d2968c.tar.gz
 
@@ -12,7 +14,7 @@ steps:
    label: xrefcheck
    soft_fail: true
  - commands:
-   - nix-shell --run "make test-ci"
+   - nix-shell --run "make test-ci" haskell/shell.nix
    - echo +++ Weeder
-   - nix-shell --run "nix run nixpkgs.haskellPackages.weeder -c weeder ."
+   - nix-shell --run "nix run nixpkgs.haskellPackages.weeder -c weeder haskell/" haskell/shell.nix
    label: test && weeder

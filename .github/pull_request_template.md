@@ -7,10 +7,6 @@ another describing your solution.
 -->
 
 ## Related issue(s)
-<!--
-SPDX-FileCopyrightText: 2020 tqtezos
-SPDX-License-Identifier: MIT
--->
 
 <!--
 - Short description of how the PR relates to the issue, including an issue link.
