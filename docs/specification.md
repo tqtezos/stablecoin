@@ -205,7 +205,7 @@ Parameter (in Michelson):
 
 - This entrypoint MUST follow the FA2 requirements.
 
-- Permission logic requirements specific to this contract are described in the ["FA2 Specifics"](#FA2-Specifics) chapter.
+- Permission logic requirements specific to this contract are described in the ["FA2 Specifics"](#fa2-specifics) chapter.
 
 - Since the contract supports only a single token type, all `token_id` values MUST be 0.
   They are passed because FA2 requires that.
@@ -419,7 +419,7 @@ Parameter (in Michelson)
 
 - This entrypoint MUST follow the FA2 requirements.
 
-- Permission logic requirements specific to this contract are described in the ["FA2 Specifics"](#FA2-Specifics) chapter.
+- Permission logic requirements specific to this contract are described in the ["FA2 Specifics"](#fa2-specifics) chapter.
 
 - Since the contract supports only a single token type, all `token_id` values MUST be 0.
   They are passed because FA2 requires that.
@@ -475,7 +475,7 @@ Parameter (in Michelson)
 
 - This entrypoint MUST follow the FA2 requirements.
 
-- Permission logic requirements specific to this contract are described in the ["FA2 Specifics"](#FA2-Specifics) chapter.
+- Permission logic requirements specific to this contract are described in the ["FA2 Specifics"](#fa2-specifics) chapter.
 Also see [this issue](https://gitlab.com/tzip/tzip/-/issues/16).
 
 - Since the contract supports only a single token type, all `token_id` values MUST be 0.
