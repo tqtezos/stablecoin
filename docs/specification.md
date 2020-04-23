@@ -37,6 +37,8 @@ What about other policies?
 Should we implement any particular `transfer_hook`?
 If we should, the questions from (2) apply here.
 4. Should we implement any `owner_hook`?
+5. The FA2 standard does not specify who is permitted to update operators on behalf of the token owner.
+Who should be allowed to do it in this project?
 
 Overall, the response from TQ was that there are no strict requirements and we should pick the best approaches from the business logic.
 At the early development stage we propose the following:
@@ -49,13 +51,12 @@ The "transfer hook" approach is recommended, but may be infeasible due to gas co
 3. We will not implement any `owner_hook`.
 The contract is usable without them because we stick to `Optional_owner_hook`.
 
-Apart from that there is some uncertainty regarding the `update_operators` entrypoint that was [reported on GitLab](https://gitlab.com/tzip/tzip/-/issues/16).
-We will stick to the following logic:
-1. In each `update_operator` item `owner` must be equal to `SENDER`.
+Regarding `update_operators` we will stick to the following logic:
+1. In each `update_operator` item `owner` MUST be equal to `SENDER`.
 2. Each address can have arbitrary number of operators.
 
-One more uncertainty is related to the `get_token_metadata` entrypoint.
-We assume that token metadata is constant.
+One more uncertainty is related to the `get_token_metadata` entrypoint: whether metadata is constant or can be changed during contract's lifetime.
+We assume that token metadata stays constant forever.
 
 Note: these decisions may change as the project moves forward.
 
