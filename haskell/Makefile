@@ -32,10 +32,6 @@ build:
 test:
 	$(call call_test,"",$(STACK_DEV_TEST_OPTIONS))
 
-# TODO #20: remove it! We should do it differently (and actually run tests).
-test-ci:
-	stack test stablecoin --ghc-options -Werror --no-run-tests
-
 # Like 'test' command, but enforces dumb terminal which may be useful to
 # workardoung some issues with `tasty`.
 # Primarily this one: https://github.com/feuerbach/tasty/issues/152

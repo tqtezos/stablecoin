@@ -19,9 +19,6 @@ build-haskell:
 test:
 	$(MAKE_HASKELL) test
 
-test-ci:
-	$(MAKE_HASKELL) test-ci
-
 test-dumb-term:
 	$(MAKE_HASKELL) test-dumb-term
 
