@@ -11,7 +11,7 @@ extra-deps:
     https://gitlab.com/morley-framework/morley.git
     # ^ CI cannot use ssh, so we use http clone here
   commit:
-    141b1f0561a5de32036e0f913869d332983cee04 # master
+    c5df290e5bba7500b40aab9dc065efe6f23579cf # master
   subdirs:
     - code/morley
     - code/indigo
@@ -28,6 +28,10 @@ extra-deps:
 - tasty-hunit-compat-0.2
 
 # Required by morley
+- fmt-0.6.1.2@sha256:405a1bfc0ba0fd99f6eb1ee71f100045223f79204f961593012f28fd99cd1237,5319
+- named-0.3.0.1@sha256:2975d50c9c5d88095026ffc1303d2d9be52e5f588a8f8bcb7003a04b79f10a06,2312
+- vinyl-0.12.1@sha256:03f5e246fae2434250987bbfe708015dc6e23f60c20739c34738acde1383b96c,3921
+- base-noprelude-4.13.0.0@sha256:3cccbfda38e1422ca5cc436d58858ba51ff9114d2ed87915a6569be11e4e5a90,6842
 - show-type-0.1.1@sha256:24f681a3481b3f9630e619d816054804ba1bd6cc05b5978ddd2cece8499ff2fa
 - aeson-options-0.1.0
 - base58-bytestring-0.1.0
