@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2020 tqtezos
 # SPDX-License-Identifier: MIT
 
-resolver: lts-14.15
+resolver: lts-15.7
 
 packages:
 - .
@@ -11,7 +11,7 @@ extra-deps:
     https://gitlab.com/morley-framework/morley.git
     # ^ CI cannot use ssh, so we use http clone here
   commit:
-    48cbeec76b6126802d10e1d51da128982bae58e6 # master
+    c5df290e5bba7500b40aab9dc065efe6f23579cf # master
   subdirs:
     - code/morley
     - code/indigo
@@ -26,7 +26,7 @@ extra-deps:
 - git:
     https://gitlab.com/obsidian.systems/tezos-bake-monitor-lib.git
   commit:
-    19a9ce57a0510bc3ad8a3f639d0a968a65024b86
+    ed3280836d7d0e87999639520610bf7b6510e743
   subdirs:
     - tezos-bake-monitor-lib
 
@@ -35,6 +35,10 @@ extra-deps:
 - tasty-hunit-compat-0.2
 
 # Required by morley
+- fmt-0.6.1.2@sha256:405a1bfc0ba0fd99f6eb1ee71f100045223f79204f961593012f28fd99cd1237,5319
+- named-0.3.0.1@sha256:2975d50c9c5d88095026ffc1303d2d9be52e5f588a8f8bcb7003a04b79f10a06,2312
+- vinyl-0.12.1@sha256:03f5e246fae2434250987bbfe708015dc6e23f60c20739c34738acde1383b96c,3921
+- base-noprelude-4.13.0.0@sha256:3cccbfda38e1422ca5cc436d58858ba51ff9114d2ed87915a6569be11e4e5a90,6842
 - show-type-0.1.1@sha256:24f681a3481b3f9630e619d816054804ba1bd6cc05b5978ddd2cece8499ff2fa
 - aeson-options-0.1.0
 - base58-bytestring-0.1.0
@@ -48,7 +52,10 @@ extra-deps:
 - functor-infix-0.0.5@sha256:cea21a321031f556d7a21b51e049493e7cb78baf64dd63f0d1a36de01c4c735b
 - hashing-0.1.0.1@sha256:98861f16791946cdf28e3c7a6ee9ac8b72d546d6e33c569c7087ef18253294e7
 - dependent-sum-0.6.2.0
-- dependent-sum-template-0.1.0.0
+- dependent-sum-template-0.1.0.3
+- witherable-0.3.5@sha256:6590a15735b50ac14dcc138d4265ff1585d5f3e9d3047d5ebc5abf4cd5f50084,1476
+- monoidal-containers-0.6.0.1@sha256:7d776942659eb4d70d8b8da5d734396374a6eda8b4622df9e61e26b24e9c8e40,2501
+- witherable-class-0@sha256:91f05518f9f4af5b02424f13ee7dcdab5d6618e01346aa2f388a72ff93e2e501,775
 - constraints-extras-0.3.0.2@sha256:bf6884be65958e9188ae3c9e5547abfd6d201df021bff8a4704c2c4fe1e1ae5b
 
 nix:
