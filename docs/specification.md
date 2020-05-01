@@ -37,6 +37,8 @@ What about other policies?
 Should we implement any particular `transfer_hook`?
 If we should, the questions from (2) apply here.
 4. Should we implement any `owner_hook`?
+5. The FA2 standard does not specify who is permitted to update operators on behalf of the token owner.
+Who should be allowed to do it in this project?
 
 Overall, the response from TQ was that there are no strict requirements and we should pick the best approaches from the business logic.
 At the early development stage we propose the following:
@@ -49,13 +51,12 @@ The "transfer hook" approach is recommended, but may be infeasible due to gas co
 3. We will not implement any `owner_hook`.
 The contract is usable without them because we stick to `Optional_owner_hook`.
 
-Apart from that there is some uncertainty regarding the `update_operators` entrypoint that was [reported on GitLab](https://gitlab.com/tzip/tzip/-/issues/16).
-We will stick to the following logic:
-1. In each `update_operator` item `owner` must be equal to `SENDER`.
+Regarding `update_operators` we will stick to the following logic:
+1. In each `update_operator` item `owner` MUST be equal to `SENDER`.
 2. Each address can have arbitrary number of operators.
 
-One more uncertainty is related to the `get_token_metadata` entrypoint.
-We assume that token metadata is constant.
+One more uncertainty is related to the `get_token_metadata` entrypoint: whether metadata is constant or can be changed during contract's lifetime.
+We assume that token metadata stays constant forever.
 
 Note: these decisions may change as the project moves forward.
 
@@ -90,14 +91,18 @@ In CENTRE they take a single item (a pair or an amount).
 5. `configure_minter` takes an additional argument – current minting allowance – to prevent front-running attacks.
 6. CENTRE does not have `update_operator`, the closest analog is `approve`, but it does not explicitly say whether `approve` is paused by `pause`.
 In this contract `update_operator` IS paused.
-7. TODO: whitelisting and blacklisting.
+7. CENTRE defines the `blacklister` role and blacklisting is part of the CENTRE Fiat Token contract.
+Our project is different: whitelisting and blacklisting are offloaded to a separate [`Safelist` contract](#safelist).
 
 # State model
 
 This chapter provides a high-level overview of the contract's state.
 Note that the actual storage type is implementation detail and is not specified here.
-The contract maintans a ledger of addresses and manages some special roles as described below.
-Token operations can be paused, so the contract also knows whether it is paused.
+
+* The contract maintains a ledger of addresses and manages some special roles as described below.
+* Token operations can be paused, so the contract also knows whether it is paused.
+* Token operations can be guarded by the [`Safelist` contract](#safelist), so the contract also optionally stores an address of such contract.
+If its value is `None`, no safelist checks are performed.
 
 ## Roles
 
@@ -128,12 +133,6 @@ CENTRE Fiat Token specification. These roles apply to the whole contract
     and fail with an error if the user decides to try them.
   - There always must be exactly one pauser.
 
-* **blacklister (TBD)**
-  - Can blacklist a particular address preventing it from
-    transferring, minting, burning and receiving tokens by
-    removing them from whitelist.
-  - There are no clear requirements yet. It can be modified or even removed.
-
 Additionally, the contract inherits the **operator** role from FA2.
 This role is "local" to a particular address.
 Each address can have any number of operators and be an operator of any number of addresses.
@@ -142,6 +141,19 @@ Each address can have any number of operators and be an operator of any number o
 
 Every address that is stored in ledger is associated with its current balance.
 Additionally, each minter is associated with its current minting allowance.
+
+# Safelist
+
+Before describing the token contract's entrypoints we describe the `Safelist` interface.
+The syntax is: `entrypointName(argumentType)`.
+Required `Safelist` entrypoints:
+* `assertTransfers(list(pair (address :from) (address :to)))`
+  * Checks whether a transfer is permitted from one address to the other one.
+  Fails if transfer is prohibited for any item from this list.
+* `assertReceiver(address)`
+  * Fails if address is not whitelisted or it is blacklisted.
+* `assertReceivers(list address)`
+  * Fails if any address in the list is not whitelisted or is blacklisted.
 
 # Entrypoints
 
@@ -206,6 +218,8 @@ Parameter (in Michelson):
 - This entrypoint MUST follow the FA2 requirements.
 
 - Permission logic requirements specific to this contract are described in the ["FA2 Specifics"](#fa2-specifics) chapter.
+
+- If safelist contract is set, this entrypoint MUST call its `assertTransfers` entrypoint (either directly or from the transfer hook).
 
 - Since the contract supports only a single token type, all `token_id` values MUST be 0.
   They are passed because FA2 requires that.
@@ -704,6 +718,8 @@ Parameter (in Michelson):
 - Minting allowance will decrease by the amount of tokens minted
   and increase the balance of receiver and total minted value.
 
+- If safelist contract is set, this entrypoint MUST call its `assertReceivers` entrypoint (either directly or from the transfer hook) checking the minter and all receivers.
+
 - Contract must not be paused.
 
 **burn**
@@ -725,6 +741,8 @@ Parameter (in Michelson): `list nat`.
 - A minter with 0 minting allowance is allowed to burn tokens.
 
 - Burning tokens will not increase the mintingAllowance of the address doing the burning.
+
+- If safelist contract is set, this entrypoint MUST call its `assertReceiver` entrypoint (either directly or from the transfer hook) checking the minter (`SENDER`).
 
 - Contract must not be paused.
 
@@ -794,3 +812,15 @@ Parameter (in Michelson): `contract address`.
 - Return current pauser address.
 
 [FA2]: https://gitlab.com/tzip/tzip/-/blob/131b46dd89675bf030489ded9b0b3f5834b70eb6/proposals/tzip-12/tzip-12.md
+
+### Safelist
+
+**set_safelist**
+
+Parameter (in Michelson): `option address`.
+
+- Set the stored (optional) safelist address to the new one.
+
+- If the address does not have any entrypoint listed in the [`Safelist`](#safelist) specification, this call MUST fail.
+
+- Sender must be token owner.
