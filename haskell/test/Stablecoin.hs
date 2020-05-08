@@ -20,7 +20,7 @@ import Lorentz.Contracts.Stablecoin as SC
 spec_Stablecoin :: Spec
 spec_Stablecoin = specWithUntypedContract "../out/stablecoin.tz" specCallback
 
-mkInitialStorage :: OriginationParams 'SingleToken -> Storage
+mkInitialStorage :: OriginationParams -> Storage
 mkInitialStorage op = let
   ledgerMap = snd <$> (opBalances op)
   operatorMap = Map.foldrWithKey foldFn mempty (opBalances op)

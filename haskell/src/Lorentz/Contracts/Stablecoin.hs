@@ -18,11 +18,6 @@ import Util.Named
 type Parameter = FA2.Parameter
 
 -- Permissions descriptor
-
--- Right now not exported from FA2.
-type CustomPermissionPolicy
-  = ("tag" :! MText, "config_api" :! Maybe Address)
-
 data OwHookOptReq = OptOH () | ReqOp ()
   deriving stock (Eq, Generic, Show)
   deriving anyclass (IsoValue, L.HasTypeAnn)
@@ -32,7 +27,7 @@ data OwHook =  OwNoOp () | OwOptReq OwHookOptReq
   deriving anyclass (IsoValue, L.HasTypeAnn)
 
 type PermissionsDescriptor =
-  (((Maybe CustomPermissionPolicy, FA2.OperatorTransferMode), (OwHook, FA2.SelfTransferMode)), OwHook)
+  (((Maybe FA2.CustomPermissionPolicy, FA2.OperatorTransferMode), (OwHook, FA2.SelfTransferMode)), OwHook)
 
 mkTokenMetadata :: FA2.TokenMetadata -> TokenMetadata
 mkTokenMetadata

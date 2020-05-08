@@ -3,12 +3,10 @@
 
 module Lorentz.Contracts.Test.FA2
   ( OriginationParams (..)
-  , TokenDomain (..)
   , defaultPermissionDescriptor
   , fa2Spec
   ) where
 
-import Data.Kind
 import qualified Data.Map as Map
 import Test.Hspec (Spec, describe, it)
 
@@ -26,30 +24,14 @@ wallet4 = genesisAddress4
 wallet5 = genesisAddress5
 commonOperator = genesisAddress6
 
-data TokenDomain = SingleToken | MultiToken
+type LedgerType = Map Address ([Address], Natural)
+type LedgerInput = (Address, (Address, Natural))
 
-class IsTokenDomain (d :: TokenDomain) where
-  type LedgerType d :: Type
-  type LedgerInput d :: Type
-  insertLedgerItem :: LedgerInput d -> LedgerType d -> LedgerType d
+insertLedgerItem :: LedgerInput -> LedgerType -> LedgerType
+insertLedgerItem (addr, (operator, bal)) = Map.insert addr ([operator], bal)
 
-instance IsTokenDomain 'SingleToken where
-  type LedgerType 'SingleToken = Map Address ([Address], Natural)
-  type LedgerInput 'SingleToken = (Address, (Address, Natural))
-  insertLedgerItem (addr, (operator, bal)) = Map.insert addr ([operator], bal)
-
-instance IsTokenDomain 'MultiToken where
-  type LedgerType 'MultiToken = Map Address ([Address], (Map TokenId Natural))
-  type LedgerInput 'MultiToken = (Address, [Address], Natural, TokenId)
-  insertLedgerItem (addr, operators, amount, tokenId) =
-    Map.alter (\case
-        Nothing -> Just (operators, (Map.singleton tokenId amount))
-        Just (operators_ext, p) ->
-          Just (operators_ext <> operators, (Map.insert tokenId amount p)))
-      addr
-
-data OriginationParams (d :: TokenDomain) = OriginationParams
-  { opBalances :: LedgerType d
+data OriginationParams = OriginationParams
+  { opBalances :: LedgerType
   , opPermissionsDescriptor :: PermissionsDescriptor
   , opTokenMetadata :: TokenMetadata
   }
@@ -96,7 +78,7 @@ defaultTokenMetadata =
        [([mt|attr1|], [mt|val1|]), ([mt|attr2|], [mt|val2|]) ]))))
   )
 
-defaultOriginationParams :: OriginationParams 'SingleToken
+defaultOriginationParams :: OriginationParams
 defaultOriginationParams = OriginationParams
   { opBalances = mempty
   , opPermissionsDescriptor = defaultPermissionDescriptor
@@ -104,12 +86,11 @@ defaultOriginationParams = OriginationParams
   }
 
 addAccount
-  :: forall d. (IsTokenDomain d)
-  => LedgerInput d
-  -> OriginationParams d
-  -> OriginationParams d
+  :: LedgerInput
+  -> OriginationParams
+  -> OriginationParams
 addAccount i op  =
-  op { opBalances = insertLedgerItem @d i (opBalances op) }
+  op { opBalances = insertLedgerItem i (opBalances op) }
 
 -- | Tests for an FA2 contract which -
 --
@@ -117,7 +98,7 @@ addAccount i op  =
 -- 2. Does not have an external permission checking transfer hook.
 fa2Spec
   :: forall param. ParameterC param
-  => (OriginationParams 'SingleToken -> IntegrationalScenarioM (TAddress param))
+  => (OriginationParams -> IntegrationalScenarioM (TAddress param))
   -> Spec
 fa2Spec alOriginate = do
   describe "Transfer entrypoint call by an operator" $ do

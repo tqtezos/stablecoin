@@ -10,7 +10,7 @@ module Lorentz.Contracts.Spec.FA2Interface
   , FA2OwnerHook (..)
   , IsOperatorParam
   , IsOperatorResponse
-  , OperatorParam (..)
+  , OperatorParam
   , OperatorTokens (..)
   , OperatorTransferMode (..)
   , OwnerTransferMode (..)
@@ -29,7 +29,7 @@ module Lorentz.Contracts.Spec.FA2Interface
   , TransferDescriptorParam
   , TransferParams
   , UpdateOperator (..)
-  , UpdateOperatorsParam (..)
+  , UpdateOperatorsParam
   ) where
 
 import Text.Show (Show)
