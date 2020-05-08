@@ -26,7 +26,7 @@ function credit_to
   | None -> skip
   end
 ; updated_balance := updated_balance + parameter.amount
-; const updated_ledger : ledger = 
+; const updated_ledger : ledger =
     Big_map.update(parameter.to_, Some (updated_balance), store.ledger)
 ; const ups : storage = store with record [ ledger = updated_ledger ]
 } with ups
@@ -34,15 +34,15 @@ function credit_to
 function debit_from
   ( const parameter : burn_params
   ; const store     : storage
-  ) : storage is block 
+  ) : storage is block
 { var updated_ledger : ledger := store.ledger
-; case store.ledger[parameter.from_] of 
-    Some (ledger_balance) -> if parameter.amount > ledger_balance 
+; case store.ledger[parameter.from_] of
+    Some (ledger_balance) -> if parameter.amount > ledger_balance
       then failwith ("Given address has not enough balance to debit from")
-      else 
+      else
       { const updated_balance : nat = abs (ledger_balance - parameter.amount)
       ; updated_ledger := Big_map.update(parameter.from_, Some (updated_balance), updated_ledger)
-      } 
+      }
   | None -> failwith ("Given address is not present in ledger")
   end
 ; const ups : storage = store with record [ ledger = updated_ledger ]
@@ -89,11 +89,11 @@ function transfer
   ( const parameters : transfer_params
   ; const store      : storage
   ) : entrypoint is block
-{ 
+{
 
- case store.permissions.operator of 
-    Operator_transfer_permitted -> failwith ("permitted")
-  | Operator_transfer_denied -> failwith ("denied")
+ case store.permissions.operator of
+    M_left (u) -> failwith ("permitted")
+  | M_right (u) -> failwith ("denied")
   end
 // validate_operator (store.permissions, parameters, store.operators)
 ; function transfer_tokens
@@ -224,12 +224,12 @@ function update_operators_action
 function is_operator_action
   ( const parameter : is_operator_params
   ; const store      : storage
-  ) : entrypoint is block 
-  { case store.permissions.operator of 
-      Operator_transfer_denied -> failwith ("is_operator_action: Operator transfer is prohibited")
-    | Operator_transfer_permitted -> skip
+  ) : entrypoint is block
+  { case store.permissions.operator of
+      M_right (u) -> failwith ("is_operator_action: Operator transfer is prohibited")
+    | M_left (u) -> skip
     end
-  } with 
+  } with
   ( list [is_operator (parameter, store.operators)]
   , store
   )

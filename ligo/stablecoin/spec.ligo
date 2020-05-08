@@ -137,13 +137,17 @@ type is_operator_params is michelson_pair_right_comb(is_operator_params_)
 
 (* ------------------------------------------------------------- *)
 
-type self_transfer_policy is
+type self_transfer_policy_ is
 | Self_transfer_permitted
 | Self_transfer_denied
 
-type operator_transfer_policy is
+type self_transfer_policy is michelson_or_right_comb(self_transfer_policy_)
+
+type operator_transfer_policy_ is
 | Operator_transfer_permitted
 | Operator_transfer_denied
+
+type operator_transfer_policy is michelson_or_right_comb(operator_transfer_policy_)
 
 type owner_transfer_policy_ is
 | Owner_no_op

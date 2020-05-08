@@ -3,11 +3,11 @@
 type owner_tokens is map (address, set (token_id))
 
 // TODO: we should probably ommit `owner` in `operator_param_` as @gromak suggested
-function validate_operator_owner_is_sender 
-  ( const param : operator_param 
-  ) : unit is if param.0 = Tezos.sender 
-  then unit 
-  else failwith ("valdiate_oeprator_param: Sender is not token owner") 
+function validate_operator_owner_is_sender
+  ( const param : operator_param
+  ) : unit is if param.0 = Tezos.sender
+  then unit
+  else failwith ("valdiate_oeprator_param: Sender is not token owner")
 
 function is_operator_impl
   ( const param     : operator_param
@@ -28,21 +28,21 @@ function is_operator
 } with Tezos.transaction (response, 0mutez, param.1)
 
 function validate_operator
-  ( const permissions_descriptor : permissions_descriptor_ 
+  ( const permissions_descriptor : permissions_descriptor_
   ; const transfer_parameters    : transfer_params
   ; const operators              : operators
   ) : unit is block
 {
   const can_transfer_to_self : bool =
     case permissions_descriptor.self of
-      Self_transfer_denied    -> True
-    | Self_transfer_permitted -> False
+      M_left (u)     -> True
+    | M_right (u) -> False
     end;
 
-  const can_transfer_operator : bool = 
-    case permissions_descriptor.operator of 
-      Operator_transfer_permitted -> True
-    | Operator_transfer_denied    -> False 
+  const can_transfer_operator : bool =
+    case permissions_descriptor.operator of
+      M_left (u)     -> True
+    | M_right (u) -> False
     end;
 
   const operator : address = Tezos.sender;
@@ -77,18 +77,18 @@ function validate_operator
 
     if can_transfer_to_self and owner = operator
     then skip
-    else if (not can_transfer_operator) 
+    else if (not can_transfer_operator)
       then failwith ("validate_operator: Operator transfer is prohibited")
-      else 
+      else
         {
-        //   const tokens_ : operator_tokens = 
+        //   const tokens_ : operator_tokens =
         //     Layout.convert_to_right_comb ((Some_tokens (tokens) : operator_tokens_))
-        // ; const operator_param_ : operator_param_ = record 
-        //     [ owner = owner 
-        //     ; operator = operator 
+        // ; const operator_param_ : operator_param_ = record
+        //     [ owner = owner
+        //     ; operator = operator
         //     ; tokens = tokens_
         //     ]
-        // ; const operator_param : operator_param = 
+        // ; const operator_param : operator_param =
         //     Layout.convert_to_right_comb ((operator_param_ : operator_param_))
           const operator_param : operator_param = (owner, (operator, (M_right (tokens) : operator_tokens)))
         ; is_operator := is_operator_impl (operator_param, operators)

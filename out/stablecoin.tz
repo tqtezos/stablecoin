@@ -13,10 +13,10 @@
                                (pair (address %operator) (or %tokens (unit %All_tokens) (set %Some_tokens nat))))
                             (bool %is_operator)))))
             (or (contract %permissions_descriptor
-                   (pair (or %self (unit %self_transfer_denied) (unit %self_transfer_permitted))
+                   (pair (or %self (unit %Self_transfer_permitted) (unit %Self_transfer_denied))
                          (pair (or %operator
-                                  (unit %operator_transfer_denied)
-                                  (unit %operator_transfer_permitted))
+                                  (unit %Operator_transfer_permitted)
+                                  (unit %Operator_transfer_denied))
                                (pair (or %receiver
                                         (unit %Owner_no_op)
                                         (or (unit %Optional_owner_hook) (unit %Required_owner_hook)))
@@ -48,12 +48,12 @@
                       (pair %permissions
                          (pair (pair (option %custom (pair (string %tag) (option %config_api address)))
                                      (or %operator
-                                        (unit %operator_transfer_denied)
-                                        (unit %operator_transfer_permitted)))
+                                        (unit %Operator_transfer_permitted)
+                                        (unit %Operator_transfer_denied)))
                                (pair (or %receiver
                                         (unit %Owner_no_op)
                                         (or (unit %Optional_owner_hook) (unit %Required_owner_hook)))
-                                     (or %self (unit %self_transfer_denied) (unit %self_transfer_permitted))))
+                                     (or %self (unit %Self_transfer_permitted) (unit %Self_transfer_denied))))
                          (or %sender
                             (unit %Owner_no_op)
                             (or (unit %Optional_owner_hook) (unit %Required_owner_hook))))))
@@ -233,9 +233,9 @@
                      CAR ;
                      CDR ;
                      IF_LEFT
+                       { DROP ; PUSH unit Unit }
                        { PUSH string "is_operator_action: Operator transfer is prohibited" ;
-                         FAILWITH }
-                       { DROP ; PUSH unit Unit } ;
+                         FAILWITH } ;
                      DIG 1 ;
                      DUP ;
                      DUG 2 ;
@@ -508,8 +508,8 @@
                      CAR ;
                      CDR ;
                      IF_LEFT
-                       { PUSH string "denied" ; FAILWITH }
-                       { PUSH string "permitted" ; FAILWITH } } ;
+                       { PUSH string "permitted" ; FAILWITH }
+                       { PUSH string "denied" ; FAILWITH } } ;
                  DIP { DROP } }
                { DIG 2 ;
                  DUP ;
