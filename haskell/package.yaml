@@ -32,6 +32,8 @@ library:
     - morley
     - indigo
     - morley-ledgers
+    - tasty-quickcheck
+    - fmt
 
 executables:
   stablecoin:
