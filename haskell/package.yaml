@@ -23,9 +23,15 @@ library:
 
   default-extensions:
     - RebindableSyntax
+    - DerivingStrategies
+    - DeriveAnyClass
 
   dependencies:
     - morley-prelude
+    - lorentz
+    - morley
+    - indigo
+    - morley-ledgers
 
 executables:
   stablecoin:
@@ -38,8 +44,21 @@ tests:
   stablecoin-test:
     <<: *test-common
 
+    default-extensions:
+      - DerivingStrategies
+      - DeriveAnyClass
+
     dependencies:
       - HUnit
+      - hspec
+      - containers
       - morley-prelude
+      - morley
+      - morley-ledgers
+      - morley-ledgers-test
+      - lorentz
       - tasty
       - tasty-hunit-compat
+      - tasty-hspec
+      - text
+      - stablecoin
