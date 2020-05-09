@@ -4,8 +4,8 @@
 module Lorentz.Contracts.Stablecoin
   ( Parameter
   , Storage
-  , mkPermissionDescriptor
-  , mkTokenMetadata
+  , stablecoinPermissionsDescriptor
+  , stablecoinTokenMetadata
   ) where
 
 import Text.Show (Show)
@@ -31,19 +31,25 @@ type PermissionsDescriptor =
   (((Maybe FA2.CustomPermissionPolicy, FA2.OperatorTransferMode), (OwHook, FA2.SelfTransferMode)), OwHook)
 
 -- We will hard code permissions descriptor of Stablecoin contract here
-stablecoinPermissionsDescriptor :: FA2.PermissionsDescriptor
-stablecoinPermissionsDescriptor =
-  ( #self .! (SelfTransferPermitted (#self_transfer_permitted .! ()))
-  , #pdr .! ( #operator .! OperatorTransferPermitted (#operator_transfer_permitted .! ())
-            , #pdr2 .! ( #receiver .! OwnerNoOp (#owner_no_op .! ())
-                       , #pdr3 .! (#sender .! (OwnerNoOp (#owner_no_op .! ())), #custom .! Nothing ))))
+stablecoinPermissionsDescriptor :: PermissionsDescriptor
+stablecoinPermissionsDescriptor = mkPermissionDescriptor stablecoinPermissionsDescriptorFA2
+  where
+  stablecoinPermissionsDescriptorFA2 :: FA2.PermissionsDescriptor
+  stablecoinPermissionsDescriptorFA2 =
+    ( #self .! (SelfTransferPermitted (#self_transfer_permitted .! ()))
+    , #pdr .! ( #operator .! OperatorTransferPermitted (#operator_transfer_permitted .! ())
+              , #pdr2 .! ( #receiver .! OwnerNoOp (#owner_no_op .! ())
+                         , #pdr3 .! (#sender .! (OwnerNoOp (#owner_no_op .! ())), #custom .! Nothing ))))
 
 -- We will hard code stablecoin token metadata here
-stablecoinTokenMetadata :: FA2.TokenMetadata
-stablecoinTokenMetadata =
-  (#token_id .! 0, #mdr .! ( #symbol .! [mt|USDC|]
-                           , #mdr2 .! ( #name .! [mt|USDC|]
-                                      , #mdr3 .! ( #decimals .! 8, #extras .! mempty))))
+stablecoinTokenMetadata :: TokenMetadata
+stablecoinTokenMetadata = mkTokenMetadata stablecoinTokenMetadataFA2
+  where
+    stablecoinTokenMetadataFA2 :: FA2.TokenMetadata
+    stablecoinTokenMetadataFA2 =
+      (#token_id .! 0, #mdr .! ( #symbol .! [mt|USDC|]
+                               , #mdr2 .! ( #name .! [mt|USDC|]
+                                          , #mdr3 .! ( #decimals .! 8, #extras .! mempty))))
 
 mkTokenMetadata :: FA2.TokenMetadata -> TokenMetadata
 mkTokenMetadata

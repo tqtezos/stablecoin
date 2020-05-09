@@ -46,29 +46,29 @@ defaultPermissionDescriptor =
                        , #pdr3 .! (#sender .! Nothing, #custom .! Nothing))))
 
 permissionDescriptorSelfTransferDenied :: PermissionsDescriptorMaybe
-permissionDescriptorSelfTransferDenied = undefined
-  --defaultPermissionDescriptor & _1 .~ (#self .! SelfTransferDenied (#self_transfer_denied .! ()))
+permissionDescriptorSelfTransferDenied =
+  defaultPermissionDescriptor & _1 .~ (#self .! (Just $ SelfTransferDenied (#self_transfer_denied .! ())))
 
 permissionDescriptorOperatorTransferDenied :: PermissionsDescriptorMaybe
-permissionDescriptorOperatorTransferDenied = undefined
- -- defaultPermissionDescriptor
- --   & (_2.namedL #pdr._1) .~ (#operator .! OperatorTransferDenied (#operator_transfer_denied .! ()))
+permissionDescriptorOperatorTransferDenied =
+  defaultPermissionDescriptor
+   & (_2.namedL #pdr._1) .~ (#operator .! (Just $ OperatorTransferDenied (#operator_transfer_denied .! ())))
 
 permissionDescriptorNoOpReceiverHook :: PermissionsDescriptorMaybe
-permissionDescriptorNoOpReceiverHook = undefined
-  -- defaultPermissionDescriptor & (_2.namedL #pdr._2.namedL #pdr2._1) .~ (#receiver .! OwnerNoOp (#owner_no_op .! ()))
+permissionDescriptorNoOpReceiverHook =
+  defaultPermissionDescriptor & (_2.namedL #pdr._2.namedL #pdr2._1) .~ (#receiver .! (Just $ OwnerNoOp (#owner_no_op .! ())))
 
 permissionDescriptorReqReceiverHook :: PermissionsDescriptorMaybe
-permissionDescriptorReqReceiverHook = undefined
-  -- defaultPermissionDescriptor & (_2.namedL #pdr._2.namedL #pdr2._1) .~ (#receiver .! RequiredOwnerHook (#required_owner_hook .! ()))
+permissionDescriptorReqReceiverHook =
+  defaultPermissionDescriptor & (_2.namedL #pdr._2.namedL #pdr2._1) .~ (#receiver .! (Just $ RequiredOwnerHook (#required_owner_hook .! ())))
 
 permissionDescriptorNoOpSenderHook :: PermissionsDescriptorMaybe
-permissionDescriptorNoOpSenderHook = undefined
-  -- defaultPermissionDescriptor & (_2.namedL #pdr._2.namedL #pdr2._2.namedL #pdr3._1) .~ (#sender .! OwnerNoOp (#owner_no_op .! ()))
+permissionDescriptorNoOpSenderHook =
+  defaultPermissionDescriptor & (_2.namedL #pdr._2.namedL #pdr2._2.namedL #pdr3._1) .~ (#sender .! (Just $ OwnerNoOp (#owner_no_op .! ())))
 
 permissionDescriptorReqSenderHook :: PermissionsDescriptorMaybe
-permissionDescriptorReqSenderHook = undefined
-  -- defaultPermissionDescriptor & (_2.namedL #pdr._2.namedL #pdr2._2.namedL #pdr3._1) .~ (#sender .! RequiredOwnerHook (#required_owner_hook .! ()))
+permissionDescriptorReqSenderHook =
+  defaultPermissionDescriptor & (_2.namedL #pdr._2.namedL #pdr2._2.namedL #pdr3._1) .~ (#sender .! (Just $ RequiredOwnerHook (#required_owner_hook .! ())))
 
 defaultTokenMetadata :: TokenMetadata
 defaultTokenMetadata =
