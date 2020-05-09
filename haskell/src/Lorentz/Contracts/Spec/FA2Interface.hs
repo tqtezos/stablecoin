@@ -17,6 +17,7 @@ module Lorentz.Contracts.Spec.FA2Interface
   , Parameter (..)
   , ParameterC
   , PermissionsDescriptor
+  , PermissionsDescriptorMaybe
   , PermissionsDescriptorParam
   , SelfTransferMode (..)
   , TokenId
@@ -158,11 +159,21 @@ instance TypeHasDoc OwnerTransferMode where
 type CustomPermissionPolicy
   = ("tag" :! MText, "config_api" :! Maybe Address)
 
-type PermissionsDescriptor =
-  ( "self" :! SelfTransferMode
-  , "pdr" :! ( "operator" :! OperatorTransferMode
-  , "pdr2" :! ( "receiver" :! OwnerTransferMode
-  , "pdr3" :! ("sender" :! OwnerTransferMode, "custom" :! Maybe CustomPermissionPolicy))))
+
+data PdTag = PdMaybe | PdFull
+
+type family PdFld (f :: PdTag) t where
+  PdFld PdFull t = t
+  PdFld PdMaybe t = Maybe t
+
+type PermissionsDescriptorPoly t =
+  ( "self" :! PdFld t SelfTransferMode
+  , "pdr" :! ( "operator" :! PdFld t OperatorTransferMode
+  , "pdr2" :! ( "receiver" :! PdFld t OwnerTransferMode
+  , "pdr3" :! ("sender" :! PdFld t OwnerTransferMode, "custom" :! PdFld t (Maybe CustomPermissionPolicy)))))
+
+type PermissionsDescriptor = PermissionsDescriptorPoly PdFull
+type PermissionsDescriptorMaybe = PermissionsDescriptorPoly PdMaybe
 
 type PermissionsDescriptorParam = ContractRef PermissionsDescriptor
 
