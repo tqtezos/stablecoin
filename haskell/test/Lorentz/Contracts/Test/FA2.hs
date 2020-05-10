@@ -292,16 +292,30 @@ fa2Spec alOriginate = do
           lExpectViewConsumerStorage consumer [result]
 
   ---- Metadata tests
-  describe "Metadata query entrypoint" $
-    it "is available" $ integrationalTestExpectation $
+  describe "Metadata query entrypoint" $ do
+    it "returns at least one items" $ integrationalTestExpectation $
       withOriginated alOriginate defaultOriginationParams $ \al -> do
         consumer <- lOriginateEmpty @[TokenMetadata] contractConsumer "consumer"
         let tokenMetadataQuery = mkView (#token_ids .! [0]) consumer
         lCallEP al (Call @"Token_metadata") tokenMetadataQuery
 
         validate . Right $
-          lExpectViewConsumerStorage
-            consumer [[defaultTokenMetadata]]
+          lExpectConsumerStorage consumer
+            (\(tds :: [[TokenMetadata]]) -> case tds of
+                [[(L.arg #token_id -> tid, _)]] -> if tid == 0 then Right () else Left $ CustomValidationError "Token metadata query returned unexpected token id"
+                _ -> Left $ CustomValidationError "Token metadata query returned list of unexpected length")
+
+    it "returns at items without de-duplication when queries with duplicates" $ integrationalTestExpectation $
+      withOriginated alOriginate defaultOriginationParams $ \al -> do
+        consumer <- lOriginateEmpty @[TokenMetadata] contractConsumer "consumer"
+        let tokenMetadataQuery = mkView (#token_ids .! [0, 0]) consumer
+        lCallEP al (Call @"Token_metadata") tokenMetadataQuery
+
+        validate . Right $
+          lExpectConsumerStorage consumer
+            (\(tds :: [[TokenMetadata]]) -> case tds of
+                [[md1@(L.arg #token_id -> tid, _), md2]] -> if tid == 0 && md1 == md2 then Right () else Left $ CustomValidationError "Token metadata query returned unexpected token id"
+                _ -> Left $ CustomValidationError "Token metadata query returned list of unexpected length")
 
   -- Permission descriptor query
   describe "Permissions_descriptor entrypoint" $
@@ -444,7 +458,7 @@ fa2Spec alOriginate = do
 
   ---- Owner hooks test
   ----
-  ---- Tests that the senders owner hook is called on transfer
+  ---- Tests that tests senders owner hook is called on transfer
   ---- uses defaultOptions where both sender/receiver hooks are set
   ---- to be optional.
   describe "Owner hook behavior on transfer" $ do
