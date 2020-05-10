@@ -50,7 +50,8 @@ import Util.Named
 -- 4. Transfer operation must apply permission policy logic.
 type TokenId = Natural
 
-type TransferItem = ("from_" :! Address, ("to_" :! Address, ("token_id" :! TokenId, "amount" :! Natural)))
+type TransferItem =
+  ("from_" :! Address, ("to_" :! Address, ("token_id" :! TokenId, "amount" :! Natural)))
 
 type TransferParams = [TransferItem]
 
@@ -163,17 +164,18 @@ type CustomPermissionPolicy
 data PdTag = PdMaybe | PdFull
 
 type family PdFld (f :: PdTag) t where
-  PdFld PdFull t = t
-  PdFld PdMaybe t = Maybe t
+  PdFld 'PdFull t = t
+  PdFld 'PdMaybe t = Maybe t
 
 type PermissionsDescriptorPoly t =
   ( "self" :! PdFld t SelfTransferMode
   , "pdr" :! ( "operator" :! PdFld t OperatorTransferMode
   , "pdr2" :! ( "receiver" :! PdFld t OwnerTransferMode
-  , "pdr3" :! ("sender" :! PdFld t OwnerTransferMode, "custom" :! PdFld t (Maybe CustomPermissionPolicy)))))
+  , "pdr3" :!
+      ("sender" :! PdFld t OwnerTransferMode, "custom" :! PdFld t (Maybe CustomPermissionPolicy)))))
 
-type PermissionsDescriptor = PermissionsDescriptorPoly PdFull
-type PermissionsDescriptorMaybe = PermissionsDescriptorPoly PdMaybe
+type PermissionsDescriptor = PermissionsDescriptorPoly 'PdFull
+type PermissionsDescriptorMaybe = PermissionsDescriptorPoly 'PdMaybe
 
 type PermissionsDescriptorParam = ContractRef PermissionsDescriptor
 

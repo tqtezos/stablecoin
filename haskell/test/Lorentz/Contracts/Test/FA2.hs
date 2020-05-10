@@ -8,7 +8,7 @@ module Lorentz.Contracts.Test.FA2
   ) where
 
 import qualified Data.Map as Map
-import Test.Hspec (Expectation, Spec, describe, it)
+import Test.Hspec (Spec, describe, it)
 
 import Lorentz (mkView)
 import qualified Lorentz as L
@@ -47,28 +47,37 @@ defaultPermissionDescriptor =
 
 permissionDescriptorSelfTransferDenied :: PermissionsDescriptorMaybe
 permissionDescriptorSelfTransferDenied =
-  defaultPermissionDescriptor & _1 .~ (#self .! (Just $ SelfTransferDenied (#self_transfer_denied .! ())))
+  defaultPermissionDescriptor &
+    _1 .~ (#self .! (Just $ SelfTransferDenied (#self_transfer_denied .! ())))
 
 permissionDescriptorOperatorTransferDenied :: PermissionsDescriptorMaybe
 permissionDescriptorOperatorTransferDenied =
   defaultPermissionDescriptor
-   & (_2.namedL #pdr._1) .~ (#operator .! (Just $ OperatorTransferDenied (#operator_transfer_denied .! ())))
+   & (_2.namedL #pdr._1)
+      .~ (#operator .! (Just $ OperatorTransferDenied (#operator_transfer_denied .! ())))
 
 permissionDescriptorNoOpReceiverHook :: PermissionsDescriptorMaybe
 permissionDescriptorNoOpReceiverHook =
-  defaultPermissionDescriptor & (_2.namedL #pdr._2.namedL #pdr2._1) .~ (#receiver .! (Just $ OwnerNoOp (#owner_no_op .! ())))
+  defaultPermissionDescriptor
+    & (_2.namedL #pdr._2.namedL #pdr2._1) .~ (#receiver .! (Just $ OwnerNoOp (#owner_no_op .! ())))
 
 permissionDescriptorReqReceiverHook :: PermissionsDescriptorMaybe
 permissionDescriptorReqReceiverHook =
-  defaultPermissionDescriptor & (_2.namedL #pdr._2.namedL #pdr2._1) .~ (#receiver .! (Just $ RequiredOwnerHook (#required_owner_hook .! ())))
+  defaultPermissionDescriptor
+    & (_2.namedL #pdr._2.namedL #pdr2._1)
+    .~ (#receiver .! (Just $ RequiredOwnerHook (#required_owner_hook .! ())))
 
 permissionDescriptorNoOpSenderHook :: PermissionsDescriptorMaybe
 permissionDescriptorNoOpSenderHook =
-  defaultPermissionDescriptor & (_2.namedL #pdr._2.namedL #pdr2._2.namedL #pdr3._1) .~ (#sender .! (Just $ OwnerNoOp (#owner_no_op .! ())))
+  defaultPermissionDescriptor
+    & (_2.namedL #pdr._2.namedL #pdr2._2.namedL #pdr3._1)
+    .~ (#sender .! (Just $ OwnerNoOp (#owner_no_op .! ())))
 
 permissionDescriptorReqSenderHook :: PermissionsDescriptorMaybe
 permissionDescriptorReqSenderHook =
-  defaultPermissionDescriptor & (_2.namedL #pdr._2.namedL #pdr2._2.namedL #pdr3._1) .~ (#sender .! (Just $ RequiredOwnerHook (#required_owner_hook .! ())))
+  defaultPermissionDescriptor
+    & (_2.namedL #pdr._2.namedL #pdr2._2.namedL #pdr3._1)
+    .~ (#sender .! (Just $ RequiredOwnerHook (#required_owner_hook .! ())))
 
 defaultTokenMetadata :: TokenMetadata
 defaultTokenMetadata =
@@ -94,13 +103,22 @@ addAccount
 addAccount i op  =
   op { opBalances = insertLedgerItem i (opBalances op) }
 
+-- | The return value of this function is a Maybe to handle the case where a contract
+-- having hardcoded permission descriptor, and thus unable to initialize with a custom
+-- permissions descriptor passed from the testing code.
+--
+-- In such cases, where the value is hard coded and is incompatible with what is required
+-- for the test, this function should return a Nothing value, and the tests that depend
+-- on such custom configuration will be skipped.
 type OriginationFn param = (OriginationParams -> IntegrationalScenarioM (Maybe (TAddress param)))
 
-dummyContract :: L.ContractCode () ()
-dummyContract = L.unpair L.# L.drop L.# L.nil L.# L.pair
-
+-- | This is a temporary hack to workaround the inability to skip the
+-- tests from an IntegrationalScenario without doing any validations.
 skipTest :: IntegrationalScenario
 skipTest = do
+  let
+    dummyContract :: L.ContractCode () ()
+    dummyContract = L.unpair L.# L.drop L.# L.nil L.# L.pair
   c <- lOriginate dummyContract "skip test dummy" () (unsafeMkMutez 0)
   lCallEP c CallDefault ()
   validate (Right expectAnySuccess)
@@ -190,17 +208,19 @@ fa2Spec alOriginate = do
         withSender wallet1 $ lCallEP al (Call @"Transfer") transfers
         validate $ Left (lExpectFailWith (const @_ @MText True))
 
-    it "denies operator transfer if set so in permissions descriptior" $ integrationalTestExpectation $ do
-      let originationParams = addAccount (wallet1, (commonOperator, 10)) $ defaultOriginationParams
-            { opPermissionsDescriptor = permissionDescriptorOperatorTransferDenied }
-      withOriginated alOriginate originationParams $ \al -> do
-        let
-          transfers =
-            [ (#from_ .! wallet1, (#to_ .! wallet2, (#token_id .! 0, #amount .! 1)))
-            ]
+    it "denies operator transfer if set so in permissions descriptior" $
+      integrationalTestExpectation $ do
+        let originationParams = addAccount (wallet1, (commonOperator, 10)) $
+              defaultOriginationParams
+                { opPermissionsDescriptor = permissionDescriptorOperatorTransferDenied }
+        withOriginated alOriginate originationParams $ \al -> do
+          let
+            transfers =
+              [ (#from_ .! wallet1, (#to_ .! wallet2, (#token_id .! 0, #amount .! 1)))
+              ]
 
-        withSender commonOperator $ lCallEP al (Call @"Transfer") transfers
-        validate $ Left (lExpectFailWith (const @_ @MText True))
+          withSender commonOperator $ lCallEP al (Call @"Transfer") transfers
+          validate $ Left (lExpectFailWith (const @_ @MText True))
 
     it "aborts if there is a failure" $ integrationalTestExpectation $ do
       let originationParams = addAccount (wallet1, (commonOperator, 10)) defaultOriginationParams
@@ -297,37 +317,38 @@ fa2Spec alOriginate = do
   ---- Operator transfer is allowed. We have such a configuration in
   ---- defaultOriginationParams.
   describe "Configure operators entrypoint" $ do
-    it "adds operator, removes operator, and answer operator query as expected" $ integrationalTestExpectation $ do
-      let originationParams = addAccount (wallet1, (commonOperator, 10)) defaultOriginationParams
-      withOriginated alOriginate defaultOriginationParams $ \al -> do
+    it "adds operator, removes operator, and answer operator query as expected" $
+      integrationalTestExpectation $ do
+        let originationParams = addAccount (wallet1, (commonOperator, 10)) defaultOriginationParams
+        withOriginated alOriginate originationParams $ \al -> do
 
-        consumer <- lOriginateEmpty @IsOperatorResponse contractConsumer "consumer"
-        withSender wallet1 $ do
-          let operatorParam =
-                (#owner .! wallet1, #operator .! wallet2, #tokens .! All_tokens)
+          consumer <- lOriginateEmpty @IsOperatorResponse contractConsumer "consumer"
+          withSender wallet1 $ do
+            let operatorParam =
+                  (#owner .! wallet1, #operator .! wallet2, #tokens .! All_tokens)
 
-          let addOperatorParam = Add_operator operatorParam
-          lCallEP al (Call @"Update_operators") [addOperatorParam]
+            let addOperatorParam = Add_operator operatorParam
+            lCallEP al (Call @"Update_operators") [addOperatorParam]
 
-          let isOperatorQuery = mkView (#operator .! operatorParam) consumer
-          lCallEP al (Call @"Is_operator") isOperatorQuery
+            let isOperatorQuery = mkView (#operator .! operatorParam) consumer
+            lCallEP al (Call @"Is_operator") isOperatorQuery
 
-          offshoot "Confirm operator was added" $
-            (validate . Right $
-              lExpectViewConsumerStorage consumer
-                [(#operator .! operatorParam, #is_operator .! True)])
+            offshoot "Confirm operator was added" $
+              (validate . Right $
+                lExpectViewConsumerStorage consumer
+                  [(#operator .! operatorParam, #is_operator .! True)])
 
-          let removeOperatorParam = Remove_operator operatorParam
-          lCallEP al (Call @"Update_operators") [removeOperatorParam]
-          void $ validate . Right $ expectAnySuccess
+            let removeOperatorParam = Remove_operator operatorParam
+            lCallEP al (Call @"Update_operators") [removeOperatorParam]
+            void $ validate . Right $ expectAnySuccess
 
-          lCallEP al (Call @"Is_operator") isOperatorQuery
-          validate . Right $
-            lExpectViewConsumerStorage
-              consumer
-                [ (#operator .! operatorParam, #is_operator .! True)
-                , (#operator .! operatorParam, #is_operator .! False)
-                ]
+            lCallEP al (Call @"Is_operator") isOperatorQuery
+            validate . Right $
+              lExpectViewConsumerStorage
+                consumer
+                  [ (#operator .! operatorParam, #is_operator .! True)
+                  , (#operator .! operatorParam, #is_operator .! False)
+                  ]
 
   ---- Check that the update operator, remove operator operations are only
   ---- allowed for the owner. From the FA2 spec
@@ -388,19 +409,20 @@ fa2Spec alOriginate = do
 
   -- FA2 Mandates that the entrypoints to configure operators should fail if
   -- operator transfer is denied in permissions descriptor.
-  it "errors on addOperator call if operator transfer is forbidden" $ integrationalTestExpectation $ do
-    let originationParams = addAccount (wallet1, (commonOperator, 10))
-          defaultOriginationParams
-            { opPermissionsDescriptor = permissionDescriptorOperatorTransferDenied }
+  it "errors on addOperator call if operator transfer is forbidden" $
+    integrationalTestExpectation $ do
+      let originationParams = addAccount (wallet1, (commonOperator, 10))
+            defaultOriginationParams
+              { opPermissionsDescriptor = permissionDescriptorOperatorTransferDenied }
 
-    withOriginated alOriginate originationParams $ \al -> do
+      withOriginated alOriginate originationParams $ \al -> do
 
-      let operatorParam =
-            (#owner .! wallet1, #operator .! wallet2, #tokens .! All_tokens)
+        let operatorParam =
+              (#owner .! wallet1, #operator .! wallet2, #tokens .! All_tokens)
 
-      let addOperatorParam = Add_operator operatorParam
-      lCallEP al (Call @"Update_operators") [addOperatorParam]
-      validate $ Left (lExpectFailWith (const @_ @MText True))
+        let addOperatorParam = Add_operator operatorParam
+        lCallEP al (Call @"Update_operators") [addOperatorParam]
+        validate $ Left (lExpectFailWith (const @_ @MText True))
 
   -- FA2 Mandates that the entrypoints to check operator status should fail if
   -- operator transfer is denied in permissions descriptor.
@@ -428,7 +450,8 @@ fa2Spec alOriginate = do
   describe "Owner hook behavior on transfer" $ do
     it "calls sender's transfer hook on transfer" $ integrationalTestExpectation $ do
         senderWithHook <- lOriginateEmpty @FA2OwnerHook contractConsumer "Sender hook consumer"
-        let originationParams = addAccount (unTAddress senderWithHook, (commonOperator, 10)) defaultOriginationParams
+        let originationParams =
+              addAccount (unTAddress senderWithHook, (commonOperator, 10)) defaultOriginationParams
         withOriginated alOriginate originationParams $ \al -> do
           let
             transfers =
@@ -438,10 +461,12 @@ fa2Spec alOriginate = do
           withSender commonOperator $ lCallEP al (Call @"Transfer") transfers
 
           let expectedTransferDesc =
-               (#from .! Just (unTAddress senderWithHook), (#to .! Just wallet2, (#token_id .! 0, #amount .! 10)))
+               ( #from .! Just (unTAddress senderWithHook)
+               , (#to .! Just wallet2, (#token_id .! 0, #amount .! 10)))
 
           let expectedHookContractState =
-                Tokens_sent (#fa2 .! unTAddress al, (#batch .! [expectedTransferDesc], #operator .! commonOperator))
+                Tokens_sent ( #fa2 .! unTAddress al
+                            , (#batch .! [expectedTransferDesc], #operator .! commonOperator))
 
           validate . Right $
             lExpectViewConsumerStorage senderWithHook [expectedHookContractState]
@@ -453,17 +478,20 @@ fa2Spec alOriginate = do
         withOriginated alOriginate originationParams $ \al -> do
           let
             transfers =
-              [ (#from_ .! wallet1, (#to_ .! unTAddress receiverWithHook, (#token_id .! 0, #amount .! 10)))
+              [ ( #from_ .! wallet1
+                , (#to_ .! unTAddress receiverWithHook, (#token_id .! 0, #amount .! 10)))
               ]
 
           withSender commonOperator $ lCallEP al (Call @"Transfer") transfers
 
           let expectedTransferDesc =
-               (#from .! Just wallet1, (#to .! (Just $ unTAddress receiverWithHook), (#token_id .! 0, #amount .! 10)))
+               ( #from .! Just wallet1
+               , (#to .! (Just $ unTAddress receiverWithHook), (#token_id .! 0, #amount .! 10)))
 
           let expectedHookContractState
                 = Tokens_received
-                    (#fa2 .! unTAddress al, (#batch .! [expectedTransferDesc], #operator .! commonOperator))
+                    ( #fa2 .! unTAddress al
+                    , (#batch .! [expectedTransferDesc], #operator .! commonOperator))
 
           validate . Right $
             lExpectViewConsumerStorage receiverWithHook [expectedHookContractState]
@@ -473,12 +501,14 @@ fa2Spec alOriginate = do
       integrationalTestExpectation $ do
         senderWithHook <- lOriginateEmpty @FA2OwnerHook contractConsumer "Sender hook consumer"
         let originationParams = addAccount (unTAddress senderWithHook, (commonOperator, 10)) $
-              defaultOriginationParams { opPermissionsDescriptor = permissionDescriptorNoOpSenderHook }
+              defaultOriginationParams
+                { opPermissionsDescriptor = permissionDescriptorNoOpSenderHook }
 
         withOriginated alOriginate originationParams $ \al -> do
           let
             transfers =
-              [ (#from_ .! unTAddress senderWithHook, (#to_ .! wallet2, (#token_id .! 0, #amount .! 10)))
+              [ (#from_ .! unTAddress senderWithHook
+                , (#to_ .! wallet2, (#token_id .! 0, #amount .! 10)))
               ]
 
           withSender commonOperator $ lCallEP al (Call @"Transfer") transfers
@@ -494,16 +524,19 @@ fa2Spec alOriginate = do
         withOriginated alOriginate originationParams $ \al -> do
           let
             transfers =
-              [ (#from_ .! wallet1, (#to_ .! unTAddress receiverWithHook, (#token_id .! 0, #amount .! 10)))
+              [ (#from_ .! wallet1,
+                    (#to_ .! unTAddress receiverWithHook, (#token_id .! 0, #amount .! 10)))
               ]
 
           withSender commonOperator $ lCallEP al (Call @"Transfer") transfers
 
           let expectedTransferDesc =
-               (#from .! Just wallet1, (#to .! (Just $ unTAddress receiverWithHook) , (#token_id .! 0, #amount .! 10)))
+               (#from .! Just wallet1,
+                  (#to .! (Just $ unTAddress receiverWithHook) , (#token_id .! 0, #amount .! 10)))
 
           let expectedHookContractState
-                = Tokens_received (#fa2 .! unTAddress al, (#batch .! [expectedTransferDesc], #operator .! commonOperator))
+                = Tokens_received (#fa2 .! unTAddress al,
+                      (#batch .! [expectedTransferDesc], #operator .! commonOperator))
 
           validate . Right $
             lExpectViewConsumerStorage receiverWithHook [expectedHookContractState]

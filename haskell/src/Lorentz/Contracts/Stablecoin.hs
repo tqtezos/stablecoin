@@ -12,7 +12,6 @@ import Lorentz
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Spec.FA2Interface (OperatorTransferMode(..), OwnerTransferMode(..), SelfTransferMode(..))
 import qualified Lorentz as L
-import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Text.Show (Show)
 import Util.Named
 
