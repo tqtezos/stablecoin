@@ -10,4 +10,4 @@ LIGO = ligo
 
 # Compile LIGO contract into its michelson representation
 build-ligo:
-	$(LIGO) compile-contract stablecoin/core.ligo main
+	$(LIGO) compile-contract stablecoin/core.ligo main > ../out/stablecoin.tz

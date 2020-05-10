@@ -6,11 +6,11 @@
                 (pair %is_operator
                    (pair %operator
                       (address %owner)
-                      (pair (address %operator) (or %tokens (unit %all_tokens) (set %some_tokens nat))))
+                      (pair (address %operator) (or %tokens (unit %All_tokens) (set %Some_tokens nat))))
                    (contract %callback
                       (pair (pair %operator
                                (address %owner)
-                               (pair (address %operator) (or %tokens (unit %all_tokens) (set %some_tokens nat))))
+                               (pair (address %operator) (or %tokens (unit %All_tokens) (set %Some_tokens nat))))
                             (bool %is_operator)))))
             (or (contract %permissions_descriptor
                    (pair (or %self (unit %self_transfer_denied) (unit %self_transfer_permitted))
@@ -18,11 +18,11 @@
                                   (unit %operator_transfer_denied)
                                   (unit %operator_transfer_permitted))
                                (pair (or %receiver
-                                        (unit %owner_no_op)
-                                        (or (unit %optional_owner_hook) (unit %required_owner_hook)))
+                                        (unit %Owner_no_op)
+                                        (or (unit %Optional_owner_hook) (unit %Required_owner_hook)))
                                      (pair (or %sender
-                                              (unit %owner_no_op)
-                                              (or (unit %optional_owner_hook) (unit %required_owner_hook)))
+                                              (unit %Owner_no_op)
+                                              (or (unit %Optional_owner_hook) (unit %Required_owner_hook)))
                                            (option %custom (pair (string %tag) (option %config_api address))))))))
                 (pair %token_metadata
                    (list %token_ids nat)
@@ -38,10 +38,10 @@
             (list %update_operators
                (or (pair %add_operator
                       (address %owner)
-                      (pair (address %operator) (or %tokens (unit %all_tokens) (set %some_tokens nat))))
+                      (pair (address %operator) (or %tokens (unit %All_tokens) (set %Some_tokens nat))))
                    (pair %remove_operator
                       (address %owner)
-                      (pair (address %operator) (or %tokens (unit %all_tokens) (set %some_tokens nat)))))))) ;
+                      (pair (address %operator) (or %tokens (unit %All_tokens) (set %Some_tokens nat)))))))) ;
   storage
     (pair (pair (pair (bool %fields) (big_map %ledger address nat))
                 (pair (big_map %operators (pair address address) unit)
@@ -51,12 +51,12 @@
                                         (unit %operator_transfer_denied)
                                         (unit %operator_transfer_permitted)))
                                (pair (or %receiver
-                                        (unit %owner_no_op)
-                                        (or (unit %optional_owner_hook) (unit %required_owner_hook)))
+                                        (unit %Owner_no_op)
+                                        (or (unit %Optional_owner_hook) (unit %Required_owner_hook)))
                                      (or %self (unit %self_transfer_denied) (unit %self_transfer_permitted))))
                          (or %sender
-                            (unit %owner_no_op)
-                            (or (unit %optional_owner_hook) (unit %required_owner_hook))))))
+                            (unit %Owner_no_op)
+                            (or (unit %Optional_owner_hook) (unit %Required_owner_hook))))))
           (pair (pair %token_metadata
                    (pair (pair (nat %decimals) (map %extras string string))
                          (pair (string %name) (string %symbol)))
@@ -67,7 +67,7 @@
          DUP ;
          LAMBDA
            (pair (address %owner)
-                 (pair (address %operator) (or %tokens (unit %all_tokens) (set %some_tokens nat))))
+                 (pair (address %operator) (or %tokens (unit %All_tokens) (set %Some_tokens nat))))
            unit
            { SENDER ;
              DIG 1 ;
