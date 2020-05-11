@@ -12,8 +12,6 @@ STACK_DEV_OPTIONS = --fast --ghc-options -Wwarn --file-watch
 STACK_BUILD_MORE_OPTIONS = --test --bench --no-run-tests --no-run-benchmarks
 # Options for tests
 STACK_DEV_TEST_OPTIONS = --fast --ghc-options -Wwarn
-# Options for CI
-STACK_CI_TEST_OPTIONS = --fast --ghc-options -Werror
 # Addtional (specified by user) options passed to test executable
 TEST_ARGUMENTS ?= ""
 # Packages to apply the command (build, test, e.t.c) for.
@@ -34,8 +32,9 @@ build:
 test:
 	$(call call_test,"",$(STACK_DEV_TEST_OPTIONS))
 
+# TODO #20: remove it! We should do it differently (and actually run tests).
 test-ci:
-	$(call call_test,"",$(STACK_CI_TEST_OPTIONS))
+	stack test stablecoin --ghc-options -Werror --no-run-tests
 
 # Like 'test' command, but enforces dumb terminal which may be useful to
 # workardoung some issues with `tasty`.
