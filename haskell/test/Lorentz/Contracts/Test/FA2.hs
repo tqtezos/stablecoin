@@ -314,8 +314,13 @@ fa2Spec fa2Originate = do
         validate . Right $
           lExpectConsumerStorage consumer
             (\(tds :: [[TokenMetadata]]) -> case tds of
-                [[md1@(L.arg #token_id -> tid, _), md2]] -> if tid == 0 && md1 == md2 then Right () else Left $ CustomValidationError "Token metadata query returned unexpected token id"
-                _ -> Left $ CustomValidationError "Token metadata query returned list of unexpected length")
+                [[md1@(L.arg #token_id -> tid, _), md2]] ->
+                  if tid == 0 && md1 == md2
+                    then Right ()
+                    else Left $
+                      CustomValidationError "Token metadata query returned unexpected token id"
+                _ -> Left $
+                  CustomValidationError "Token metadata query returned list of unexpected length")
 
   -- Permission descriptor query
   describe "Permissions_descriptor entrypoint" $
