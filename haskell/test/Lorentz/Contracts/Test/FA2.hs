@@ -141,7 +141,7 @@ fa2Spec
   :: forall param. ParameterC param
   => OriginationFn param
   -> Spec
-fa2Spec alOriginate = do
+fa2Spec fa2Originate = do
   describe "Transfer entrypoint call by an operator" $ do
   -- Transfer tests or tests for core transfer behavior, as per FA2
     it "executes transfer the given order" $ integrationalTestExpectation $ do
@@ -151,7 +151,7 @@ fa2Spec alOriginate = do
               $ addAccount (wallet2, (commonOperator, 0))
               $ addAccount (wallet3, (commonOperator, 0))
               $ addAccount (wallet4, (commonOperator, 0)) defaultOriginationParams
-        withOriginated alOriginate originationParams $ \al -> do
+        withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
             transfers =
               [ (#from_ .! wallet1, (#to_ .! wallet2, (#token_id .! 0, #amount .! 10)))
@@ -160,7 +160,7 @@ fa2Spec alOriginate = do
               , (#from_ .! wallet4, (#to_ .! wallet5, (#token_id .! 0, #amount .! 10)))
               ]
 
-          withSender commonOperator $ lCallEP al (Call @"Transfer") transfers
+          withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
 
           consumer <- lOriginateEmpty @[BalanceResponseItem] contractConsumer "consumer"
           let
@@ -180,32 +180,32 @@ fa2Spec alOriginate = do
               , (#request .! (#owner .! wallet5, #token_id .! 0), #balance .! 10)
               ]
 
-          lCallEP al (Call @"Balance_of") balanceRequest
+          lCallEP fa2contract (Call @"Balance_of") balanceRequest
 
           validate . Right $
             lExpectViewConsumerStorage consumer [balanceExpected]
 
     it "Cannot transfer foreign money" $ integrationalTestExpectation $ do
       let originationParams = (addAccount (wallet1, (commonOperator, 10)) defaultOriginationParams)
-      withOriginated alOriginate originationParams $ \al -> do
+      withOriginated fa2Originate originationParams $ \fa2contract -> do
         let
           transfers =
             [ (#from_ .! wallet1, (#to_ .! wallet2, (#token_id .! 0, #amount .! 1)))
             ]
 
-        withSender wallet2 $ lCallEP al (Call @"Transfer") transfers
+        withSender wallet2 $ lCallEP fa2contract (Call @"Transfer") transfers
         validate $ Left (lExpectFailWith (const @_ @MText True))
 
     it "denies self transfer if set so in permissions descriptior" $ integrationalTestExpectation $ do
       let originationParams = addAccount (wallet1, (commonOperator, 10)) $
             defaultOriginationParams { opPermissionsDescriptor = permissionDescriptorSelfTransferDenied }
-      withOriginated alOriginate originationParams $ \al -> do
+      withOriginated fa2Originate originationParams $ \fa2contract -> do
         let
           transfers =
             [ (#from_ .! wallet1, (#to_ .! wallet2, (#token_id .! 0, #amount .! 1)))
             ]
 
-        withSender wallet1 $ lCallEP al (Call @"Transfer") transfers
+        withSender wallet1 $ lCallEP fa2contract (Call @"Transfer") transfers
         validate $ Left (lExpectFailWith (const @_ @MText True))
 
     it "denies operator transfer if set so in permissions descriptior" $
@@ -213,19 +213,19 @@ fa2Spec alOriginate = do
         let originationParams = addAccount (wallet1, (commonOperator, 10)) $
               defaultOriginationParams
                 { opPermissionsDescriptor = permissionDescriptorOperatorTransferDenied }
-        withOriginated alOriginate originationParams $ \al -> do
+        withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
             transfers =
               [ (#from_ .! wallet1, (#to_ .! wallet2, (#token_id .! 0, #amount .! 1)))
               ]
 
-          withSender commonOperator $ lCallEP al (Call @"Transfer") transfers
+          withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
           validate $ Left (lExpectFailWith (const @_ @MText True))
 
     it "aborts if there is a failure" $ integrationalTestExpectation $ do
       let originationParams = addAccount (wallet1, (commonOperator, 10)) defaultOriginationParams
       -- Tests transactions are applied atomically
-      withOriginated alOriginate originationParams $ \al -> do
+      withOriginated fa2Originate originationParams $ \fa2contract -> do
         let
           transfers =
             [ (#from_ .! wallet1, (#to_ .! wallet2, (#token_id .! 0, #amount .! 10)))
@@ -234,7 +234,7 @@ fa2Spec alOriginate = do
             , (#from_ .! wallet4, (#to_ .! wallet5, (#token_id .! 0, #amount .! 10)))
             ]
 
-        withSender commonOperator $ lCallEP al (Call @"Transfer") transfers
+        withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
 
         validate $ Left (lExpectFailWith (const @_ @MText True))
 
@@ -246,7 +246,7 @@ fa2Spec alOriginate = do
             addAccount (wallet3, (commonOperator, 30)) $
             addAccount (wallet4, (commonOperator, 40)) $
             addAccount (wallet5, (commonOperator, 50)) $ defaultOriginationParams
-      withOriginated alOriginate originationParams $ \al -> do
+      withOriginated fa2Originate originationParams $ \fa2contract -> do
         consumer <- lOriginateEmpty @[BalanceResponseItem] contractConsumer "consumer"
         let
           balanceRequestItems =
@@ -267,7 +267,7 @@ fa2Spec alOriginate = do
             , (#request .! (#owner .! wallet3, #token_id .! 0), #balance .! 30)
             ]
 
-        lCallEP al (Call @"Balance_of") balanceRequest
+        lCallEP fa2contract (Call @"Balance_of") balanceRequest
 
         validate . Right $
           lExpectViewConsumerStorage consumer [balanceExpected]
@@ -279,14 +279,14 @@ fa2Spec alOriginate = do
             addAccount (wallet3, (commonOperator, 30)) $
             addAccount (wallet4, (commonOperator, 40)) $
             addAccount (wallet5, (commonOperator, 50)) $ defaultOriginationParams
-      withOriginated alOriginate originationParams $ \al -> do
+      withOriginated fa2Originate originationParams $ \fa2contract -> do
         consumer <- lOriginateEmpty @[TotalSupplyResponse] contractConsumer "consumer"
         let
           totalSupplyRequest = mkView (#token_ids .! [0]) consumer
           result =
             [ (#token_id .! 0, #total_supply .! 150) ]
 
-        lCallEP al (Call @"Total_supply") totalSupplyRequest
+        lCallEP fa2contract (Call @"Total_supply") totalSupplyRequest
 
         validate . Right $
           lExpectViewConsumerStorage consumer [result]
@@ -294,10 +294,10 @@ fa2Spec alOriginate = do
   ---- Metadata tests
   describe "Metadata query entrypoint" $ do
     it "returns at least one items" $ integrationalTestExpectation $
-      withOriginated alOriginate defaultOriginationParams $ \al -> do
+      withOriginated fa2Originate defaultOriginationParams $ \fa2contract -> do
         consumer <- lOriginateEmpty @[TokenMetadata] contractConsumer "consumer"
         let tokenMetadataQuery = mkView (#token_ids .! [0]) consumer
-        lCallEP al (Call @"Token_metadata") tokenMetadataQuery
+        lCallEP fa2contract (Call @"Token_metadata") tokenMetadataQuery
 
         validate . Right $
           lExpectConsumerStorage consumer
@@ -306,10 +306,10 @@ fa2Spec alOriginate = do
                 _ -> Left $ CustomValidationError "Token metadata query returned list of unexpected length")
 
     it "returns at items without de-duplication when queries with duplicates" $ integrationalTestExpectation $
-      withOriginated alOriginate defaultOriginationParams $ \al -> do
+      withOriginated fa2Originate defaultOriginationParams $ \fa2contract -> do
         consumer <- lOriginateEmpty @[TokenMetadata] contractConsumer "consumer"
         let tokenMetadataQuery = mkView (#token_ids .! [0, 0]) consumer
-        lCallEP al (Call @"Token_metadata") tokenMetadataQuery
+        lCallEP fa2contract (Call @"Token_metadata") tokenMetadataQuery
 
         validate . Right $
           lExpectConsumerStorage consumer
@@ -320,10 +320,10 @@ fa2Spec alOriginate = do
   -- Permission descriptor query
   describe "Permissions_descriptor entrypoint" $
     it "is available" $ integrationalTestExpectation $
-      withOriginated alOriginate defaultOriginationParams $ \al -> do
+      withOriginated fa2Originate defaultOriginationParams $ \fa2contract -> do
         consumer <- lOriginateEmpty @PermissionsDescriptor contractConsumer "consumer"
         let permissionsDescriptorQuery = toContractRef consumer
-        lCallEP al (Call @"Permissions_descriptor") permissionsDescriptorQuery
+        lCallEP fa2contract (Call @"Permissions_descriptor") permissionsDescriptorQuery
 
         validate . Right $ expectAnySuccess
 
@@ -334,7 +334,7 @@ fa2Spec alOriginate = do
     it "adds operator, removes operator, and answer operator query as expected" $
       integrationalTestExpectation $ do
         let originationParams = addAccount (wallet1, (commonOperator, 10)) defaultOriginationParams
-        withOriginated alOriginate originationParams $ \al -> do
+        withOriginated fa2Originate originationParams $ \fa2contract -> do
 
           consumer <- lOriginateEmpty @IsOperatorResponse contractConsumer "consumer"
           withSender wallet1 $ do
@@ -342,10 +342,10 @@ fa2Spec alOriginate = do
                   (#owner .! wallet1, #operator .! wallet2, #tokens .! All_tokens)
 
             let addOperatorParam = Add_operator operatorParam
-            lCallEP al (Call @"Update_operators") [addOperatorParam]
+            lCallEP fa2contract (Call @"Update_operators") [addOperatorParam]
 
             let isOperatorQuery = mkView (#operator .! operatorParam) consumer
-            lCallEP al (Call @"Is_operator") isOperatorQuery
+            lCallEP fa2contract (Call @"Is_operator") isOperatorQuery
 
             offshoot "Confirm operator was added" $
               (validate . Right $
@@ -353,10 +353,10 @@ fa2Spec alOriginate = do
                   [(#operator .! operatorParam, #is_operator .! True)])
 
             let removeOperatorParam = Remove_operator operatorParam
-            lCallEP al (Call @"Update_operators") [removeOperatorParam]
+            lCallEP fa2contract (Call @"Update_operators") [removeOperatorParam]
             void $ validate . Right $ expectAnySuccess
 
-            lCallEP al (Call @"Is_operator") isOperatorQuery
+            lCallEP fa2contract (Call @"Is_operator") isOperatorQuery
             validate . Right $
               lExpectViewConsumerStorage
                 consumer
@@ -373,52 +373,52 @@ fa2Spec alOriginate = do
   describe "Configure operators entrypoint" $
     it "denies addOperator call for non-owners" $ integrationalTestExpectation $ do
       let originationParams = addAccount (wallet1, (commonOperator, 10)) defaultOriginationParams
-      withOriginated alOriginate originationParams $ \al -> do
+      withOriginated fa2Originate originationParams $ \fa2contract -> do
 
         withSender wallet2 $ do
           let operatorParam =
                 (#owner .! wallet1, #operator .! wallet2, #tokens .! All_tokens)
 
           let addOperatorParam = Add_operator operatorParam
-          lCallEP al (Call @"Update_operators") [addOperatorParam]
+          lCallEP fa2contract (Call @"Update_operators") [addOperatorParam]
 
           validate $ Left (lExpectFailWith (const @_ @MText True))
 
   it "denies removeOperator call for non-owners" $ integrationalTestExpectation $ do
     let originationParams = addAccount (wallet1, (commonOperator, 10)) defaultOriginationParams
-    withOriginated alOriginate originationParams $ \al -> do
+    withOriginated fa2Originate originationParams $ \fa2contract -> do
 
       withSender wallet2 $ do
         let operatorParam =
               (#owner .! wallet1, #operator .! commonOperator, #tokens .! All_tokens)
 
         let removeOperatorParam = Remove_operator operatorParam
-        lCallEP al (Call @"Update_operators") [removeOperatorParam]
+        lCallEP fa2contract (Call @"Update_operators") [removeOperatorParam]
         validate $ Left (lExpectFailWith (const @_ @MText True))
 
   it "denies addOperator for operators" $ integrationalTestExpectation $ do
     let originationParams = addAccount (wallet1, (commonOperator, 10)) defaultOriginationParams
-    withOriginated alOriginate originationParams $ \al -> do
+    withOriginated fa2Originate originationParams $ \fa2contract -> do
 
       withSender commonOperator $ do
         let operatorParam =
               (#owner .! wallet1, #operator .! wallet2, #tokens .! All_tokens)
 
         let addOperatorParam = Add_operator operatorParam
-        lCallEP al (Call @"Update_operators") [addOperatorParam]
+        lCallEP fa2contract (Call @"Update_operators") [addOperatorParam]
 
         validate $ Left (lExpectFailWith (const @_ @MText True))
 
   it "denies removeOperator for operators" $ integrationalTestExpectation $ do
     let originationParams = addAccount (wallet1, (commonOperator, 10)) defaultOriginationParams
-    withOriginated alOriginate originationParams $ \al -> do
+    withOriginated fa2Originate originationParams $ \fa2contract -> do
 
       withSender commonOperator $ do
         let operatorParam =
               (#owner .! wallet1, #operator .! commonOperator, #tokens .! All_tokens)
 
         let removeOperatorParam = Remove_operator operatorParam
-        lCallEP al (Call @"Update_operators") [removeOperatorParam]
+        lCallEP fa2contract (Call @"Update_operators") [removeOperatorParam]
         validate $ Left (lExpectFailWith (const @_ @MText True))
 
   -- FA2 Mandates that the entrypoints to configure operators should fail if
@@ -429,13 +429,13 @@ fa2Spec alOriginate = do
             defaultOriginationParams
               { opPermissionsDescriptor = permissionDescriptorOperatorTransferDenied }
 
-      withOriginated alOriginate originationParams $ \al -> do
+      withOriginated fa2Originate originationParams $ \fa2contract -> do
 
         let operatorParam =
               (#owner .! wallet1, #operator .! wallet2, #tokens .! All_tokens)
 
         let addOperatorParam = Add_operator operatorParam
-        lCallEP al (Call @"Update_operators") [addOperatorParam]
+        lCallEP fa2contract (Call @"Update_operators") [addOperatorParam]
         validate $ Left (lExpectFailWith (const @_ @MText True))
 
   -- FA2 Mandates that the entrypoints to check operator status should fail if
@@ -446,14 +446,14 @@ fa2Spec alOriginate = do
           defaultOriginationParams
             { opPermissionsDescriptor = permissionDescriptorOperatorTransferDenied }
 
-    withOriginated alOriginate originationParams $ \al -> do
+    withOriginated fa2Originate originationParams $ \fa2contract -> do
 
       consumer <- lOriginateEmpty @IsOperatorResponse contractConsumer "consumer"
       let operatorParam =
             (#owner .! wallet1, #operator .! wallet2, #tokens .! All_tokens)
 
       let isOperatorQuery = mkView (#operator .! operatorParam) consumer
-      lCallEP al (Call @"Is_operator") isOperatorQuery
+      lCallEP fa2contract (Call @"Is_operator") isOperatorQuery
       validate $ Left (lExpectFailWith (const @_ @MText True))
 
   ---- Owner hooks test
@@ -466,20 +466,20 @@ fa2Spec alOriginate = do
         senderWithHook <- lOriginateEmpty @FA2OwnerHook contractConsumer "Sender hook consumer"
         let originationParams =
               addAccount (unTAddress senderWithHook, (commonOperator, 10)) defaultOriginationParams
-        withOriginated alOriginate originationParams $ \al -> do
+        withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
             transfers =
               [ (#from_ .! unTAddress senderWithHook, (#to_ .! wallet2, (#token_id .! 0, #amount .! 10)))
               ]
 
-          withSender commonOperator $ lCallEP al (Call @"Transfer") transfers
+          withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
 
           let expectedTransferDesc =
                ( #from .! Just (unTAddress senderWithHook)
                , (#to .! Just wallet2, (#token_id .! 0, #amount .! 10)))
 
           let expectedHookContractState =
-                Tokens_sent ( #fa2 .! unTAddress al
+                Tokens_sent ( #fa2 .! unTAddress fa2contract
                             , (#batch .! [expectedTransferDesc], #operator .! commonOperator))
 
           validate . Right $
@@ -489,14 +489,14 @@ fa2Spec alOriginate = do
       integrationalTestExpectation $ do
         receiverWithHook <- lOriginateEmpty @FA2OwnerHook contractConsumer "Receiver hook consumer"
         let originationParams = addAccount (wallet1, (commonOperator, 10)) defaultOriginationParams
-        withOriginated alOriginate originationParams $ \al -> do
+        withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
             transfers =
               [ ( #from_ .! wallet1
                 , (#to_ .! unTAddress receiverWithHook, (#token_id .! 0, #amount .! 10)))
               ]
 
-          withSender commonOperator $ lCallEP al (Call @"Transfer") transfers
+          withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
 
           let expectedTransferDesc =
                ( #from .! Just wallet1
@@ -504,7 +504,7 @@ fa2Spec alOriginate = do
 
           let expectedHookContractState
                 = Tokens_received
-                    ( #fa2 .! unTAddress al
+                    ( #fa2 .! unTAddress fa2contract
                     , (#batch .! [expectedTransferDesc], #operator .! commonOperator))
 
           validate . Right $
@@ -518,14 +518,14 @@ fa2Spec alOriginate = do
               defaultOriginationParams
                 { opPermissionsDescriptor = permissionDescriptorNoOpSenderHook }
 
-        withOriginated alOriginate originationParams $ \al -> do
+        withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
             transfers =
               [ (#from_ .! unTAddress senderWithHook
                 , (#to_ .! wallet2, (#token_id .! 0, #amount .! 10)))
               ]
 
-          withSender commonOperator $ lCallEP al (Call @"Transfer") transfers
+          withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
 
           validate . Right $
             lExpectViewConsumerStorage senderWithHook []
@@ -535,21 +535,21 @@ fa2Spec alOriginate = do
         receiverWithHook <- lOriginateEmpty @FA2OwnerHook contractConsumer "Receiver hook consumer"
         let originationParams = addAccount (wallet1, (commonOperator, 10)) $ defaultOriginationParams
                 { opPermissionsDescriptor = permissionDescriptorNoOpReceiverHook }
-        withOriginated alOriginate originationParams $ \al -> do
+        withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
             transfers =
               [ (#from_ .! wallet1,
                     (#to_ .! unTAddress receiverWithHook, (#token_id .! 0, #amount .! 10)))
               ]
 
-          withSender commonOperator $ lCallEP al (Call @"Transfer") transfers
+          withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
 
           let expectedTransferDesc =
                (#from .! Just wallet1,
                   (#to .! (Just $ unTAddress receiverWithHook) , (#token_id .! 0, #amount .! 10)))
 
           let expectedHookContractState
-                = Tokens_received (#fa2 .! unTAddress al,
+                = Tokens_received (#fa2 .! unTAddress fa2contract,
                       (#batch .! [expectedTransferDesc], #operator .! commonOperator))
 
           validate . Right $
@@ -561,14 +561,14 @@ fa2Spec alOriginate = do
         senderWithHook <- lOriginateEmpty @() contractConsumer "Sender hook consumer"
         let originationParams = addAccount (unTAddress senderWithHook, (commonOperator, 10)) $
               defaultOriginationParams { opPermissionsDescriptor = permissionDescriptorReqSenderHook }
-        withOriginated alOriginate originationParams $ \al -> do
+        withOriginated fa2Originate originationParams $ \fa2contract -> do
 
           let
             transfers =
               [ (#from_ .! unTAddress senderWithHook, (#to_ .! wallet2, (#token_id .! 0, #amount .! 10)))
               ]
 
-          withSender commonOperator $ lCallEP al (Call @"Transfer") transfers
+          withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
 
           validate $ Left (lExpectFailWith (const @_ @MText True))
 
@@ -578,11 +578,11 @@ fa2Spec alOriginate = do
         let originationParams = addAccount (wallet1, (commonOperator, 10)) $
               defaultOriginationParams { opPermissionsDescriptor = permissionDescriptorReqReceiverHook }
 
-        withOriginated alOriginate originationParams $ \al -> do
+        withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
             transfers =
               [ (#from_ .! wallet1, (#to_ .! unTAddress receiverWithHook, (#token_id .! 0, #amount .! 10)))
               ]
 
-          withSender commonOperator $ lCallEP al (Call @"Transfer") transfers
+          withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
           validate $ Left (lExpectFailWith (const @_ @MText True))
