@@ -27,13 +27,6 @@ library:
   dependencies:
     - morley-prelude
 
-executables:
-  stablecoin:
-    <<: *exec-common
-
-    dependencies:
-      - morley-prelude
-
 tests:
   stablecoin-test:
     <<: *test-common
