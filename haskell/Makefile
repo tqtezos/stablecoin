@@ -3,6 +3,9 @@
 
 .PHONY: build test test-ci haddock haddock-no-deps stylish lint clean all
 
+LIGO_DIR = ../ligo/
+MAKE_LIGO = $(MAKE) -C $(LIGO_DIR)
+
 # Options for development
 STACK_DEV_OPTIONS = --fast --ghc-options -Wwarn --file-watch
 # Options to build more stuff (tests and benchmarks)
@@ -17,6 +20,9 @@ TEST_ARGUMENTS ?= ""
 PACKAGE = stablecoin
 
 define call_test
+	$(MAKE_LIGO) stablecoin.tz
+	mkdir -p test/resources
+	ln -sf "$(PWD)/$(LIGO_DIR)/stablecoin.tz" "test/resources/stablecoin.tz"
 	stack test $(PACKAGE) \
 		--test-arguments "--color always $(TEST_ARGUMENTS) $1" $2
 endef
@@ -42,9 +48,6 @@ test-dumb-term:
 test-hide-successes:
 	TERM=dumb $(call call_test,"--hide-successes",$(STACK_DEV_TEST_OPTIONS))
 
-test-ligo:
-	$(LIGO) run-function ligo/stablecoin-test.ligo test "()"
-
 # Run haddock for all packages.
 haddock:
 	stack haddock $(STACK_DEV_OPTIONS) $(PACKAGE)
@@ -61,3 +64,4 @@ lint:
 
 clean:
 	stack clean $(PACKAGE)
+	rm -f stablecoin.tz

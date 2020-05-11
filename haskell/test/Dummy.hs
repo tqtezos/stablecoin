@@ -2,15 +2,14 @@
 -- SPDX-License-Identifier: MIT
 
 module Dummy
-  ( test_dummy
+  ( unit_dummy
   ) where
 
-import Test.HUnit ((@?=))
-import Test.Tasty (TestTree)
-import Test.Tasty.HUnit (assertBool, testCase)
+import Test.HUnit (Assertion)
 
-test_dummy :: [TestTree]
-test_dummy = [ testCase "always true" $ do
-    (2 :: Integer) + (2 :: Integer) @?= (4 :: Integer)
-    assertBool "the list is empty" $ null []
-    ("foo" :: String) @?= ("foo" :: String)]
+import Michelson.Test (importUntypedContract)
+
+-- Check that "stablecoin.tz" exists and can be parsed.
+unit_dummy :: Assertion
+unit_dummy = do
+  void $ importUntypedContract "test/resources/stablecoin.tz"

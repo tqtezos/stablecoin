@@ -12,3 +12,5 @@ TAGS
 
 # We ignore Michelson files in `ligo/` directory because they are auto-generated.
 /ligo/*.tz
+# We also ignore them in `haskell/test/resources/` because they are symlinked for tests.
+/haskell/test/resources/*.tz
