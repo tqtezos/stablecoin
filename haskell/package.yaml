@@ -21,9 +21,6 @@ verbatim:
 library:
   <<: *lib-common
 
-  default-extensions:
-    - RebindableSyntax
-
   dependencies:
     - morley-prelude
 
