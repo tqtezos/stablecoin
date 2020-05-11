@@ -1,16 +1,17 @@
 # SPDX-FileCopyrightText: 2020 tqtezos
 # SPDX-License-Identifier: MIT
 
-.PHONY: build-ligo test-ligo
-
-.DEFAULT_GOAL = test-ligo
-
 # Ligo executable
-LIGO = docker run ligolang/ligo:next
+LIGO ?= ligo
+
+# All files with `.ligo` extension are considered source files.
+# Recompilation will be triggered only if they are changed.
+sources = *.ligo
 
 # Compile LIGO contract into its michelson representation
-build-ligo:
-	$(LIGO) compile-contract ligo/stablecoin.ligo main
+stablecoin.tz: $(sources)
+	$(LIGO) compile-contract --syntax pascaligo stablecoin.ligo main > stablecoin.tz
 
-test-ligo:
-	$(LIGO) run-function ligo/stablecoin-test.ligo test "()"
+.PHONY: clean
+clean:
+	rm -f *.tz

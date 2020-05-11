@@ -9,3 +9,6 @@ TAGS
 
 # hpack
 **/*.cabal
+
+# We ignore Michelson files in `ligo/` directory because they are auto-generated.
+/ligo/*.tz
