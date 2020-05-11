@@ -1,0 +1,32 @@
+{
+    "haskell.nix": {
+        "branch": "master",
+        "description": "Alternative Haskell Infrastructure for Nixpkgs",
+        "homepage": "https://input-output-hk.github.io/haskell.nix",
+        "owner": "input-output-hk",
+        "repo": "haskell.nix",
+        "rev": "af10907a11fd00e9ca7f108198200e7beedc0974",
+        "sha256": "171ikxsgvihqn8grpg8pz6g75fhmczsl0bfivhfaqvqynqpivinj",
+        "type": "tarball",
+        "url": "https://github.com/input-output-hk/haskell.nix/archive/af10907a11fd00e9ca7f108198200e7beedc0974.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "ligo": {
+        "ref": "dev",
+        "repo": "https://gitlab.com/ligolang/ligo",
+        "rev": "599944343d117de1fd929aa77134d5ef3ecbd479",
+        "type": "git"
+    },
+    "nixpkgs": {
+        "branch": "master",
+        "description": "Pinned Nixpkgs tree (master follows nixos-unstable-small, only tags have stable history)",
+        "homepage": "",
+        "owner": "serokell",
+        "repo": "nixpkgs",
+        "rev": "6951747f4f4e9e27580150eb91587af94e41640d",
+        "sha256": "03rl26632vrbpqfbdvrkbh8gfvn6na5dq8k16xib723gf1p1xd3l",
+        "type": "tarball",
+        "url": "https://github.com/serokell/nixpkgs/archive/6951747f4f4e9e27580150eb91587af94e41640d.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    }
+}
