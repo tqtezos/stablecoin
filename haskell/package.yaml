@@ -21,18 +21,8 @@ verbatim:
 library:
   <<: *lib-common
 
-  default-extensions:
-    - RebindableSyntax
-
   dependencies:
     - morley-prelude
-
-executables:
-  stablecoin:
-    <<: *exec-common
-
-    dependencies:
-      - morley-prelude
 
 tests:
   stablecoin-test:
@@ -40,6 +30,7 @@ tests:
 
     dependencies:
       - HUnit
+      - morley
       - morley-prelude
       - tasty
       - tasty-hunit-compat

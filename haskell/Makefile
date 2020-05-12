@@ -1,7 +1,10 @@
 # SPDX-FileCopyrightText: 2020 tqtezos
 # SPDX-License-Identifier: MIT
 
-.PHONY: build test test-ci haddock haddock-no-deps stylish lint clean all
+.PHONY: build test test-dumb-term test-hide-successes haddock haddock-no-deps stylish lint clean all
+
+LIGO_DIR = ../ligo/
+MAKE_LIGO = $(MAKE) -C $(LIGO_DIR)
 
 # Options for development
 STACK_DEV_OPTIONS = --fast --ghc-options -Wwarn --file-watch
@@ -9,14 +12,15 @@ STACK_DEV_OPTIONS = --fast --ghc-options -Wwarn --file-watch
 STACK_BUILD_MORE_OPTIONS = --test --bench --no-run-tests --no-run-benchmarks
 # Options for tests
 STACK_DEV_TEST_OPTIONS = --fast --ghc-options -Wwarn
-# Options for CI
-STACK_CI_TEST_OPTIONS = --fast --ghc-options -Werror
 # Addtional (specified by user) options passed to test executable
 TEST_ARGUMENTS ?= ""
 # Packages to apply the command (build, test, e.t.c) for.
 PACKAGE = stablecoin
 
 define call_test
+	$(MAKE_LIGO) stablecoin.tz
+	mkdir -p test/resources
+	ln -sf "$(PWD)/$(LIGO_DIR)/stablecoin.tz" "test/resources/stablecoin.tz"
 	stack test $(PACKAGE) \
 		--test-arguments "--color always $(TEST_ARGUMENTS) $1" $2
 endef
@@ -28,9 +32,6 @@ build:
 test:
 	$(call call_test,"",$(STACK_DEV_TEST_OPTIONS))
 
-test-ci:
-	$(call call_test,"",$(STACK_CI_TEST_OPTIONS))
-
 # Like 'test' command, but enforces dumb terminal which may be useful to
 # workardoung some issues with `tasty`.
 # Primarily this one: https://github.com/feuerbach/tasty/issues/152
@@ -41,9 +42,6 @@ test-dumb-term:
 # because otherwise this option is likely to work incorrectly.
 test-hide-successes:
 	TERM=dumb $(call call_test,"--hide-successes",$(STACK_DEV_TEST_OPTIONS))
-
-test-ligo:
-	$(LIGO) run-function ligo/stablecoin-test.ligo test "()"
 
 # Run haddock for all packages.
 haddock:
@@ -61,3 +59,4 @@ lint:
 
 clean:
 	stack clean $(PACKAGE)
+	rm -f stablecoin.tz

@@ -813,7 +813,7 @@ Parameter (in Michelson): `contract address`.
 
 [FA2]: https://gitlab.com/tzip/tzip/-/blob/131b46dd89675bf030489ded9b0b3f5834b70eb6/proposals/tzip-12/tzip-12.md
 
-### Safelist
+## Safelist update
 
 **set_safelist**
 

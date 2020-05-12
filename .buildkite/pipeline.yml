@@ -13,8 +13,12 @@ steps:
  - command: "nix run -f https://github.com/serokell/xrefcheck/archive/b54c38d91bd45e5c402ebf51d68c653faf959c2c.tar.gz -c xrefcheck"
    label: xrefcheck
    soft_fail: true
- - commands:
-   - nix-shell --run "make test-ci" haskell/shell.nix
-   - echo +++ Weeder
-   - nix-shell --run "nix run nixpkgs.haskellPackages.weeder -c weeder haskell/" haskell/shell.nix
-   label: test && weeder
+ - label: build library
+   command: nix build -L -f. lib
+ - label: test
+   commands:
+     - nix build -L -f. test
+     - cd result
+     - ./bin/stablecoin-test
+ - label: check LIGO contract
+   command: nix build -L -f. tezos-contract

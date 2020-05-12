@@ -1,5 +1,9 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 
-Files: .github/*
+Files: .github/* nix/sources.json
 Copyright: 2020 tqtezos
+License: MIT
+
+Files: nix/sources.nix
+Copyright: Nicolas Mattia <https://nmattia.com>
 License: MIT

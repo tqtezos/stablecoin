@@ -1,26 +1,23 @@
 # SPDX-FileCopyrightText: 2020 tqtezos
 # SPDX-License-Identifier: MIT
 
-.PHONY: build-haskell build-ligo test test-ci haddock haddock-no-deps stylish lint clean all
-
-.DEFAULT_GOAL = test-ligo
+.PHONY: all build-ligo build-haskell test test-dumb-term test-hide-successes clean
 
 MAKE_HASKELL = $(MAKE) -C haskell/
 MAKE_LIGO = $(MAKE) -C ligo/
+
+all: build-ligo build-haskell
+
+# Compile LIGO contract into its michelson representation
+build-ligo:
+	$(MAKE_LIGO) stablecoin.tz
 
 # Build everything haskell-related (including tests and benchmarks) with development options.
 build-haskell:
 	$(MAKE_HASKELL) build
 
-# Compile LIGO contract into its michelson representation
-build-ligo:
-	$(MAKE_LIGO) build-ligo
-
 test:
 	$(MAKE_HASKELL) test
-
-test-ci:
-	$(MAKE_HASKELL) test-ci
 
 test-dumb-term:
 	$(MAKE_HASKELL) test-dumb-term
@@ -28,5 +25,6 @@ test-dumb-term:
 test-hide-successes:
 	$(MAKE_HASKELL) test-hide-sucesses
 
-test-ligo:
-	$(MAKE_LIGO) test-ligo
+clean:
+	$(MAKE_HASKELL) clean
+	$(MAKE_LIGO) clean
