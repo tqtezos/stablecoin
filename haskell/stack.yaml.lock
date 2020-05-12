@@ -53,6 +53,22 @@ packages:
     git: https://gitlab.com/morley-framework/morley.git
     commit: 6312d72e8bb725a2d67a2d2b4079f912de0cc093
 - completed:
+    subdir: code/morley-client
+    cabal-file:
+      size: 5684
+      sha256: 0951d7a3524d3388ec984a082c292383ee2c70073fbb497ae3c2f10e4793e532
+    name: morley-client
+    version: 0.1.0
+    git: https://gitlab.com/morley-framework/morley.git
+    pantry-tree:
+      size: 1819
+      sha256: dd06b7757b7679a7e27d97906ba65b3f3f42a74e3ecaceaa183a0ac50665e342
+    commit: 6312d72e8bb725a2d67a2d2b4079f912de0cc093
+  original:
+    subdir: code/morley-client
+    git: https://gitlab.com/morley-framework/morley.git
+    commit: 6312d72e8bb725a2d67a2d2b4079f912de0cc093
+- completed:
     hackage: morley-prelude-0.3.0@sha256:9e9473ac14cfa206adf0a3700764c0251de05042f1fe45daf9cb8556079ae663,2085
     pantry-tree:
       size: 270
