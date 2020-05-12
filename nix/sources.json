@@ -14,7 +14,7 @@
     "ligo": {
         "ref": "dev",
         "repo": "https://gitlab.com/ligolang/ligo",
-        "rev": "82b3d634c1ff81b611f2779ee382a8ee8adf3af9",
+        "rev": "599944343d117de1fd929aa77134d5ef3ecbd479",
         "type": "git"
     },
     "nixpkgs": {
