@@ -26,79 +26,6 @@ These specifications were assembled with the following references:
 - The token contract should reject transfers with non-zero XTZ AMOUNT (when someone calls the contract with non-zero amount).
 The reason is that there is no way to spend XTZ owned by the contract.
 
-# FA2 Specifics
-
-FA2 provides a framework for defining permission policies, but does not require any particular policy.
-Moreover, it suggests an approach where permission logic is defined in a different contract and the token contract can dynamically change the policy.
-For the Stablecoin project we need to answer several questions:
-
-1. FA2 recommends the "transfer hook" design pattern, as opposed to implementing a monolithic contract.
-Are there any requirements whether the stablecoin contract should be monolithic or follow this pattern (i. e. have `set_transfer_hook`)?
-2. For a monolithic contract: which permission policy should we implement?
-Should the whole policy or at least some part of it be hardcoded?
-E. g. can we assume that self transfer will always be permitted and there will be no custom policy?
-What about other policies?
-3. For a modular (non-monolithic) contract: what exactly should be implemented by us and put into the repository?
-Should we implement any particular `transfer_hook`?
-If we should, the questions from (2) apply here.
-4. Should we implement any `owner_hook`?
-5. The FA2 standard does not specify who is permitted to update operators on behalf of the token owner.
-Who should be allowed to do it in this project?
-
-Overall, the response from TQ was that there are no strict requirements and we should pick the best approaches from the business logic.
-At the early development stage we propose the following:
-1. We will implement both options (starting from the monolithic one because it's simpler), measure gas costs and then will decide what is better.
-The "transfer hook" approach is recommended, but may be infeasible due to gas costs.
-2. We will implement a single permission policy (as part of the token contract or as a separate transfer_hook – that depends on the previous point).
- + Self transfer is permitted as well as operator transfer.
- + Owner transfer policy for both sender and receiver is `Optional_owner_hook`.
- + No custom permission policy.
-3. We will not implement any `owner_hook`.
-The contract is usable without them because we stick to `Optional_owner_hook`.
-
-Regarding `update_operators` we will stick to the following logic:
-1. In each `update_operator` item `owner` MUST be equal to `SENDER`.
-2. Each address can have arbitrary number of operators.
-
-One more uncertainty is related to the `token_metadata` entrypoint: whether metadata is constant or can be changed during contract's lifetime.
-We assume that token metadata stays constant forever.
-
-Note: these decisions may change as the project moves forward.
-
-# Questions
-
-1. How many addresses can be assigned to each role?
-We have made some assumptions, see the [Roles](#roles) section below, please check them.
-For non-unique roles: is there an upper limit on the number of addresses?
-For unique roles: can there be no address with a certain role (e. g. no pauser)?
-2. Can one address have more than one role?
-3. Are any getter entrypoints not present in FA2 required?
-Should they be `void` or `view`?
-Note that the contract will have storage annotations and each getter entrypoint increases contract's size and gas costs.
-At this point it's hard to predict whether we will have issues with the contract's size and gas costs since we've never used LIGO, but it's quite likely that we will.
-
-# Differences with CENTRE
-
-The stablecoin contract is based on the CENTRE fiat token design, but diverges from it in several aspects:
-1. CENTRE token implements the ERC-20 interface.
-Tezos version of it is FA1.2.
-The stablecoin contract does not implement the FA1.2 interface, it implements the FA2 interface.
-2. Since the names in FA2 are snake\_cased, the names in the stablecoin contract also snake\_cased.
-3. FA2 uses the word "owner" to refer to the address that owns some tokens.
-At the same time, CENTRE calls the central entity who can manage roles the "owner".
-It leads to ambiguity, but the meaning of the word "owner" should be clear from the context.
-To eliminate this ambiguity we use two terms:
-  * "contract owner" is the central entity that owns the whole contract;
-  * "token owner" is the entity that holds some tokens.
-4. `mint` and `burn` entrypoints take lists of pairs/amounts respectively.
-They follow FA2 style where most entrypoints operate on lists.
-In CENTRE they take a single item (a pair or an amount).
-5. `configure_minter` takes an additional argument – current minting allowance – to prevent front-running attacks.
-6. CENTRE does not have `update_operator`, the closest analog is `approve`, but it does not explicitly say whether `approve` is paused by `pause`.
-In this contract `update_operator` IS paused.
-7. CENTRE defines the `blacklister` role and blacklisting is part of the CENTRE Fiat Token contract.
-Our project is different: whitelisting and blacklisting are offloaded to a separate [`Safelist` contract](#safelist).
-
 # State model
 
 This chapter provides a high-level overview of the contract's state.
@@ -130,7 +57,6 @@ CENTRE Fiat Token specification. These roles apply to the whole contract
   - Minting allowance is stored locally within the address
     allowing for multiple minters creating and destroying tokens.
   - There can be any number of minters.
-<!-- TODO: clarify with the customer whether there is an upper limit -->
 
 * **pauser**
   - Can pause transferring, burning and minting operations.
@@ -764,5 +690,82 @@ Parameter (in Michelson): `option address`.
 - If the address does not have any entrypoint listed in the [`Safelist`](#safelist) specification, this call MUST fail.
 
 - Sender must be contract owner.
+
+# Rationale and design considerations
+
+Design decisions outside of FA2 scope:
+1. For three central roles (contract owner, master minter and pauser) we require that exactly one address has each of these roles.
+One can use a multisig contract if they want some role to be managed by multiple parties.
+The only role that can be assigned to multiple parties is minter because different minters can have different minting allowances and it can't be captured by a general multisig contract.
+2. One address can have multiple roles because in practice people may not need this granularity and just let one address do all administrative operations.
+3. Contract owner role can be transferred only in two steps and requires the new contract owner to accept new privileges.
+That's done to avoid accidental loss of control when this role is transferred to a wrong address.
+Other roles are transferred in one call because wrong transfer can be fixed by the contract owner.
+4. There are no getter entrypoints beside those required by FA2.
+At this point it seems unlikely that any other contract may need to call this token contract on chain.
+And for off-chain access we require storage to be annotated and well-documented so that users can read data from it directly.
+
+In the following subsection we discuss and present design decisions regarding FA2 specifics.
+
+## FA2 Specifics
+
+FA2 provides a framework for defining permission policies, but does not require any particular policy.
+Moreover, it suggests an approach where permission logic is defined in a different contract and the token contract can dynamically change the policy.
+For the Stablecoin project we need to answer several questions:
+
+1. FA2 recommends the "transfer hook" design pattern, as opposed to implementing a monolithic contract.
+Are there any requirements whether the stablecoin contract should be monolithic or follow this pattern (i. e. have `set_transfer_hook`)?
+2. For a monolithic contract: which permission policy should we implement?
+Should the whole policy or at least some part of it be hardcoded?
+E. g. can we assume that self transfer will always be permitted and there will be no custom policy?
+What about other policies?
+3. For a modular (non-monolithic) contract: what exactly should be implemented by us and put into the repository?
+Should we implement any particular `transfer_hook`?
+If we should, the questions from (2) apply here.
+4. Should we implement any `owner_hook`?
+5. The FA2 standard does not specify who is permitted to update operators on behalf of the token owner.
+Who should be allowed to do it in this project?
+
+Overall, the response from TQ was that there are no strict requirements and we should pick the best approaches from the business logic.
+At the early development stage we propose the following:
+1. We will implement both options (starting from the monolithic one because it's simpler), measure gas costs and then will decide what is better.
+The "transfer hook" approach is recommended, but may be infeasible due to gas costs.
+2. We will implement a single permission policy (as part of the token contract or as a separate transfer_hook – that depends on the previous point).
+ + Self transfer is permitted as well as operator transfer.
+ + Owner transfer policy for both sender and receiver is `Optional_owner_hook`.
+ + No custom permission policy.
+3. We will not implement any `owner_hook`.
+The contract is usable without them because we stick to `Optional_owner_hook`.
+
+Regarding `update_operators` we will stick to the following logic:
+1. In each `update_operator` item `owner` MUST be equal to `SENDER`.
+2. Each address can have arbitrary number of operators.
+
+One more uncertainty is related to the `token_metadata` entrypoint: whether metadata is constant or can be changed during contract's lifetime.
+We assume that token metadata stays constant forever.
+
+Note: these decisions may change as the project moves forward.
+
+## Differences with CENTRE
+
+The stablecoin contract is based on the CENTRE fiat token design, but diverges from it in several aspects:
+1. CENTRE token implements the ERC-20 interface.
+Tezos version of it is FA1.2.
+The stablecoin contract does not implement the FA1.2 interface, it implements the FA2 interface.
+2. Since the names in FA2 are snake\_cased, the names in the stablecoin contract also snake\_cased.
+3. FA2 uses the word "owner" to refer to the address that owns some tokens.
+At the same time, CENTRE calls the central entity who can manage roles the "owner".
+It leads to ambiguity, but the meaning of the word "owner" should be clear from the context.
+To eliminate this ambiguity we use two terms:
+  * "contract owner" is the central entity that owns the whole contract;
+  * "token owner" is the entity that holds some tokens.
+4. `mint` and `burn` entrypoints take lists of pairs/amounts respectively.
+They follow FA2 style where most entrypoints operate on lists.
+In CENTRE they take a single item (a pair or an amount).
+5. `configure_minter` takes an additional argument – current minting allowance – to prevent front-running attacks.
+6. CENTRE does not have `update_operator`, the closest analog is `approve`, but it does not explicitly say whether `approve` is paused by `pause`.
+In this contract `update_operator` IS paused.
+7. CENTRE defines the `blacklister` role and blacklisting is part of the CENTRE Fiat Token contract.
+Our project is different: whitelisting and blacklisting are offloaded to a separate [`Safelist` contract](#safelist).
 
 [FA2]: https://gitlab.com/tzip/tzip/-/blob/131b46dd89675bf030489ded9b0b3f5834b70eb6/proposals/tzip-12/tzip-12.md
