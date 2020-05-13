@@ -88,6 +88,26 @@ Required `Safelist` entrypoints:
 
 # Entrypoints
 
+Full list:
+* [`transfer`](#transfer)
+* [`balance_of`](#balance_of)
+* [`total_supply`](#total_supply)
+* [`token_metadata`](#token_metadata)
+* [`permissions_descriptor`](#permissions_descriptor)
+* [`update_operators`](#update_operators)
+* [`is_operator`](#is_operator)
+* [`pause`](#pause)
+* [`unpause`](#unpause)
+* [`configure_minter`](#configure_minter)
+* [`remove_minter`](#remove_minter)
+* [`mint`](#mint)
+* [`burn`](#burn)
+* [`transfer_ownership`](#transfer_ownership)
+* [`accept_ownership`](#accept_ownership)
+* [`change_master_minter`](#change_master_minter)
+* [`change_pauser`](#change_pauser)
+* [`set_safelist`](#set_safelist)
+
 Format:
 ```
 **entrypoint_name**
@@ -116,7 +136,7 @@ Some entrypoints (e. g. getters) follow an [*event loop*](https://en.wikipedia.o
 pattern meaning that their arguments have an additional callback call
 describing what needs to be done with its result.
 
-**transfer**
+### **transfer**
 
 Types
 ```
@@ -157,7 +177,7 @@ Parameter (in Michelson):
 
 - Contract must not be paused.
 
-**balance_of**
+### **balance_of**
 
 Types
 ```
@@ -207,7 +227,7 @@ Parameter (in Michelson):
 - Since the contract supports only a single token type, all `token_id` values MUST be 0.
   They are passed because FA2 requires that.
 
-**total_supply**
+### **total_supply**
 
 Types
 ```
@@ -244,7 +264,7 @@ Parameter (in Michelson)
 - Since the contract supports only a single token type, all `token_id` values MUST be 0.
   They are passed because FA2 requires that.
 
-**token_metadata**
+### **token_metadata**
 
 Types
 ```
@@ -292,7 +312,7 @@ Parameter (in Michelson)
 
 - Token metadata for 0 `token_id` is constant and should be hardcoded in contract code or put into storage during origination.
 
-**permissions_descriptor**
+### **permissions_descriptor**
 
 Types
 ```
@@ -369,7 +389,7 @@ Parameter (in Michelson)
 - Since the contract supports only a single token type, all `token_id` values MUST be 0.
   They are passed because FA2 requires that.
 
-**update_operators**
+### **update_operators**
 
 Types
 ```
@@ -433,7 +453,7 @@ Also see [this issue](https://gitlab.com/tzip/tzip/-/issues/16).
 
 - Contract must not be paused.
 
-**is_operator**
+### **is_operator**
 
 Types
 ```
@@ -506,7 +526,7 @@ They do not have `token_id` argument because it is redundant (always must be 0) 
 
 ### Pausing
 
-**pause**
+#### **pause**
 
 Parameter (in Michelson): `unit`.
 
@@ -518,7 +538,7 @@ Parameter (in Michelson): `unit`.
 
 - Sender must be a pauser.
 
-**unpause**
+#### **unpause**
 
 Parameter (in Michelson): `unit`.
 
@@ -531,7 +551,7 @@ Parameter (in Michelson): `unit`.
 
 ### Issuing and destroying tokens
 
-**configure_minter**
+#### **configure_minter**
 
 Types
 ```
@@ -563,7 +583,7 @@ It MUST be set to `None` iff the minter is not in the list of minters.
 
 - Contract must not be paused.
 
-**remove_minter**
+#### **remove_minter**
 
 Parameter (in Michelson): `address`.
 
@@ -572,7 +592,7 @@ Parameter (in Michelson): `address`.
 
 - Sender must be master minter.
 
-**mint**
+#### **mint**
 
 Types
 ```
@@ -614,7 +634,7 @@ Parameter (in Michelson):
 
 - Contract must not be paused.
 
-**burn**
+#### **burn**
 
 Parameter (in Michelson): `list nat`.
 
@@ -640,7 +660,7 @@ Parameter (in Michelson): `list nat`.
 
 ## Role reassigning functions
 
-**transfer_ownership**
+### **transfer_ownership**
 
 Parameter (in Michelson): `address`.
 
@@ -655,7 +675,7 @@ Parameter (in Michelson): `address`.
   the new one. Note, that if proposed contract owner is the same as the current
   one, then the pending contract owner is simply invalidated.
 
-**accept_ownership**
+### **accept_ownership**
 
 Parameter: `unit`.
 
@@ -663,7 +683,7 @@ Parameter: `unit`.
 
 - Sender must be a pending contract owner.
 
-**change_master_minter**
+### **change_master_minter**
 
 Parameter (in Michelson): `address`.
 
@@ -671,7 +691,7 @@ Parameter (in Michelson): `address`.
 
 - Sender must be contract owner.
 
-**change_pauser**
+### **change_pauser**
 
 Parameter (in Michelson): `address`.
 
@@ -681,7 +701,7 @@ Parameter (in Michelson): `address`.
 
 ## Safelist update
 
-**set_safelist**
+### **set_safelist**
 
 Parameter (in Michelson): `option address`.
 
