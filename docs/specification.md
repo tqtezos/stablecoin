@@ -566,7 +566,7 @@ Parameter (in Michelson)
 ```
 (pair
   (address %minter)
-  (pair (nat %current_minting_allowance) (nat %new_minting_allowance))
+  (pair ((option nat) %current_minting_allowance) (nat %new_minting_allowance))
 )
 ```
 
