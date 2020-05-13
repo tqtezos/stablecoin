@@ -67,12 +67,11 @@ We have made some assumptions, see the [Roles](#roles) section below, please che
 For non-unique roles: is there an upper limit on the number of addresses?
 For unique roles: can there be no address with a certain role (e. g. no pauser)?
 2. Can one address have more than one role?
-3. Do we want to rename the "owner" role to something different given that FA2 also uses this word?
-4. Are any getter entrypoints not present in FA2 required?
+3. Are any getter entrypoints not present in FA2 required?
 Should they be `void` or `view`?
 Note that the contract will have storage annotations and each getter entrypoint increases contract's size and gas costs.
 At this point it's hard to predict whether we will have issues with the contract's size and gas costs since we've never used LIGO, but it's quite likely that we will.
-5. Should the contract reject transfers with non-zero XTZ AMOUNT (when someone calls the contract with non-zero amount)?
+4. Should the contract reject transfers with non-zero XTZ AMOUNT (when someone calls the contract with non-zero amount)?
 
 # Differences with CENTRE
 
@@ -84,7 +83,9 @@ The stablecoin contract does not implement the FA1.2 interface, it implements th
 3. FA2 uses the word "owner" to refer to the address that owns some tokens.
 At the same time, CENTRE calls the central entity who can manage roles the "owner".
 It leads to ambiguity, but the meaning of the word "owner" should be clear from the context.
-It is not a difference per se, but due to this ambiguity we may rename the "owner" role.
+To eliminate this ambiguity we use two terms:
+  * "contract owner" is the central entity that owns the whole contract;
+  * "token owner" is the entity that holds some tokens.
 4. `mint` and `burn` entrypoints take lists of pairs/amounts respectively.
 They follow FA2 style where most entrypoints operate on lists.
 In CENTRE they take a single item (a pair or an amount).
@@ -110,9 +111,9 @@ The token supports a number of "global" user roles as is described in
 CENTRE Fiat Token specification. These roles apply to the whole contract
 (hence "global"):
 
-* **owner**
+* **contract owner**
   - Can assign and re-assign any role of the token.
-  - There always must be exactly one owner.
+  - There always must be exactly one contract owner.
 
 * **master minter**
   - Can add and remove minters.
@@ -748,36 +749,36 @@ Parameter (in Michelson): `list nat`.
 
 ## Role reassigning functions
 
-### Owner
+### Contract owner
 
 **transfer_ownership**
 
 Parameter (in Michelson): `address`.
 
-- Set token owner to a new address.
+- Initiate transfer of contract ownership to a new address.
 
-- Sender must be current token owner.
+- Sender must be current contract owner.
 
-- The current owner retains his priveleges up until
+- The current contract owner retains his priveleges up until
   `accept_ownership` is called.
 
-- Can be called multiple times, each call replaces pending owner with
-  the new one. Note, that if proposed owner is the same as the current
-  one, then the pending owner is simply invalidated.
+- Can be called multiple times, each call replaces pending contract owner with
+  the new one. Note, that if proposed contract owner is the same as the current
+  one, then the pending contract owner is simply invalidated.
 
-**get_owner**
+**get_contract_owner**
 
 Parameter (in Michelson): `contract address`
 
-- Returns current token owner address.
+- Returns current contract owner address.
 
 **accept_ownership**
 
 Parameter: `unit`.
 
-- Accept ownership privileges.
+- Accept contract ownership privileges.
 
-- Sender must be a pending owner.
+- Sender must be a pending contract owner.
 
 ### Master Minter
 
@@ -787,7 +788,7 @@ Parameter (in Michelson): `address`.
 
 - Set master minter to a new address.
 
-- Sender must be token owner.
+- Sender must be contract owner.
 
 **get_master_minter**
 
@@ -803,7 +804,7 @@ Parameter (in Michelson): `address`.
 
 - Set pauser to a new address.
 
-- Sender must be token owner.
+- Sender must be contract owner.
 
 **get_pauser**
 
@@ -823,4 +824,4 @@ Parameter (in Michelson): `option address`.
 
 - If the address does not have any entrypoint listed in the [`Safelist`](#safelist) specification, this call MUST fail.
 
-- Sender must be token owner.
+- Sender must be contract owner.
