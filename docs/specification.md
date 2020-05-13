@@ -441,15 +441,14 @@ Parameter (in Michelson)
 - This entrypoint MUST follow the FA2 requirements.
 
 - Permission logic requirements specific to this contract are described in the ["FA2 Specifics"](#fa2-specifics) chapter.
-Also see [this issue](https://gitlab.com/tzip/tzip/-/issues/16).
+Each `owner` must be equal to `SENDER`.
 
 - Since the contract supports only a single token type, all `token_id` values MUST be 0.
   They are passed because FA2 requires that.
-  So there are at most three possible valid values of `operator_tokens` type:
+  So there are three possible valid values of `operator_tokens` type:
   + `All_tokens`
   + `Some_tokens ({0})` – equivalent to `All_tokens`.
-  + `Some_tokens ({})` – no-op?
-  See the relevant [issue](https://gitlab.com/tzip/tzip/-/issues/14).
+  + `Some_tokens ({})` – no-op.
 
 - Contract must not be paused.
 
@@ -513,11 +512,10 @@ Parameter (in Michelson):
 
 - Since the contract supports only a single token type, all `token_id` values MUST be 0.
   They are passed because FA2 requires that.
-  So there are at most three possible valid values of `operator_tokens` type:
+  So there are three possible valid values of `operator_tokens` type:
   + `All_tokens`
-  + `Some_tokens ({0})` – equivalent to `All_tokens`?
-  + `Some_tokens ({})` – definitely `True`?
-  See the relevant [issue](https://gitlab.com/tzip/tzip/-/issues/14).
+  + `Some_tokens ({0})` – equivalent to `All_tokens`.
+  + `Some_tokens ({})` – for this value the result is always `True`.
 
 ## Custom (non-FA2) token functions
 
