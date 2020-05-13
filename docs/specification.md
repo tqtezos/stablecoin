@@ -21,6 +21,8 @@ These specifications were assembled with the following references:
 
 - The token contract must store tokens of a single type.
 
+- The storage of the contract must have annotations for all fields and must be documented to make its interpretation easy for users.
+
 # FA2 Specifics
 
 FA2 provides a framework for defining permission policies, but does not require any particular policy.
@@ -55,7 +57,7 @@ Regarding `update_operators` we will stick to the following logic:
 1. In each `update_operator` item `owner` MUST be equal to `SENDER`.
 2. Each address can have arbitrary number of operators.
 
-One more uncertainty is related to the `get_token_metadata` entrypoint: whether metadata is constant or can be changed during contract's lifetime.
+One more uncertainty is related to the `token_metadata` entrypoint: whether metadata is constant or can be changed during contract's lifetime.
 We assume that token metadata stays constant forever.
 
 Note: these decisions may change as the project moves forward.
@@ -314,13 +316,13 @@ Parameter (in Michelson)
 - Since the contract supports only a single token type, all `token_id` values MUST be 0.
   They are passed because FA2 requires that.
 
-**get_token_metadata**
+**token_metadata**
 
 Types
 ```
 token_id = nat
 
-get_token_metadata_response =
+token_metadata_response =
   ( token_id             :token_id
   , string               :symbol
   , string               :name
@@ -328,9 +330,9 @@ get_token_metadata_response =
   , map (string, string) :extras
   )
 
-get_token_metadata =
-  ( list token_id                               :token_ids
-  , contract (list get_token_metadata_response) :callback
+token_metadata =
+  ( list token_id                           :token_ids
+  , contract (list token_metadata_response) :callback
   )
 ```
 
@@ -340,7 +342,7 @@ Parameter (in Michelson)
   (list %token_ids nat)
   (contract %callback
     (list
-      (pair %get_token_metadata_response
+      (pair %token_metadata_response
         (nat %token_id)
         (pair
           (string %symbol)
@@ -599,12 +601,6 @@ Parameter (in Michelson): `unit`.
 
 - Sender must be a pauser.
 
-**get_paused**
-
-Parameter (in Michelson): `contract bool`.
-
-- Returns token pause status.
-
 ### Issuing and destroying tokens
 
 **configure_minter**
@@ -647,39 +643,6 @@ Parameter (in Michelson): `address`.
   Once minter is removed it will no longer be able to mint or burn tokens.
 
 - Sender must be master minter.
-
-**get_minting_allowance**
-
-Types
-```
-get_minting_allowance_response =
-  ( address :owner
-  , (option nat) :allowance
-  )
-
-get_minting_allowance =
-  ( list address :requests
-  , contract (list get_minting_allowance_response) :callback
-  )
-```
-
-Parameter (in Michelson):
-```
-(pair
-  (list %requests address)
-  (contract %callback
-    (list
-      (pair
-        (address %owner)
-        (nat %allowance)
-      )
-    )
-  )
-)
-```
-
-- Returns current minting allowance for each address in a list.
-`None` value should be used for addresses that are not minters.
 
 **mint**
 
@@ -749,8 +712,6 @@ Parameter (in Michelson): `list nat`.
 
 ## Role reassigning functions
 
-### Contract owner
-
 **transfer_ownership**
 
 Parameter (in Michelson): `address`.
@@ -766,12 +727,6 @@ Parameter (in Michelson): `address`.
   the new one. Note, that if proposed contract owner is the same as the current
   one, then the pending contract owner is simply invalidated.
 
-**get_contract_owner**
-
-Parameter (in Michelson): `contract address`
-
-- Returns current contract owner address.
-
 **accept_ownership**
 
 Parameter: `unit`.
@@ -779,8 +734,6 @@ Parameter: `unit`.
 - Accept contract ownership privileges.
 
 - Sender must be a pending contract owner.
-
-### Master Minter
 
 **change_master_minter**
 
@@ -790,14 +743,6 @@ Parameter (in Michelson): `address`.
 
 - Sender must be contract owner.
 
-**get_master_minter**
-
-Parameter (in Michelson): `contract address`.
-
-- Return current master minter address.
-
-### Pauser
-
 **change_pauser**
 
 Parameter (in Michelson): `address`.
@@ -805,14 +750,6 @@ Parameter (in Michelson): `address`.
 - Set pauser to a new address.
 
 - Sender must be contract owner.
-
-**get_pauser**
-
-Parameter (in Michelson): `contract address`.
-
-- Return current pauser address.
-
-[FA2]: https://gitlab.com/tzip/tzip/-/blob/131b46dd89675bf030489ded9b0b3f5834b70eb6/proposals/tzip-12/tzip-12.md
 
 ## Safelist update
 
@@ -825,3 +762,5 @@ Parameter (in Michelson): `option address`.
 - If the address does not have any entrypoint listed in the [`Safelist`](#safelist) specification, this call MUST fail.
 
 - Sender must be contract owner.
+
+[FA2]: https://gitlab.com/tzip/tzip/-/blob/131b46dd89675bf030489ded9b0b3f5834b70eb6/proposals/tzip-12/tzip-12.md
