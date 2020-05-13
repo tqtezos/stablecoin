@@ -23,6 +23,9 @@ These specifications were assembled with the following references:
 
 - The storage of the contract must have annotations for all fields and must be documented to make its interpretation easy for users.
 
+- The token contract should reject transfers with non-zero XTZ AMOUNT (when someone calls the contract with non-zero amount).
+The reason is that there is no way to spend XTZ owned by the contract.
+
 # FA2 Specifics
 
 FA2 provides a framework for defining permission policies, but does not require any particular policy.
@@ -73,7 +76,6 @@ For unique roles: can there be no address with a certain role (e. g. no pauser)?
 Should they be `void` or `view`?
 Note that the contract will have storage annotations and each getter entrypoint increases contract's size and gas costs.
 At this point it's hard to predict whether we will have issues with the contract's size and gas costs since we've never used LIGO, but it's quite likely that we will.
-4. Should the contract reject transfers with non-zero XTZ AMOUNT (when someone calls the contract with non-zero amount)?
 
 # Differences with CENTRE
 
