@@ -759,6 +759,8 @@ Regarding `update_operators` we will stick to the following logic:
 1. In each `update_operator` item `owner` MUST be equal to `SENDER`.
 2. Each address can have arbitrary number of operators.
 
+Note that operator relation is not transitive.
+
 One more uncertainty is related to the `token_metadata` entrypoint: whether metadata is constant or can be changed during contract's lifetime.
 We assume that token metadata stays constant forever.
 
