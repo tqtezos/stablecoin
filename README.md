@@ -5,19 +5,30 @@ SPDX-License-Identifier: MIT
 
 # Tezos Stablecoin
 
-Tezos Stablecoin project describes FA2-compatible token smart contract.
+[![Build status](https://badge.buildkite.com/c38c76106a10aeaea23f487d41b52514f4ffb84974852021f7.svg?branch=master)](https://buildkite.com/serokell/stablecoin)
 
-## Build Instructions
+Tezos Stablecoin project implements an FA2-compatible token smart contract.
+It is based on [CENTRE Fiat Token](https://github.com/centrehq/centre-tokens/blob/78d964a1a8d481ffd8152772d7a66e47df54b3db/doc/tokendesign.md).
+The contract is implemented in the [LIGO language](https://ligolang.org/).
+See the [`ligo/`](ligo/) folder.
+Contract specification is [available](/docs/specification.md).
 
-You can use `stack build` to build `stablecoin` executable.
+## Haskell bindings
 
-## Usage
+Apart from LIGO implementation of the contract we have [a Haskell library](haskell/) with data types corresponding to this contract.
+It is based on the [morley framework](https://gitlab.com/morley-framework/morley).
+It allows us to use features of `morley` (such as testing engine) with this contract.
 
-Run `stack exec -- stablecoin --help` to see available commands.
+## Tests
+
+Tests are implemented in the same Haskell package.
+Please refer to the [`haskell/`] directory for details.
 
 ## Issue Tracker
 
-We use [GitHub](https://github.com/tqtezos/stablecoin/issues)
+We use [GitHub issues](https://github.com/tqtezos/stablecoin/issues).
+Feel free to [open a new one](https://github.com/tqtezos/stablecoin/issues/new/choose).
 
 ## License
-MIT
+
+[MIT](/LICENSE)
