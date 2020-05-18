@@ -42,11 +42,17 @@ function validate_token_types
     , unit
     )
 
-type transfer_param_ is record
-  from_    : address
-; to_      : address
+type transfer_destination_ is record
+  to_      : address
 ; token_id : token_id
 ; amount   : nat
+end
+
+type transfer_destination is michelson_pair_right_comb(transfer_destination_)
+
+type transfer_param_ is record
+  from_ : address
+; txs : list (transfer_destination)
 end
 
 type transfer_param is michelson_pair_right_comb(transfer_param_)
@@ -173,15 +179,38 @@ type permissions_descriptor is michelson_pair_right_comb(permissions_descriptor_
 type permissions_descriptor_params is
   contract (permissions_descriptor)
 
-type mint_params is record
+type pause_params is unit
+
+type unpause_params is unit
+
+type configure_minter_params_ is record
+  minter                    : address
+; current_minting_allowance : option (nat)
+; new_minting_allowance     : nat
+end
+
+type configure_minter_params is michelson_pair_right_comb (configure_minter_params_)
+
+type remove_minter_params is address
+
+type mint_param_ is record
   to_    : address
 ; amount : nat
 end
 
-type burn_params is record
-  from_  : address
-; amount : nat
-end
+type mint_param is michelson_pair_right_comb (mint_param_)
+
+type mint_params is list (mint_param)
+
+type burn_params is list (nat)
+
+type transfer_ownership_param is address
+
+type accept_ownership_param is unit
+
+type change_master_minter_param is address
+
+type change_pauser_param is address
 
 type parameter is
   Transfer               of transfer_params
@@ -221,7 +250,17 @@ type transfer_descriptor_param is michelson_pair_right_comb(transfer_descriptor_
 
 (* Stablecoin parameter *)
 type closed_parameter is
-| Call_FA2 of parameter
+| Call_FA2              of parameter
+| Pause                 of pause_params
+| Unpause               of unpause_params
+| Configure_minter      of configure_minter_params
+| Remove_minter         of remove_minter_params
+| Mint                  of mint_params
+| Burn                  of burn_params
+| Transfer_ownership    of transfer_ownership_param
+| Accept_ownership      of accept_ownership_param
+| Change_master_minter  of change_master_minter_param
+| Change_pauser         of change_pauser_param
 
 (* ------------------------------------------------------------- *)
 
@@ -235,14 +274,25 @@ type operator is address
 type operators is
   big_map ((owner * operator), unit)
 
+type roles is record
+  owner         : address
+; pending_owner : option (address)
+; pauser        : address
+; master_minter : address
+end
+
 type ledger is big_map (address, nat)
 
+type minting_allowances is big_map (address, nat)
+
 type storage is record
-  ledger         : ledger
-; permissions    : permissions_descriptor_
-; token_metadata : token_metadata_
-; total_supply   : nat
-; operators      : operators
+  ledger             : ledger
+; minting_allowances : minting_allowances
+; permissions        : permissions_descriptor_
+; total_supply       : nat
+; paused             : bool
+; roles              : roles
+; operators          : operators
 end
 
 type entrypoint is list (operation) * storage

@@ -11,13 +11,13 @@ function fa2_main
   ; const store  : storage
   ) : entrypoint
 is case action of
-    Transfer                   (params) -> transfer                 (params, store)
-  | Balance_of                 (params) -> balance_of               (params, store)
-  | Total_supply               (params) -> total_supply             (params, store)
-  | Token_metadata             (params) -> token_metadata           (params, store)
-  | Permissions_descriptor     (params) -> permission_descriptor    (params, store)
-  | Update_operators           (params) -> update_operators_action  (params, store)
-  | Is_operator                (params) -> is_operator_action       (params, store)
+    Transfer               (params) -> transfer                (params, store)
+  | Balance_of             (params) -> balance_of              (params, store)
+  | Total_supply           (params) -> total_supply            (params, store)
+  | Token_metadata         (params) -> token_metadata          (params, store)
+  | Permissions_descriptor (params) -> permission_descriptor   (params, store)
+  | Update_operators       (params) -> update_operators_action (params, store)
+  | Is_operator            (params) -> is_operator_action      (params, store)
 end
 
 (*
@@ -28,5 +28,15 @@ function stablecoin_main
   ; const store  : storage
   ) : entrypoint
 is case action of
-    Call_FA2 (params) -> fa2_main (params, store)
+    Call_FA2              (params) -> fa2_main              (params, store)
+  | Pause                 (params) -> pause                 (params, store)
+  | Unpause               (params) -> unpause               (params, store)
+  | Configure_minter      (params) -> configure_minter      (params, store)
+  | Remove_minter         (params) -> remove_minter         (params, store)
+  | Mint                  (params) -> mint                  (params, store)
+  | Burn                  (params) -> burn                  (params, store)
+  | Transfer_ownership    (params) -> transfer_ownership    (params, store)
+  | Accept_ownership      (params) -> accept_ownership      (params, store)
+  | Change_master_minter  (params) -> change_master_minter  (params, store)
+  | Change_pauser         (params) -> change_pauser         (params, store)
   end

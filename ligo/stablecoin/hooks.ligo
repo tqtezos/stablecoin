@@ -35,11 +35,6 @@
 
 (* ------------------------------------------------------------- *)
 
-(*
- * Generic transfer hook
- *)
-
-type get_owner is transfer_param -> address
 type to_hook is address -> option (contract (transfer_descriptor_param))
 
 (*
@@ -47,13 +42,14 @@ type to_hook is address -> option (contract (transfer_descriptor_param))
  *)
 function convert_to_transfer_descriptor
   ( const self_addr      : address
-  ; const transfer_param : transfer_param
+  ; const param_sender_addr : address
+  ; const transfer_destination : transfer_destination
   ): transfer_descriptor_param is block
 { const transfer_descriptor : transfer_descriptor_ = record
-    [ from_    = Some (transfer_param.0)
-    ; to_      = Some (transfer_param.1.0)
-    ; token_id = transfer_param.1.1.0
-    ; amount   = transfer_param.1.1.1
+    [ from_    = Some (param_sender_addr)
+    ; to_      = Some (transfer_destination.0)
+    ; token_id = transfer_destination.1.0
+    ; amount   = transfer_destination.1.1
     ]
 ; const transfer_descriptor_batch : list (transfer_descriptor) = list
     [ Layout.convert_to_right_comb ((transfer_descriptor : transfer_descriptor_)) ]
@@ -65,59 +61,24 @@ function convert_to_transfer_descriptor
 } with Layout.convert_to_right_comb ((transfer_descriptor_param : transfer_descriptor_param_))
 
 (*
- * An actual validation of owner hook specified by `to_hook` parameter.
- * If such is present, append it to a passed list of transactions.
+ * Append a transaction of transfer hook call
+ * to a list of operations provided
  *)
 function validate_owner_hook
-  ( const self_addr      : address
-  ; const ops            : list(operation)
-  ; const transfer_param : transfer_param
-  ; const get_owner      : get_owner
-  ; const to_hook        : to_hook
-  ; const is_required    : bool
-  ) : list(operation) is case to_hook (get_owner(transfer_param)) of
-      Some (hook) -> Tezos.transaction (convert_to_transfer_descriptor(self_addr, transfer_param), 0mutez, hook) # ops
-    | None ->
-      if is_required
-      then (failwith ("SENDER_HOOK_UNDEFINED") : list (operation))
-      else ops
-    end;
-
-(*
- * Validates given list of hooks by appending them to a list of transactions
- * achieved by deconstructing transfer parameter batch parameter
- *)
-function validate_owner_hooks
-  ( const self_addr   : address
-  ; const transfers   : transfer_params
-  ; const get_owner   : get_owner
-  ; const to_hook     : to_hook
-  ; const is_required : bool
+  ( const self_addr : address
+  ; const param_sender_addr : address
+  ; const is_sender : bool
+  ; const ops       : list (operation)
+  ; const transfer_destination : transfer_destination
+  ; const to_hook   : to_hook
   ) : list (operation) is block
-  { function folding
-      ( const ops: list(operation)
-      ; const tp: transfer_param
-      ) : list(operation) is
-        validate_owner_hook(self_addr, ops, tp, get_owner, to_hook, is_required)
-  } with List.fold(folding, transfers, (nil : list(operation)))
-
-(*
- * Produces a list of transactions of transfer hooks depending on the policy provided
- *)
-function validate_owner
-  ( const self_addr  : address
-  ; const descriptor : transfer_params
-  ; const policy     : owner_transfer_policy_
-  ; const get_owner  : get_owner
-  ; const to_hook    : to_hook
-  ) : list (operation) is block
-  {
-  const ops : list (operation) = case policy of
-    Owner_no_op -> (nil : list (operation))
-  | Optional_owner_hook -> validate_owner_hooks (self_addr, descriptor, get_owner, to_hook, False)
-  | Required_owner_hook -> validate_owner_hooks (self_addr, descriptor, get_owner, to_hook, True)
+{ const hook_addr : address =
+    if is_sender then param_sender_addr else transfer_destination.0
+} with case to_hook (hook_addr) of
+    Some (hook) ->
+      Tezos.transaction (convert_to_transfer_descriptor(self_addr, param_sender_addr, transfer_destination), 0mutez, hook) # ops
+  | None -> ops
   end
-  } with ops
 
 (*
  * Retrieves contract from `tokens_received` entrypoint
@@ -128,19 +89,6 @@ function to_receiver_hook
     Tezos.get_entrypoint_opt ("%tokens_received", receiving_address)
 
 (*
- * Make a list of transactions for each validated receiver.
- *)
-function validate_receivers
-  ( const params : transfer_params
-  ; const policy     : owner_transfer_policy_
-  ) : list (operation) is block
-{ const self_addr : address = Tezos.self_address
-; const get_receiver : get_owner = function
-    ( const param : transfer_param
-    ) : address is param.1.0
-} with validate_owner (self_addr, params, policy, get_receiver, to_receiver_hook)
-
-(*
  * Retrieves contract from `tokens_sent` entrypoint
  *)
 function to_sender_hook
@@ -149,39 +97,44 @@ function to_sender_hook
     Tezos.get_entrypoint_opt ("%tokens_sent", sender_address)
 
 (*
- * Make a list of transactions for each validated sender
+ * Make a list of transfer hook calls for each sender or receiver
  *)
-function validate_senders
-  ( const params : transfer_params
-  ; const policy : owner_transfer_policy_
+function validate_owner_hooks
+  ( const params    : transfer_param
+  ; const self_addr : address
+  ; const is_sender : bool
   ) : list (operation) is block
-{ const self_addr : address = Tezos.self_address
-; const get_sender : get_owner = function
-    ( const param : transfer_param
-    ) : address is param.0
-} with validate_owner (self_addr, params, policy, get_sender, to_sender_hook)
+{ const to_hook : to_hook = if is_sender then to_sender_hook else to_receiver_hook
+; function validate
+    ( const ops : list (operation)
+    ; const td  : transfer_destination
+    ) : list (operation) is block
+  { const owner : address = if is_sender then params.0 else td.0
+  } with validate_owner_hook (self_addr, params.0, is_sender, ops, td, to_hook)
+} with List.fold (validate, params.1, (nil : list (operation)))
 
-(*
- * Constructs a list of transactions of transfer hook items
- * if such are set for associated addresses
- *)
-function generic_transfer_hook
-  ( const transfer_params        : transfer_params
-  ; const permissions_descriptor : permissions_descriptor_
-  ) : list (operation) is block
-{ const sender_policy : owner_transfer_policy_ =
-    Layout.convert_from_right_comb ((permissions_descriptor.sender : owner_transfer_policy))
-; const sender_ops : list (operation) =
-    validate_senders (transfer_params, sender_policy)
-; const receiver_policy : owner_transfer_policy_ =
-    Layout.convert_from_right_comb ((permissions_descriptor.receiver : owner_transfer_policy))
-; const receiver_ops : list (operation) =
-    validate_receivers (transfer_params, receiver_policy)
-} with List.fold (* Merge two lists *)
+function merge_operations
+  ( const fst : list (operation)
+  ; const snd : list (operation)
+  ) : list (operation) is List.fold
     ( function
       ( const operations : list (operation)
       ; const operation  : operation
       ) : list (operation) is operation # operations
-    , receiver_ops
-    , sender_ops
+    , fst
+    , snd
     )
+
+(*
+ * Construct a list of transfer hook calls for each sender and
+ * receiver if such were specified
+ *)
+function generic_transfer_hook
+  ( const transfer_param : transfer_param
+  ) : list (operation) is block
+{ const self_addr : address = Tezos.self_address
+; const sender_ops : list (operation) =
+    validate_owner_hooks (transfer_param, self_addr, True)
+; const receiver_ops : list (operation) =
+    validate_owner_hooks (transfer_param, self_addr, False)
+} with merge_operations (receiver_ops, sender_ops)

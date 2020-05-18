@@ -86,6 +86,29 @@ Required `Safelist` entrypoints:
 * `assertReceivers(list address)`
   * Fails if any address in the list is not whitelisted or is blacklisted.
 
+# Errors
+
+| Error                 | Description |
+|-----------------------|-------------|
+| NOT_OWNER             | Authorized sender is not contract owner                                                                                        |
+| NOT_PENDING_OWNER     | Authorized sender is not current contract pending owner                                                                        |
+| NO_PENDING_OWNER_SET  | Throws when trying to authorize as pending owner whilst is not set for a contract                                              |
+| NOT_PAUSER            | Authorized sender is not contract pauser                                                                                       |
+| NOT_MASTER_MINTER     | Authorized sender is not master minter                                                                                         |
+| NOT_MINTER            | Sender is not registered as minter                                                                                             |
+| CONTRACT_PAUSED       | Operation cannot be performed during contract pause                                                                            |
+| CONTRACT_NOT_PAUSED   | Operation cannot be peformed if the contract is not paused                                                                     |
+| INSUFFICIENT_BALANCE  | Cannot debit from a wallet because of excessive amount of tokens                                                               |
+| NOT_IN_LEDGER         | Wallet is not present in ledger                                                                                                |
+| TX_DENIED             | Operator transfer is permitted                                                                                                 |
+| NOT_OPERATOR          | Trying to transfer tokens when sender is not an operator                                                                       |
+| NOT_OWNER             | Trying to configure operators for a different wallet which sender does not own                                                 |
+| NO_ALLOWANCE_EXPECTED | Throws when trying to configure minter with Nothing value in parameter provided                                                |
+| ALLOWANCE_MISMSATCH   | Throws when expected allowance in configure minter parameter does not match the actual one                                     |
+| NOT_MINTER            | Throws when trying to configure minter but expected address is not one                                                         |
+| ALLOWANCE_EXCEEDED    | Throws when trying to mint tokens more than currently allowed for an address                                                   |
+| NEGATIVE_TOTAL_SUPPLY | Throws if contract is faced negative total supply. This may appear during the internal error and is not expected to be thrown |
+
 # Entrypoints
 
 Full list:

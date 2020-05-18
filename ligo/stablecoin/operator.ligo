@@ -36,43 +36,13 @@ function is_operator
  *)
 function validate_operators
   ( const permissions_descriptor : permissions_descriptor_
-  ; const transfer_params        : transfer_params
+  ; const transfer_param         : transfer_param
   ; const operators              : operators
   ) : unit is block
-{ const self_transfer_policy_ : self_transfer_policy_ =
-    Layout.convert_from_right_comb ((permissions_descriptor.self : self_transfer_policy))
-
-; const can_transfer_from_self : bool =
-    case self_transfer_policy_ of
-      Self_transfer_permitted (u) -> True
-    | Self_transfer_denied    (u) -> False
-    end
-
-; const operator_transfer_policy_ : operator_transfer_policy_ =
-    Layout.convert_from_right_comb ((permissions_descriptor.operator : operator_transfer_policy))
-; const can_transfer_operator : bool =
-    case operator_transfer_policy_ of
-      Operator_transfer_permitted (u) -> True
-    | Operator_transfer_denied    (u) -> False
-    end
-
-; const operator : address = Tezos.sender
-
-; function validate_params
-    ( const param : transfer_param
-    ) : unit is block
-  { const owner : owner = param.0
-  } with if can_transfer_from_self and owner = operator
-  then unit
-  else if not can_transfer_operator
-    then failwith ("NOT_OWNER")
-    else if Big_map.mem ((owner, operator), operators)
-      then unit else failwith ("NOT_OPERATOR")
-
-} with List.iter
-    ( validate_params
-    , transfer_params
-    )
+{ const operator : address = Tezos.sender
+; const owner : address = transfer_param.0
+} with if owner = operator or Big_map.mem ((owner, operator), operators)
+  then unit else failwith ("NOT_OPERATOR")
 
 (*
  * Add operator from the given parameter and operator storage
