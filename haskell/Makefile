@@ -17,10 +17,12 @@ TEST_ARGUMENTS ?= ""
 # Packages to apply the command (build, test, e.t.c) for.
 PACKAGE = stablecoin
 
+#   Initial `../..` in `ln` is needed because of `test/resources`.
+#   $(LIGO_DIR) is relative to the current directory.
 define call_test
 	$(MAKE_LIGO) stablecoin.tz
 	mkdir -p test/resources
-	ln -sf "$(PWD)/$(LIGO_DIR)/stablecoin.tz" "test/resources/stablecoin.tz"
+	ln -sf "../../$(LIGO_DIR)/stablecoin.tz" "test/resources/stablecoin.tz"
 	stack test $(PACKAGE) \
 		--test-arguments "--color always $(TEST_ARGUMENTS) $1" $2
 endef
