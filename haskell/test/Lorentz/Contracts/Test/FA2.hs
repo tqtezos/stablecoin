@@ -12,162 +12,28 @@ module Lorentz.Contracts.Test.FA2
   , fa2Spec
   ) where
 
-import qualified Data.Map as Map
 import Test.Hspec (Spec, describe, it)
 
-import Lorentz (defaultContract, mkView)
+import Lorentz (mkView)
 import qualified Lorentz as L
 import Lorentz.Contracts.Spec.FA2Interface as FA2
+import Lorentz.Contracts.Test.Common
 import Lorentz.Test
 import Lorentz.Value
-import Michelson.Runtime (ExecutorError)
-import Tezos.Core (unsafeMkMutez)
 import Util.Named
-
-wallet1, wallet2, wallet3, wallet4, wallet5, commonOperator :: Address
-wallet1 = genesisAddress1
-wallet2 = genesisAddress2
-wallet3 = genesisAddress3
-wallet4 = genesisAddress4
-wallet5 = genesisAddress5
-commonOperator = genesisAddress6
-
-commonOperators :: [Address]
-commonOperators = [commonOperator]
-
-type LedgerType = Map Address ([Address], Natural)
-type LedgerInput = (Address, ([Address], Natural))
-
-insertLedgerItem :: LedgerInput -> LedgerType -> LedgerType
-insertLedgerItem (addr, (operators, bal)) = Map.insert addr (operators, bal)
-
-lExpectAnyMichelsonFailed :: (ToAddress addr) => addr -> ExecutorError -> Bool
-lExpectAnyMichelsonFailed = lExpectMichelsonFailed (const True)
-
-data OriginationParams = OriginationParams
-  { opBalances :: LedgerType
-  , opPermissionsDescriptor :: PermissionsDescriptorMaybe
-  , opTokenMetadata :: TokenMetadata
-  }
-
-defaultPermissionDescriptor :: PermissionsDescriptorMaybe
-defaultPermissionDescriptor =
-  ( #self .! Nothing
-  , #pdr .! ( #operator .! Nothing
-            , #pdr2 .! ( #receiver .! Nothing
-                       , #pdr3 .! (#sender .! Nothing, #custom .! Nothing))))
-
-permissionDescriptorSelfTransferDenied :: PermissionsDescriptorMaybe
-permissionDescriptorSelfTransferDenied =
-  defaultPermissionDescriptor &
-    _1 .~ (#self .! (Just $ SelfTransferDenied (#self_transfer_denied .! ())))
-
-permissionDescriptorSelfTransferAllowed :: PermissionsDescriptorMaybe
-permissionDescriptorSelfTransferAllowed =
-  defaultPermissionDescriptor &
-    _1 .~ (#self .! (Just $ SelfTransferPermitted (#self_transfer_permitted .! ())))
-
-permissionDescriptorOperatorTransferDenied :: PermissionsDescriptorMaybe
-permissionDescriptorOperatorTransferDenied =
-  defaultPermissionDescriptor
-   & (_2.namedL #pdr._1)
-      .~ (#operator .! (Just $ OperatorTransferDenied (#operator_transfer_denied .! ())))
-
-permissionDescriptorOperatorTransferAllowed :: PermissionsDescriptorMaybe
-permissionDescriptorOperatorTransferAllowed =
-  defaultPermissionDescriptor
-   & (_2.namedL #pdr._1)
-      .~ (#operator .! (Just $ OperatorTransferPermitted (#operator_transfer_permitted .! ())))
-
-permissionDescriptorNoOpReceiverHook :: PermissionsDescriptorMaybe
-permissionDescriptorNoOpReceiverHook =
-  defaultPermissionDescriptor
-    & (_2.namedL #pdr._2.namedL #pdr2._1) .~ (#receiver .! (Just $ OwnerNoOp (#owner_no_op .! ())))
-
-permissionDescriptorReqReceiverHook :: PermissionsDescriptorMaybe
-permissionDescriptorReqReceiverHook =
-  defaultPermissionDescriptor
-    & (_2.namedL #pdr._2.namedL #pdr2._1)
-    .~ (#receiver .! (Just $ RequiredOwnerHook (#required_owner_hook .! ())))
-
-permissionDescriptorNoOpSenderHook :: PermissionsDescriptorMaybe
-permissionDescriptorNoOpSenderHook =
-  defaultPermissionDescriptor
-    & (_2.namedL #pdr._2.namedL #pdr2._2.namedL #pdr3._1)
-    .~ (#sender .! (Just $ OwnerNoOp (#owner_no_op .! ())))
-
-permissionDescriptorReqSenderHook :: PermissionsDescriptorMaybe
-permissionDescriptorReqSenderHook =
-  defaultPermissionDescriptor
-    & (_2.namedL #pdr._2.namedL #pdr2._2.namedL #pdr3._1)
-    .~ (#sender .! (Just $ RequiredOwnerHook (#required_owner_hook .! ())))
-
-defaultTokenMetadata :: TokenMetadata
-defaultTokenMetadata =
-  ( #token_id .! 0
-  , #mdr .! (#symbol .! [mt|TestTokenSymbol|]
-  , #mdr2 .! (#name .! [mt|TestTokenName|]
-  , #mdr3 .! (#decimals .! 8
-  , #extras .! (Map.fromList $
-       [([mt|attr1|], [mt|val1|]), ([mt|attr2|], [mt|val2|]) ]))))
-  )
-
-defaultOriginationParams :: OriginationParams
-defaultOriginationParams = OriginationParams
-  { opBalances = mempty
-  , opPermissionsDescriptor = defaultPermissionDescriptor
-  , opTokenMetadata = defaultTokenMetadata
-  }
-
-addAccount
-  :: LedgerInput
-  -> OriginationParams
-  -> OriginationParams
-addAccount i op  =
-  op { opBalances = insertLedgerItem i (opBalances op) }
-
--- | The return value of this function is a Maybe to handle the case where a contract
--- having hardcoded permission descriptor, and thus unable to initialize with a custom
--- permissions descriptor passed from the testing code.
---
--- In such cases, where the value is hard coded and is incompatible with what is required
--- for the test, this function should return a Nothing value, and the tests that depend
--- on such custom configuration will be skipped.
-type OriginationFn param = (OriginationParams -> IntegrationalScenarioM (Maybe (TAddress param)))
-
--- | This is a temporary hack to workaround the inability to skip the
--- tests from an IntegrationalScenario without doing any validations.
-skipTest :: IntegrationalScenario
-skipTest = do
-  let
-    dummyContract :: L.Contract () ()
-    dummyContract = defaultContract $ L.unpair L.# L.drop L.# L.nil L.# L.pair
-  c <- lOriginate dummyContract "skip test dummy" () (unsafeMkMutez 0)
-  lCallEP c CallDefault ()
-  validate (Right expectAnySuccess)
-
-withOriginated
-  :: forall param. OriginationFn param
-  -> OriginationParams
-  -> (TAddress param -> IntegrationalScenario)
-  -> IntegrationalScenario
-withOriginated fn op tests = do
-  (fn op) >>= \case
-    Nothing -> skipTest
-    Just contract -> tests contract
 
 -- | Test suite for an FA2-specific entrypoints for stablecoin smart-contract which:
 --
 -- 1. Supports a single token type.
 -- 2. Does not have an external permission checking transfer hook.
 fa2Spec
-  :: forall param. ParameterC param
+  :: forall param. FA2ParameterC param
   => OriginationFn param
   -> Spec
 fa2Spec fa2Originate = do
   describe "Operator Transfer" $ do
   -- Transfer tests or tests for core transfer behavior, as per FA2
-    it "is allowed if permitted in permission descriptor and\
+    it "is allowed to transfer and \
        \executes transfers in the given order" $ integrationalTestExpectation $ do
       -- Tests transactions are applied in order
       -- Update balances exactly
@@ -178,11 +44,11 @@ fa2Spec fa2Originate = do
                 { opPermissionsDescriptor = permissionDescriptorOperatorTransferAllowed }
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
-            transfers =
-              [ (#from_ .! wallet1, (#to_ .! wallet2, (#token_id .! 0, #amount .! 10)))
-              , (#from_ .! wallet2, (#to_ .! wallet3, (#token_id .! 0, #amount .! 10)))
-              , (#from_ .! wallet3, (#to_ .! wallet4, (#token_id .! 0, #amount .! 10)))
-              , (#from_ .! wallet4, (#to_ .! wallet5, (#token_id .! 0, #amount .! 10)))
+            transfers = constructTransfers
+              [ (#from_ .! wallet1, [(#to_ .! wallet2, #amount .! 10)])
+              , (#from_ .! wallet2, [(#to_ .! wallet3, #amount .! 10)])
+              , (#from_ .! wallet3, [(#to_ .! wallet4, #amount .! 10)])
+              , (#from_ .! wallet4, [(#to_ .! wallet5, #amount .! 10)])
               ]
 
           withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
@@ -220,11 +86,11 @@ fa2Spec fa2Originate = do
                 { opPermissionsDescriptor = permissionDescriptorOperatorTransferAllowed }
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
-            transfers =
-              [ (#from_ .! wallet1, (#to_ .! wallet2, (#token_id .! 0, #amount .! 10)))
-              , (#from_ .! wallet2, (#to_ .! wallet3, (#token_id .! 0, #amount .! 10)))
-              , (#from_ .! wallet4, (#to_ .! wallet3, (#token_id .! 0, #amount .! 10))) -- should fail
-              , (#from_ .! wallet4, (#to_ .! wallet5, (#token_id .! 0, #amount .! 10)))
+            transfers = constructTransfersFromSender (#from_ .! wallet1)
+              [ (#to_ .! wallet2, #amount .! 10)
+              , (#to_ .! wallet3, #amount .! 10)
+              , (#to_ .! wallet3, #amount .! 10) -- should fail
+              , (#to_ .! wallet5, #amount .! 10)
               ]
 
           withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
@@ -234,45 +100,23 @@ fa2Spec fa2Originate = do
     it "aborts if there is a failure (due to non existent source account)" $ integrationalTestExpectation $ do
       -- Tests transactions are applied in order
       -- Update balances exactly
-        let originationParams = addAccount (wallet1, (commonOperators, 10))
-              $ addAccount (wallet2, (commonOperators, 0))
-              $ addAccount (wallet4, (commonOperators, 0)) defaultOriginationParams
+        let
+          originationParams =
+              addAccount (wallet1, (commonOperators, 10))
+            $ defaultOriginationParams
                 { opPermissionsDescriptor = permissionDescriptorOperatorTransferAllowed }
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
-            transfers =
-              [ (#from_ .! wallet1, (#to_ .! wallet2, (#token_id .! 0, #amount .! 10)))
-              , (#from_ .! wallet2, (#to_ .! wallet3, (#token_id .! 0, #amount .! 10)))
-              , (#from_ .! wallet3, (#to_ .! wallet4, (#token_id .! 0, #amount .! 10))) -- should fail
-              , (#from_ .! wallet4, (#to_ .! wallet5, (#token_id .! 0, #amount .! 10)))
-              ]
+            transfers = constructSingleTransfer
+              (#from_ .! wallet2)
+              (#to_ .! wallet1)
+              (#amount .! 1)
 
           withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
 
           validate $ Left (lExpectAnyMichelsonFailed fa2contract)
 
-    it "aborts if there is a failure (due to bad token id )" $ integrationalTestExpectation $ do
-      -- Tests transactions are applied in order
-      -- Update balances exactly
-        let originationParams = addAccount (wallet1, (commonOperators, 10))
-              $ addAccount (wallet2, (commonOperators, 0))
-              $ addAccount (wallet3, (commonOperators, 0))
-              $ addAccount (wallet4, (commonOperators, 0)) defaultOriginationParams
-                { opPermissionsDescriptor = permissionDescriptorOperatorTransferAllowed }
-        withOriginated fa2Originate originationParams $ \fa2contract -> do
-          let
-            transfers =
-              [ (#from_ .! wallet1, (#to_ .! wallet2, (#token_id .! 0, #amount .! 10)))
-              , (#from_ .! wallet2, (#to_ .! wallet3, (#token_id .! 0, #amount .! 10)))
-              , (#from_ .! wallet3, (#to_ .! wallet4, (#token_id .! 1, #amount .! 10))) -- should fail
-              , (#from_ .! wallet4, (#to_ .! wallet5, (#token_id .! 0, #amount .! 10)))
-              ]
-
-          withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
-
-          validate $ Left (lExpectAnyMichelsonFailed fa2contract)
-
-    it "aborts if there is a failure (due to bad owner )" $ integrationalTestExpectation $ do
+    it "aborts if there is a failure (due to bad owner)" $ integrationalTestExpectation $ do
       -- Tests transactions are applied in order
       -- Update balances exactly
         let originationParams = addAccount (wallet1, (commonOperators, 10))
@@ -282,11 +126,11 @@ fa2Spec fa2Originate = do
                 { opPermissionsDescriptor = permissionDescriptorOperatorTransferAllowed }
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
-            transfers =
-              [ (#from_ .! wallet1, (#to_ .! wallet2, (#token_id .! 0, #amount .! 10)))
-              , (#from_ .! wallet2, (#to_ .! wallet3, (#token_id .! 0, #amount .! 10)))
-              , (#from_ .! wallet3, (#to_ .! wallet4, (#token_id .! 1, #amount .! 10))) -- should fail
-              , (#from_ .! wallet4, (#to_ .! wallet5, (#token_id .! 0, #amount .! 10)))
+            transfers = constructTransfersFromSender (#from_ .! wallet1)
+              [ (#to_ .! wallet2, #amount .! 10)
+              , (#to_ .! wallet3, #amount .! 10)
+              , (#to_ .! wallet4, #amount .! 10) -- should fail
+              , (#to_ .! wallet5, #amount .! 10)
               ]
 
           withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
@@ -295,11 +139,14 @@ fa2Spec fa2Originate = do
 
     it "accepts an empty list of transfers" $ do
       integrationalTestExpectation $ do
-        let originationParams = defaultOriginationParams
+        let
+          originationParams =
+              addAccount (wallet1, (commonOperators, 10))
+            $ defaultOriginationParams
                 { opPermissionsDescriptor = permissionDescriptorOperatorTransferAllowed }
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
-            transfers = [] :: [TransferItem]
+            transfers = [(#from_ .! wallet1, #txs .! [])]
 
           withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
           validate (Right expectAnySuccess)
@@ -311,9 +158,10 @@ fa2Spec fa2Originate = do
                 { opPermissionsDescriptor = permissionDescriptorOperatorTransferDenied }
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
-            transfers =
-              [ (#from_ .! wallet1, (#to_ .! wallet2, (#token_id .! 0, #amount .! 1)))
-              ]
+            transfers = constructSingleTransfer
+              (#from_ .! wallet1)
+              (#to_ .! wallet2)
+              (#amount .! 1)
 
           withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
           validate $ Left (lExpectAnyMichelsonFailed fa2contract)
@@ -326,7 +174,12 @@ fa2Spec fa2Originate = do
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
             transfers =
-              [ (#from_ .! wallet1, (#to_ .! wallet2, (#token_id .! 1, #amount .! 10)))
+              [ ( #from_ .! wallet1
+              , (#txs .!
+                  [ (#to_ .! wallet2, (#token_id .! 0, #amount .! 5))
+                  , (#to_ .! wallet3, (#token_id .! 1, #amount .! 1))
+                  , (#to_ .! wallet4, (#token_id .! 0, #amount .! 4))
+                  ]))
               ]
 
           withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
@@ -337,9 +190,10 @@ fa2Spec fa2Originate = do
             addAccount (wallet1, (commonOperators, 10)) $ defaultOriginationParams
       withOriginated fa2Originate originationParams $ \fa2contract -> do
         let
-          transfers =
-            [ (#from_ .! wallet2, (#to_ .! wallet1, (#token_id .! 0, #amount .! 1)))
-            ]
+          transfers = constructSingleTransfer
+            (#from_ .! wallet2)
+            (#to_ .! wallet1)
+            (#amount .! 1)
 
         withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
         validate $ Left (lExpectAnyMichelsonFailed fa2contract)
@@ -349,9 +203,10 @@ fa2Spec fa2Originate = do
             addAccount (wallet1, (commonOperators, 10)) $ defaultOriginationParams
       withOriginated fa2Originate originationParams $ \fa2contract -> do
         let
-          transfers =
-            [ (#from_ .! wallet1, (#to_ .! wallet2, (#token_id .! 0, #amount .! 5)))
-            ]
+          transfers = constructSingleTransfer
+            (#from_ .! wallet1)
+            (#to_ .! wallet2)
+            (#amount .! 5)
 
         withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
         consumer <- lOriginateEmpty @[BalanceResponseItem] contractConsumer "consumer"
@@ -376,9 +231,10 @@ fa2Spec fa2Originate = do
       let originationParams = (addAccount (wallet1, (commonOperators, 10)) defaultOriginationParams)
       withOriginated fa2Originate originationParams $ \fa2contract -> do
         let
-          transfers =
-            [ (#from_ .! wallet1, (#to_ .! wallet2, (#token_id .! 0, #amount .! 1)))
-            ]
+          transfers = constructSingleTransfer
+            (#from_ .! wallet1)
+            (#to_ .! wallet2)
+            (#amount .! 1)
 
         withSender wallet2 $ lCallEP fa2contract (Call @"Transfer") transfers
         validate $ Left (lExpectAnyMichelsonFailed fa2contract)
@@ -390,9 +246,10 @@ fa2Spec fa2Originate = do
 
       withOriginated fa2Originate originationParams $ \fa2contract -> do
         let
-          transfers =
-            [ (#from_ .! wallet1, (#to_ .! wallet2, (#token_id .! 0, #amount .! 5)))
-            ]
+          transfers = constructSingleTransfer
+            (#from_ .! wallet1)
+            (#to_ .! wallet2)
+            (#amount .! 5)
 
         withSender wallet1 $ lCallEP fa2contract (Call @"Transfer") transfers
         let
@@ -412,9 +269,10 @@ fa2Spec fa2Originate = do
             defaultOriginationParams { opPermissionsDescriptor = permissionDescriptorSelfTransferDenied }
       withOriginated fa2Originate originationParams $ \fa2contract -> do
         let
-          transfers =
-            [ (#from_ .! wallet1, (#to_ .! wallet2, (#token_id .! 0, #amount .! 1)))
-            ]
+          transfers = constructSingleTransfer
+            (#from_ .! wallet1)
+            (#to_ .! wallet2)
+            (#amount .! 1)
 
         withSender wallet1 $ lCallEP fa2contract (Call @"Transfer") transfers
         validate $ Left (lExpectAnyMichelsonFailed fa2contract)
@@ -427,7 +285,8 @@ fa2Spec fa2Originate = do
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
             transfers =
-              [ (#from_ .! wallet1, (#to_ .! wallet2, (#token_id .! 1, #amount .! 10)))
+              [ (#from_ .! wallet1
+              , (#txs .! [(#to_ .! wallet2, (#token_id .! 1, #amount .! 10))]))
               ]
 
           withSender wallet1 $ lCallEP fa2contract (Call @"Transfer") transfers
@@ -438,11 +297,11 @@ fa2Spec fa2Originate = do
       -- Tests transactions are applied atomically
       withOriginated fa2Originate originationParams $ \fa2contract -> do
         let
-          transfers =
-            [ (#from_ .! wallet1, (#to_ .! wallet2, (#token_id .! 0, #amount .! 4)))
-            , (#from_ .! wallet1, (#to_ .! wallet3, (#token_id .! 0, #amount .! 4)))
-            , (#from_ .! wallet1, (#to_ .! wallet4, (#token_id .! 0, #amount .! 4))) -- Should fail
-            , (#from_ .! wallet1, (#to_ .! wallet5, (#token_id .! 0, #amount .! 2)))
+          transfers = constructTransfersFromSender (#from_ .! wallet1)
+            [ (#to_ .! wallet2, #amount .! 4)
+            , (#to_ .! wallet3, #amount .! 4)
+            , (#to_ .! wallet4, #amount .! 4) -- Should fail
+            , (#to_ .! wallet5, #amount .! 2)
             ]
 
         withSender wallet1 $ lCallEP fa2contract (Call @"Transfer") transfers
@@ -454,12 +313,10 @@ fa2Spec fa2Originate = do
       -- Tests transactions are applied atomically
       withOriginated fa2Originate originationParams $ \fa2contract -> do
         let
-          transfers =
-            [ (#from_ .! wallet1, (#to_ .! wallet2, (#token_id .! 0, #amount .! 4)))
-            , (#from_ .! wallet3, (#to_ .! wallet4, (#token_id .! 0, #amount .! 4))) -- should fail
-            , (#from_ .! wallet1, (#to_ .! wallet3, (#token_id .! 0, #amount .! 4)))
-            , (#from_ .! wallet1, (#to_ .! wallet5, (#token_id .! 0, #amount .! 2)))
-            ]
+          transfers = constructSingleTransfer
+            (#from_ .! wallet3)
+            (#to_ .! wallet1)
+            (#amount .! 2)
 
         withSender wallet1 $ lCallEP fa2contract (Call @"Transfer") transfers
 
@@ -471,42 +328,28 @@ fa2Spec fa2Originate = do
       withOriginated fa2Originate originationParams $ \fa2contract -> do
         let
           transfers =
-            [ (#from_ .! wallet1, (#to_ .! wallet2, (#token_id .! 0, #amount .! 1)))
-            , (#from_ .! wallet1, (#to_ .! wallet3, (#token_id .! 0, #amount .! 1)))
-            , (#from_ .! wallet1, (#to_ .! wallet4, (#token_id .! 1, #amount .! 1))) -- Should fail
-            , (#from_ .! wallet1, (#to_ .! wallet5, (#token_id .! 0, #amount .! 1)))
-            ]
+            [( #from_ .! wallet1
+             , #txs .!
+               [ (#to_ .! wallet2, (#token_id .! 0, #amount .! 1))
+               , (#to_ .! wallet3, (#token_id .! 0, #amount .! 1))
+               , (#to_ .! wallet4, (#token_id .! 1, #amount .! 1)) -- Should fail
+               , (#to_ .! wallet5, (#token_id .! 0, #amount .! 1))
+               ]
+             )]
 
         withSender wallet1 $ lCallEP fa2contract (Call @"Transfer") transfers
 
         validate $ Left (lExpectAnyMichelsonFailed fa2contract)
-
-    it "aborts if there is a failure (due to bad owner)" $ integrationalTestExpectation $ do
-      let originationParams =
-            addAccount (wallet1, ([], 10)) defaultOriginationParams
-      -- Tests transactions are applied atomically
-      withOriginated fa2Originate originationParams $ \fa2contract -> do
-        let
-          transfers =
-            [ (#from_ .! wallet1, (#to_ .! wallet2, (#token_id .! 0, #amount .! 1)))
-            , (#from_ .! wallet2, (#to_ .! wallet3, (#token_id .! 0, #amount .! 1))) -- Should fail
-            , (#from_ .! wallet1, (#to_ .! wallet4, (#token_id .! 1, #amount .! 1)))
-            , (#from_ .! wallet1, (#to_ .! wallet5, (#token_id .! 0, #amount .! 1)))
-            ]
-
-        withSender wallet1 $ lCallEP fa2contract (Call @"Transfer") transfers
-
-        validate $ Left (lExpectAnyMichelsonFailed fa2contract)
-
 
     it "will create target account if it does not already exist" $ integrationalTestExpectation $ do
       let originationParams =
             addAccount (wallet1, ([], 10)) $ defaultOriginationParams
       withOriginated fa2Originate originationParams $ \fa2contract -> do
         let
-          transfers =
-            [ (#from_ .! wallet1, (#to_ .! wallet2, (#token_id .! 0, #amount .! 5)))
-            ]
+          transfers = constructSingleTransfer
+            (#from_ .! wallet1)
+            (#to_ .! wallet2)
+            (#amount .! 5)
 
         withSender wallet1 $ lCallEP fa2contract (Call @"Transfer") transfers
         consumer <- lOriginateEmpty @[BalanceResponseItem] contractConsumer "consumer"
@@ -661,7 +504,7 @@ fa2Spec fa2Originate = do
         lCallEP fa2contract (Call @"Total_supply") totalSupplyRequest
         validate $ Left (lExpectAnyMichelsonFailed fa2contract)
 
-  ---- Metadata tests
+  -- Metadata tests
   describe "Metadata query entrypoint" $ do
     it "returns at least one items" $ integrationalTestExpectation $
       withOriginated fa2Originate defaultOriginationParams $ \fa2contract -> do
@@ -709,9 +552,8 @@ fa2Spec fa2Originate = do
 
         validate . Right $ expectAnySuccess
 
-  ---- These tests require permission descriptor to be configured so that
-  ---- Operator transfer is allowed. We have such a configuration in
-  ---- defaultOriginationParams.
+  -- These tests require permission descriptor to be configured that allows for operator transfer.
+  -- We have such a configuration set by default in defaultOriginationParams.
   describe "Configure operators entrypoint's add operator call" $ do
     it "adds operator as expected" $
       integrationalTestExpectation $ do
@@ -792,12 +634,7 @@ fa2Spec fa2Originate = do
               lExpectViewConsumerStorage consumer
                 [(#operator .! operatorParam, #is_operator .! True)])
 
-  ---- Check that the update operator, remove operator operations are only
-  ---- allowed for the owner. From the FA2 spec
-  ----
-  ----  >Operator, other than the owner, MUST be approved to manage particular token types
-  ----  >held by the owner to make a transfer from the owner account.
-
+  -- Check whether "update operator", "remove operator" operations are executed only by contract owner.
   describe "Configure operators entrypoint" $
     it "denies addOperator call for non-owners" $ integrationalTestExpectation $ do
       let originationParams = addAccount (wallet1, (commonOperators, 10)) defaultOriginationParams
@@ -848,8 +685,8 @@ fa2Spec fa2Originate = do
         lCallEP fa2contract (Call @"Update_operators") [removeOperatorParam]
         validate $ Left (lExpectAnyMichelsonFailed fa2contract)
 
-  -- FA2 Mandates that the entrypoints to configure operators should fail if
-  -- operator transfer is denied in permissions descriptor.
+  -- -- FA2 Mandates that the entrypoints to configure operators should fail if
+  -- -- operator transfer is denied in permissions descriptor.
   it "errors on addOperator call if operator transfer is forbidden" $
     integrationalTestExpectation $ do
       let originationParams = addAccount (wallet1, (commonOperators, 10))
@@ -883,11 +720,11 @@ fa2Spec fa2Originate = do
       lCallEP fa2contract (Call @"Is_operator") isOperatorQuery
       validate $ Left (lExpectAnyMichelsonFailed fa2contract)
 
-  ---- Owner hooks test
+  ---- Owner hook test
   ----
-  ---- Tests that tests senders owner hook is called on transfer
-  ---- uses defaultOptions where both sender/receiver hooks are set
-  ---- to be optional.
+  ---- Tests that validate whether senders owner hook is called on transfer
+  ---- using default origination options where both sender/receiver hooks
+  ---- are set to be optional.
   describe "Owner hook behavior on transfer" $ do
     it "calls sender's transfer hook on transfer" $ integrationalTestExpectation $ do
         senderWithHook <- lOriginateEmpty @FA2OwnerHook contractConsumer "Sender hook consumer"
@@ -895,9 +732,10 @@ fa2Spec fa2Originate = do
               addAccount (unTAddress senderWithHook, (commonOperators, 10)) defaultOriginationParams
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
-            transfers =
-              [ (#from_ .! unTAddress senderWithHook, (#to_ .! wallet2, (#token_id .! 0, #amount .! 10)))
-              ]
+            transfers = constructSingleTransfer
+              (#from_ .! unTAddress senderWithHook)
+              (#to_ .! wallet2)
+              (#amount .! 10)
 
           withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
 
@@ -918,14 +756,15 @@ fa2Spec fa2Originate = do
         let originationParams = addAccount (wallet1, (commonOperators, 10)) defaultOriginationParams
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
-            transfers =
-              [ ( #from_ .! wallet1
-                , (#to_ .! unTAddress receiverWithHook, (#token_id .! 0, #amount .! 10)))
-              ]
+            transfers = constructSingleTransfer
+              (#from_ .! wallet1)
+              (#to_ .! unTAddress receiverWithHook)
+              (#amount .! 10)
 
           withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
 
-          let expectedTransferDesc =
+          let
+            expectedTransferDesc =
                ( #from .! Just wallet1
                , (#to .! (Just $ unTAddress receiverWithHook), (#token_id .! 0, #amount .! 10)))
 
@@ -947,10 +786,10 @@ fa2Spec fa2Originate = do
 
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
-            transfers =
-              [ (#from_ .! unTAddress senderWithHook
-                , (#to_ .! wallet2, (#token_id .! 0, #amount .! 10)))
-              ]
+            transfers = constructSingleTransfer
+              (#from_ .! unTAddress senderWithHook)
+              (#to_ .! wallet2)
+              (#amount .! 10)
 
           withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
 
@@ -964,10 +803,10 @@ fa2Spec fa2Originate = do
                 { opPermissionsDescriptor = permissionDescriptorNoOpReceiverHook }
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
-            transfers =
-              [ (#from_ .! wallet1,
-                    (#to_ .! unTAddress receiverWithHook, (#token_id .! 0, #amount .! 10)))
-              ]
+            transfers = constructSingleTransfer
+              (#from_ .! wallet1)
+              (#to_ .! unTAddress receiverWithHook)
+              (#amount .! 10)
 
           withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
 
@@ -983,9 +822,10 @@ fa2Spec fa2Originate = do
         withOriginated fa2Originate originationParams $ \fa2contract -> do
 
           let
-            transfers =
-              [ (#from_ .! unTAddress senderWithHook, (#to_ .! wallet2, (#token_id .! 0, #amount .! 10)))
-              ]
+            transfers = constructSingleTransfer
+              (#from_ .! unTAddress senderWithHook)
+              (#to_ .! wallet2)
+              (#amount .! 10)
 
           withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
 
@@ -999,9 +839,10 @@ fa2Spec fa2Originate = do
 
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
-            transfers =
-              [ (#from_ .! wallet1, (#to_ .! unTAddress receiverWithHook, (#token_id .! 0, #amount .! 10)))
-              ]
+            transfers = constructSingleTransfer
+              (#from_ .! wallet1)
+              (#to_ .! unTAddress receiverWithHook)
+              (#amount 10)
 
           withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
           validate $ Left (lExpectAnyMichelsonFailed fa2contract)
