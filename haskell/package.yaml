@@ -23,6 +23,10 @@ library:
 
   dependencies:
     - morley-prelude
+    - lorentz
+    - morley
+    - tasty-quickcheck
+    - fmt
 
 tests:
   stablecoin-test:
@@ -32,5 +36,12 @@ tests:
       - HUnit
       - morley
       - morley-prelude
+      - morley-nettest
+      - lorentz
       - tasty
       - tasty-hunit-compat
+      - tasty-hspec
+      - tasty-quickcheck
+      - stablecoin
+      - hspec
+      - containers
