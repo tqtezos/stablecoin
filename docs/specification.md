@@ -641,8 +641,6 @@ Parameter (in Michelson):
 - Each minting must happen atomically, so if one of them fails, then the whole
   operation must fail.
 
-- The operation must follow permission policies described above.
-
 - Sender must be minter.
 
 - The total amount of minted coins must not exceed the current
@@ -659,7 +657,7 @@ Parameter (in Michelson):
 
 Parameter (in Michelson): `list nat`.
 
-- Decreases balances for senders and the total supply of tokens by the given amount.
+- Decreases balance for sender and the total supply of tokens by the sum of given amounts.
 
 - Each burning operation must happen atomically, so if one of them fails,
   then the whole operation must fail.
@@ -668,8 +666,6 @@ Parameter (in Michelson): `list nat`.
 
 - Sender must be a minter and must have a sufficient amount of
   funds to be destroyed.
-
-- A minter can only burn tokens which it owns.
 
 - A minter with 0 minting allowance is allowed to burn tokens.
 
