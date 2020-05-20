@@ -7,18 +7,46 @@ env:
 
 steps:
  - command: nix run nixpkgs.reuse -c reuse lint
+   if: build.source != "schedule"
    label: reuse lint
  - command: .buildkite/check-trailing-whitespace.sh
+   if: build.source != "schedule"
    label: check trailing whitespace
  - command: "nix run -f https://github.com/serokell/xrefcheck/archive/b54c38d91bd45e5c402ebf51d68c653faf959c2c.tar.gz -c xrefcheck"
+   if: build.source != "schedule"
    label: xrefcheck
    soft_fail: true
  - label: build library
+   if: build.source != "schedule"
    command: nix build -L -f. lib
  - label: test
+   if: build.source != "schedule"
    commands:
      - nix build -L -f. test
      - cd result
      - ./bin/stablecoin-test
+ - label: nettest-local-chain
+   if: build.source != "schedule"
+   env:
+     TEZOS_CLIENT_UNSAFE_DISABLE_DISCLAIMER: "Y"
+     NETTEST_NODE_ADDR: "localhost"
+     NETTEST_NODE_PORT: "8734"
+     MONEYBAG: "unencrypted:edsk47wWUSCHRDC1Hxtg7yxXzocwDjBJJRqTKnoP7htAifSpzwkg8K"
+   commands: &run-nettest
+     - nix build -L -f. nettest
+     - mkdir -p test/resources/
+     - nix-build -A tezos-contract -o test/resources/stablecoin.tz
+     - nix run -f. tezos-client -c ./scripts/ci/run-local-chain-nettest.sh result/bin/stablecoin-nettest
+ - label: nettest-scheduled
+   if: build.source == "schedule"
+   env:
+     TEZOS_CLIENT_UNSAFE_DISABLE_DISCLAIMER: "Y"
+     NETTEST_NODE_ADDR: "carthage.testnet.tezos.serokell.team"
+     NETTEST_NODE_PORT: "8732"
+     # Note that testnet moneybag can run out of tz. If this happened, someone should transfer it some
+     # more tz, its address: tz1PmUUbZFoQndXvx8gEbS58NvacQhmCUg9Y
+     MONEYBAG: "unencrypted:edsk35MZSeehREYkbvnuNJzgt2m3AhWnWHwqpeQdRS85aLygqrA61G"
+   commands: *run-nettest
  - label: check LIGO contract
+   if: build.source != "schedule"
    command: nix build -L -f. tezos-contract
