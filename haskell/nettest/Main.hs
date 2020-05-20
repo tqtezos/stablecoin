@@ -5,6 +5,7 @@ module Main
   ) where
 
 import Data.Maybe (fromJust)
+import Options.Applicative (execParser)
 
 import Michelson.Runtime (prepareContract)
 import Morley.Nettest
@@ -16,7 +17,7 @@ import Nettest (scTransferScenario)
 main :: IO ()
 main = do
   let clientParser = clientConfigParser . pure $ Just "nettest.Stablecoin"
-  parsedConfig <- parseArgs $
+  parsedConfig <- execParser $
     parserInfo
       (#usage .! mempty)
       (#description .! "ManagedLedger nettest scenario")

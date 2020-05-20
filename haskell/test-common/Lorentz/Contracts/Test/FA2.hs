@@ -15,7 +15,7 @@ module Lorentz.Contracts.Test.FA2
 import qualified Data.Map as Map
 import Test.Hspec (Spec, describe, it)
 
-import Lorentz (mkView)
+import Lorentz (defaultContract, mkView)
 import qualified Lorentz as L
 import Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Test
@@ -140,8 +140,8 @@ type OriginationFn param = (OriginationParams -> IntegrationalScenarioM (Maybe (
 skipTest :: IntegrationalScenario
 skipTest = do
   let
-    dummyContract :: L.ContractCode () ()
-    dummyContract = L.unpair L.# L.drop L.# L.nil L.# L.pair
+    dummyContract :: L.Contract () ()
+    dummyContract = defaultContract $ L.unpair L.# L.drop L.# L.nil L.# L.pair
   c <- lOriginate dummyContract "skip test dummy" () (unsafeMkMutez 0)
   lCallEP c CallDefault ()
   validate (Right expectAnySuccess)

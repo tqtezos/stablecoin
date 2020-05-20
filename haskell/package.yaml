@@ -62,4 +62,5 @@ tests:
       - morley
       - morley-nettest
       - morley-prelude
+      - optparse-applicative
       - stablecoin
