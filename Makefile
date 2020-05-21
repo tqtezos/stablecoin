@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2020 tqtezos
 # SPDX-License-Identifier: MIT
 
-.PHONY: all build-ligo build-haskell test test-dumb-term test-hide-successes clean
+.PHONY: all build-ligo build-haskell test test-dumb-term test-hide-successes nettest clean
 
 MAKE_HASKELL = $(MAKE) -C haskell/
 MAKE_LIGO = $(MAKE) -C ligo/
@@ -24,6 +24,9 @@ test-dumb-term:
 
 test-hide-successes:
 	$(MAKE_HASKELL) test-hide-sucesses
+
+nettest:
+	$(MAKE_HASKELL) nettest
 
 clean:
 	$(MAKE_HASKELL) clean

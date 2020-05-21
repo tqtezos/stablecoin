@@ -31,6 +31,9 @@ library:
 tests:
   stablecoin-test:
     <<: *test-common
+    source-dirs:
+      - test
+      - test-common
 
     dependencies:
       - HUnit
@@ -45,3 +48,18 @@ tests:
       - stablecoin
       - hspec
       - containers
+
+  stablecoin-nettest:
+    <<: *test-common
+    source-dirs:
+      - test-common
+      - nettest
+
+    dependencies:
+      - containers
+      - hspec
+      - lorentz
+      - morley
+      - morley-nettest
+      - morley-prelude
+      - stablecoin

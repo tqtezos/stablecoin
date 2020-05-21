@@ -8,16 +8,15 @@ module Nettest
 import Lorentz hiding (comment, (>>))
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Test.FA2
-import Michelson.Typed (HasNoOp, SingI, untypeValue)
+import Michelson.Typed (untypeValue)
 import qualified Michelson.Untyped as U
 import Morley.Nettest
 import Util.Named
 
-scTransferScenario ::
-     forall storage.
-     (SingI (ToT storage), IsoValue storage, HasNoOp (ToT storage)
-     )
-  => (OriginationParams -> storage)
+import Lorentz.Contracts.Stablecoin
+
+scTransferScenario
+  :: (OriginationParams -> Storage)
   -> U.Contract
   -> NettestScenario
 scTransferScenario mkInitialStorage contract_ = uncapsNettest $ do
@@ -38,7 +37,7 @@ scTransferScenario mkInitialStorage contract_ = uncapsNettest $ do
       $ defaultOriginationParams
 
   scAddress <- do
-    let str :: storage = mkInitialStorage initialStorage
+    let str = mkInitialStorage initialStorage
     originateUntypedSimple "nettest.Stablecoin" (untypeValue $ toVal str) contract_
 
   let
