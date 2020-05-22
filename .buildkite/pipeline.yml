@@ -50,3 +50,7 @@ steps:
  - label: check LIGO contract
    if: build.source != "schedule"
    command: nix build -L -f. tezos-contract
+
+notify:
+  - email: "tezos-alerts@serokell.io"
+    if: build.state == "failed" && build.source == "schedule"
