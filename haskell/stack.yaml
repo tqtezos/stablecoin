@@ -11,7 +11,7 @@ extra-deps:
     https://gitlab.com/morley-framework/morley.git
     # ^ CI cannot use ssh, so we use http clone here
   commit:
-    6312d72e8bb725a2d67a2d2b4079f912de0cc093 # master
+    0a5d6fa6743ce323cad0ab176626137b4e5e3a57 # master
   subdirs:
     - code/morley
     - code/lorentz
@@ -31,9 +31,9 @@ extra-deps:
   commit: c5d61837eb358989b581ed82b1e79158c4823b1b
 # tezos-bake-monitor-lib and its deps which are used in morley-client
 - git:
-    https://gitlab.com/obsidian.systems/tezos-bake-monitor-lib.git
+    https://gitlab.com/serokell/morley/tezos-bake-monitor-lib.git
   commit:
-    ed3280836d7d0e87999639520610bf7b6510e743
+    bed2b74241c0547d32eb8df6fef2b60a2924611c
   subdirs:
     - tezos-bake-monitor-lib
 - witherable-0.3.5

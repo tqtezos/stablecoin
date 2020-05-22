@@ -7,67 +7,67 @@ packages:
 - completed:
     subdir: code/morley
     cabal-file:
-      size: 11421
-      sha256: d49219c792e303160e2af7d404d46ee88ef8a41332ce8696442b9acd3a8d61f9
+      size: 11573
+      sha256: 317920ebcc1d9467ec5c4c552c59e3734d5cdad277999c84ea066ca68dd51db3
     name: morley
-    version: 1.2.0
+    version: 1.3.0
     git: https://gitlab.com/morley-framework/morley.git
     pantry-tree:
-      size: 11084
-      sha256: 497ee299ead2d733842b2facc7723f6a1f19bc98c573109a48f74c1df0700860
-    commit: 6312d72e8bb725a2d67a2d2b4079f912de0cc093
+      size: 11408
+      sha256: 35be4b38e444cc99ea7be0f1b032bbd64191410a2b5fe8e02b16c8187a0da749
+    commit: 0a5d6fa6743ce323cad0ab176626137b4e5e3a57
   original:
     subdir: code/morley
     git: https://gitlab.com/morley-framework/morley.git
-    commit: 6312d72e8bb725a2d67a2d2b4079f912de0cc093
+    commit: 0a5d6fa6743ce323cad0ab176626137b4e5e3a57
 - completed:
     subdir: code/lorentz
     cabal-file:
-      size: 6775
-      sha256: e8217a91eef8cb2380be18e6514c20bfd5f4739361afcb50d7abd52d8ae898f1
+      size: 6811
+      sha256: 924dc4009ddc119277b35507347873fdaf462420a0dada9746a6574c03a37296
     name: lorentz
-    version: 0.2.0
+    version: 0.3.0
     git: https://gitlab.com/morley-framework/morley.git
     pantry-tree:
-      size: 6511
-      sha256: 11ae7587d8218fbb096ddbfe018fb4a37f1d7aa150d3df813f4481e44775d0b9
-    commit: 6312d72e8bb725a2d67a2d2b4079f912de0cc093
+      size: 6751
+      sha256: c5483dbe7f860ef2ab569fe2363e6199d444a440bfeb60e05efb8f30497ae1e6
+    commit: 0a5d6fa6743ce323cad0ab176626137b4e5e3a57
   original:
     subdir: code/lorentz
     git: https://gitlab.com/morley-framework/morley.git
-    commit: 6312d72e8bb725a2d67a2d2b4079f912de0cc093
+    commit: 0a5d6fa6743ce323cad0ab176626137b4e5e3a57
 - completed:
     subdir: code/morley-nettest
     cabal-file:
-      size: 2343
-      sha256: ce04aacb06304d5d9951b64efcdbc142f20b99eb0d2c3ee4ce98987aab6adbad
+      size: 5320
+      sha256: 7f2fc4e742111fb7514e1484c9c71ce81cdef276e86416478de8aa3cf9825c7d
     name: morley-nettest
     version: 0.1.0
     git: https://gitlab.com/morley-framework/morley.git
     pantry-tree:
-      size: 597
-      sha256: bcca858fca3b673dbef8871cd50c2b9b2bddbd48d35e5220d0215474a147d8bc
-    commit: 6312d72e8bb725a2d67a2d2b4079f912de0cc093
+      size: 1160
+      sha256: 72113d8f8ce8c14f8ac7c2ff3eba85635bee978b47104090a1d26bba2f3fe011
+    commit: 0a5d6fa6743ce323cad0ab176626137b4e5e3a57
   original:
     subdir: code/morley-nettest
     git: https://gitlab.com/morley-framework/morley.git
-    commit: 6312d72e8bb725a2d67a2d2b4079f912de0cc093
+    commit: 0a5d6fa6743ce323cad0ab176626137b4e5e3a57
 - completed:
     subdir: code/morley-client
     cabal-file:
-      size: 5684
-      sha256: 0951d7a3524d3388ec984a082c292383ee2c70073fbb497ae3c2f10e4793e532
+      size: 6005
+      sha256: 985c97a45a640d1333c00546f1cee00eea0d05ad9dfbaac31333e080ef8eb65b
     name: morley-client
     version: 0.1.0
     git: https://gitlab.com/morley-framework/morley.git
     pantry-tree:
-      size: 1819
-      sha256: dd06b7757b7679a7e27d97906ba65b3f3f42a74e3ecaceaa183a0ac50665e342
-    commit: 6312d72e8bb725a2d67a2d2b4079f912de0cc093
+      size: 2406
+      sha256: e22476c3c717adf197d20bd7493bae3ccf75a2d68f7b3a0e6726bb2694558940
+    commit: 0a5d6fa6743ce323cad0ab176626137b4e5e3a57
   original:
     subdir: code/morley-client
     git: https://gitlab.com/morley-framework/morley.git
-    commit: 6312d72e8bb725a2d67a2d2b4079f912de0cc093
+    commit: 0a5d6fa6743ce323cad0ab176626137b4e5e3a57
 - completed:
     hackage: morley-prelude-0.3.0@sha256:9e9473ac14cfa206adf0a3700764c0251de05042f1fe45daf9cb8556079ae663,2085
     pantry-tree:
@@ -131,15 +131,15 @@ packages:
       sha256: e56a10ede88e495c1a37d3601591ebd18bbccfa3a702ab67822751b8f44cff29
     name: tezos-bake-monitor-lib
     version: 0.1.0.0
-    git: https://gitlab.com/obsidian.systems/tezos-bake-monitor-lib.git
+    git: https://gitlab.com/serokell/morley/tezos-bake-monitor-lib.git
     pantry-tree:
       size: 8709
-      sha256: e7575ed96939e0e531a6a5f408803f94558ea6dac3b641551d29bf5689a6959e
-    commit: ed3280836d7d0e87999639520610bf7b6510e743
+      sha256: 6be9c1e46e4ec0100b1a158d55fb105b702ec394f28e19271aa6f18b2e3d8c97
+    commit: bed2b74241c0547d32eb8df6fef2b60a2924611c
   original:
     subdir: tezos-bake-monitor-lib
-    git: https://gitlab.com/obsidian.systems/tezos-bake-monitor-lib.git
-    commit: ed3280836d7d0e87999639520610bf7b6510e743
+    git: https://gitlab.com/serokell/morley/tezos-bake-monitor-lib.git
+    commit: bed2b74241c0547d32eb8df6fef2b60a2924611c
 - completed:
     hackage: witherable-0.3.5@sha256:6590a15735b50ac14dcc138d4265ff1585d5f3e9d3047d5ebc5abf4cd5f50084,1476
     pantry-tree:

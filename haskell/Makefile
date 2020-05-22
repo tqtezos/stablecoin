@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2020 tqtezos
 # SPDX-License-Identifier: MIT
 
-.PHONY: build test test-dumb-term test-hide-successes haddock haddock-no-deps stylish lint clean all
+.PHONY: build test test-dumb-term test-hide-successes nettest haddock haddock-no-deps stylish lint clean all
 
 LIGO_DIR = ../ligo/
 MAKE_LIGO = $(MAKE) -C $(LIGO_DIR)
@@ -20,11 +20,15 @@ PACKAGE = stablecoin
 #   Initial `../..` in `ln` is needed because of `test/resources`.
 #   $(LIGO_DIR) is relative to the current directory.
 define call_test
+	$(call build_stablecoin_contract)
+	stack test $(PACKAGE) \
+		--test-arguments "--color always $(TEST_ARGUMENTS) $1" $2
+endef
+
+define build_stablecoin_contract
 	$(MAKE_LIGO) stablecoin.tz
 	mkdir -p test/resources
 	ln -sf "../../$(LIGO_DIR)/stablecoin.tz" "test/resources/stablecoin.tz"
-	stack test $(PACKAGE) \
-		--test-arguments "--color always $(TEST_ARGUMENTS) $1" $2
 endef
 
 # Build everything haskell-related (including tests and benchmarks) with development options.
@@ -44,6 +48,13 @@ test-dumb-term:
 # because otherwise this option is likely to work incorrectly.
 test-hide-successes:
 	TERM=dumb $(call call_test,"--hide-successes",$(STACK_DEV_TEST_OPTIONS))
+
+# Run network tests
+nettest:
+	$(call build_stablecoin_contract)
+	stack test stablecoin:stablecoin-nettest \
+		--test-arguments "$(TEST_ARGUMENTS)" \
+		$(STACK_DEV_TEST_OPTIONS)
 
 # Run haddock for all packages.
 haddock:
