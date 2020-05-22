@@ -31,9 +31,9 @@ extra-deps:
   commit: c5d61837eb358989b581ed82b1e79158c4823b1b
 # tezos-bake-monitor-lib and its deps which are used in morley-client
 - git:
-    https://gitlab.com/obsidian.systems/tezos-bake-monitor-lib.git
+    https://gitlab.com/serokell/morley/tezos-bake-monitor-lib.git
   commit:
-    ed3280836d7d0e87999639520610bf7b6510e743
+    bed2b74241c0547d32eb8df6fef2b60a2924611c
   subdirs:
     - tezos-bake-monitor-lib
 - witherable-0.3.5

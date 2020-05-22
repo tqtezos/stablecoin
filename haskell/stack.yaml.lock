@@ -131,15 +131,15 @@ packages:
       sha256: e56a10ede88e495c1a37d3601591ebd18bbccfa3a702ab67822751b8f44cff29
     name: tezos-bake-monitor-lib
     version: 0.1.0.0
-    git: https://gitlab.com/obsidian.systems/tezos-bake-monitor-lib.git
+    git: https://gitlab.com/serokell/morley/tezos-bake-monitor-lib.git
     pantry-tree:
       size: 8709
-      sha256: e7575ed96939e0e531a6a5f408803f94558ea6dac3b641551d29bf5689a6959e
-    commit: ed3280836d7d0e87999639520610bf7b6510e743
+      sha256: 6be9c1e46e4ec0100b1a158d55fb105b702ec394f28e19271aa6f18b2e3d8c97
+    commit: bed2b74241c0547d32eb8df6fef2b60a2924611c
   original:
     subdir: tezos-bake-monitor-lib
-    git: https://gitlab.com/obsidian.systems/tezos-bake-monitor-lib.git
-    commit: ed3280836d7d0e87999639520610bf7b6510e743
+    git: https://gitlab.com/serokell/morley/tezos-bake-monitor-lib.git
+    commit: bed2b74241c0547d32eb8df6fef2b60a2924611c
 - completed:
     hackage: witherable-0.3.5@sha256:6590a15735b50ac14dcc138d4265ff1585d5f3e9d3047d5ebc5abf4cd5f50084,1476
     pantry-tree:
