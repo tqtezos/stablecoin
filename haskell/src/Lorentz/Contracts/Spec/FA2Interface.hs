@@ -17,7 +17,7 @@ module Lorentz.Contracts.Spec.FA2Interface
   , OperatorTransferMode (..)
   , OwnerTransferMode (..)
   , Parameter (..)
-  , ParameterC
+  , FA2ParameterC
   , PermissionsDescriptor
   , PermissionsDescriptorMaybe
   , PermissionsDescriptorParam
@@ -27,7 +27,7 @@ module Lorentz.Contracts.Spec.FA2Interface
   , TokenMetadata
   , TotalSupplyRequestParams
   , TotalSupplyResponse
-  , TransferItem
+  , TransferDestination
   , TransferDescriptor
   , TransferDescriptorParam
   , TransferParams
@@ -50,10 +50,13 @@ import Util.Named
 -- 4. Transfer operation must apply permission policy logic.
 type TokenId = Natural
 
-type TransferItem =
-  ("from_" :! Address, ("to_" :! Address, ("token_id" :! TokenId, "amount" :! Natural)))
+type TransferDestination =
+  ("to_" :! Address, ("token_id" :! TokenId, "amount" :! Natural))
 
-type TransferParams = [TransferItem]
+type TransferParam =
+  ("from_" :! Address, "txs" :! [TransferDestination])
+
+type TransferParams = [TransferParam]
 
 -- BalanceOf
 -- ---------
@@ -167,7 +170,8 @@ type family PdFld (f :: PdTag) t where
 -- | The permission descriptor of the FA2 contract.
 -- The dummy names for every second tuple item is a temporary
 -- workaround for the strict requirement of having to name all the
--- tuple elements.
+-- tuple elements that is used for setting some specific parameter
+-- when passing them in tests.
 type PermissionsDescriptorPoly t =
   ( "self" :! PdFld t SelfTransferMode
   , "pdr" :! ( "operator" :! PdFld t OperatorTransferMode
@@ -222,16 +226,18 @@ data Parameter
 instance ParameterHasEntryPoints Parameter where
   type ParameterEntryPointsDerivation Parameter = EpdPlain
 
-type ParameterC param =
-  ParameterContainsEntryPoints param
-    [ "Transfer" :> TransferParams
-    , "Balance_of" :> BalanceRequestParams
-    , "Total_supply" :> TotalSupplyRequestParams
-    , "Token_metadata" :> TokenMetaDataParam
-    , "Permissions_descriptor" :> PermissionsDescriptorParam
-    , "Update_operators" :> UpdateOperatorsParam
-    , "Is_operator" :> IsOperatorParam
-    ]
+type FA2ParameterMichelsonEntrypoints =
+  [ "Transfer" :> TransferParams
+  , "Balance_of" :> BalanceRequestParams
+  , "Total_supply" :> TotalSupplyRequestParams
+  , "Token_metadata" :> TokenMetaDataParam
+  , "Permissions_descriptor" :> PermissionsDescriptorParam
+  , "Update_operators" :> UpdateOperatorsParam
+  , "Is_operator" :> IsOperatorParam
+  ]
+
+type FA2ParameterC param =
+  ParameterContainsEntryPoints param FA2ParameterMichelsonEntrypoints
 
 -- | Owner hook interface
 --
@@ -252,7 +258,7 @@ data FA2OwnerHook
 instance Buildable TransferDescriptor where
   build = genericF
 
-instance Buildable TransferItem where
+instance Buildable TransferDestination where
   build = genericF
 
 instance Buildable FA2OwnerHook where
