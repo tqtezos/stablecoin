@@ -69,6 +69,22 @@ packages:
     git: https://gitlab.com/morley-framework/morley.git
     commit: 0a5d6fa6743ce323cad0ab176626137b4e5e3a57
 - completed:
+    subdir: code/indigo
+    cabal-file:
+      size: 4791
+      sha256: 25e10903b7a5f9104dade052101b203725cb7877998cd1f5834970b48b3a497b
+    name: indigo
+    version: 0.1.0.0
+    git: https://gitlab.com/morley-framework/morley.git
+    pantry-tree:
+      size: 6903
+      sha256: 5450280e2d0e25aa2df45a37a635e9a4d7960b67a7a751f7e70ef0a86ac073e2
+    commit: 0a5d6fa6743ce323cad0ab176626137b4e5e3a57
+  original:
+    subdir: code/indigo
+    git: https://gitlab.com/morley-framework/morley.git
+    commit: 0a5d6fa6743ce323cad0ab176626137b4e5e3a57
+- completed:
     hackage: morley-prelude-0.3.0@sha256:9e9473ac14cfa206adf0a3700764c0251de05042f1fe45daf9cb8556079ae663,2085
     pantry-tree:
       size: 270

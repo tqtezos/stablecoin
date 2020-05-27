@@ -25,6 +25,8 @@ library:
     - morley-prelude
     - lorentz
     - morley
+    - containers
+    - indigo
     - tasty-quickcheck
     - fmt
 

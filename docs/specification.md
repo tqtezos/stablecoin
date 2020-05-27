@@ -80,6 +80,10 @@ The syntax is: `entrypointName(argumentType)`.
 Required `Safelist` entrypoints:
 * `assertTransfers(list(pair (address :from) (address :to)))`
   * Checks whether a transfer is permitted from one address to the other one.
+
+    TODO: currently implementation doesn't match this interface because of the recent changes to FA2 interface
+    and we are discussing what's the best way to proceed
+
   Fails if transfer is prohibited for any item from this list.
 * `assertReceiver(address)`
   * Fails if address is not whitelisted or it is blacklisted.
