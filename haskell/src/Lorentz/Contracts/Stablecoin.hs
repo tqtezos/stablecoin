@@ -210,12 +210,12 @@ mkPermissionDescriptor
 
   owHookRec = case owtmr of
     FA2.OptionalOwnerHook _ -> OwOptReq OptOH
-    FA2.OwnerNoOp _ -> OwNoOp
+    FA2.OwnerNoHook _ -> OwNoOp
     FA2.RequiredOwnerHook _ -> OwOptReq ReqOp
 
   owHookSend = case otms of
     FA2.OptionalOwnerHook _ -> OwOptReq OptOH
-    FA2.OwnerNoOp _ -> OwNoOp
+    FA2.OwnerNoHook _ -> OwNoOp
     FA2.RequiredOwnerHook _ -> OwOptReq ReqOp
 
   in ((custom, ot), (owHookRec, owHookSend))
