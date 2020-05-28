@@ -120,7 +120,7 @@ type SafelistContract = "safelist_contract" :! (Maybe Address)
 
 type Storage =
   (((Ledger, MintingAllowances), (Operators, IsPaused))
-   , ((PermissionsDescriptor, Roles), (SafelistContract, TotalSupply)))
+   , ((Roles, SafelistContract), TotalSupply))
 
 pattern StorageLedger :: LedgerInner -> Storage
 pattern StorageLedger ledger <- (((arg #ledger -> (BigMap ledger), _ ), _), _)
@@ -135,10 +135,10 @@ pattern StoragePaused :: Bool -> Storage
 pattern StoragePaused paused <- ((_, (_, arg #paused -> paused)), _)
 
 pattern StorageRoles :: RolesInner -> Storage
-pattern StorageRoles roles <- (_ , ((_, arg #roles ->  roles), _))
+pattern StorageRoles roles <- (_ , ((arg #roles -> roles, _), _))
 
 pattern StorageSafelistContract :: Maybe Address -> Storage
-pattern StorageSafelistContract safelistContract <- (_ , (_, (arg #safelist_contract -> safelistContract, _)))
+pattern StorageSafelistContract safelistContract <- (_ , ((_, arg #safelist_contract -> safelistContract), _))
 
 ------------------------------------------------------------------
 

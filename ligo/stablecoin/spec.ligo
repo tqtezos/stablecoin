@@ -306,7 +306,6 @@ type minting_allowances is big_map (address, nat)
 type storage is record
   ledger             : ledger
 ; minting_allowances : minting_allowances
-; permissions        : permissions_descriptor_
 ; total_supply       : nat
 ; paused             : bool
 ; roles              : roles

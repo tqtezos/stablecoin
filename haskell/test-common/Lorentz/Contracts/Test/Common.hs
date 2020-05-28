@@ -295,7 +295,7 @@ mkInitialStorage op@OriginationParams{..} =
     safelistContract = #safelist_contract .! (unTAddress <$> opSafelistContract)
     totalSupply = #total_supply .! (sum $ Map.elems ledgerMap)
   in Just (((ledger, mintingAllowances), (operators, isPaused))
-           , ((stablecoinPermissionsDescriptor, roles), (safelistContract, totalSupply)))
+           , ((roles, safelistContract), totalSupply))
   else Nothing
   where
     foldFn

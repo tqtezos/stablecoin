@@ -258,7 +258,7 @@ function transfer
     ( const acc       : entrypoint
     ; const parameter : transfer_param
     ) : entrypoint is block
-  { validate_operators (acc.1.permissions, parameter, acc.1.operators)
+  { validate_operators (parameter, acc.1.operators)
   ; function transfer_tokens
       ( const accumulator : storage
       ; const destination : transfer_destination
@@ -393,8 +393,13 @@ function permission_descriptor
   ( const parameter : permissions_descriptor_params
   ; const store     : storage
   ) : entrypoint is block
-{ const permissions : permissions_descriptor =
-    Layout.convert_to_right_comb ((store.permissions : permissions_descriptor_))
+  {
+    const self_permissions : self_transfer_policy = Layout.convert_to_right_comb((Self_transfer_permitted : self_transfer_policy_))
+  ; const operator_permissions : operator_transfer_policy = Layout.convert_to_right_comb((Operator_transfer_permitted : operator_transfer_policy_))
+  ; const owner_hook_policy : owner_transfer_policy = Layout.convert_to_right_comb((Optional_owner_hook : owner_transfer_policy_))
+  ; const permissions : permissions_descriptor =
+      (self_permissions, (operator_permissions, (owner_hook_policy, (owner_hook_policy, (None : option (custom_permission_policy))))))
+
 } with
   ( list [Tezos.transaction
     ( permissions
@@ -425,14 +430,7 @@ function update_operators_action
 function is_operator_action
   ( const parameter : is_operator_params
   ; const store     : storage
-  ) : entrypoint is block
-  { const operator_transfer_policy : operator_transfer_policy_ =
-      Layout.convert_from_right_comb ((store.permissions.operator : operator_transfer_policy))
-  ; case operator_transfer_policy of
-      Operator_transfer_permitted (u) -> skip
-    | Operator_transfer_denied (u) -> failwith ("TX_DENIED")
-    end
-  } with
+  ) : entrypoint is
   ( list [is_operator (parameter, store.operators)]
   , store
   )
