@@ -76,9 +76,21 @@ fa2Spec fa2Originate = do
           validate . Right $
             lExpectViewConsumerStorage consumer [balanceExpected]
 
+    it "allows zero transfer from non-existent accounts" $ integrationalTestExpectation $ do
+        let originationParams = addOperator (wallet1, commonOperator) $ defaultOriginationParams
+                { opPermissionsDescriptor = permissionDescriptorOperatorTransferAllowed }
+        withOriginated fa2Originate originationParams $ \fa2contract -> do
+          let
+            transfers = constructSingleTransfer
+              (#from_ .! wallet1)
+              (#to_ .! wallet2)
+              (#amount .! 0)
+
+          withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
+
+          validate (Right expectAnySuccess)
+
     it "aborts if there is a failure (due to low balance)" $ integrationalTestExpectation $ do
-      -- Tests transactions are applied in order
-      -- Update balances exactly
         let originationParams = addAccount (wallet1, (commonOperators, 10))
               $ addAccount (wallet2, (commonOperators, 0))
               $ addAccount (wallet3, (commonOperators, 0))
@@ -89,7 +101,7 @@ fa2Spec fa2Originate = do
             transfers = constructTransfersFromSender (#from_ .! wallet1)
               [ (#to_ .! wallet2, #amount .! 10)
               , (#to_ .! wallet3, #amount .! 10)
-              , (#to_ .! wallet3, #amount .! 10) -- should fail
+              , (#to_ .! wallet3, #amount .! 10)
               , (#to_ .! wallet5, #amount .! 10)
               ]
 
@@ -98,8 +110,6 @@ fa2Spec fa2Originate = do
           validate $ Left (lExpectAnyMichelsonFailed fa2contract)
 
     it "aborts if there is a failure (due to non existent source account)" $ integrationalTestExpectation $ do
-      -- Tests transactions are applied in order
-      -- Update balances exactly
         let
           originationParams =
               addAccount (wallet1, (commonOperators, 10))
@@ -117,8 +127,6 @@ fa2Spec fa2Originate = do
           validate $ Left (lExpectAnyMichelsonFailed fa2contract)
 
     it "aborts if there is a failure (due to bad owner)" $ integrationalTestExpectation $ do
-      -- Tests transactions are applied in order
-      -- Update balances exactly
         let originationParams = addAccount (wallet1, (commonOperators, 10))
               $ addAccount (wallet2, (commonOperators, 0))
               $ addAccount (wallet3, ([], 0))
@@ -129,7 +137,26 @@ fa2Spec fa2Originate = do
             transfers = constructTransfersFromSender (#from_ .! wallet1)
               [ (#to_ .! wallet2, #amount .! 10)
               , (#to_ .! wallet3, #amount .! 10)
-              , (#to_ .! wallet4, #amount .! 10) -- should fail
+              , (#to_ .! wallet4, #amount .! 10)
+              , (#to_ .! wallet5, #amount .! 10)
+              ]
+
+          withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
+
+          validate $ Left (lExpectAnyMichelsonFailed fa2contract)
+
+    it "aborts if there is a failure (due to bad owner for zero transfer)" $ integrationalTestExpectation $ do
+        let originationParams = addAccount (wallet1, (commonOperators, 10))
+              $ addAccount (wallet2, (commonOperators, 0))
+              $ addAccount (wallet3, ([], 0))
+              $ addAccount (wallet4, (commonOperators, 0)) defaultOriginationParams
+                { opPermissionsDescriptor = permissionDescriptorOperatorTransferAllowed }
+        withOriginated fa2Originate originationParams $ \fa2contract -> do
+          let
+            transfers = constructTransfersFromSender (#from_ .! wallet1)
+              [ (#to_ .! wallet2, #amount .! 10)
+              , (#to_ .! wallet3, #amount .! 0)
+              , (#to_ .! wallet4, #amount .! 10)
               , (#to_ .! wallet5, #amount .! 10)
               ]
 
@@ -292,35 +319,54 @@ fa2Spec fa2Originate = do
           withSender wallet1 $ lCallEP fa2contract (Call @"Transfer") transfers
           validate $ Left (lExpectAnyMichelsonFailed fa2contract)
 
-    it "aborts if there is a failure (due to low source balance)" $ integrationalTestExpectation $ do
-      let originationParams = addAccount (wallet1, ([], 10)) defaultOriginationParams
-      -- Tests transactions are applied atomically
-      withOriginated fa2Originate originationParams $ \fa2contract -> do
-        let
-          transfers = constructTransfersFromSender (#from_ .! wallet1)
-            [ (#to_ .! wallet2, #amount .! 4)
-            , (#to_ .! wallet3, #amount .! 4)
-            , (#to_ .! wallet4, #amount .! 4) -- Should fail
-            , (#to_ .! wallet5, #amount .! 2)
-            ]
+    it "allows zero transfer from non-existent accounts" $ integrationalTestExpectation $ do
+      -- Tests transactions are applied in order
+      -- Update balances exactly
+        let originationParams = defaultOriginationParams
+                { opPermissionsDescriptor = permissionDescriptorSelfTransferAllowed }
+        withOriginated fa2Originate originationParams $ \fa2contract -> do
+          let
+            transfers = constructSingleTransfer
+              (#from_ .! wallet1)
+              (#to_ .! wallet2)
+              (#amount .! 0)
 
-        withSender wallet1 $ lCallEP fa2contract (Call @"Transfer") transfers
+          withSender wallet1 $ lCallEP fa2contract (Call @"Transfer") transfers
 
-        validate $ Left (lExpectAnyMichelsonFailed fa2contract)
+          validate (Right expectAnySuccess)
 
-    it "aborts if there is a failure (due to non existent source)" $ integrationalTestExpectation $ do
-      let originationParams = addAccount (wallet1, ([], 10)) defaultOriginationParams
-      -- Tests transactions are applied atomically
-      withOriginated fa2Originate originationParams $ \fa2contract -> do
-        let
-          transfers = constructSingleTransfer
-            (#from_ .! wallet3)
-            (#to_ .! wallet1)
-            (#amount .! 2)
 
-        withSender wallet1 $ lCallEP fa2contract (Call @"Transfer") transfers
+    it "aborts if there is a failure (due to low source balance)" $
+      integrationalTestExpectation $ do
+        let originationParams = addAccount (wallet1, ([], 10)) defaultOriginationParams
+        -- Tests transactions are applied atomically
+        withOriginated fa2Originate originationParams $ \fa2contract -> do
+          let
+            transfers = constructTransfersFromSender (#from_ .! wallet1)
+              [ (#to_ .! wallet2, #amount .! 4)
+              , (#to_ .! wallet3, #amount .! 4)
+              , (#to_ .! wallet4, #amount .! 4) -- Should fail
+              , (#to_ .! wallet5, #amount .! 2)
+              ]
 
-        validate $ Left (lExpectAnyMichelsonFailed fa2contract)
+          withSender wallet1 $ lCallEP fa2contract (Call @"Transfer") transfers
+
+          validate $ Left (lExpectAnyMichelsonFailed fa2contract)
+
+    it "aborts if there is a failure (due to non existent source for non-zero transfer)" $
+      integrationalTestExpectation $ do
+        let originationParams = addAccount (wallet1, ([], 10)) defaultOriginationParams
+        -- Tests transactions are applied atomically
+        withOriginated fa2Originate originationParams $ \fa2contract -> do
+          let
+            transfers = constructSingleTransfer
+              (#from_ .! wallet3)
+              (#to_ .! wallet1)
+              (#amount .! 2)
+
+          withSender wallet1 $ lCallEP fa2contract (Call @"Transfer") transfers
+
+          validate $ Left (lExpectAnyMichelsonFailed fa2contract)
 
     it "aborts if there is a failure (due to bad token id)" $ integrationalTestExpectation $ do
       let originationParams = addAccount (wallet1, ([], 10)) defaultOriginationParams

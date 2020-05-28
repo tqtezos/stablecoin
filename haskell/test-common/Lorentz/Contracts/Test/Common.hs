@@ -75,26 +75,20 @@ commonOperators = [commonOperator]
 
 type LedgerType = Map Address Natural
 
-addAccountOnly :: (Address, Natural) -> OriginationParams -> OriginationParams
-addAccountOnly (addr, bal) op = op
-  { opBalances =
-      Map.insert addr bal $ opBalances op
-  }
-
 addAccount :: (Address, ([Address], Natural)) -> OriginationParams -> OriginationParams
 addAccount (addr, (operators, bal)) op = let
   withAccount = op
     { opBalances =
         Map.insert addr bal $ opBalances op
     }
-  in foldl' (\op operator -> addOperator (addr, operator) op) withAccount operators
+  in foldl' (\oparams operator -> addOperator (addr, operator) oparams) withAccount operators
 
 addOperator :: (Address, Address) -> OriginationParams -> OriginationParams
-addOperator (owner, operator) op = op
+addOperator (owner_, operator) op = op
   { opOwnerToOperators =
       Map.alter (\case
           Just ops -> Just $ operator:ops
-          Nothing -> Just [operator]) owner $ opOwnerToOperators op
+          Nothing -> Just [operator]) owner_ $ opOwnerToOperators op
   }
 
 -- TODO: move to morley
@@ -180,6 +174,7 @@ defaultOriginationParams :: OriginationParams
 defaultOriginationParams = OriginationParams
   { opBalances = mempty
   , opOwner = owner
+  , opOwnerToOperators = mempty
   , opPauser = pauser
   , opMasterMinter = masterMinter
   , opPaused = False

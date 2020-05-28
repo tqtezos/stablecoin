@@ -134,15 +134,18 @@ function debit_from
   ; const store     : storage
   ) : storage is block
 { var updated_ledger : ledger := store.ledger
-; case store.ledger[parameter.from_] of
-    Some (ledger_balance) -> if parameter.amount > ledger_balance
+
+; const curr_balance : nat = case store.ledger[parameter.from_] of
+    Some (ledger_balance) -> ledger_balance
+  | None -> 0n // Interpret non existant account as zero balance as per FA2
+  end
+
+; if parameter.amount > curr_balance
       then failwith ("INSUFFICIENT_BALANCE")
       else
-      { const updated_balance : nat = abs (ledger_balance - parameter.amount)
+      { const updated_balance : nat = abs (curr_balance - parameter.amount)
       ; updated_ledger := Big_map.update(parameter.from_, Some (updated_balance), updated_ledger)
       }
-  | None -> failwith ("NOT_IN_LEDGER")
-  end
 } with store with record [ ledger = updated_ledger ]
 
 (*
