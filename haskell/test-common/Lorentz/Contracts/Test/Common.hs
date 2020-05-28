@@ -49,6 +49,7 @@ import Data.List.NonEmpty ((!!))
 import qualified Data.Map as Map
 
 import Lorentz (arg)
+import qualified Indigo.Contracts.Safelist as Safelist
 import qualified Lorentz as L
 import Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin as SC
@@ -92,6 +93,7 @@ data OriginationParams = OriginationParams
   , opMinters :: Map Address Natural
   , opPermissionsDescriptor :: PermissionsDescriptorMaybe
   , opTokenMetadata :: TokenMetadata
+  , opSafelistContract :: Maybe (TAddress Safelist.Parameter)
   }
 
 defaultPermissionDescriptor :: PermissionsDescriptorMaybe
@@ -166,6 +168,7 @@ defaultOriginationParams = OriginationParams
   , opMinters = mempty
   , opPermissionsDescriptor = defaultPermissionDescriptor
   , opTokenMetadata = defaultTokenMetadata
+  , opSafelistContract = Nothing
   }
 
 addAccount
@@ -280,19 +283,19 @@ mkInitialStorage :: OriginationParams -> Maybe Storage
 mkInitialStorage op@OriginationParams{..} =
   if originationRequestCompatible op then let
     ledgerMap = snd <$> opBalances
+    mintingAllowances = #minting_allowances .! (BigMap opMinters)
+    ledger = #ledger .! (BigMap ledgerMap)
+    owner_ = #owner .! opOwner
+    pauser_ = #pauser .! opPauser
+    masterMinter_ = #master_minter .! opMasterMinter
+    roles = #roles .! ((masterMinter_, owner_), (pauser_, (#pending_owner_address .! Nothing)))
     operatorMap = Map.foldrWithKey foldFn mempty opBalances
-    stablecoinDefaultRoles = ((opMasterMinter, opOwner), (opPauser, Nothing))
-    in Just ( ( ( BigMap ledgerMap
-                , BigMap opMinters
-                )
-              , ( BigMap operatorMap
-                , opPaused
-                ))
-            , ( ( stablecoinPermissionsDescriptor
-                , stablecoinDefaultRoles
-                )
-              , sum $ Map.elems ledgerMap
-            ))
+    operators = #operators .! (BigMap operatorMap)
+    isPaused = #paused .! opPaused
+    safelistContract = #safelist_contract .! (unTAddress <$> opSafelistContract)
+    totalSupply = #total_supply .! (sum $ Map.elems ledgerMap)
+  in Just (((ledger, mintingAllowances), (operators, isPaused))
+           , ((roles, safelistContract), totalSupply))
   else Nothing
   where
     foldFn

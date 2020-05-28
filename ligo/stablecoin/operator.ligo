@@ -35,8 +35,7 @@ function is_operator
  * and operator storage
  *)
 function validate_operators
-  ( const permissions_descriptor : permissions_descriptor_
-  ; const transfer_param         : transfer_param
+  ( const transfer_param         : transfer_param
   ; const operators              : operators
   ) : unit is block
 { const operator : address = Tezos.sender

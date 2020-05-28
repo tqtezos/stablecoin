@@ -8,13 +8,17 @@ module Lorentz.Contracts.Test.Management
   ) where
 
 import Data.Map (fromList)
+import qualified Data.Set as Set
 import Test.Hspec (Spec, describe, it)
 
+import qualified Indigo.Contracts.Safelist as Safelist
 import Lorentz (mkView)
+import Lorentz.Address
 import Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
 import Lorentz.Contracts.Test.Common
 import Lorentz.Test
+import Tezos.Core (unsafeMkMutez)
 import Util.Named
 
 managementSpec
@@ -555,3 +559,160 @@ managementSpec originate = do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         withSender pauser $ lCallEP stablecoinContract (Call @"Change_master_minter") wallet1
         validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
+
+    describe "Set_safelist entrypoint" $ do
+      let safelistStorage = Safelist.Storage
+            { sTransfers = Set.empty
+            , sReceivers = Set.fromList []
+            }
+      it "can set safelist contract address in storage" $ integrationalTestExpectation $ do
+        let originationParams = defaultOriginationParams
+        safelistContract <- unTAddress <$> lOriginate Safelist.safelistContract "Safelist test dummy" safelistStorage (unsafeMkMutez 0)
+        withOriginated originate originationParams $ \stablecoinContract -> do
+          withSender (opOwner originationParams) $
+            lCallEP stablecoinContract (Call @"Set_safelist") (Just safelistContract)
+
+          validate . Right . lExpectStorage stablecoinContract $ \case
+            StorageSafelistContract (Just addr)
+              | addr == safelistContract -> Right ()
+              | otherwise -> Left $ CustomValidationError "Safelist contract address was not set"
+            _ -> Left $ CustomValidationError "Token produced malformed storage, this should not have happened"
+
+      it "can unset safelist contract address in storage" $ integrationalTestExpectation $ do
+        safelistContract <- lOriginate Safelist.safelistContract "Safelist test dummy" safelistStorage (unsafeMkMutez 0)
+        let originationParams = defaultOriginationParams {
+              opSafelistContract = Just safelistContract
+              }
+        withOriginated originate originationParams $ \stablecoinContract -> do
+          withSender (opOwner originationParams) $
+            lCallEP stablecoinContract (Call @"Set_safelist") Nothing
+
+          validate . Right . lExpectStorage stablecoinContract $ \case
+            StorageSafelistContract (Just _) -> Left $ CustomValidationError "Safelist contract address was not unset"
+            StorageSafelistContract Nothing -> Right ()
+            _ -> Left $ CustomValidationError "Token produced malformed storage, this should not have happened"
+
+
+    describe "Safelist contract interaction: fail behavior" $ do
+      let safelistStorage = Safelist.Storage
+            { sTransfers = Set.empty -- We want the safelist contract to reject the operations. So we leave the whitelist empty
+            , sReceivers = Set.empty
+            }
+      it "can make the transfer fail" $ integrationalTestExpectation $ do
+        safelistContract <- lOriginate Safelist.safelistContract "Safelist test dummy" safelistStorage (unsafeMkMutez 0)
+        let
+          originationParams = addAccount (wallet1, (commonOperators, 10))
+              $ defaultOriginationParams {
+                  opPermissionsDescriptor = permissionDescriptorOperatorTransferAllowed,
+                  opSafelistContract = Just safelistContract
+                }
+        withOriginated originate originationParams $ \stablecoinContract -> do
+          let
+            transfers =
+              [(#from_ .! wallet1, #txs .! [(#to_ .! wallet2, (#token_id .! 0, #amount .! 10))])]
+
+          withSender commonOperator $ lCallEP stablecoinContract (Call @"Transfer") transfers
+
+          validate $ Left (lExpectAnyMichelsonFailed safelistContract)
+
+      it "can make mint operation fail" $ integrationalTestExpectation $ do
+        safelistContract <- lOriginate Safelist.safelistContract "Safelist test dummy" safelistStorage (unsafeMkMutez 0)
+        let
+          originationParams = addAccount (wallet1, (commonOperators, 10))
+              $ addMinter (wallet1, 30)
+              $ defaultOriginationParams {
+                  opPermissionsDescriptor = permissionDescriptorOperatorTransferAllowed,
+                  opSafelistContract = Just safelistContract
+                }
+        withOriginated originate originationParams $ \stablecoinContract -> do
+          let
+            mintings =
+              [ (#to_ .! wallet1, #amount .! 10)
+              ]
+
+          withSender wallet1 $ lCallEP stablecoinContract (Call @"Mint") mintings
+
+          validate $ Left (lExpectAnyMichelsonFailed safelistContract)
+
+      it "can make burn operation fail" $ integrationalTestExpectation $ do
+        safelistContract <- lOriginate Safelist.safelistContract "Safelist test dummy" safelistStorage (unsafeMkMutez 0)
+        let
+          originationParams =
+              addMinter (wallet1, 0)
+            $ addAccount (wallet1, (commonOperators, 35))
+            $ defaultOriginationParams { opSafelistContract = Just safelistContract }
+        withOriginated originate originationParams $ \stablecoinContract -> do
+
+          withSender wallet1 $ lCallEP stablecoinContract (Call @"Burn") [ 10 ]
+
+          validate $ Left (lExpectAnyMichelsonFailed safelistContract)
+
+    describe "Safelist contract interaction: approve behavior" $ do
+      let safelistStorage = Safelist.Storage
+            { sTransfers = Set.fromList [(wallet1, wallet2)]
+            , sReceivers = Set.fromList [wallet1, wallet2]
+            }
+      it "can approve transfers" $ integrationalTestExpectation $ do
+        safelistContract <- lOriginate Safelist.safelistContract "Safelist test dummy" safelistStorage (unsafeMkMutez 0)
+        let
+          originationParams = addAccount (wallet1, (commonOperators, 10))
+              $ defaultOriginationParams {
+                  opPermissionsDescriptor = permissionDescriptorOperatorTransferAllowed,
+                  opSafelistContract = Just safelistContract
+                }
+        withOriginated originate originationParams $ \stablecoinContract -> do
+          let
+            transfers =
+              [(#from_ .! wallet1, #txs .! [(#to_ .! wallet2, (#token_id .! 0, #amount .! 10))])]
+
+          withSender commonOperator $ lCallEP stablecoinContract (Call @"Transfer") transfers
+
+          validate (Right expectAnySuccess)
+
+      it "can approve mint operation" $ integrationalTestExpectation $ do
+        safelistContract <- lOriginate Safelist.safelistContract "Safelist test dummy" safelistStorage (unsafeMkMutez 0)
+        let
+          originationParams = addAccount (wallet1, (commonOperators, 10))
+              $ addMinter (wallet1, 30)
+              $ defaultOriginationParams {
+                  opPermissionsDescriptor = permissionDescriptorOperatorTransferAllowed,
+                  opSafelistContract = Just safelistContract
+                }
+        withOriginated originate originationParams $ \stablecoinContract -> do
+
+          let
+            mintings =
+              [ (#to_ .! wallet1, #amount .! 10)
+              ]
+
+          withSender wallet1 $ lCallEP stablecoinContract (Call @"Mint") mintings
+
+          validate (Right expectAnySuccess)
+
+      it "can approve burn operation" $ integrationalTestExpectation $ do
+        safelistContract <- lOriginate Safelist.safelistContract "Safelist test dummy" safelistStorage (unsafeMkMutez 0)
+        let
+          originationParams =
+              addMinter (wallet1, 0)
+            $ addAccount (wallet1, (commonOperators, 35))
+            $ defaultOriginationParams { opSafelistContract = Just safelistContract }
+        withOriginated originate originationParams $ \stablecoinContract -> do
+
+          withSender wallet1 $ lCallEP stablecoinContract (Call @"Burn") [ 10 ]
+
+          validate (Right expectAnySuccess)
+
+  -- Permission descriptor query
+  describe "Contract's Permissions_descriptor entrypoint" $
+    it "returns the expected value" $ integrationalTestExpectation $
+      withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
+        consumer <- lOriginateEmpty @PermissionsDescriptor contractConsumer "consumer"
+        let permissionsDescriptorQuery = toContractRef consumer
+        lCallEP stablecoinContract (Call @"Permissions_descriptor") permissionsDescriptorQuery
+
+        validate . Right $
+          lExpectConsumerStorage consumer $ \case
+            (pd:_) -> if mkPermissionDescriptor pd == stablecoinPermissionsDescriptor
+              then Right ()
+              else Left $ CustomValidationError "Unexpected permission descriptor"
+            _ -> Left $ CustomValidationError "Unexpected permission descriptor"

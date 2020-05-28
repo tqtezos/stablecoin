@@ -5,6 +5,7 @@ module Lorentz.Contracts.Stablecoin
   ( ParameterC
   , Parameter (..)
   , Storage
+  , mkPermissionDescriptor
   , stablecoinPermissionsDescriptor
   , stablecoinTokenMetadata
 
@@ -14,6 +15,7 @@ module Lorentz.Contracts.Stablecoin
   , pattern StorageMinters
   , pattern StorageOperators
   , pattern StoragePaused
+  , pattern StorageSafelistContract
   , pattern MasterMinterRole
   , pattern OwnerRole
   , pattern PauserRole
@@ -52,6 +54,7 @@ type BurnParams = List Natural
 type TransferOwnershipParam = Address
 type ChangeMasterMinterParam = Address
 type ChangePauserParam = Address
+type SetSafelistParam = Maybe Address
 
 -- | Parameter of Stablecoin contract
 data Parameter
@@ -66,6 +69,7 @@ data Parameter
   | Accept_ownership
   | Change_master_minter ChangeMasterMinterParam
   | Change_pauser ChangePauserParam
+  | Set_safelist SetSafelistParam
   deriving stock (Generic, Show)
   deriving anyclass (IsoValue)
 
@@ -83,6 +87,7 @@ type ManagementMichelsonEntrypoints =
     , "Accept_ownership" :> ()
     , "Change_master_minter" :> ChangeMasterMinterParam
     , "Change_pauser" :> ChangePauserParam
+    , "Set_safelist" :> SetSafelistParam
     ]
 
 type ParameterC param =
@@ -94,45 +99,46 @@ type ParameterC param =
 --- Storage
 ------------------------------------------------------------------
 
-type Ledger = BigMap Address Natural
+type OperatorsInner = BigMap (Address, Address) ()
 
-type Operators = BigMap (Address, Address) ()
+type LedgerInner = Map Address Natural
+type Ledger = "ledger" :! (BigMap Address Natural)
 
-type MintingAllowances = BigMap Address Natural
+type Operators = "operators" :! OperatorsInner
+type TotalSupply = "total_supply" :! Natural
+type IsPaused = "paused" :! Bool
 
-type TotalSupply = Natural
+type MintingAllowancesInner = Map Address Natural
+type MintingAllowances = "minting_allowances" :! (BigMap Address Natural)
 
-type IsPaused = Bool
+type RolesInner = (("master_minter" :! Address, "owner" :! Address)
+             , ("pauser" :! Address, "pending_owner_address" :! Maybe Address))
 
--- We enforce specific storage structure in favor of what ligo generates
-type Storage
-  = ( ( ( Ledger
-        , MintingAllowances
-        )
-      , ( Operators
-        , IsPaused
-        )
-      )
-    , ( ( PermissionsDescriptor
-        , Roles
-        )
-      , TotalSupply
-      ))
+type Roles = "roles" :! RolesInner
 
-pattern StorageLedger :: Ledger -> Storage
-pattern StorageLedger ledger <- (((ledger, _), _), _)
+type SafelistContract = "safelist_contract" :! (Maybe Address)
 
-pattern StorageMinters :: Map Address Natural -> Storage
-pattern StorageMinters minters <- (((_, BigMap minters), _), _)
+type Storage =
+  (((Ledger, MintingAllowances), (Operators, IsPaused))
+   , ((Roles, SafelistContract), TotalSupply))
 
-pattern StorageOperators :: Operators -> Storage
-pattern StorageOperators operators <- ((_, (operators, _)), _)
+pattern StorageLedger :: LedgerInner -> Storage
+pattern StorageLedger ledger <- (((arg #ledger -> (BigMap ledger), _ ), _), _)
 
-pattern StoragePaused :: IsPaused -> Storage
-pattern StoragePaused paused <- ((_, (_, paused)), _)
+pattern StorageMinters :: MintingAllowancesInner -> Storage
+pattern StorageMinters minters <- (((_, arg #minting_allowances -> (BigMap minters)), _), _)
 
-pattern StorageRoles :: Roles -> Storage
-pattern StorageRoles roles <- (_, ((_,roles),_))
+pattern StorageOperators :: OperatorsInner -> Storage
+pattern StorageOperators operators <- ((_, (arg #operators -> operators, _)), _)
+
+pattern StoragePaused :: Bool -> Storage
+pattern StoragePaused paused <- ((_, (_, arg #paused -> paused)), _)
+
+pattern StorageRoles :: RolesInner -> Storage
+pattern StorageRoles roles <- (_ , ((arg #roles -> roles, _), _))
+
+pattern StorageSafelistContract :: Maybe Address -> Storage
+pattern StorageSafelistContract safelistContract <- (_ , ((_, arg #safelist_contract -> safelistContract), _))
 
 ------------------------------------------------------------------
 
@@ -141,19 +147,17 @@ type Owner = Address
 type PendingOwner = Maybe Address
 type Pauser = Address
 
-type Roles = ((MasterMinter, Owner), (Pauser, PendingOwner))
+pattern MasterMinterRole :: MasterMinter -> RolesInner
+pattern MasterMinterRole masterMinter <- ((arg #master_minter -> masterMinter, _), _)
 
-pattern MasterMinterRole :: MasterMinter -> Roles
-pattern MasterMinterRole masterMinter <- ((masterMinter, _), _)
+pattern OwnerRole :: Owner -> RolesInner
+pattern OwnerRole owner <- ((_, arg #owner -> owner), _)
 
-pattern OwnerRole :: Owner -> Roles
-pattern OwnerRole owner <- ((_, owner), _)
+pattern PauserRole :: Pauser -> RolesInner
+pattern PauserRole pauser <- (_, (arg #pauser -> pauser, _))
 
-pattern PauserRole :: Pauser -> Roles
-pattern PauserRole pauser <- (_, (pauser, _))
-
-pattern PendingOwnerRole :: PendingOwner -> Roles
-pattern PendingOwnerRole pendingOwner <- (_, (_, pendingOwner))
+pattern PendingOwnerRole :: PendingOwner -> RolesInner
+pattern PendingOwnerRole pendingOwner <- (_, (_, arg #pending_owner_address -> pendingOwner))
 
 -- Permissions descriptor
 data OwHookOptReq = OptOH | ReqOp

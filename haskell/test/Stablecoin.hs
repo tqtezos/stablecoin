@@ -11,7 +11,7 @@ import Test.Hspec (Spec)
 import Lorentz (TAddress(..))
 import Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin as SC
-import Lorentz.Contracts.Test.Common
+import Lorentz.Contracts.Test.Common hiding (owner, pauser, masterMinter)
 import Lorentz.Contracts.Test.FA2
 import Lorentz.Contracts.Test.Management
 import Michelson.Test.Import

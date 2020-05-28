@@ -109,7 +109,7 @@ instance Buildable TokenMetadata where
 data SelfTransferMode
   = SelfTransferPermitted ("self_transfer_permitted" :! ())
   | SelfTransferDenied ("self_transfer_denied" :! ())
-  deriving stock (Generic, Show)
+  deriving stock (Generic, Eq, Show)
   deriving anyclass (IsoValue, HasTypeAnn)
 
 instance Arbitrary SelfTransferMode where
