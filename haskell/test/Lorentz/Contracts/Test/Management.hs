@@ -26,6 +26,24 @@ managementSpec
   => OriginationFn param
   -> Spec
 managementSpec originate = do
+  describe "Contract meta" $ do
+    it "fails if contract is received non-zero amount of xtz" $ integrationalTestExpectation $ do
+      let
+        originationParams =
+            addAccount (wallet1, (commonOperators, 0))
+          $ defaultOriginationParams
+              { opPermissionsDescriptor = permissionDescriptorOperatorTransferAllowed
+              }
+      withOriginated originate originationParams $ \stablecoinContract -> do
+        lTransfer @param
+          (#from .! commonOperator)
+          (#to .! unTAddress stablecoinContract)
+          (unsafeMkMutez 10) -- Error here
+          (Call @"Transfer")
+          -- Dummy transfer needed to call something from a contract since we don't have default entrypoint set
+          (constructTransfersFromSender (#from_ .! wallet1) [])
+        validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
+
   describe "Contract pausing" $ do
     it "pauses contract as expected" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
@@ -211,7 +229,7 @@ managementSpec originate = do
 
         withSender masterMinter $ lCallEP stablecoinContract (Call @"Configure_minter") configureMinterParam2
 
-        validate . Left $  lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
 
     it "fails if sender does not have master minter permissions" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
