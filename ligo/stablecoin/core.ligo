@@ -26,8 +26,9 @@ end
 function stablecoin_main
   ( const action : closed_parameter
   ; const store  : storage
-  ) : entrypoint
-is case action of
+  ) : entrypoint is block
+{ fail_on (Tezos.amount =/= 0tz, "XTZ_RECEIVED") // Validate whether the contract receives non-zero amount of tokens
+} with case action of
     Call_FA2              (params) -> fa2_main              (params, store)
   | Pause                 (params) -> pause                 (params, store)
   | Unpause               (params) -> unpause               (params, store)

@@ -92,8 +92,9 @@ Required `Safelist` entrypoints:
 
 # Errors
 
-| Error                 | Description |
-|-----------------------|-------------|
+| Error                 | Description                                                                                                                    |
+|-----------------------|------------------------------------------------------------------------------------------------------------------------------|
+| XTZ_RECEIVED          | Contract received a non-zero amount of tokens and should not proceed any further                                               |
 | NOT_OWNER             | Authorized sender is not contract owner                                                                                        |
 | NOT_PENDING_OWNER     | Authorized sender is not current contract pending owner                                                                        |
 | NO_PENDING_OWNER_SET  | Throws when trying to authorize as pending owner whilst is not set for a contract                                              |
