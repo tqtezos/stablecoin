@@ -16,8 +16,6 @@ module Lorentz.Contracts.Test.Common
   , commonOperators
 
   , LedgerType
-  , LedgerInput
-  , insertLedgerItem
 
   , OriginationFn
   , OriginationParams (..)
@@ -33,6 +31,7 @@ module Lorentz.Contracts.Test.Common
   , permissionDescriptorNoOpReceiverHook
   , permissionDescriptorNoOpSenderHook
   , addAccount
+  , addOperator
   , addMinter
   , constructTransfers
   , constructTransfersFromSender
@@ -74,11 +73,29 @@ masterMinter = genesisAddresses !! 9
 commonOperators :: [Address]
 commonOperators = [commonOperator]
 
-type LedgerType = Map Address ([Address], Natural)
-type LedgerInput = (Address, ([Address], Natural))
+type LedgerType = Map Address Natural
 
-insertLedgerItem :: LedgerInput -> LedgerType -> LedgerType
-insertLedgerItem (addr, (operators, bal)) = Map.insert addr (operators, bal)
+addAccountOnly :: (Address, Natural) -> OriginationParams -> OriginationParams
+addAccountOnly (addr, bal) op = op
+  { opBalances =
+      Map.insert addr bal $ opBalances op
+  }
+
+addAccount :: (Address, ([Address], Natural)) -> OriginationParams -> OriginationParams
+addAccount (addr, (operators, bal)) op = let
+  withAccount = op
+    { opBalances =
+        Map.insert addr bal $ opBalances op
+    }
+  in foldl' (\op operator -> addOperator (addr, operator) op) withAccount operators
+
+addOperator :: (Address, Address) -> OriginationParams -> OriginationParams
+addOperator (owner, operator) op = op
+  { opOwnerToOperators =
+      Map.alter (\case
+          Just ops -> Just $ operator:ops
+          Nothing -> Just [operator]) owner $ opOwnerToOperators op
+  }
 
 -- TODO: move to morley
 lExpectAnyMichelsonFailed :: (ToAddress addr) => addr -> ExecutorError -> Bool
@@ -86,6 +103,7 @@ lExpectAnyMichelsonFailed = lExpectMichelsonFailed (const True)
 
 data OriginationParams = OriginationParams
   { opBalances :: LedgerType
+  , opOwnerToOperators :: Map Address [Address]
   , opOwner :: Address
   , opPauser :: Address
   , opMasterMinter :: Address
@@ -170,13 +188,6 @@ defaultOriginationParams = OriginationParams
   , opTokenMetadata = defaultTokenMetadata
   , opSafelistContract = Nothing
   }
-
-addAccount
-  :: LedgerInput
-  -> OriginationParams
-  -> OriginationParams
-addAccount i op =
-  op { opBalances = insertLedgerItem i (opBalances op) }
 
 addMinter
   :: (Address, Natural)
@@ -282,14 +293,14 @@ originationRequestCompatible op =
 mkInitialStorage :: OriginationParams -> Maybe Storage
 mkInitialStorage op@OriginationParams{..} =
   if originationRequestCompatible op then let
-    ledgerMap = snd <$> opBalances
+    ledgerMap = opBalances
     mintingAllowances = #minting_allowances .! (BigMap opMinters)
+    operatorMap = Map.foldrWithKey foldFn mempty opOwnerToOperators
     ledger = #ledger .! (BigMap ledgerMap)
     owner_ = #owner .! opOwner
     pauser_ = #pauser .! opPauser
     masterMinter_ = #master_minter .! opMasterMinter
     roles = #roles .! ((masterMinter_, owner_), (pauser_, (#pending_owner_address .! Nothing)))
-    operatorMap = Map.foldrWithKey foldFn mempty opBalances
     operators = #operators .! (BigMap operatorMap)
     isPaused = #paused .! opPaused
     safelistContract = #safelist_contract .! (unTAddress <$> opSafelistContract)
@@ -300,7 +311,7 @@ mkInitialStorage op@OriginationParams{..} =
   where
     foldFn
       :: Address
-      -> ([Address], Natural)
+      -> [Address]
       -> Map (Address, Address) ()
       -> Map (Address, Address) ()
-    foldFn ow (ops, _) m = foldr (\a b -> Map.insert (ow, a) () b) m ops
+    foldFn ow ops m = foldr (\a b -> Map.insert (ow, a) () b) m ops
