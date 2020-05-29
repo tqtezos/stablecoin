@@ -698,11 +698,11 @@ function set_safelist
         Some (sl_caddress) -> case (Tezos.get_entrypoint_opt ("%assertReceivers", sl_address) : option(contract(safelist_assert_receivers_param))) of
           Some (sl_caddress) -> case (Tezos.get_entrypoint_opt ("%assertReceiver", sl_address) : option(contract(safelist_assert_receiver_param))) of
             Some (sl_caddress) -> skip
-          | None -> failwith ("BAD_SAFELIST_CONTRACT")
+          | None -> failwith ("BAD_SAFELIST")
           end
-        | None -> failwith ("BAD_SAFELIST_CONTRACT")
+        | None -> failwith ("BAD_SAFELIST")
         end
-      | None -> failwith ("BAD_SAFELIST_CONTRACT")
+      | None -> failwith ("BAD_SAFELIST")
       end
   | None -> skip
   end

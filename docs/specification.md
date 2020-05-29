@@ -120,6 +120,7 @@ The next group consists of the errors that are not part of the FA2 specification
 | `ALLOWANCE_MISMATCH`    | In `configure_minter` both allowances are not `None`, but different                                                            |
 | `ADDR_NOT_MINTER`       | An attempt is made to modify minter data of an address that's not a minter                                                     |
 | `ALLOWANCE_EXCEEDED`    | Throws when trying to mint tokens more than currently allowed for an address                                                   |
+| `BAD_SAFELIST`          | Given address is a not a smart contract complying with the safelist interface                                                  |
 
 Finally there are some internal errors that should be considered implementation detail and are supposed to never happen as long as the contract is originated correctly (with consistent storage).
 Since they are internal, they can be changed any time without updating this part of the specification.
@@ -696,7 +697,7 @@ Parameter (in Michelson): `option address`.
 
 - Set the stored (optional) safelist address to the new one.
 
-- If the address does not have any entrypoint listed in the [`Safelist`](#safelist) specification, this call MUST fail.
+- If the address does not have any entrypoint listed in the [`Safelist`](#safelist) specification, this call MUST fail with `BAD_SAFELIST`.
 
 - Fails with `NOT_CONTRACT_OWNER` if the sender is not the contract owner.
 
