@@ -426,14 +426,9 @@ Types
 ```
 token_id = nat
 
-operator_tokens =
-  | All_tokens
-  | Some_tokens (set token_id)
-
 operator_param =
   ( address         :owner
   , address         :operator
-  , operator_tokens :tokens
   )
 
 update_operator_param =
@@ -449,22 +444,12 @@ Parameter (in Michelson)
   (or
     (pair %add_operator
       (address %owner)
-      (pair
-        (address %operator)
-        (or %tokens
-          (unit %all_tokens)
-          (set %some_tokens nat)
-        )
-    ))
+      (address %operator)
+    )
     (pair %remove_operator
       (address %owner)
-      (pair
-        (address %operator)
-        (or %tokens
-          (unit %all_tokens)
-          (set %some_tokens nat)
-        )
-    ))
+      (address %operator)
+    )
   )
 )
 ```
@@ -474,13 +459,6 @@ Parameter (in Michelson)
 - Permission logic requirements specific to this contract are described in the ["FA2 Specifics"](#fa2-specifics) chapter.
 Specifically, each `owner` must be equal to `SENDER`, otherwise `NOT_TOKEN_OWNER` error occurs.
 
-- Since the contract supports only a single token type, all `token_id` values MUST be 0.
-  They are passed because FA2 requires that.
-  So there are three possible valid values of `operator_tokens` type:
-  + `All_tokens`
-  + `Some_tokens ({0})` – equivalent to `All_tokens`.
-  + `Some_tokens ({})` – no-op.
-
 - Fails with `CONTRACT_PAUSED` if the contract is paused.
 
 ### **is_operator**
@@ -489,14 +467,9 @@ Types
 ```
 token_id = nat
 
-operator_tokens =
-  | All_tokens
-  | Some_tokens (set token_id)
-
 operator_param =
   ( address         :owner
   , address         :operator
-  , operator_tokens :tokens
   )
 
 is_operator_response =
@@ -515,24 +488,14 @@ Parameter (in Michelson):
 (pair %is_operator
   (pair %operator
     (address %owner)
-    (pair
-      (address %operator)
-      (or %tokens
-        (unit %all_tokens)
-        (set %some_tokens nat)
-      )
-  ))
+    (address %operator)
+  )
   (contract %callback
     (pair
       (pair %operator
         (address %owner)
-        (pair
-          (address %operator)
-          (or %tokens
-            (unit %all_tokens)
-            (set %some_tokens nat)
-          )
-      ))
+        (address %operator)
+      )
       (bool %is_operator)
     )
   )
@@ -540,13 +503,6 @@ Parameter (in Michelson):
 ```
 
 - This entrypoint MUST follow the FA2 requirements.
-
-- Since the contract supports only a single token type, all `token_id` values MUST be 0.
-  They are passed because FA2 requires that.
-  So there are three possible valid values of `operator_tokens` type:
-  + `All_tokens`
-  + `Some_tokens ({0})` – equivalent to `All_tokens`.
-  + `Some_tokens ({})` – for this value the result is always `True`.
 
 ## Custom (non-FA2) token functions
 
