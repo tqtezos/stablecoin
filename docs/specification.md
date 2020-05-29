@@ -214,7 +214,7 @@ Parameter (in Michelson):
 - Since the contract supports only a single token type, all `token_id` values MUST be 0.
   They are passed because FA2 requires that.
 
-- Contract must not be paused.
+- Fails with `CONTRACT_PAUSED` if the contract is paused.
 
 ### **balance_of**
 
@@ -472,7 +472,7 @@ Parameter (in Michelson)
 - This entrypoint MUST follow the FA2 requirements.
 
 - Permission logic requirements specific to this contract are described in the ["FA2 Specifics"](#fa2-specifics) chapter.
-Each `owner` must be equal to `SENDER`.
+Specifically, each `owner` must be equal to `SENDER`, otherwise `NOT_TOKEN_OWNER` error occurs.
 
 - Since the contract supports only a single token type, all `token_id` values MUST be 0.
   They are passed because FA2 requires that.
@@ -481,7 +481,7 @@ Each `owner` must be equal to `SENDER`.
   + `Some_tokens ({0})` – equivalent to `All_tokens`.
   + `Some_tokens ({})` – no-op.
 
-- Contract must not be paused.
+- Fails with `CONTRACT_PAUSED` if the contract is paused.
 
 ### **is_operator**
 
@@ -563,9 +563,9 @@ Parameter (in Michelson): `unit`.
   that they cannot be performed. All other operations remain
   unaffected.
 
-- Cannot be called multiple times.
+- Fails with `CONTRACT_PAUSED` if the contract is paused.
 
-- Sender must be a pauser.
+- Fails with `NOT_PAUSER` if the sender is not a pauser.
 
 #### **unpause**
 
@@ -574,9 +574,9 @@ Parameter (in Michelson): `unit`.
 - Unpauses the contract so that transferring, burning and minting
   operations can be performed by users with corresponding roles.
 
-- Cannot be called multiple times.
+- Fails with `CONTRACT_NOT_PAUSED` if the contract is not paused.
 
-- Sender must be a pauser.
+- Fails with `NOT_PAUSER` if the sender is not a pauser.
 
 ### Issuing and destroying tokens
 
@@ -607,10 +607,14 @@ Parameter (in Michelson)
 If it does not match the actual minting allowance, the transaction MUST fail.
 It is done to prevent front-running attacks.
 It MUST be set to `None` iff the minter is not in the list of minters.
+We distinguish three error cases, each has a dedicated error message:
+  + `ALLOWANCE_MISMATCH`: both provided and actual minting allowances are not None, but they are different.
+  + `NO_ALLOWANCE_EXPECTED`: the caller expects that the `minter` address is not a minter, but this address is already a minter.
+  + `NOT_MINTER`: the caller expects that the `minter` address is a minter, but it is not.
 
-- Sender must be master minter.
+- Fails with `NOT_MASTER_MINTER` if the sender is not master minter.
 
-- Contract must not be paused.
+- Fails with `CONTRACT_PAUSED` if the contract is paused.
 
 #### **remove_minter**
 
@@ -619,7 +623,9 @@ Parameter (in Michelson): `address`.
 - Removes minter from the minter list and sets its minting allowance to 0.
   Once minter is removed it will no longer be able to mint or burn tokens.
 
-- Sender must be master minter.
+- Fails with `NOT_MASTER_MINTER` if the sender is not master minter.
+
+- Fails with `NOT_MINTER` if the argument is not an address of a minter.
 
 #### **mint**
 
@@ -649,17 +655,18 @@ Parameter (in Michelson):
 - Each minting must happen atomically, so if one of them fails, then the whole
   operation must fail.
 
-- Sender must be minter.
+- Fails with `NOT_MINTER` if the sender is not a minter.
 
 - The total amount of minted coins must not exceed the current
   minting allowance specified for each minter individually.
+  Otherwise the operation fails with `ALLOWANCE_EXCEEDED`.
 
 - Minting allowance will decrease by the amount of tokens minted
   and increase the balance of receiver and total minted value.
 
 - If safelist contract is set, this entrypoint MUST call its `assertReceivers` entrypoint (either directly or from the transfer hook) checking the minter and all receivers.
 
-- Contract must not be paused.
+- Fails with `CONTRACT_PAUSED` if the contract is paused.
 
 #### **burn**
 
@@ -672,8 +679,9 @@ Parameter (in Michelson): `list nat`.
 
 - The operation must follow permission policies described above.
 
-- Sender must be a minter and must have a sufficient amount of
-  funds to be destroyed.
+- Fails with `NOT_MINTER` if the sender is not a minter.
+
+- Fails with `INSUFFICIENT_BALANCE` if the sender does not have enough tokens to burn.
 
 - A minter with 0 minting allowance is allowed to burn tokens.
 
@@ -681,7 +689,7 @@ Parameter (in Michelson): `list nat`.
 
 - If safelist contract is set, this entrypoint MUST call its `assertReceiver` entrypoint (either directly or from the transfer hook) checking the minter (`SENDER`).
 
-- Contract must not be paused.
+- Fails with `CONTRACT_PAUSED` if the contract is paused.
 
 ## Role reassigning functions
 
@@ -691,7 +699,7 @@ Parameter (in Michelson): `address`.
 
 - Initiate transfer of contract ownership to a new address.
 
-- Sender must be current contract owner.
+- Fails with `NOT_CONTRACT_OWNER` if the sender is not the current contract owner.
 
 - The current contract owner retains his priveleges up until
   `accept_ownership` is called.
@@ -706,7 +714,7 @@ Parameter: `unit`.
 
 - Accept contract ownership privileges.
 
-- Sender must be a pending contract owner.
+- Fails with `NOT_PENDING_OWNER` if the sender is not the current pending contract owner or `NO_PENDING_OWNER_SET` if there is no pending contract owner.
 
 ### **change_master_minter**
 
@@ -714,7 +722,7 @@ Parameter (in Michelson): `address`.
 
 - Set master minter to a new address.
 
-- Sender must be contract owner.
+- Fails with `NOT_CONTRACT_OWNER` if the sender is not the contract owner.
 
 ### **change_pauser**
 
@@ -722,7 +730,7 @@ Parameter (in Michelson): `address`.
 
 - Set pauser to a new address.
 
-- Sender must be contract owner.
+- Fails with `NOT_CONTRACT_OWNER` if the sender is not the contract owner.
 
 ## Safelist update
 
@@ -734,7 +742,7 @@ Parameter (in Michelson): `option address`.
 
 - If the address does not have any entrypoint listed in the [`Safelist`](#safelist) specification, this call MUST fail.
 
-- Sender must be contract owner.
+- Fails with `NOT_CONTRACT_OWNER` if the sender is not the contract owner.
 
 # Rationale and design considerations
 
