@@ -396,12 +396,10 @@ function permission_descriptor
   ( const parameter : permissions_descriptor_params
   ; const store     : storage
   ) : entrypoint is block
-  {
-    const self_permissions : self_transfer_policy = Layout.convert_to_right_comb((Self_transfer_permitted : self_transfer_policy_))
-  ; const operator_permissions : operator_transfer_policy = Layout.convert_to_right_comb((Operator_transfer_permitted : operator_transfer_policy_))
-  ; const owner_hook_policy : owner_transfer_policy = Layout.convert_to_right_comb((Optional_owner_hook : owner_transfer_policy_))
+  { const operator_permissions : operator_transfer_policy = Layout.convert_to_right_comb((Owner_or_operator_transfer : operator_transfer_policy_))
+  ; const owner_hook_policy : owner_hook_policy = Layout.convert_to_right_comb((Optional_owner_hook : owner_hook_policy_))
   ; const permissions : permissions_descriptor =
-      (self_permissions, (operator_permissions, (owner_hook_policy, (owner_hook_policy, (None : option (custom_permission_policy))))))
+      (operator_permissions, (owner_hook_policy, (owner_hook_policy, (None : option (custom_permission_policy)))))
 
 } with
   ( list [Tezos.transaction

@@ -41,7 +41,7 @@ fa2Spec fa2Originate = do
               $ addAccount (wallet2, (commonOperators, 0))
               $ addAccount (wallet3, (commonOperators, 0))
               $ addAccount (wallet4, (commonOperators, 0)) defaultOriginationParams
-                { opPermissionsDescriptor = permissionDescriptorOperatorTransferAllowed }
+                { opPermissionsDescriptor = permissionDescriptorOwnerOrOperatorTransfer }
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
             transfers = constructTransfers
@@ -78,7 +78,7 @@ fa2Spec fa2Originate = do
 
     it "allows zero transfer from non-existent accounts" $ integrationalTestExpectation $ do
         let originationParams = addOperator (wallet1, commonOperator) $ defaultOriginationParams
-                { opPermissionsDescriptor = permissionDescriptorOperatorTransferAllowed }
+                { opPermissionsDescriptor = permissionDescriptorOwnerOrOperatorTransfer }
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
             transfers = constructSingleTransfer
@@ -90,12 +90,25 @@ fa2Spec fa2Originate = do
 
           validate (Right expectAnySuccess)
 
+    it "is denied if only owner transfer is allowed" $ integrationalTestExpectation $ do
+      let originationParams = addAccount (wallet1, (commonOperators, 10)) $
+            defaultOriginationParams { opPermissionsDescriptor = permissionDescriptorOwnerTransfer }
+      withOriginated fa2Originate originationParams $ \fa2contract -> do
+        let
+          transfers = constructSingleTransfer
+            (#from_ .! wallet1)
+            (#to_ .! wallet2)
+            (#amount .! 1)
+
+        withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
+        validate $ Left (lExpectAnyMichelsonFailed fa2contract)
+
     it "aborts if there is a failure (due to low balance)" $ integrationalTestExpectation $ do
         let originationParams = addAccount (wallet1, (commonOperators, 10))
               $ addAccount (wallet2, (commonOperators, 0))
               $ addAccount (wallet3, (commonOperators, 0))
               $ addAccount (wallet4, (commonOperators, 0)) defaultOriginationParams
-                { opPermissionsDescriptor = permissionDescriptorOperatorTransferAllowed }
+                { opPermissionsDescriptor = permissionDescriptorOwnerOrOperatorTransfer }
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
             transfers = constructTransfersFromSender (#from_ .! wallet1)
@@ -114,7 +127,7 @@ fa2Spec fa2Originate = do
           originationParams =
               addAccount (wallet1, (commonOperators, 10))
             $ defaultOriginationParams
-                { opPermissionsDescriptor = permissionDescriptorOperatorTransferAllowed }
+                { opPermissionsDescriptor = permissionDescriptorOwnerOrOperatorTransfer }
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
             transfers = constructSingleTransfer
@@ -131,7 +144,7 @@ fa2Spec fa2Originate = do
               $ addAccount (wallet2, (commonOperators, 0))
               $ addAccount (wallet3, ([], 0))
               $ addAccount (wallet4, (commonOperators, 0)) defaultOriginationParams
-                { opPermissionsDescriptor = permissionDescriptorOperatorTransferAllowed }
+                { opPermissionsDescriptor = permissionDescriptorOwnerOrOperatorTransfer }
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
             transfers = constructTransfersFromSender (#from_ .! wallet1)
@@ -150,7 +163,7 @@ fa2Spec fa2Originate = do
               $ addAccount (wallet2, (commonOperators, 0))
               $ addAccount (wallet3, ([], 0))
               $ addAccount (wallet4, (commonOperators, 0)) defaultOriginationParams
-                { opPermissionsDescriptor = permissionDescriptorOperatorTransferAllowed }
+                { opPermissionsDescriptor = permissionDescriptorOwnerOrOperatorTransfer }
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
             transfers = constructTransfersFromSender (#from_ .! wallet1)
@@ -170,7 +183,7 @@ fa2Spec fa2Originate = do
           originationParams =
               addAccount (wallet1, (commonOperators, 10))
             $ defaultOriginationParams
-                { opPermissionsDescriptor = permissionDescriptorOperatorTransferAllowed }
+                { opPermissionsDescriptor = permissionDescriptorOwnerOrOperatorTransfer }
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
             transfers = [(#from_ .! wallet1, #txs .! [])]
@@ -182,7 +195,7 @@ fa2Spec fa2Originate = do
       integrationalTestExpectation $ do
         let originationParams = addAccount (wallet1, (commonOperators, 10)) $
               defaultOriginationParams
-                { opPermissionsDescriptor = permissionDescriptorOperatorTransferDenied }
+                { opPermissionsDescriptor = permissionDescriptorOperatorNoTransfer }
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
             transfers = constructSingleTransfer
@@ -197,7 +210,7 @@ fa2Spec fa2Originate = do
       integrationalTestExpectation $ do
         let originationParams =
               addAccount (wallet1, (commonOperators, 10)) $ defaultOriginationParams
-                { opPermissionsDescriptor = permissionDescriptorOperatorTransferAllowed }
+                { opPermissionsDescriptor = permissionDescriptorOwnerOrOperatorTransfer }
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
             transfers =
@@ -268,7 +281,7 @@ fa2Spec fa2Originate = do
 
     it "is permitted if self transfer is permitted in permissions descriptior" $ integrationalTestExpectation $ do
       let originationParams = addAccount (wallet1, (commonOperators, 10)) $
-            defaultOriginationParams { opPermissionsDescriptor = permissionDescriptorSelfTransferAllowed }
+            defaultOriginationParams { opPermissionsDescriptor = permissionDescriptorOwnerOrOperatorTransfer }
       consumer <- lOriginateEmpty @[BalanceResponseItem] contractConsumer "consumer"
 
       withOriginated fa2Originate originationParams $ \fa2contract -> do
@@ -293,7 +306,7 @@ fa2Spec fa2Originate = do
 
     it "is denied if self transfer is forbidden in permissions descriptior" $ integrationalTestExpectation $ do
       let originationParams = addAccount (wallet1, (commonOperators, 10)) $
-            defaultOriginationParams { opPermissionsDescriptor = permissionDescriptorSelfTransferDenied }
+            defaultOriginationParams { opPermissionsDescriptor = permissionDescriptorOperatorNoTransfer }
       withOriginated fa2Originate originationParams $ \fa2contract -> do
         let
           transfers = constructSingleTransfer
@@ -308,7 +321,7 @@ fa2Spec fa2Originate = do
       integrationalTestExpectation $ do
         let originationParams =
               addAccount (wallet1, (commonOperators, 10)) $ defaultOriginationParams
-                { opPermissionsDescriptor = permissionDescriptorSelfTransferAllowed }
+                { opPermissionsDescriptor = permissionDescriptorOwnerOrOperatorTransfer }
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
             transfers =
@@ -323,7 +336,7 @@ fa2Spec fa2Originate = do
       -- Tests transactions are applied in order
       -- Update balances exactly
         let originationParams = defaultOriginationParams
-                { opPermissionsDescriptor = permissionDescriptorSelfTransferAllowed }
+                { opPermissionsDescriptor = permissionDescriptorOwnerTransfer }
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
             transfers = constructSingleTransfer
@@ -737,7 +750,7 @@ fa2Spec fa2Originate = do
     integrationalTestExpectation $ do
       let originationParams = addAccount (wallet1, (commonOperators, 10))
             defaultOriginationParams
-              { opPermissionsDescriptor = permissionDescriptorOperatorTransferDenied }
+              { opPermissionsDescriptor = permissionDescriptorOperatorNoTransfer }
 
       withOriginated fa2Originate originationParams $ \fa2contract -> do
 
@@ -754,7 +767,7 @@ fa2Spec fa2Originate = do
 
     let originationParams = addAccount (wallet1, (commonOperators, 10))
           defaultOriginationParams
-            { opPermissionsDescriptor = permissionDescriptorOperatorTransferDenied }
+            { opPermissionsDescriptor = permissionDescriptorOperatorNoTransfer }
 
     withOriginated fa2Originate originationParams $ \fa2contract -> do
 

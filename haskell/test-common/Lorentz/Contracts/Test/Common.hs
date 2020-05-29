@@ -22,10 +22,9 @@ module Lorentz.Contracts.Test.Common
   , defaultOriginationParams
   , defaultTokenMetadata
   , defaultPermissionDescriptor
-  , permissionDescriptorSelfTransferAllowed
-  , permissionDescriptorSelfTransferDenied
-  , permissionDescriptorOperatorTransferAllowed
-  , permissionDescriptorOperatorTransferDenied
+  , permissionDescriptorOwnerTransfer
+  , permissionDescriptorOwnerOrOperatorTransfer
+  , permissionDescriptorOperatorNoTransfer
   , permissionDescriptorReqSenderHook
   , permissionDescriptorReqReceiverHook
   , permissionDescriptorNoOpReceiverHook
@@ -110,54 +109,46 @@ data OriginationParams = OriginationParams
 
 defaultPermissionDescriptor :: PermissionsDescriptorMaybe
 defaultPermissionDescriptor =
-  ( #self .! Nothing
-  , #pdr .! ( #operator .! Nothing
-            , #pdr2 .! ( #receiver .! Nothing
-                       , #pdr3 .! (#sender .! Nothing, #custom .! Nothing))))
+  ( #operator .! Nothing
+  , #pdr2 .! ( #receiver .! Nothing
+             , #pdr3 .! (#sender .! Nothing, #custom .! Nothing)))
 
-permissionDescriptorSelfTransferDenied :: PermissionsDescriptorMaybe
-permissionDescriptorSelfTransferDenied =
-  defaultPermissionDescriptor &
-    _1 .~ (#self .! (Just $ SelfTransferDenied (#self_transfer_denied .! ())))
-
-permissionDescriptorSelfTransferAllowed :: PermissionsDescriptorMaybe
-permissionDescriptorSelfTransferAllowed =
-  defaultPermissionDescriptor &
-    _1 .~ (#self .! (Just $ SelfTransferPermitted (#self_transfer_permitted .! ())))
-
-permissionDescriptorOperatorTransferDenied :: PermissionsDescriptorMaybe
-permissionDescriptorOperatorTransferDenied =
+permissionDescriptorOperatorNoTransfer :: PermissionsDescriptorMaybe
+permissionDescriptorOperatorNoTransfer =
   defaultPermissionDescriptor
-   & (_2.namedL #pdr._1)
-      .~ (#operator .! (Just $ OperatorTransferDenied (#operator_transfer_denied .! ())))
+   & _1 .~ (#operator .! (Just $ NoTransfer (#no_transfer .! ())))
 
-permissionDescriptorOperatorTransferAllowed :: PermissionsDescriptorMaybe
-permissionDescriptorOperatorTransferAllowed =
-  defaultPermissionDescriptor
-   & (_2.namedL #pdr._1)
-      .~ (#operator .! (Just $ OperatorTransferPermitted (#operator_transfer_permitted .! ())))
+permissionDescriptorOwnerOrOperatorTransfer :: PermissionsDescriptorMaybe
+permissionDescriptorOwnerOrOperatorTransfer =
+  defaultPermissionDescriptor &
+    _1 .~ (#operator .! (Just $ OwnerOrOperatorTransfer (#owner_or_operator_transfer .! ())))
+
+permissionDescriptorOwnerTransfer :: PermissionsDescriptorMaybe
+permissionDescriptorOwnerTransfer =
+  defaultPermissionDescriptor &
+    _1 .~ (#operator .! (Just $ OwnerTransfer (#owner_transfer .! ())))
 
 permissionDescriptorNoOpReceiverHook :: PermissionsDescriptorMaybe
 permissionDescriptorNoOpReceiverHook =
   defaultPermissionDescriptor
-    & (_2.namedL #pdr._2.namedL #pdr2._1) .~ (#receiver .! (Just $ OwnerNoOp (#owner_no_op .! ())))
+    & (_2.namedL #pdr2._1) .~ (#receiver .! (Just $ OwnerNoOp (#owner_no_op .! ())))
 
 permissionDescriptorReqReceiverHook :: PermissionsDescriptorMaybe
 permissionDescriptorReqReceiverHook =
   defaultPermissionDescriptor
-    & (_2.namedL #pdr._2.namedL #pdr2._1)
+    & (_2.namedL #pdr2._1)
     .~ (#receiver .! (Just $ RequiredOwnerHook (#required_owner_hook .! ())))
 
 permissionDescriptorNoOpSenderHook :: PermissionsDescriptorMaybe
 permissionDescriptorNoOpSenderHook =
   defaultPermissionDescriptor
-    & (_2.namedL #pdr._2.namedL #pdr2._2.namedL #pdr3._1)
+    & (_2.namedL #pdr2._2.namedL #pdr3._1)
     .~ (#sender .! (Just $ OwnerNoOp (#owner_no_op .! ())))
 
 permissionDescriptorReqSenderHook :: PermissionsDescriptorMaybe
 permissionDescriptorReqSenderHook =
   defaultPermissionDescriptor
-    & (_2.namedL #pdr._2.namedL #pdr2._2.namedL #pdr3._1)
+    & (_2.namedL #pdr2._2.namedL #pdr3._1)
     .~ (#sender .! (Just $ RequiredOwnerHook (#required_owner_hook .! ())))
 
 defaultTokenMetadata :: TokenMetadata
@@ -259,20 +250,14 @@ originationRequestCompatible op =
   where
     isPermissionsCompatible :: PermissionsDescriptorMaybe -> Bool
     isPermissionsCompatible
-      ( arg #self -> st
-      , arg #pdr ->
-          ( arg #operator -> ot
-          , arg #pdr2 ->
-            ( arg #receiver -> owtmr
-            , arg #pdr3 -> (arg #sender -> otms, arg #custom -> cst)))) = let
+      (arg #operator -> ot
+        , arg #pdr2 ->
+          ( arg #receiver -> owtmr
+          , arg #pdr3 -> (arg #sender -> otms, arg #custom -> cst))) = let
       customFlag = not $ isJust cst
-      selfTransferFlag = case st of
-        Nothing -> True
-        Just (SelfTransferPermitted _) -> True
-        _ -> False
       operatorTransferFlag = case ot of
         Nothing -> True
-        Just (OperatorTransferPermitted _) -> True
+        Just (FA2.OwnerOrOperatorTransfer _) -> True
         _ -> False
       owHookSenderFlag = case otms of
         Nothing -> True
@@ -282,7 +267,7 @@ originationRequestCompatible op =
         Nothing -> True
         Just (OptionalOwnerHook _) -> True
         _ -> False
-      in customFlag && selfTransferFlag && operatorTransferFlag &&
+      in customFlag && operatorTransferFlag &&
          owHookSenderFlag && owHookReceiverFlag
 
 mkInitialStorage :: OriginationParams -> Maybe Storage

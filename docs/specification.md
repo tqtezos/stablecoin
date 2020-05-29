@@ -344,16 +344,13 @@ Parameter (in Michelson)
 
 Types
 ```
-self_transfer_policy =
-  | Self_transfer_permitted
-  | Self_transfer_denied
-
 operator_transfer_policy =
-  | Operator_transfer_permitted
-  | Operator_transfer_denied
+  | No_transfer
+  | Owner_transfer
+  | Owner_or_operator_transfer
 
-owner_transfer_policty =
-  | Owner_no_op
+owner_hook_policy =
+  | Owner_no_hook
   | Optional_owner_hook
   | Required_owner_hook
 
@@ -363,10 +360,9 @@ custom_permission_policy =
   )
 
 permissions_descriptor_param
-  ( self_transfer_policy            :self
-  , operator_transfer_policy        :receiver
-  , owner_transfer_policty          :operator
-  , owner_transfer_policty          :sender
+  ( operator_transfer_policy        :operator
+  , owner_hook_policy               :receiver
+  , owner_hook_policy               :sender
   , option custom_permission_policy :custom
   )
 
@@ -377,35 +373,31 @@ Parameter (in Michelson)
 ```
 (contract %permissions_descriptor
   (pair
-    (or %self
-      (unit %self_transfer_permitted)
-      (unit %self_transfer_denied)
-    )
     (pair
       (or %operator
-        (unit %operator_transfer_permitted)
-        (unit %operator_transfer_denied)
+        (unit %owner_transfer)
+        (unit %no_transfer)
       )
+    (pair
+      (or %receiver
+        (unit %owner_no_op)
+        (or
+          (unit %optional_owner_hook)
+          (unit %required_owner_hook)
+      ))
       (pair
-        (or %receiver
+        (or %sender
           (unit %owner_no_op)
           (or
             (unit %optional_owner_hook)
             (unit %required_owner_hook)
         ))
+      (option %custom
         (pair
-          (or %sender
-            (unit %owner_no_op)
-            (or
-              (unit %optional_owner_hook)
-              (unit %required_owner_hook)
-          ))
-        (option %custom
-          (pair
-            (string %tag)
-            (option %config_api address)
-          )
+          (string %tag)
+          (option %config_api address)
         )
+      )
   ))))
 )
 ```
