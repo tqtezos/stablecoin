@@ -123,7 +123,7 @@ instance TypeHasDoc OperatorTransferPolicy where
   typeDocMdDescription = "Describes if operator can make transfer on behalf of token owner"
 
 data OwnerTransferMode
-  = OwnerNoOp ("owner_no_op" :! ())
+  = OwnerNoHook ("owner_no_op" :! ())
   | OptionalOwnerHook ("optional_owner_hook" :! ())
   | RequiredOwnerHook ("required_owner_hook" :! ())
   deriving stock (Generic, Show)
@@ -132,7 +132,7 @@ data OwnerTransferMode
 instance Arbitrary OwnerTransferMode where
   arbitrary =
     elements
-      [ OwnerNoOp (#owner_no_op .! ())
+      [ OwnerNoHook (#owner_no_op .! ())
       , OptionalOwnerHook (#optional_owner_hook .! ())
       , RequiredOwnerHook (#required_owner_hook .! ())
       ]
@@ -224,10 +224,14 @@ type FA2ParameterC param =
 
 -- | Owner hook interface
 --
+
+type TransferDestinationDescriptor =
+  ("to_" :! Maybe Address
+  , ("token_id" :! TokenId, "amount" :! Natural))
+
 type TransferDescriptor =
-  ( "from" :! Maybe Address
-  , ("to" :! Maybe Address
-    , ("token_id" :! TokenId, "amount" :! Natural)))
+  ( "from_" :! Maybe Address
+  , ("txs" :! [TransferDestinationDescriptor]))
 
 type TransferDescriptorParam =
   ("fa2" :! Address, ("batch" :! [TransferDescriptor], "operator" :! Address))
@@ -237,6 +241,9 @@ data FA2OwnerHook
   | Tokens_received TransferDescriptorParam
   deriving stock (Generic, Eq, Show)
   deriving anyclass (IsoValue, HasTypeAnn)
+
+instance Buildable TransferDestinationDescriptor where
+  build = genericF
 
 instance Buildable TransferDescriptor where
   build = genericF

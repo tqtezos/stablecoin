@@ -799,8 +799,8 @@ fa2Spec fa2Originate = do
           withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
 
           let expectedTransferDesc =
-               ( #from .! Just (unTAddress senderWithHook)
-               , (#to .! Just wallet2, (#token_id .! 0, #amount .! 10)))
+               ( #from_ .! Just (unTAddress senderWithHook)
+               , #txs [(#to_ .! Just wallet2, (#token_id .! 0, #amount .! 10))])
 
           let expectedHookContractState =
                 Tokens_sent ( #fa2 .! unTAddress fa2contract
@@ -824,8 +824,8 @@ fa2Spec fa2Originate = do
 
           let
             expectedTransferDesc =
-               ( #from .! Just wallet1
-               , (#to .! (Just $ unTAddress receiverWithHook), (#token_id .! 0, #amount .! 10)))
+               ( #from_ .! Just wallet1
+               , #txs .! [(#to_ .! (Just $ unTAddress receiverWithHook), (#token_id .! 0, #amount .! 10))])
 
           let expectedHookContractState
                 = Tokens_received
@@ -836,7 +836,7 @@ fa2Spec fa2Originate = do
             lExpectViewConsumerStorage receiverWithHook [expectedHookContractState]
 
     -- Tests that the senders/receiver owner hook are NOT called on transfer
-    it "does not call sender's transfer hook if `OwnerNoOp` is selected in permission descriptor" $
+    it "does not call sender's transfer hook if `OwnerNoHook` is selected in permission descriptor" $
       integrationalTestExpectation $ do
         senderWithHook <- lOriginateEmpty @FA2OwnerHook contractConsumer "Sender hook consumer"
         let originationParams = addAccount (unTAddress senderWithHook, (commonOperators, 10)) $
@@ -855,7 +855,7 @@ fa2Spec fa2Originate = do
           validate . Right $
             lExpectStorageConst senderWithHook ([] :: [FA2OwnerHook])
 
-    it "does not call receivers's transfer hook if `OwnerNoOp` is selected in permission descriptor" $
+    it "does not call receivers's transfer hook if `OwnerNoHook` is selected in permission descriptor" $
       integrationalTestExpectation $ do
         receiverWithHook <- lOriginateEmpty @FA2OwnerHook contractConsumer "Receiver hook consumer"
         let originationParams = addAccount (wallet1, (commonOperators, 10)) $ defaultOriginationParams

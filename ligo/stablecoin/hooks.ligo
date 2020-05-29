@@ -45,14 +45,19 @@ function convert_to_transfer_descriptor
   ; const param_sender_addr : address
   ; const transfer_destination : transfer_destination
   ): transfer_descriptor_param is block
-{ const transfer_descriptor : transfer_descriptor_ = record
-    [ from_    = Some (param_sender_addr)
-    ; to_      = Some (transfer_destination.0)
+{ const transfer_destination_descriptor_ : transfer_destination_descriptor_ = record
+    [ to_      = Some (transfer_destination.0)
     ; token_id = transfer_destination.1.0
     ; amount   = transfer_destination.1.1
     ]
+; const transfer_destination_descriptor : transfer_destination_descriptor =
+    Layout.convert_to_right_comb ((transfer_destination_descriptor_ : transfer_destination_descriptor_))
+; const transfer_descriptor_ : transfer_descriptor_ = record
+    [ from_ = Some (param_sender_addr)
+    ; txs   = list [ transfer_destination_descriptor ]
+    ]
 ; const transfer_descriptor_batch : list (transfer_descriptor) = list
-    [ Layout.convert_to_right_comb ((transfer_descriptor : transfer_descriptor_)) ]
+    [ Layout.convert_to_right_comb ((transfer_descriptor_ : transfer_descriptor_)) ]
 ; const transfer_descriptor_param : transfer_descriptor_param_ = record
     [ fa2      = self_addr
     ; batch    = transfer_descriptor_batch

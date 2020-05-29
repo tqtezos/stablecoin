@@ -131,7 +131,7 @@ permissionDescriptorOwnerTransfer =
 permissionDescriptorNoOpReceiverHook :: PermissionsDescriptorMaybe
 permissionDescriptorNoOpReceiverHook =
   defaultPermissionDescriptor
-    & (_2.namedL #pdr2._1) .~ (#receiver .! (Just $ OwnerNoOp (#owner_no_op .! ())))
+    & (_2.namedL #pdr2._1) .~ (#receiver .! (Just $ OwnerNoHook (#owner_no_op .! ())))
 
 permissionDescriptorReqReceiverHook :: PermissionsDescriptorMaybe
 permissionDescriptorReqReceiverHook =
@@ -143,7 +143,7 @@ permissionDescriptorNoOpSenderHook :: PermissionsDescriptorMaybe
 permissionDescriptorNoOpSenderHook =
   defaultPermissionDescriptor
     & (_2.namedL #pdr2._2.namedL #pdr3._1)
-    .~ (#sender .! (Just $ OwnerNoOp (#owner_no_op .! ())))
+    .~ (#sender .! (Just $ OwnerNoHook (#owner_no_op .! ())))
 
 permissionDescriptorReqSenderHook :: PermissionsDescriptorMaybe
 permissionDescriptorReqSenderHook =

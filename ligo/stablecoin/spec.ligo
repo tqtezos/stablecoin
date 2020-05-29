@@ -223,11 +223,17 @@ type parameter is
 
 // Currently it has the same structure as `transfer_param` but
 // with optional participants
-type transfer_descriptor_ is record
-  from_    : option (address)
-; to_      : option (address)
+type transfer_destination_descriptor_ is record
+  to_      : option (address)
 ; token_id : token_id
 ; amount   : nat
+end
+
+type transfer_destination_descriptor is michelson_pair_right_comb(transfer_destination_descriptor_)
+
+type transfer_descriptor_ is record
+  from_ : option (address)
+; txs   : list (transfer_destination_descriptor)
 end
 
 type transfer_descriptor is michelson_pair_right_comb(transfer_descriptor_)
