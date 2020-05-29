@@ -603,7 +603,7 @@ Parameter (in Michelson): `address`.
 Types
 ```
 mint_param
-  ( address :recipient
+  ( address :to_
   , nat     :value
   )
 
@@ -614,7 +614,7 @@ Parameter (in Michelson):
 ```
 (list
   (pair
-    (address %recipient)
+    (address %to_)
     (nat %value)
   )
 )
