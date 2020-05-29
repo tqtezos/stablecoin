@@ -38,6 +38,8 @@ you must be able to justify that.
   - [ ] I checked whether I should update the docs and did so if necessary:
     - [README](../tree/master/README.md)
     - Haddock
+  - [ ] I updated [changelog](../tree/master/ChangeLog.md) unless I am sure my changes are
+        not essential.
 
 #### Stylistic guide (mandatory)
 
