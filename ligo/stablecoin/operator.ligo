@@ -13,7 +13,7 @@
 function validate_operator_owner_is_sender
   ( const param : operator_param
   ) : unit is if param.0 = Tezos.sender
-  then unit else failwith ("NOT_OWNER")
+  then unit else failwith ("NOT_TOKEN_OWNER")
 
 (*
  * Returns a callback of `Is_operator` entrypoint call

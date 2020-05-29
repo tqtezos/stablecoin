@@ -92,27 +92,39 @@ Required `Safelist` entrypoints:
 
 # Errors
 
-| Error                 | Description                                                                                                                    |
-|-----------------------|------------------------------------------------------------------------------------------------------------------------------|
-| XTZ_RECEIVED          | Contract received a non-zero amount of tokens and should not proceed any further                                               |
-| NOT_OWNER             | Authorized sender is not contract owner                                                                                        |
-| NOT_PENDING_OWNER     | Authorized sender is not current contract pending owner                                                                        |
-| NO_PENDING_OWNER_SET  | Throws when trying to authorize as pending owner whilst is not set for a contract                                              |
-| NOT_PAUSER            | Authorized sender is not contract pauser                                                                                       |
-| NOT_MASTER_MINTER     | Authorized sender is not master minter                                                                                         |
-| NOT_MINTER            | Sender is not registered as minter                                                                                             |
-| CONTRACT_PAUSED       | Operation cannot be performed during contract pause                                                                            |
-| CONTRACT_NOT_PAUSED   | Operation cannot be peformed if the contract is not paused                                                                     |
-| INSUFFICIENT_BALANCE  | Cannot debit from a wallet because of excessive amount of tokens                                                               |
-| NOT_IN_LEDGER         | Wallet is not present in ledger                                                                                                |
-| TX_DENIED             | Operator transfer is permitted                                                                                                 |
-| NOT_OPERATOR          | Trying to transfer tokens when sender is not an operator                                                                       |
-| NOT_OWNER             | Trying to configure operators for a different wallet which sender does not own                                                 |
-| NO_ALLOWANCE_EXPECTED | Throws when trying to configure minter with Nothing value in parameter provided                                                |
-| ALLOWANCE_MISMSATCH   | Throws when expected allowance in configure minter parameter does not match the actual one                                     |
-| NOT_MINTER            | Throws when trying to configure minter but expected address is not one                                                         |
-| ALLOWANCE_EXCEEDED    | Throws when trying to mint tokens more than currently allowed for an address                                                   |
-| NEGATIVE_TOTAL_SUPPLY | Throws if contract is faced negative total supply. This may appear during the internal error and is not expected to be thrown |
+In error scenarios the stablecoin contract fails with a string.
+Here is a summary of all the strings used as error messages.
+We start with standard FA2 errors which are part of the FA2 specification.
+
+| Error                  | Description |
+|------------------------|-------------|
+| `TOKEN_UNDEFINED`      | One of the specified `token_id`s is not defined (i. e. not zero) |
+| `INSUFFICIENT_BALANCE` | Cannot debit from a wallet because of excessive amount of tokens |
+| `NOT_OPERATOR`         | A transfer is initiated neither by the token owner nor a permitted operator |
+
+The next group consists of the errors that are not part of the FA2 specification.
+
+| Error                   | Description |
+|-------------------------|-------------|
+| `XTZ_RECEIVED`          | Contract received a non-zero amount of tokens and should not proceed any further                                               |
+| `NOT_CONTRACT_OWNER`    | Authorized sender is not contract owner                                                                                        |
+| `NOT_PENDING_OWNER`     | Authorized sender is not current contract pending owner                                                                        |
+| `NO_PENDING_OWNER_SET`  | Throws when trying to authorize as pending owner whilst is not set for a contract                                              |
+| `NOT_PAUSER`            | Authorized sender is not contract pauser                                                                                       |
+| `NOT_MASTER_MINTER`     | Authorized sender is not master minter                                                                                         |
+| `NOT_MINTER`            | Sender is not registered as minter                                                                                             |
+| `CONTRACT_PAUSED`       | Operation cannot be performed during contract pause                                                                            |
+| `CONTRACT_NOT_PAUSED`   | Operation cannot be peformed if the contract is not paused                                                                     |
+| `NOT_TOKEN_OWNER`       | Trying to configure operators for a different wallet which sender does not own                                                 |
+| `NO_ALLOWANCE_EXPECTED` | In `configure_minter` the caller wrongly expects the address to be not a minter                                                |
+| `ALLOWANCE_MISMATCH`    | In `configure_minter` both allowances are not `None`, but different                                                            |
+| `ADDR_NOT_MINTER`       | An attempt is made to modify minter data of an address that's not a minter                                                     |
+| `ALLOWANCE_EXCEEDED`    | Throws when trying to mint tokens more than currently allowed for an address                                                   |
+| `BAD_SAFELIST`          | Given address is a not a smart contract complying with the safelist interface                                                  |
+
+Finally there are some internal errors that should be considered implementation detail and are supposed to never happen as long as the contract is originated correctly (with consistent storage).
+Since they are internal, they can be changed any time without updating this part of the specification.
+* `NEGATIVE_TOTAL_SUPPLY`
 
 # Entrypoints
 
@@ -203,7 +215,7 @@ Parameter (in Michelson):
 - Since the contract supports only a single token type, all `token_id` values MUST be 0.
   They are passed because FA2 requires that.
 
-- Contract must not be paused.
+- Fails with `CONTRACT_PAUSED` if the contract is paused.
 
 ### **balance_of**
 
@@ -415,14 +427,9 @@ Types
 ```
 token_id = nat
 
-operator_tokens =
-  | All_tokens
-  | Some_tokens (set token_id)
-
 operator_param =
   ( address         :owner
   , address         :operator
-  , operator_tokens :tokens
   )
 
 update_operator_param =
@@ -438,22 +445,12 @@ Parameter (in Michelson)
   (or
     (pair %add_operator
       (address %owner)
-      (pair
-        (address %operator)
-        (or %tokens
-          (unit %all_tokens)
-          (set %some_tokens nat)
-        )
-    ))
+      (address %operator)
+    )
     (pair %remove_operator
       (address %owner)
-      (pair
-        (address %operator)
-        (or %tokens
-          (unit %all_tokens)
-          (set %some_tokens nat)
-        )
-    ))
+      (address %operator)
+    )
   )
 )
 ```
@@ -461,16 +458,9 @@ Parameter (in Michelson)
 - This entrypoint MUST follow the FA2 requirements.
 
 - Permission logic requirements specific to this contract are described in the ["FA2 Specifics"](#fa2-specifics) chapter.
-Each `owner` must be equal to `SENDER`.
+Specifically, each `owner` must be equal to `SENDER`, otherwise `NOT_TOKEN_OWNER` error occurs.
 
-- Since the contract supports only a single token type, all `token_id` values MUST be 0.
-  They are passed because FA2 requires that.
-  So there are three possible valid values of `operator_tokens` type:
-  + `All_tokens`
-  + `Some_tokens ({0})` – equivalent to `All_tokens`.
-  + `Some_tokens ({})` – no-op.
-
-- Contract must not be paused.
+- Fails with `CONTRACT_PAUSED` if the contract is paused.
 
 ### **is_operator**
 
@@ -478,14 +468,9 @@ Types
 ```
 token_id = nat
 
-operator_tokens =
-  | All_tokens
-  | Some_tokens (set token_id)
-
 operator_param =
   ( address         :owner
   , address         :operator
-  , operator_tokens :tokens
   )
 
 is_operator_response =
@@ -504,24 +489,14 @@ Parameter (in Michelson):
 (pair %is_operator
   (pair %operator
     (address %owner)
-    (pair
-      (address %operator)
-      (or %tokens
-        (unit %all_tokens)
-        (set %some_tokens nat)
-      )
-  ))
+    (address %operator)
+  )
   (contract %callback
     (pair
       (pair %operator
         (address %owner)
-        (pair
-          (address %operator)
-          (or %tokens
-            (unit %all_tokens)
-            (set %some_tokens nat)
-          )
-      ))
+        (address %operator)
+      )
       (bool %is_operator)
     )
   )
@@ -529,13 +504,6 @@ Parameter (in Michelson):
 ```
 
 - This entrypoint MUST follow the FA2 requirements.
-
-- Since the contract supports only a single token type, all `token_id` values MUST be 0.
-  They are passed because FA2 requires that.
-  So there are three possible valid values of `operator_tokens` type:
-  + `All_tokens`
-  + `Some_tokens ({0})` – equivalent to `All_tokens`.
-  + `Some_tokens ({})` – for this value the result is always `True`.
 
 ## Custom (non-FA2) token functions
 
@@ -552,9 +520,9 @@ Parameter (in Michelson): `unit`.
   that they cannot be performed. All other operations remain
   unaffected.
 
-- Cannot be called multiple times.
+- Fails with `CONTRACT_PAUSED` if the contract is paused.
 
-- Sender must be a pauser.
+- Fails with `NOT_PAUSER` if the sender is not a pauser.
 
 #### **unpause**
 
@@ -563,9 +531,9 @@ Parameter (in Michelson): `unit`.
 - Unpauses the contract so that transferring, burning and minting
   operations can be performed by users with corresponding roles.
 
-- Cannot be called multiple times.
+- Fails with `CONTRACT_NOT_PAUSED` if the contract is not paused.
 
-- Sender must be a pauser.
+- Fails with `NOT_PAUSER` if the sender is not a pauser.
 
 ### Issuing and destroying tokens
 
@@ -596,10 +564,14 @@ Parameter (in Michelson)
 If it does not match the actual minting allowance, the transaction MUST fail.
 It is done to prevent front-running attacks.
 It MUST be set to `None` iff the minter is not in the list of minters.
+We distinguish three error cases, each has a dedicated error message:
+  + `ALLOWANCE_MISMATCH`: both provided and actual minting allowances are not None, but they are different.
+  + `NO_ALLOWANCE_EXPECTED`: the caller expects that the `minter` address is not a minter, but this address is already a minter.
+  + `ADDR_NOT_MINTER`: the caller expects that the `minter` address is a minter, but it is not.
 
-- Sender must be master minter.
+- Fails with `NOT_MASTER_MINTER` if the sender is not master minter.
 
-- Contract must not be paused.
+- Fails with `CONTRACT_PAUSED` if the contract is paused.
 
 #### **remove_minter**
 
@@ -608,7 +580,9 @@ Parameter (in Michelson): `address`.
 - Removes minter from the minter list and sets its minting allowance to 0.
   Once minter is removed it will no longer be able to mint or burn tokens.
 
-- Sender must be master minter.
+- Fails with `NOT_MASTER_MINTER` if the sender is not master minter.
+
+- Fails with `ADDR_NOT_MINTER` if the argument is not an address of a minter.
 
 #### **mint**
 
@@ -638,17 +612,18 @@ Parameter (in Michelson):
 - Each minting must happen atomically, so if one of them fails, then the whole
   operation must fail.
 
-- Sender must be minter.
+- Fails with `NOT_MINTER` if the sender is not a minter.
 
 - The total amount of minted coins must not exceed the current
   minting allowance specified for each minter individually.
+  Otherwise the operation fails with `ALLOWANCE_EXCEEDED`.
 
 - Minting allowance will decrease by the amount of tokens minted
   and increase the balance of receiver and total minted value.
 
 - If safelist contract is set, this entrypoint MUST call its `assertReceivers` entrypoint (either directly or from the transfer hook) checking the minter and all receivers.
 
-- Contract must not be paused.
+- Fails with `CONTRACT_PAUSED` if the contract is paused.
 
 #### **burn**
 
@@ -661,8 +636,9 @@ Parameter (in Michelson): `list nat`.
 
 - The operation must follow permission policies described above.
 
-- Sender must be a minter and must have a sufficient amount of
-  funds to be destroyed.
+- Fails with `NOT_MINTER` if the sender is not a minter.
+
+- Fails with `INSUFFICIENT_BALANCE` if the sender does not have enough tokens to burn.
 
 - A minter with 0 minting allowance is allowed to burn tokens.
 
@@ -670,7 +646,7 @@ Parameter (in Michelson): `list nat`.
 
 - If safelist contract is set, this entrypoint MUST call its `assertReceiver` entrypoint (either directly or from the transfer hook) checking the minter (`SENDER`).
 
-- Contract must not be paused.
+- Fails with `CONTRACT_PAUSED` if the contract is paused.
 
 ## Role reassigning functions
 
@@ -680,7 +656,7 @@ Parameter (in Michelson): `address`.
 
 - Initiate transfer of contract ownership to a new address.
 
-- Sender must be current contract owner.
+- Fails with `NOT_CONTRACT_OWNER` if the sender is not the current contract owner.
 
 - The current contract owner retains his priveleges up until
   `accept_ownership` is called.
@@ -695,7 +671,7 @@ Parameter: `unit`.
 
 - Accept contract ownership privileges.
 
-- Sender must be a pending contract owner.
+- Fails with `NOT_PENDING_OWNER` if the sender is not the current pending contract owner or `NO_PENDING_OWNER_SET` if there is no pending contract owner.
 
 ### **change_master_minter**
 
@@ -703,7 +679,7 @@ Parameter (in Michelson): `address`.
 
 - Set master minter to a new address.
 
-- Sender must be contract owner.
+- Fails with `NOT_CONTRACT_OWNER` if the sender is not the contract owner.
 
 ### **change_pauser**
 
@@ -711,7 +687,7 @@ Parameter (in Michelson): `address`.
 
 - Set pauser to a new address.
 
-- Sender must be contract owner.
+- Fails with `NOT_CONTRACT_OWNER` if the sender is not the contract owner.
 
 ## Safelist update
 
@@ -721,9 +697,9 @@ Parameter (in Michelson): `option address`.
 
 - Set the stored (optional) safelist address to the new one.
 
-- If the address does not have any entrypoint listed in the [`Safelist`](#safelist) specification, this call MUST fail.
+- If the address does not have any entrypoint listed in the [`Safelist`](#safelist) specification, this call MUST fail with `BAD_SAFELIST`.
 
-- Sender must be contract owner.
+- Fails with `NOT_CONTRACT_OWNER` if the sender is not the contract owner.
 
 # Rationale and design considerations
 
