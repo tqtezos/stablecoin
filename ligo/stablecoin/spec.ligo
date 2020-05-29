@@ -140,24 +140,19 @@ type is_operator_params is michelson_pair_right_comb(is_operator_params_)
 
 (* ------------------------------------------------------------- *)
 
-type self_transfer_policy_ is
-| Self_transfer_permitted
-| Self_transfer_denied
-
-type self_transfer_policy is michelson_or_right_comb(self_transfer_policy_)
-
 type operator_transfer_policy_ is
-| Operator_transfer_permitted
-| Operator_transfer_denied
+| No_transfer
+| Owner_transfer
+| Owner_or_operator_transfer
 
 type operator_transfer_policy is michelson_or_right_comb(operator_transfer_policy_)
 
-type owner_transfer_policy_ is
-| Owner_no_op
+type owner_hook_policy_ is
+| Owner_no_hook
 | Optional_owner_hook
 | Required_owner_hook
 
-type owner_transfer_policy is michelson_or_right_comb(owner_transfer_policy_)
+type owner_hook_policy is michelson_or_right_comb(owner_hook_policy_)
 
 type custom_permission_policy_ is record
   tag        : string
@@ -167,10 +162,9 @@ end
 type custom_permission_policy is michelson_pair_right_comb(custom_permission_policy_)
 
 type permissions_descriptor_ is record
-  self     : self_transfer_policy
-; operator : operator_transfer_policy
-; receiver : owner_transfer_policy
-; sender   : owner_transfer_policy
+  operator : operator_transfer_policy
+; receiver : owner_hook_policy
+; sender   : owner_hook_policy
 ; custom   : option (custom_permission_policy)
 end
 
