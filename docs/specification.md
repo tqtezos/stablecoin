@@ -92,27 +92,38 @@ Required `Safelist` entrypoints:
 
 # Errors
 
-| Error                 | Description                                                                                                                    |
-|-----------------------|------------------------------------------------------------------------------------------------------------------------------|
-| XTZ_RECEIVED          | Contract received a non-zero amount of tokens and should not proceed any further                                               |
-| NOT_OWNER             | Authorized sender is not contract owner                                                                                        |
-| NOT_PENDING_OWNER     | Authorized sender is not current contract pending owner                                                                        |
-| NO_PENDING_OWNER_SET  | Throws when trying to authorize as pending owner whilst is not set for a contract                                              |
-| NOT_PAUSER            | Authorized sender is not contract pauser                                                                                       |
-| NOT_MASTER_MINTER     | Authorized sender is not master minter                                                                                         |
-| NOT_MINTER            | Sender is not registered as minter                                                                                             |
-| CONTRACT_PAUSED       | Operation cannot be performed during contract pause                                                                            |
-| CONTRACT_NOT_PAUSED   | Operation cannot be peformed if the contract is not paused                                                                     |
-| INSUFFICIENT_BALANCE  | Cannot debit from a wallet because of excessive amount of tokens                                                               |
-| NOT_IN_LEDGER         | Wallet is not present in ledger                                                                                                |
-| TX_DENIED             | Operator transfer is permitted                                                                                                 |
-| NOT_OPERATOR          | Trying to transfer tokens when sender is not an operator                                                                       |
-| NOT_OWNER             | Trying to configure operators for a different wallet which sender does not own                                                 |
-| NO_ALLOWANCE_EXPECTED | Throws when trying to configure minter with Nothing value in parameter provided                                                |
-| ALLOWANCE_MISMSATCH   | Throws when expected allowance in configure minter parameter does not match the actual one                                     |
-| NOT_MINTER            | Throws when trying to configure minter but expected address is not one                                                         |
-| ALLOWANCE_EXCEEDED    | Throws when trying to mint tokens more than currently allowed for an address                                                   |
-| NEGATIVE_TOTAL_SUPPLY | Throws if contract is faced negative total supply. This may appear during the internal error and is not expected to be thrown |
+In error scenarios the stablecoin contract fails with a string.
+Here is a summary of all the strings used as error messages.
+We start with standard FA2 errors which are part of the FA2 specification.
+
+| Error                  | Description |
+|------------------------|-------------|
+| `TOKEN_UNDEFINED`      | One of the specified `token_id`s is not defined (i. e. not zero) |
+| `INSUFFICIENT_BALANCE` | Cannot debit from a wallet because of excessive amount of tokens |
+| `NOT_OPERATOR`         | A transfer is initiated neither by the token owner nor a permitted operator |
+
+The next group consists of the errors that are not part of the FA2 specification.
+
+| Error                   | Description |
+|-------------------------|-------------|
+| `XTZ_RECEIVED`          | Contract received a non-zero amount of tokens and should not proceed any further                                               |
+| `NOT_OWNER`             | Authorized sender is not contract owner                                                                                        |
+| `NOT_PENDING_OWNER`     | Authorized sender is not current contract pending owner                                                                        |
+| `NO_PENDING_OWNER_SET`  | Throws when trying to authorize as pending owner whilst is not set for a contract                                              |
+| `NOT_PAUSER`            | Authorized sender is not contract pauser                                                                                       |
+| `NOT_MASTER_MINTER`     | Authorized sender is not master minter                                                                                         |
+| `NOT_MINTER`            | Sender is not registered as minter                                                                                             |
+| `CONTRACT_PAUSED`       | Operation cannot be performed during contract pause                                                                            |
+| `CONTRACT_NOT_PAUSED`   | Operation cannot be peformed if the contract is not paused                                                                     |
+| `NOT_OWNER`             | Trying to configure operators for a different wallet which sender does not own                                                 |
+| `NO_ALLOWANCE_EXPECTED` | Throws when trying to configure minter with Nothing value in parameter provided                                                |
+| `ALLOWANCE_MISMSATCH`   | Throws when expected allowance in configure minter parameter does not match the actual one                                     |
+| `NOT_MINTER`            | Throws when trying to configure minter but expected address is not one                                                         |
+| `ALLOWANCE_EXCEEDED`    | Throws when trying to mint tokens more than currently allowed for an address                                                   |
+
+Finally there are some internal errors that should be considered implementation detail and are supposed to never happen as long as the contract is originated correctly (with consistent storage).
+Since they are internal, they can be changed any time without updating this part of the specification.
+* `NEGATIVE_TOTAL_SUPPLY`
 
 # Entrypoints
 
