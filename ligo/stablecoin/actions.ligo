@@ -491,7 +491,7 @@ function configure_minter
         Some (allowance) -> if allowance =/= current_minting_allowance
           then failwith ("ALLOWANCE_MISMATCH")
           else skip
-      | None -> failwith ("NOT_MINTER")
+      | None -> failwith ("ADDR_NOT_MINTER")
       end
   end
 } with
@@ -516,7 +516,7 @@ function remove_minter
 { authorize_master_minter (store)
 ; case store.minting_allowances[parameter] of
     Some (u) -> skip
-  | None -> failwith ("NOT_MINTER")
+  | None -> failwith ("ADDR_NOT_MINTER")
   end
 } with
   ( (nil : list (operation))

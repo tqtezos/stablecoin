@@ -116,9 +116,9 @@ The next group consists of the errors that are not part of the FA2 specification
 | `CONTRACT_PAUSED`       | Operation cannot be performed during contract pause                                                                            |
 | `CONTRACT_NOT_PAUSED`   | Operation cannot be peformed if the contract is not paused                                                                     |
 | `NOT_TOKEN_OWNER`       | Trying to configure operators for a different wallet which sender does not own                                                 |
-| `NO_ALLOWANCE_EXPECTED` | Throws when trying to configure minter with Nothing value in parameter provided                                                |
-| `ALLOWANCE_MISMSATCH`   | Throws when expected allowance in configure minter parameter does not match the actual one                                     |
-| `NOT_MINTER`            | Throws when trying to configure minter but expected address is not one                                                         |
+| `NO_ALLOWANCE_EXPECTED` | In `configure_minter` the caller wrongly expects the address to be not a minter                                                |
+| `ALLOWANCE_MISMATCH`    | In `configure_minter` both allowances are not `None`, but different                                                            |
+| `ADDR_NOT_MINTER`       | An attempt is made to modify minter data of an address that's not a minter                                                     |
 | `ALLOWANCE_EXCEEDED`    | Throws when trying to mint tokens more than currently allowed for an address                                                   |
 
 Finally there are some internal errors that should be considered implementation detail and are supposed to never happen as long as the contract is originated correctly (with consistent storage).
@@ -610,7 +610,7 @@ It MUST be set to `None` iff the minter is not in the list of minters.
 We distinguish three error cases, each has a dedicated error message:
   + `ALLOWANCE_MISMATCH`: both provided and actual minting allowances are not None, but they are different.
   + `NO_ALLOWANCE_EXPECTED`: the caller expects that the `minter` address is not a minter, but this address is already a minter.
-  + `NOT_MINTER`: the caller expects that the `minter` address is a minter, but it is not.
+  + `ADDR_NOT_MINTER`: the caller expects that the `minter` address is a minter, but it is not.
 
 - Fails with `NOT_MASTER_MINTER` if the sender is not master minter.
 
@@ -625,7 +625,7 @@ Parameter (in Michelson): `address`.
 
 - Fails with `NOT_MASTER_MINTER` if the sender is not master minter.
 
-- Fails with `NOT_MINTER` if the argument is not an address of a minter.
+- Fails with `ADDR_NOT_MINTER` if the argument is not an address of a minter.
 
 #### **mint**
 
