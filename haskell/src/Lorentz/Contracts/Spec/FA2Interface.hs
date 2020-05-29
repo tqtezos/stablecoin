@@ -14,14 +14,13 @@ module Lorentz.Contracts.Spec.FA2Interface
   , IsOperatorParam
   , IsOperatorResponse
   , OperatorParam
-  , OperatorTransferMode (..)
+  , OperatorTransferPolicy (..)
   , OwnerTransferMode (..)
   , Parameter (..)
   , FA2ParameterC
   , PermissionsDescriptor
   , PermissionsDescriptorMaybe
   , PermissionsDescriptorParam
-  , SelfTransferMode (..)
   , TokenId
   , TokenMetaDataParam
   , TokenMetadata
@@ -105,37 +104,22 @@ instance Buildable TokenMetadata where
     "token_id:" +| token_id |+ ", symbol:" +| symbol |+ ", name:" +|
     name |+ ", decimals:" +| decimals |+ "."
 
--- Permission descriptor param components and parameter
-data SelfTransferMode
-  = SelfTransferPermitted ("self_transfer_permitted" :! ())
-  | SelfTransferDenied ("self_transfer_denied" :! ())
-  deriving stock (Generic, Eq, Show)
-  deriving anyclass (IsoValue, HasTypeAnn)
-
-instance Arbitrary SelfTransferMode where
-  arbitrary =
-    elements
-      [ SelfTransferPermitted (#self_transfer_permitted .! ())
-      , SelfTransferDenied (#self_transfer_denied .! ())
-      ]
-
-instance TypeHasDoc SelfTransferMode where
-  typeDocMdDescription = "Describes if token owner can make transfers themselves"
-
-data OperatorTransferMode
-  = OperatorTransferPermitted ("operator_transfer_permitted" :! ())
-  | OperatorTransferDenied ("operator_transfer_denied" :! ())
+data OperatorTransferPolicy
+  = OwnerTransfer ("owner_transfer" :! ())
+  | NoTransfer ("no_transfer" :! ())
+  | OwnerOrOperatorTransfer ("owner_or_operator_transfer" :! ())
   deriving stock (Eq, Generic, Show)
   deriving anyclass (IsoValue, HasTypeAnn)
 
-instance Arbitrary OperatorTransferMode where
+instance Arbitrary OperatorTransferPolicy where
   arbitrary =
     elements
-      [ OperatorTransferPermitted (#operator_transfer_permitted .! ())
-      , OperatorTransferDenied (#operator_transfer_denied .! ())
+      [ OwnerTransfer (#owner_transfer .! ())
+      , NoTransfer (#no_transfer .! ())
+      , OwnerOrOperatorTransfer (#owner_or_operator_transfer .! ())
       ]
 
-instance TypeHasDoc OperatorTransferMode where
+instance TypeHasDoc OperatorTransferPolicy where
   typeDocMdDescription = "Describes if operator can make transfer on behalf of token owner"
 
 data OwnerTransferMode
@@ -173,11 +157,10 @@ type family PdFld (f :: PdTag) t where
 -- tuple elements that is used for setting some specific parameter
 -- when passing them in tests.
 type PermissionsDescriptorPoly t =
-  ( "self" :! PdFld t SelfTransferMode
-  , "pdr" :! ( "operator" :! PdFld t OperatorTransferMode
+  ( "operator" :! PdFld t OperatorTransferPolicy
   , "pdr2" :! ( "receiver" :! PdFld t OwnerTransferMode
   , "pdr3" :!
-      ("sender" :! PdFld t OwnerTransferMode, "custom" :! PdFld t (Maybe CustomPermissionPolicy)))))
+      ("sender" :! PdFld t OwnerTransferMode, "custom" :! PdFld t (Maybe CustomPermissionPolicy))))
 
 type PermissionsDescriptor = PermissionsDescriptorPoly 'PdFull
 type PermissionsDescriptorMaybe = PermissionsDescriptorPoly 'PdMaybe

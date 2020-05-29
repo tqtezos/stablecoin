@@ -32,7 +32,7 @@ managementSpec originate = do
         originationParams =
             addAccount (wallet1, (commonOperators, 0))
           $ defaultOriginationParams
-              { opPermissionsDescriptor = permissionDescriptorOperatorTransferAllowed
+              { opPermissionsDescriptor = permissionDescriptorOwnerOrOperatorTransfer
               }
       withOriginated originate originationParams $ \stablecoinContract -> do
         lTransfer @param
@@ -95,7 +95,7 @@ managementSpec originate = do
             addAccount (wallet1, (commonOperators, 10))
           $ addAccount (wallet2, ([], 0))
           $ defaultOriginationParams
-              { opPermissionsDescriptor = permissionDescriptorOperatorTransferAllowed
+              { opPermissionsDescriptor = permissionDescriptorOwnerOrOperatorTransfer
               , opPaused = True
               }
       withOriginated originate originationParams $ \stablecoinContract -> do
@@ -110,7 +110,7 @@ managementSpec originate = do
           $ addAccount (wallet2, (commonOperators, 0))
           $ addAccount (wallet3, (commonOperators, 0))
           $ defaultOriginationParams
-              { opPermissionsDescriptor = permissionDescriptorOperatorTransferAllowed
+              { opPermissionsDescriptor = permissionDescriptorOwnerOrOperatorTransfer
               , opPaused = True
               }
 
@@ -229,7 +229,7 @@ managementSpec originate = do
 
         withSender masterMinter $ lCallEP stablecoinContract (Call @"Configure_minter") configureMinterParam2
 
-        validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $  lExpectAnyMichelsonFailed stablecoinContract
 
     it "fails if sender does not have master minter permissions" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
@@ -313,7 +313,7 @@ managementSpec originate = do
         originationParams =
             addMinter (wallet1, 30)
           $ defaultOriginationParams
-              { opPermissionsDescriptor = permissionDescriptorOperatorTransferAllowed }
+              { opPermissionsDescriptor = permissionDescriptorOwnerOrOperatorTransfer }
       withOriginated originate originationParams $ \stablecoinContract -> do
         let
           mintings =
@@ -621,7 +621,7 @@ managementSpec originate = do
         let
           originationParams = addAccount (wallet1, (commonOperators, 10))
               $ defaultOriginationParams {
-                  opPermissionsDescriptor = permissionDescriptorOperatorTransferAllowed,
+                  opPermissionsDescriptor = permissionDescriptorOwnerOrOperatorTransfer,
                   opSafelistContract = Just safelistContract
                 }
         withOriginated originate originationParams $ \stablecoinContract -> do
@@ -639,7 +639,7 @@ managementSpec originate = do
           originationParams = addAccount (wallet1, (commonOperators, 10))
               $ addMinter (wallet1, 30)
               $ defaultOriginationParams {
-                  opPermissionsDescriptor = permissionDescriptorOperatorTransferAllowed,
+                  opPermissionsDescriptor = permissionDescriptorOwnerOrOperatorTransfer,
                   opSafelistContract = Just safelistContract
                 }
         withOriginated originate originationParams $ \stablecoinContract -> do
@@ -675,7 +675,7 @@ managementSpec originate = do
         let
           originationParams = addAccount (wallet1, (commonOperators, 10))
               $ defaultOriginationParams {
-                  opPermissionsDescriptor = permissionDescriptorOperatorTransferAllowed,
+                  opPermissionsDescriptor = permissionDescriptorOwnerOrOperatorTransfer,
                   opSafelistContract = Just safelistContract
                 }
         withOriginated originate originationParams $ \stablecoinContract -> do
@@ -693,7 +693,7 @@ managementSpec originate = do
           originationParams = addAccount (wallet1, (commonOperators, 10))
               $ addMinter (wallet1, 30)
               $ defaultOriginationParams {
-                  opPermissionsDescriptor = permissionDescriptorOperatorTransferAllowed,
+                  opPermissionsDescriptor = permissionDescriptorOwnerOrOperatorTransfer,
                   opSafelistContract = Just safelistContract
                 }
         withOriginated originate originationParams $ \stablecoinContract -> do
