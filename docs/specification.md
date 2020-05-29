@@ -182,11 +182,15 @@ Types
 ```
 token_id = nat
 
+transfer_destination =
+  ( address :to_
+  , token_id :token_id
+  , nat :amount
+  )
+
 transfer_param =
   ( address :from_
-  , address :to_
-  , token_id :token_id
-  , nat     :value
+  , list transfer_destination :txs
   )
 
 transfer = list transfer_param
@@ -197,12 +201,16 @@ Parameter (in Michelson):
 (list %transfer
   (pair
     (address %from_)
-    (pair
-      (address %to_)
+    (list %txs
       (pair
-        (nat %token_id)
-        (nat %amount)
-  )))
+        (address %to_)
+        (pair
+          (nat %token_id)
+          (nat %amount)
+        )
+      )
+    )
+  )
 )
 ```
 
@@ -330,7 +338,7 @@ Parameter (in Michelson)
   (list %token_ids nat)
   (contract %callback
     (list
-      (pair %token_metadata_response
+      (pair
         (nat %token_id)
         (pair
           (string %symbol)
@@ -385,32 +393,38 @@ Parameter (in Michelson)
 ```
 (contract %permissions_descriptor
   (pair
-    (pair
-      (or %operator
+    (or %operator
+      (unit %no_transfer)
+      (or
         (unit %owner_transfer)
-        (unit %no_transfer)
+        (unit %owner_or_operator_transfer)
       )
+    )
     (pair
       (or %receiver
-        (unit %owner_no_op)
+        (unit %owner_no_hook)
         (or
           (unit %optional_owner_hook)
           (unit %required_owner_hook)
-      ))
+        )
+      )
       (pair
         (or %sender
-          (unit %owner_no_op)
+          (unit %owner_no_hook)
           (or
             (unit %optional_owner_hook)
             (unit %required_owner_hook)
-        ))
-      (option %custom
-        (pair
-          (string %tag)
-          (option %config_api address)
+          )
+        )
+        (option %custom
+          (pair
+            (string %tag)
+            (option %config_api address)
+          )
         )
       )
-  ))))
+    )
+  )
 )
 ```
 
