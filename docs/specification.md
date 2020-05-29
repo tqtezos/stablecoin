@@ -794,4 +794,4 @@ In this contract `update_operator` IS paused.
 7. CENTRE defines the `blacklister` role and blacklisting is part of the CENTRE Fiat Token contract.
 Our project is different: whitelisting and blacklisting are offloaded to a separate [`Safelist` contract](#safelist).
 
-[FA2]: https://gitlab.com/tzip/tzip/-/blob/131b46dd89675bf030489ded9b0b3f5834b70eb6/proposals/tzip-12/tzip-12.md
+[FA2]: https://gitlab.com/tzip/tzip/-/blob/b916f32718234b7c4016f46e00327d66702511a2/proposals/tzip-12/tzip-12.md
