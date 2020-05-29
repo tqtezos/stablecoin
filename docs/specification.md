@@ -107,7 +107,7 @@ The next group consists of the errors that are not part of the FA2 specification
 | Error                   | Description |
 |-------------------------|-------------|
 | `XTZ_RECEIVED`          | Contract received a non-zero amount of tokens and should not proceed any further                                               |
-| `NOT_OWNER`             | Authorized sender is not contract owner                                                                                        |
+| `NOT_CONTRACT_OWNER`    | Authorized sender is not contract owner                                                                                        |
 | `NOT_PENDING_OWNER`     | Authorized sender is not current contract pending owner                                                                        |
 | `NO_PENDING_OWNER_SET`  | Throws when trying to authorize as pending owner whilst is not set for a contract                                              |
 | `NOT_PAUSER`            | Authorized sender is not contract pauser                                                                                       |
@@ -115,7 +115,7 @@ The next group consists of the errors that are not part of the FA2 specification
 | `NOT_MINTER`            | Sender is not registered as minter                                                                                             |
 | `CONTRACT_PAUSED`       | Operation cannot be performed during contract pause                                                                            |
 | `CONTRACT_NOT_PAUSED`   | Operation cannot be peformed if the contract is not paused                                                                     |
-| `NOT_OWNER`             | Trying to configure operators for a different wallet which sender does not own                                                 |
+| `NOT_TOKEN_OWNER`       | Trying to configure operators for a different wallet which sender does not own                                                 |
 | `NO_ALLOWANCE_EXPECTED` | Throws when trying to configure minter with Nothing value in parameter provided                                                |
 | `ALLOWANCE_MISMSATCH`   | Throws when expected allowance in configure minter parameter does not match the actual one                                     |
 | `NOT_MINTER`            | Throws when trying to configure minter but expected address is not one                                                         |

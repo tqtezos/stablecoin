@@ -26,16 +26,16 @@ function fail_on
 (*
  * Authorizes current contract owner and fails otherwise.
  *)
-function authorize_owner
+function authorize_contract_owner
   ( const store : storage
   ) : unit is
   fail_on
     ( Tezos.sender =/= store.roles.owner
-    , "NOT_OWNER"
+    , "NOT_CONTRACT_OWNER"
     )
 
 (*
- * Ensures that sender is current pending owner
+ * Ensures that sender is current pending contract owner.
  *)
 function authorize_pending_owner
   ( const store : storage
@@ -634,7 +634,7 @@ function transfer_ownership
   ( const parameter : transfer_ownership_param
   ; const store     : storage
   ) : entrypoint is block
-{ authorize_owner (store)
+{ authorize_contract_owner (store)
 } with
   ( (nil : list (operation))
   , store with record [roles.pending_owner = Some (parameter)]
@@ -663,7 +663,7 @@ function change_master_minter
   ( const parameter : change_master_minter_param
   ; const store     : storage
   ) : entrypoint is block
-{ authorize_owner (store)
+{ authorize_contract_owner (store)
 } with
   ( (nil : list (operation))
   , store with record [ roles.master_minter = parameter ]
@@ -677,7 +677,7 @@ function change_pauser
   ( const parameter : change_pauser_param
   ; const store     : storage
   ) : entrypoint is block
-{ authorize_owner (store)
+{ authorize_contract_owner (store)
 } with
   ( (nil : list (operation))
   , store with record [ roles.pauser = parameter ]
@@ -690,7 +690,7 @@ function set_safelist
   ( const parameter : set_safelist_param
   ; const store     : storage
   ) : entrypoint is block
-{ authorize_owner (store)
+{ authorize_contract_owner (store)
 
 ; case parameter of
     Some (sl_address) ->
