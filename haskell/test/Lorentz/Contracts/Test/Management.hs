@@ -12,14 +12,63 @@ import qualified Data.Set as Set
 import Test.Hspec (Spec, describe, it)
 
 import qualified Indigo.Contracts.Safelist as Safelist
-import Lorentz (mkView)
+import Lorentz (mkView, mt)
 import Lorentz.Address
 import Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
 import Lorentz.Contracts.Test.Common
 import Lorentz.Test
+import Michelson.Runtime (ExecutorError)
 import Tezos.Core (unsafeMkMutez)
 import Util.Named
+
+mgmXtzReceived :: ExecutorError -> Bool
+mgmXtzReceived = lExpectFailWith (== [mt|XTZ_RECEIVED|])
+
+mgmNotContractOwner :: ExecutorError -> Bool
+mgmNotContractOwner = lExpectFailWith (== [mt|NOT_CONTRACT_OWNER|])
+
+mgmNotPendingOwner :: ExecutorError -> Bool
+mgmNotPendingOwner = lExpectFailWith (== [mt|NOT_PENDING_OWNER|])
+
+mgmNoPendingOwnerSet :: ExecutorError -> Bool
+mgmNoPendingOwnerSet = lExpectFailWith (== [mt|NO_PENDING_OWNER_SET|])
+
+mgmNotPauser :: ExecutorError -> Bool
+mgmNotPauser = lExpectFailWith (== [mt|NOT_PAUSER|])
+
+mgmNotMasterMinter :: ExecutorError -> Bool
+mgmNotMasterMinter = lExpectFailWith (== [mt|NOT_MASTER_MINTER|])
+
+mgmNotMinter :: ExecutorError -> Bool
+mgmNotMinter = lExpectFailWith (== [mt|NOT_MINTER|])
+
+mgmContractPaused :: ExecutorError -> Bool
+mgmContractPaused = lExpectFailWith (== [mt|CONTRACT_PAUSED|])
+
+mgmContractNotPaused :: ExecutorError -> Bool
+mgmContractNotPaused = lExpectFailWith (== [mt|CONTRACT_NOT_PAUSED|])
+
+mgmInsufficientBalance :: ExecutorError -> Bool
+mgmInsufficientBalance = lExpectFailWith (== [mt|INSUFFICIENT_BALANCE|])
+
+mgmNotTokenOwner :: ExecutorError -> Bool
+mgmNotTokenOwner = lExpectFailWith (== [mt|NOT_TOKEN_OWNER|])
+
+mgmNoAllowanceExpected :: ExecutorError -> Bool
+mgmNoAllowanceExpected = lExpectFailWith (== [mt|NO_ALLOWANCE_EXPECTED|])
+
+mgmAllowanceMismatch :: ExecutorError -> Bool
+mgmAllowanceMismatch = lExpectFailWith (== [mt|ALLOWANCE_MISMATCH|])
+
+mgmAddrNotMinter :: ExecutorError -> Bool
+mgmAddrNotMinter = lExpectFailWith (== [mt|ADDR_NOT_MINTER|])
+
+mgmAllowanceExceeded :: ExecutorError -> Bool
+mgmAllowanceExceeded = lExpectFailWith (== [mt|ALLOWANCE_EXCEEDED|])
+
+mgmBadSafelist :: ExecutorError -> Bool
+mgmBadSafelist = lExpectFailWith (== [mt|BAD_SAFELIST|])
 
 managementSpec
   :: forall param. ParameterC param
@@ -42,7 +91,7 @@ managementSpec originate = do
           (Call @"Transfer")
           -- Dummy transfer needed to call something from a contract since we don't have default entrypoint set
           (constructTransfersFromSender (#from_ .! wallet1) [])
-        validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $ mgmXtzReceived
 
   describe "Contract pausing" $ do
     it "pauses contract as expected" $ integrationalTestExpectation $ do
@@ -58,13 +107,14 @@ managementSpec originate = do
     it "cannot pause if sender does not have corresponding permissions" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         withSender wallet2 $ lCallEP stablecoinContract (Call @"Pause") ()
-        validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $ mgmNotPauser
 
     it "pause cannot be called multiple times in a row" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
-        lCallEP stablecoinContract (Call @"Pause") ()
-        lCallEP stablecoinContract (Call @"Pause") ()
-        validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
+        withSender pauser $ do
+          lCallEP stablecoinContract (Call @"Pause") ()
+          lCallEP stablecoinContract (Call @"Pause") ()
+          validate . Left $ mgmContractPaused
 
     it "unpauses contract as expected" $ integrationalTestExpectation $ do
       let originationParams = defaultOriginationParams { opPaused = True }
@@ -81,13 +131,13 @@ managementSpec originate = do
       let originationParams = defaultOriginationParams { opPaused = True }
       withOriginated originate originationParams $ \stablecoinContract -> do
         withSender wallet2 $ lCallEP stablecoinContract (Call @"Unpause") ()
-        validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $ mgmNotPauser
 
     it "unpause cannot be called multiple times in a row" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         lCallEP stablecoinContract (Call @"Unpause") ()
         lCallEP stablecoinContract (Call @"Unpause") ()
-        validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $ mgmContractNotPaused
 
     it "prevents transfers while contract is paused" $ integrationalTestExpectation $ do
       let
@@ -101,7 +151,7 @@ managementSpec originate = do
       withOriginated originate originationParams $ \stablecoinContract -> do
         let transfers = constructSingleTransfer (#from_ .! wallet1) (#to_ .! wallet2) (#amount .! 10)
         withSender commonOperator $ lCallEP stablecoinContract (Call @"Transfer") transfers
-        validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $ mgmContractPaused
 
     it "can successfully transfer tokens after contract unpause" $ integrationalTestExpectation $ do
       let
@@ -207,7 +257,7 @@ managementSpec originate = do
 
         withSender masterMinter $ lCallEP stablecoinContract (Call @"Configure_minter") configureMinterParam2
 
-        validate . Left $  lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $  mgmAllowanceMismatch
 
     it "fails if minter is present in list of minters which was not expected" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
@@ -229,7 +279,7 @@ managementSpec originate = do
 
         withSender masterMinter $ lCallEP stablecoinContract (Call @"Configure_minter") configureMinterParam2
 
-        validate . Left $  lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $ mgmNoAllowanceExpected
 
     it "fails if sender does not have master minter permissions" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
@@ -242,11 +292,11 @@ managementSpec originate = do
 
         withSender wallet2 $ lCallEP stablecoinContract (Call @"Configure_minter") configureMinterParam1
 
-        validate . Left $  lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $ mgmNotMasterMinter
 
     it "fails if contract is paused" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
-        lCallEP stablecoinContract (Call @"Pause") ()
+        withSender pauser $ lCallEP stablecoinContract (Call @"Pause") ()
 
         let
           configureMinterParam1 =
@@ -257,7 +307,7 @@ managementSpec originate = do
 
         lCallEP stablecoinContract (Call @"Configure_minter") configureMinterParam1
 
-        validate . Left $  lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $ mgmContractPaused
 
 
 
@@ -288,7 +338,7 @@ managementSpec originate = do
           $ defaultOriginationParams
       withOriginated originate originationParams $ \stablecoinContract -> do
         withSender wallet2 $ lCallEP stablecoinContract (Call @"Remove_minter") wallet1
-        validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $ mgmNotMasterMinter
 
     it "cannot remove the same wallet if it's already removed" $ integrationalTestExpectation $ do
       let
@@ -298,12 +348,12 @@ managementSpec originate = do
       withOriginated originate originationParams $ \stablecoinContract -> do
         withSender masterMinter $ lCallEP stablecoinContract (Call @"Remove_minter") wallet1
         withSender masterMinter $ lCallEP stablecoinContract (Call @"Remove_minter") wallet1
-        validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $ mgmAddrNotMinter
 
     it "cannot remove non-minter" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         withSender masterMinter $ lCallEP stablecoinContract (Call @"Remove_minter") wallet1
-        validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $ mgmAddrNotMinter
 
 
 
@@ -374,7 +424,7 @@ managementSpec originate = do
       withOriginated originate originationParams $ \stablecoinContract -> do
         let mintings = [(#to_ .! wallet1, #amount .! 5)]
         withSender wallet1 $ lCallEP stablecoinContract (Call @"Mint") mintings
-        validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $ mgmContractPaused
 
 
 
@@ -416,7 +466,7 @@ managementSpec originate = do
           $ defaultOriginationParams
       withOriginated originate originationParams $ \stablecoinContract -> do
         withSender wallet1 $ lCallEP stablecoinContract (Call @"Burn") [ 10 ]
-        validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $ mgmNotMinter
 
     it "fails to burn if sender has insufficient amount of tokens" $ integrationalTestExpectation $ do
       let
@@ -426,7 +476,7 @@ managementSpec originate = do
           $ defaultOriginationParams
       withOriginated originate originationParams $ \stablecoinContract -> do
         withSender wallet1 $ lCallEP stablecoinContract (Call @"Burn") [ 10, 10 ]
-        validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $ mgmInsufficientBalance
 
     it "burning tokens will not increase the minting allowance of the address doing the burning" $ integrationalTestExpectation $ do
       let
@@ -438,7 +488,7 @@ managementSpec originate = do
         withSender wallet1 $ lCallEP stablecoinContract (Call @"Burn") [ 10 ]
         let mintings = [(#to_ .! wallet1, #amount .! 10)]
         withSender wallet1 $ lCallEP stablecoinContract (Call @"Mint") mintings
-        validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $ mgmAllowanceExceeded
 
     it "fails if contract is paused" $ integrationalTestExpectation $ do
       let
@@ -448,7 +498,7 @@ managementSpec originate = do
           $ defaultOriginationParams { opPaused = True }
       withOriginated originate originationParams $ \stablecoinContract -> do
         withSender wallet1 $ lCallEP stablecoinContract (Call @"Burn") [ 10 ]
-        validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $ mgmContractPaused
 
   describe "Contract ownership" $ do
     it "transfers ownership properly" $ integrationalTestExpectation $ do
@@ -477,20 +527,25 @@ managementSpec originate = do
     it "transferring ownership fails if sender is not contract owner" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         withSender wallet1 $ lCallEP stablecoinContract (Call @"Transfer_ownership") wallet1
-        validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $ mgmNotContractOwner
 
     it "fails if previous contract owner tries to use ownership privileges" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         withSender owner $ lCallEP stablecoinContract (Call @"Transfer_ownership") wallet1
         withSender wallet1 $ lCallEP stablecoinContract (Call @"Accept_ownership") ()
         withSender owner $ lCallEP stablecoinContract (Call @"Transfer_ownership") wallet2
-        validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $ mgmNotContractOwner
 
     it "accepting ownership fails if sender is not pending contract owner" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         withSender owner $ lCallEP stablecoinContract (Call @"Transfer_ownership") wallet1
         withSender wallet2 $ lCallEP stablecoinContract (Call @"Accept_ownership") ()
-        validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $ mgmNotPendingOwner
+
+    it "accepting ownership fails if pending owner is not set" $ integrationalTestExpectation $ do
+      withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
+        withSender wallet2 $ lCallEP stablecoinContract (Call @"Accept_ownership") ()
+        validate . Left $ mgmNoPendingOwnerSet
 
     it "transfer ownership can be called multiple times each of which invalidates the previous call" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
@@ -510,7 +565,7 @@ managementSpec originate = do
         withSender owner $ lCallEP stablecoinContract (Call @"Transfer_ownership") wallet1
         withSender owner $ lCallEP stablecoinContract (Call @"Transfer_ownership") wallet2
         withSender wallet1 $ lCallEP stablecoinContract (Call @"Accept_ownership") ()
-        validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $ mgmNotPendingOwner
 
     it "contract owner changes master minter properly" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
@@ -538,22 +593,22 @@ managementSpec originate = do
     it "cannot change master minter" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         withSender masterMinter $ lCallEP stablecoinContract (Call @"Change_master_minter") wallet1
-        validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $ mgmNotContractOwner
 
-    it "fails to change contract master minter if sender is not master minter" $ integrationalTestExpectation $ do
+    it "fails to change contract master minter if sender is not contract owner" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         withSender wallet1 $ lCallEP stablecoinContract (Call @"Change_master_minter") wallet2
-        validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $ mgmNotContractOwner
 
     it "master minter cannot change contract owner" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         withSender masterMinter $ lCallEP stablecoinContract (Call @"Transfer_ownership") wallet1
-        validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $ mgmNotContractOwner
 
     it "master minter cannot change contract pauser" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         withSender masterMinter $ lCallEP stablecoinContract (Call @"Change_pauser") wallet1
-        validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $ mgmNotContractOwner
 
 
   -- Successfull contract pause test is already passed
@@ -561,22 +616,22 @@ managementSpec originate = do
     it "changes contract pauser properly" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         withSender pauser $ lCallEP stablecoinContract (Call @"Change_pauser") wallet1
-        validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $ mgmNotContractOwner
 
-    it "fails to change contract pauser if sender is not contract pauser" $ integrationalTestExpectation $ do
+    it "fails to change contract pauser if sender is not contract owner" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         withSender wallet1 $ lCallEP stablecoinContract (Call @"Change_pauser") wallet2
-        validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $ mgmNotContractOwner
 
     it "pauser cannot change contract owner" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         withSender pauser $ lCallEP stablecoinContract (Call @"Transfer_ownership") wallet1
-        validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $ mgmNotContractOwner
 
     it "pauser cannot change master minter" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         withSender pauser $ lCallEP stablecoinContract (Call @"Change_master_minter") wallet1
-        validate . Left $ lExpectAnyMichelsonFailed stablecoinContract
+        validate . Left $ mgmNotContractOwner
 
     describe "Set_safelist entrypoint" $ do
       let safelistStorage = Safelist.Storage
@@ -610,6 +665,12 @@ managementSpec originate = do
             StorageSafelistContract Nothing -> Right ()
             _ -> Left $ CustomValidationError "Token produced malformed storage, this should not have happened"
 
+      it "should fail if parameter of safelist contract does not have the required entrypoints" $ integrationalTestExpectation $ do
+        let originationParams = defaultOriginationParams
+        withOriginated originate originationParams $ \stablecoinContract -> do
+          withSender (opOwner originationParams) $
+            lCallEP stablecoinContract (Call @"Set_safelist") (Just wallet1)
+          validate . Left $ mgmBadSafelist
 
     describe "Safelist contract interaction: fail behavior" $ do
       let safelistStorage = Safelist.Storage
@@ -734,3 +795,56 @@ managementSpec originate = do
               then Right ()
               else Left $ CustomValidationError "Unexpected permission descriptor"
             _ -> Left $ CustomValidationError "Unexpected permission descriptor"
+
+  -- Check whether "update operator", "remove operator" operations are executed only by contract owner.
+  describe "Configure operators entrypoint" $
+    it "denies addOperator call for non-owners" $ integrationalTestExpectation $ do
+      let originationParams = addAccount (wallet1, (commonOperators, 10)) defaultOriginationParams
+      withOriginated originate originationParams $ \stablecoinContract -> do
+
+        withSender wallet2 $ do
+          let operatorParam = (#owner .! wallet1, #operator .! wallet2)
+
+          let addOperatorParam = Add_operator operatorParam
+          lCallEP stablecoinContract (Call @"Update_operators") [addOperatorParam]
+
+          validate $ Left mgmNotTokenOwner
+
+  it "denies removeOperator call for non-owners" $ integrationalTestExpectation $ do
+    let originationParams = addAccount (wallet1, (commonOperators, 10)) defaultOriginationParams
+    withOriginated originate originationParams $ \stablecoinContract -> do
+
+      withSender wallet2 $ do
+        let operatorParam =
+              (#owner .! wallet1, #operator .! commonOperator)
+
+        let removeOperatorParam = Remove_operator operatorParam
+        lCallEP stablecoinContract (Call @"Update_operators") [removeOperatorParam]
+        validate $ Left mgmNotTokenOwner
+
+  it "denies addOperator for operators" $ integrationalTestExpectation $ do
+    let originationParams = addAccount (wallet1, (commonOperators, 10)) defaultOriginationParams
+    withOriginated originate originationParams $ \stablecoinContract -> do
+
+      withSender commonOperator $ do
+        let operatorParam =
+              (#owner .! wallet1, #operator .! wallet2)
+
+        let addOperatorParam = Add_operator operatorParam
+        lCallEP stablecoinContract (Call @"Update_operators") [addOperatorParam]
+
+        validate $ Left mgmNotTokenOwner
+
+  it "denies removeOperator for operators" $ integrationalTestExpectation $ do
+    let originationParams = addAccount (wallet1, (commonOperators, 10)) defaultOriginationParams
+    withOriginated originate originationParams $ \stablecoinContract -> do
+
+      withSender commonOperator $ do
+        let operatorParam =
+              (#owner .! wallet1, #operator .! commonOperator)
+
+        let removeOperatorParam = Remove_operator operatorParam
+        lCallEP stablecoinContract (Call @"Update_operators") [removeOperatorParam]
+        validate $ Left mgmNotTokenOwner
+
+
