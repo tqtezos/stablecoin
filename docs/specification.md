@@ -104,23 +104,23 @@ We start with standard FA2 errors which are part of the FA2 specification.
 
 The next group consists of the errors that are not part of the FA2 specification.
 
-| Error                   | Description |
-|-------------------------|-------------|
-| `XTZ_RECEIVED`          | Contract received a non-zero amount of tokens and should not proceed any further                                               |
-| `NOT_CONTRACT_OWNER`    | Authorized sender is not contract owner                                                                                        |
-| `NOT_PENDING_OWNER`     | Authorized sender is not current contract pending owner                                                                        |
-| `NO_PENDING_OWNER_SET`  | Throws when trying to authorize as pending owner whilst is not set for a contract                                              |
-| `NOT_PAUSER`            | Authorized sender is not contract pauser                                                                                       |
-| `NOT_MASTER_MINTER`     | Authorized sender is not master minter                                                                                         |
-| `NOT_MINTER`            | Sender is not registered as minter                                                                                             |
-| `CONTRACT_PAUSED`       | Operation cannot be performed during contract pause                                                                            |
-| `CONTRACT_NOT_PAUSED`   | Operation cannot be peformed if the contract is not paused                                                                     |
-| `NOT_TOKEN_OWNER`       | Trying to configure operators for a different wallet which sender does not own                                                 |
-| `NO_ALLOWANCE_EXPECTED` | In `configure_minter` the caller wrongly expects the address to be not a minter                                                |
-| `ALLOWANCE_MISMATCH`    | In `configure_minter` both allowances are not `None`, but different                                                            |
-| `ADDR_NOT_MINTER`       | An attempt is made to modify minter data of an address that's not a minter                                                     |
-| `ALLOWANCE_EXCEEDED`    | Throws when trying to mint tokens more than currently allowed for an address                                                   |
-| `BAD_SAFELIST`          | Given address is a not a smart contract complying with the safelist interface                                                  |
+| Error                        | Description |
+|------------------------------|-------------|
+| `XTZ_RECEIVED`               | Contract received a non-zero amount of tokens and should not proceed any further                                               |
+| `NOT_CONTRACT_OWNER`         | Authorized sender is not contract owner                                                                                        |
+| `NOT_PENDING_OWNER`          | Authorized sender is not current contract pending owner                                                                        |
+| `NO_PENDING_OWNER_SET`       | Throws when trying to authorize as pending owner whilst is not set for a contract                                              |
+| `NOT_PAUSER`                 | Authorized sender is not contract pauser                                                                                       |
+| `NOT_MASTER_MINTER`          | Authorized sender is not master minter                                                                                         |
+| `NOT_MINTER`                 | Sender is not registered as minter                                                                                             |
+| `CONTRACT_PAUSED`            | Operation cannot be performed during contract pause                                                                            |
+| `CONTRACT_NOT_PAUSED`        | Operation cannot be peformed if the contract is not paused                                                                     |
+| `NOT_TOKEN_OWNER`            | Trying to configure operators for a different wallet which sender does not own                                                 |
+| `CURRENT_ALLOWANCE_REQUIRED` | In `configure_minter` the caller wrongly expects the address to be not a minter                                                |
+| `ALLOWANCE_MISMATCH`         | In `configure_minter` both allowances are not `None`, but different                                                            |
+| `ADDR_NOT_MINTER`            | An attempt is made to modify minter data of an address that's not a minter                                                     |
+| `ALLOWANCE_EXCEEDED`         | Throws when trying to mint tokens more than currently allowed for an address                                                   |
+| `BAD_SAFELIST`               | Given address is a not a smart contract complying with the safelist interface                                                  |
 
 Finally there are some internal errors that should be considered implementation detail and are supposed to never happen as long as the contract is originated correctly (with consistent storage).
 Since they are internal, they can be changed any time without updating this part of the specification.
@@ -580,7 +580,7 @@ It is done to prevent front-running attacks.
 It MUST be set to `None` iff the minter is not in the list of minters.
 We distinguish three error cases, each has a dedicated error message:
   + `ALLOWANCE_MISMATCH`: both provided and actual minting allowances are not None, but they are different.
-  + `NO_ALLOWANCE_EXPECTED`: the caller expects that the `minter` address is not a minter, but this address is already a minter.
+  + `CURRENT_ALLOWANCE_REQUIRED`: the caller expects that the `minter` address is not a minter, but this address is already a minter.
   + `ADDR_NOT_MINTER`: the caller expects that the `minter` address is a minter, but it is not.
 
 - Fails with `NOT_MASTER_MINTER` if the sender is not master minter.

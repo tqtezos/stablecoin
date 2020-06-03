@@ -483,7 +483,7 @@ function configure_minter
     store.minting_allowances[parameter.0]
 ; case parameter.1.0 of
     None -> case present_minting_allowance of
-      Some (u) -> failwith ("NO_ALLOWANCE_EXPECTED")
+      Some (u) -> failwith ("CURRENT_ALLOWANCE_REQUIRED")
     | None -> skip
     end
   | Some (current_minting_allowance) ->

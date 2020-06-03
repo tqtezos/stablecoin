@@ -24,7 +24,7 @@ module Lorentz.Contracts.Test.Common
   , defaultPermissionDescriptor
   , permissionDescriptorOwnerTransfer
   , permissionDescriptorOwnerOrOperatorTransfer
-  , permissionDescriptorOperatorNoTransfer
+  , permissionDescriptorNoTransfer
   , permissionDescriptorReqSenderHook
   , permissionDescriptorReqReceiverHook
   , permissionDescriptorNoOpReceiverHook
@@ -113,8 +113,8 @@ defaultPermissionDescriptor =
   , #pdr2 .! ( #receiver .! Nothing
              , #pdr3 .! (#sender .! Nothing, #custom .! Nothing)))
 
-permissionDescriptorOperatorNoTransfer :: PermissionsDescriptorMaybe
-permissionDescriptorOperatorNoTransfer =
+permissionDescriptorNoTransfer :: PermissionsDescriptorMaybe
+permissionDescriptorNoTransfer =
   defaultPermissionDescriptor
    & _1 .~ (#operator .! (Just $ NoTransfer (#no_transfer .! ())))
 
