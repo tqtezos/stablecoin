@@ -55,8 +55,8 @@ mgmInsufficientBalance = lExpectFailWith (== [mt|INSUFFICIENT_BALANCE|])
 mgmNotTokenOwner :: ExecutorError -> Bool
 mgmNotTokenOwner = lExpectFailWith (== [mt|NOT_TOKEN_OWNER|])
 
-mgmNoAllowanceExpected :: ExecutorError -> Bool
-mgmNoAllowanceExpected = lExpectFailWith (== [mt|NO_ALLOWANCE_EXPECTED|])
+mgmCurrentAllowanceRequired :: ExecutorError -> Bool
+mgmCurrentAllowanceRequired = lExpectFailWith (== [mt|CURRENT_ALLOWANCE_REQUIRED|])
 
 mgmAllowanceMismatch :: ExecutorError -> Bool
 mgmAllowanceMismatch = lExpectFailWith (== [mt|ALLOWANCE_MISMATCH|])
@@ -279,7 +279,7 @@ managementSpec originate = do
 
         withSender masterMinter $ lCallEP stablecoinContract (Call @"Configure_minter") configureMinterParam2
 
-        validate . Left $ mgmNoAllowanceExpected
+        validate . Left $ mgmCurrentAllowanceRequired
 
     it "fails if sender does not have master minter permissions" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
@@ -846,5 +846,3 @@ managementSpec originate = do
         let removeOperatorParam = Remove_operator operatorParam
         lCallEP stablecoinContract (Call @"Update_operators") [removeOperatorParam]
         validate $ Left mgmNotTokenOwner
-
-
