@@ -21,6 +21,7 @@ import Tezos.Core (unsafeMkMutez)
 import Lorentz (NiceParameter, arg, toVal, fromVal, def)
 import Lorentz.Address
 import Lorentz.Contracts.Stablecoin
+import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Test.FA2
 import Lorentz.Contracts.Test.Common
 import Michelson.Test.Integrational
@@ -37,7 +38,7 @@ import Util.Named
 --
 -- In this module we test the contract by implementing whole contract
 -- functionality in a Haskell, and comparing its behavior against the actual
--- contract when run using a Michelson interpretr.
+-- contract when run using a Michelson interpreter.
 --
 -- First we generate a random series of (sender address, contract parameter)
 -- pairs. Then we generated a random initial contract state.
@@ -278,6 +279,8 @@ data ActionType
   = OwnerAction
   | MasterMinterAction
   | PauserAction
+  | TokenOwnerAction
+  | OperatorAction
   | MinterAction
   deriving stock (Bounded, Enum)
 
@@ -289,6 +292,8 @@ generateAction idx = do
     OwnerAction -> generateOwnerAction idx
     MasterMinterAction -> generateMasterMinterAction idx
     PauserAction -> generatePauserAction idx
+    TokenOwnerAction -> generateTokenOwnerAction idx
+    OperatorAction -> generateOperatorAction idx
     MinterAction -> generateMinterAction idx
 
 generateOwnerAction :: Int -> GeneratorM (ContractCall Parameter)
@@ -350,6 +355,11 @@ getRandomTokenOwner = do
   pool <- gsTokenOwnerPool <$> ask
   lift $ elements pool
 
+getRandomOperator :: GeneratorM Address
+getRandomOperator = do
+  pool <- gsTokenOwnerPool <$> ask
+  lift $ elements pool
+
 generateMasterMinterAction :: Int -> GeneratorM (ContractCall Parameter)
 generateMasterMinterAction idx = do
   sender <-getRandomMasterMinter
@@ -385,6 +395,43 @@ generatePauserAction idx = do
   sender <- getRandomPauser
   param <- lift $ elements [Pause, Unpause]
   pure $ ContractCall sender param idx
+
+generateTokenOwnerAction :: Int -> GeneratorM (ContractCall Parameter)
+generateTokenOwnerAction idx = do
+  sender <- getRandomTokenOwner
+  transferAction <- generateTransferAction
+  updateOperatorsAction <- generateUpdateOperatorsAction
+  param <- lift $ elements
+    [ transferAction
+    , updateOperatorsAction
+    ]
+  pure $ ContractCall sender param idx
+  where
+    generateUpdateOperatorsAction = do
+      operator <- getRandomOperator
+      owner <- getRandomOwner
+      updateOperation <- lift $ elements
+        [ FA2.Add_operator (#owner .! owner, #operator .! operator)
+        , FA2.Remove_operator (#owner .! owner, #operator .! operator)
+        ]
+      pure $ Call_FA2 $ FA2.Update_operators [updateOperation]
+
+generateTransferAction :: GeneratorM Parameter
+generateTransferAction = do
+  from <- getRandomTokenOwner
+  txs <- replicateM 10 $ do
+    to <- getRandomTokenOwner
+    amount <- lift $ choose @Int (0, amountRange)
+    pure (#to_ .! to, (#token_id .! 0, #amount .! fromIntegral amount))
+  stxs <- lift $ sublistOf txs
+  let transferItem = (#from_ .! from, #txs .! stxs)
+  pure $ Call_FA2 $ FA2.Transfer [transferItem]
+
+generateOperatorAction :: Int -> GeneratorM (ContractCall Parameter)
+generateOperatorAction idx = do
+  sender <- getRandomOperator
+  parameter <- generateTransferAction
+  pure $ ContractCall sender parameter idx
 
 generateMinterAction :: Int -> GeneratorM (ContractCall Parameter)
 generateMinterAction idx = do
@@ -510,7 +557,10 @@ callEntrypoint contract cc st env = case ccParameter cc of
   Change_master_minter p -> callContract "change_master_minter" p
   Change_pauser p -> callContract "change_pauser" p
   Set_safelist p -> callContract "set_safelist" p
-  _ -> error "Unexpected call"
+  Call_FA2 fa2Param -> case fa2Param of
+    FA2.Transfer p -> callContract "transfer" p
+    FA2.Update_operators p -> callContract "update_operators" p
+    _ -> error "Unexpected call"
   where
     callContract
       :: (NiceParameter p, T.HasNoOp (T.ToT p))
@@ -547,6 +597,11 @@ ensureMinter :: Address -> SimpleStorage -> Either ModelError Natural
 ensureMinter minter cs = case Map.lookup minter $ ssMintingAllowances cs of
   Just ma -> Right ma
   Nothing -> Left NOT_MINTER
+
+isOperatorOf :: SimpleStorage -> Address -> Address -> Bool
+isOperatorOf ss operator owner = case Map.lookup (operator, owner) (ssOperators ss) of
+  Just _ -> True
+  _ -> False
 
 applyPause :: Address -> SimpleStorage -> Either ModelError SimpleStorage
 applyPause sender ss = do
@@ -649,8 +704,8 @@ applyChangePauser sender cs newPauser = do
   Right cs { ssPauser = newPauser }
 
 applyParameter :: ContractCall Parameter -> SimpleStorage -> Either ModelError SimpleStorage
-applyParameter ContractCall {..} cs = case ccParameter of
-  --Call_FA2 fa2 -> applyFA2Parameter (cc { ccParameter = fa2 }) cs
+applyParameter cc@(ContractCall {..}) cs = case ccParameter of
+  Call_FA2 fa2 -> applyFA2Parameter (cc { ccParameter = fa2 }) cs
   Pause -> applyPause ccSender cs
   Unpause -> applyUnpause ccSender cs
   Configure_minter cmp -> applyConfigureMinter ccSender cs cmp
@@ -662,3 +717,57 @@ applyParameter ContractCall {..} cs = case ccParameter of
   Change_master_minter newMm -> applyChangeMasterMinter ccSender cs newMm
   Change_pauser newPsr -> applyChangePauser ccSender cs newPsr
   _ -> error "Unexpected call"
+
+applyDebit :: Address -> Natural ->  SimpleStorage -> SimpleStorage
+applyDebit from amount ss@SimpleStorage {..} =  ss { ssLedger = Map.update (\x -> Just $ x - amount) from ssLedger }
+
+applyCredit :: Address -> Natural -> SimpleStorage -> SimpleStorage
+applyCredit from amount ss@SimpleStorage {..} =
+  ss { ssLedger = Map.alter (\case Just x -> Just $ x + amount; Nothing -> Just amount;) from ssLedger }
+
+applyTransfer :: Address -> SimpleStorage -> FA2.TransferParams -> Either ModelError SimpleStorage
+applyTransfer ccSender storage tis = do
+  ensureNotPaused storage
+  foldl' (applySingleTransfer ccSender) (Right storage) tis
+
+applySingleTransfer :: Address -> Either ModelError SimpleStorage -> FA2.TransferParam -> Either ModelError SimpleStorage
+applySingleTransfer ccSender estorage
+  (arg #from_ -> from, arg #txs -> toItems)
+  = case estorage of
+      Left err -> Left err
+      Right storage@(SimpleStorage {..}) ->
+        if ccSender == from || isOperatorOf storage ccSender from
+          then let
+            in foldl' singleTranferTx (Right storage) toItems
+          else Left NOT_OPERATOR
+  where
+    singleTranferTx (Left err) _ =  Left err
+    singleTranferTx
+      (Right storage@(SimpleStorage {..}))
+      (arg #to_ -> to, (arg #token_id -> _, arg #amount -> amount)) = let
+        srcBalance = case Map.lookup from ssLedger of -- consider zero balance if account is not found
+          Just src -> src
+          Nothing -> 0
+        in if srcBalance >= amount
+          then Right $ applyCredit to amount $ applyDebit from amount storage
+          else Left INSUFFICIENT_BALANCE
+
+applyUpdateOperator :: Address -> Either ModelError SimpleStorage -> FA2.UpdateOperator -> Either ModelError SimpleStorage
+applyUpdateOperator ccSender estorage op = case estorage of
+  Left err -> Left err
+  Right storage -> case op of
+    FA2.Add_operator (arg #owner -> own, arg #operator -> operator)
+      -> if own == ccSender -- enforce that sender is owner
+        then Right $ storage { ssOperators = Map.insert (own, operator) () $ ssOperators storage }
+        else Left NOT_TOKEN_OWNER
+    FA2.Remove_operator (arg #owner -> own, arg #operator -> operator)
+      -> if own == ccSender
+        then Right $ storage { ssOperators = Map.delete (own, operator) $ ssOperators storage }
+        else Left NOT_TOKEN_OWNER
+
+applyFA2Parameter :: ContractCall FA2.Parameter -> SimpleStorage -> Either ModelError SimpleStorage
+applyFA2Parameter ContractCall {..} cs = do
+  case ccParameter of
+    FA2.Transfer tis -> applyTransfer ccSender cs tis
+    FA2.Update_operators ops -> foldl' (applyUpdateOperator ccSender) (Right cs) ops
+    _ -> error "Unexpected param"
