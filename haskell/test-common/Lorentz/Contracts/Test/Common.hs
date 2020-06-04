@@ -4,9 +4,9 @@
 -- | Test commons for stablecoin test suite
 
 module Lorentz.Contracts.Test.Common
-  ( owner
-  , pauser
-  , masterMinter
+  ( testOwner
+  , testPauser
+  , testMasterMinter
   , wallet1
   , wallet2
   , wallet3
@@ -58,16 +58,16 @@ import Tezos.Core (unsafeMkMutez)
 import Util.Named
 
 
-owner, pauser, masterMinter, wallet1, wallet2, wallet3, wallet4, wallet5, commonOperator :: Address
+testOwner, testPauser, testMasterMinter, wallet1, wallet2, wallet3, wallet4, wallet5, commonOperator :: Address
 wallet1 = genesisAddress1
 wallet2 = genesisAddress2
 wallet3 = genesisAddress3
 wallet4 = genesisAddress4
 wallet5 = genesisAddress5
 commonOperator = genesisAddress6
-owner = genesisAddresses !! 7
-pauser = genesisAddresses !! 8
-masterMinter = genesisAddresses !! 9
+testOwner = genesisAddresses !! 7
+testPauser = genesisAddresses !! 8
+testMasterMinter = genesisAddresses !! 9
 
 commonOperators :: [Address]
 commonOperators = [commonOperator]
@@ -89,7 +89,6 @@ addOperator (owner_, operator) op = op
           Just ops -> Just $ operator:ops
           Nothing -> Just [operator]) owner_ $ opOwnerToOperators op
   }
-
 -- TODO: move to morley
 lExpectAnyMichelsonFailed :: (ToAddress addr) => addr -> ExecutorError -> Bool
 lExpectAnyMichelsonFailed = lExpectMichelsonFailed (const True)
@@ -102,6 +101,7 @@ data OriginationParams = OriginationParams
   , opMasterMinter :: Address
   , opPaused :: Bool
   , opMinters :: Map Address Natural
+  , opPendingOwner :: Maybe Address
   , opPermissionsDescriptor :: PermissionsDescriptorMaybe
   , opTokenMetadata :: TokenMetadata
   , opSafelistContract :: Maybe (TAddress Safelist.Parameter)
@@ -164,12 +164,13 @@ defaultTokenMetadata =
 defaultOriginationParams :: OriginationParams
 defaultOriginationParams = OriginationParams
   { opBalances = mempty
-  , opOwner = owner
+  , opOwner = testOwner
   , opOwnerToOperators = mempty
-  , opPauser = pauser
-  , opMasterMinter = masterMinter
+  , opPauser = testPauser
+  , opMasterMinter = testMasterMinter
   , opPaused = False
   , opMinters = mempty
+  , opPendingOwner = Nothing
   , opPermissionsDescriptor = defaultPermissionDescriptor
   , opTokenMetadata = defaultTokenMetadata
   , opSafelistContract = Nothing
@@ -270,6 +271,7 @@ originationRequestCompatible op =
       in customFlag && operatorTransferFlag &&
          owHookSenderFlag && owHookReceiverFlag
 
+
 mkInitialStorage :: OriginationParams -> Maybe Storage
 mkInitialStorage op@OriginationParams{..} =
   if originationRequestCompatible op then let
@@ -280,7 +282,7 @@ mkInitialStorage op@OriginationParams{..} =
     owner_ = #owner .! opOwner
     pauser_ = #pauser .! opPauser
     masterMinter_ = #master_minter .! opMasterMinter
-    roles = #roles .! ((masterMinter_, owner_), (pauser_, (#pending_owner_address .! Nothing)))
+    roles = #roles .! ((masterMinter_, owner_), (pauser_, (#pending_owner_address .! opPendingOwner)))
     operators = #operators .! (BigMap operatorMap)
     isPaused = #paused .! opPaused
     safelistContract = #safelist_contract .! (unTAddress <$> opSafelistContract)

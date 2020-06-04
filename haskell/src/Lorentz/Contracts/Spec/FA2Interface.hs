@@ -30,6 +30,7 @@ module Lorentz.Contracts.Spec.FA2Interface
   , TransferDescriptor
   , TransferDescriptorParam
   , TransferParams
+  , TransferParam
   , UpdateOperator (..)
   , UpdateOperatorsParam
   ) where
@@ -176,6 +177,9 @@ data UpdateOperator
   deriving stock (Generic, Show)
   deriving anyclass (IsoValue, HasTypeAnn)
 
+instance Buildable UpdateOperator where
+  build = genericF
+
 type UpdateOperatorsParam = [UpdateOperator]
 
 -- Is operator query
@@ -205,6 +209,9 @@ data Parameter
   | Is_operator IsOperatorParam
   deriving stock (Generic, Show)
   deriving anyclass (IsoValue)
+
+instance Buildable Parameter where
+  build = genericF
 
 instance ParameterHasEntryPoints Parameter where
   type ParameterEntryPointsDerivation Parameter = EpdPlain
