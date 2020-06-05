@@ -15,12 +15,9 @@ module Lorentz.Contracts.Test.Common
   , commonOperator
   , commonOperators
 
-  , LedgerType
-
   , OriginationFn
   , OriginationParams (..)
   , defaultOriginationParams
-  , defaultTokenMetadata
   , defaultPermissionDescriptor
   , permissionDescriptorOwnerTransfer
   , permissionDescriptorOwnerOrOperatorTransfer
@@ -35,10 +32,8 @@ module Lorentz.Contracts.Test.Common
   , constructTransfers
   , constructTransfersFromSender
   , constructSingleTransfer
-  , skipTest
   , withOriginated
   , mkInitialStorage
-  , originationRequestCompatible
 
   , lExpectAnyMichelsonFailed
   ) where
