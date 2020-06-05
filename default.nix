@@ -24,9 +24,6 @@ let
               ]);
             postInstall = weeder-hacks.collect-dump-hi-files;
         });
-        # packages.stablecoin.components.tests.stablecoin-test = {
-        #   postInstall = "mkdir -p $out/test/resources; cp -Lr ${tezos-contract} $out/test/resources/stablecoin.tz";
-        # };
       }
     ];
   };
