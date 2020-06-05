@@ -4,8 +4,8 @@ module Main
   ( main
   ) where
 
-import Data.Maybe (fromJust)
 import Options.Applicative (execParser)
+import qualified Unsafe (fromJust)
 
 import Michelson.Runtime (prepareContract)
 import Morley.Nettest
@@ -28,7 +28,7 @@ main = do
     scenario :: NettestScenario
     scenario impl = do
       commentAction impl "Stablecoin contract nettest scenario"
-      scTransferScenario (fromJust . mkInitialStorage) stablecoinContract impl
+      scTransferScenario (Unsafe.fromJust . mkInitialStorage) stablecoinContract impl
 
   env <- mkMorleyClientEnv parsedConfig
   runNettestViaIntegrational scenario

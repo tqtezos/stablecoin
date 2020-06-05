@@ -31,5 +31,5 @@ in
   lib = project.stablecoin.components.library;
   test = project.stablecoin.components.tests.stablecoin-test;
   nettest = project.stablecoin.components.tests.stablecoin-nettest;
-  inherit tezos-contract tezos-client;
+  inherit tezos-contract tezos-client pkgs;
 }

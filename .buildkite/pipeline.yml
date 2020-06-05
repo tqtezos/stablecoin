@@ -1,32 +1,33 @@
 # SPDX-FileCopyrightText: 2020 tqtezos
 # SPDX-License-Identifier: MIT
-# TODO: rewrite it to haskell.nix
-
-env:
-  NIX_PATH: nixpkgs=https://github.com/nixos/nixpkgs/archive/b640dbd00877f51616750e347a32fbcb49d2968c.tar.gz
 
 steps:
- - command: nix run nixpkgs.reuse -c reuse lint
-   if: build.source != "schedule"
+ - label: hlint
+   if: &not_scheduled
+     build.source != "schedule"
+   command:
+     nix run -f. pkgs.hlint -c ./scripts/lint.sh
+ - command: nix run -f default.nix pkgs.reuse -c reuse lint
+   if: *not_scheduled
    label: reuse lint
  - command: .buildkite/check-trailing-whitespace.sh
-   if: build.source != "schedule"
+   if: *not_scheduled
    label: check trailing whitespace
  - command: "nix run -f https://github.com/serokell/xrefcheck/archive/b54c38d91bd45e5c402ebf51d68c653faf959c2c.tar.gz -c xrefcheck"
-   if: build.source != "schedule"
+   if: *not_scheduled
    label: xrefcheck
    soft_fail: true
  - label: build library
-   if: build.source != "schedule"
+   if: *not_scheduled
    command: nix build -L -f. lib
  - label: test
-   if: build.source != "schedule"
+   if: *not_scheduled
    commands:
      - nix build -L -f. test
      - cd result
      - ./bin/stablecoin-test
  - label: nettest-local-chain
-   if: build.source != "schedule"
+   if: *not_scheduled
    env:
      TEZOS_CLIENT_UNSAFE_DISABLE_DISCLAIMER: "Y"
      NETTEST_NODE_ADDR: "localhost"
@@ -52,7 +53,7 @@ steps:
    commands: *run-nettest
    retry: *retry-nettest
  - label: check LIGO contract
-   if: build.source != "schedule"
+   if: *not_scheduled
    command: nix build -L -f. tezos-contract
 
 notify:

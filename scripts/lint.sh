@@ -5,7 +5,7 @@
 
 export TERM="${TERM:-xterm}"
 
-hlint --hint .hlint.yaml --hint .hlint-universum.yaml --ignore='Parse error' */
+hlint --hint haskell/.hlint.yaml --hint haskell/.hlint-universum.yaml --ignore='Parse error' */
 
 ex=$?
 
