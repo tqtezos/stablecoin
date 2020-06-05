@@ -11,6 +11,18 @@
         "url": "https://github.com/input-output-hk/haskell.nix/archive/af10907a11fd00e9ca7f108198200e7beedc0974.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
+    "haskell-nix-weeder": {
+        "branch": "master",
+        "description": "haskell.nix + weeder",
+        "homepage": null,
+        "owner": "serokell",
+        "repo": "haskell-nix-weeder",
+        "rev": "7f11f514b54474c3281b25ac2c09975c918e0492",
+        "sha256": "0nww0cx8sjn8gg5k6371f17kdbp72nmdz34hwa9sxwvrmxzagg2x",
+        "type": "tarball",
+        "url": "https://github.com/serokell/haskell-nix-weeder/archive/7f11f514b54474c3281b25ac2c09975c918e0492.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
     "ligo": {
         "ref": "dev",
         "repo": "https://gitlab.com/ligolang/ligo",

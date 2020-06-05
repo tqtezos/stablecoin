@@ -7,7 +7,7 @@ steps:
      build.source != "schedule"
    command:
      nix run -f. pkgs.hlint -c ./scripts/lint.sh
- - command: nix run -f default.nix pkgs.reuse -c reuse lint
+ - command: nix run -f. pkgs.reuse -c reuse lint
    if: *not_scheduled
    label: reuse lint
  - command: .buildkite/check-trailing-whitespace.sh
@@ -24,8 +24,8 @@ steps:
    if: *not_scheduled
    commands:
      - nix build -L -f. test
-     - cd result
-     - ./bin/stablecoin-test
+     - nix-build -A tezos-contract -o test/resources/stablecoin.tz
+     - ./result/bin/stablecoin-test
  - label: nettest-local-chain
    if: *not_scheduled
    env:
@@ -51,6 +51,14 @@ steps:
  - label: check LIGO contract
    if: *not_scheduled
    command: nix build -L -f. tezos-contract
+ - label: weeder
+   if: *not_scheduled
+   commands:
+     - cd haskell
+     - nix-build .. -A weeder-script
+     # weeder needs .cabal file:
+     - nix run -f.. pkgs.haskellPackages.hpack -c hpack
+     - ./result
 
 notify:
   - email: "tezos-alerts@serokell.io"
