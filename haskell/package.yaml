@@ -38,15 +38,11 @@ tests:
       - test-common
 
     dependencies:
-      - HUnit
       - morley
       - morley-prelude
-      - morley-nettest
       - lorentz
       - tasty
-      - tasty-hunit-compat
       - tasty-hspec
-      - tasty-quickcheck
       - stablecoin
       - hspec
       - containers
@@ -59,7 +55,6 @@ tests:
 
     dependencies:
       - containers
-      - hspec
       - lorentz
       - morley
       - morley-nettest
