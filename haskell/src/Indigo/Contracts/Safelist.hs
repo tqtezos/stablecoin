@@ -14,7 +14,7 @@ module Indigo.Contracts.Safelist
 
 import qualified Data.Set as Set
 
-import Indigo as Indigo
+import Indigo
 import Lorentz.Run (Contract)
 
 data Storage = Storage
