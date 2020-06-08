@@ -1,6 +1,10 @@
 # SPDX-FileCopyrightText: 2020 tqtezos
 # SPDX-License-Identifier: MIT
 
+env:
+  FETCH_CONTRACT:
+    "mkdir -p test/resources/ && buildkite-agent artifact download stablecoin.tz test/resources/ --step \"LIGO-contract\""
+
 steps:
  - label: hlint
    if: &not_scheduled
@@ -20,11 +24,17 @@ steps:
  - label: build library
    if: *not_scheduled
    command: nix build -L -f. lib
+ - label: LIGO-contract
+   commands:
+     - nix-build -A tezos-contract -o stablecoin_raw.tz
+     - nix run -f. morley -c morley optimize --contract stablecoin_raw.tz --output stablecoin.tz
+   artifact_paths:
+     - stablecoin.tz
  - label: test
    if: *not_scheduled
    commands:
+     - eval "$FETCH_CONTRACT"
      - nix build -L -f. test
-     - nix-build -A tezos-contract -o test/resources/stablecoin.tz
      - ./result/bin/stablecoin-test
  - label: nettest-local-chain
    if: *not_scheduled
@@ -35,8 +45,7 @@ steps:
      MONEYBAG: "unencrypted:edsk3GjD83F7oj2LrnRGYQer99Fj69U2QLyjWGiJ4UoBZNQwS38J4v"
    commands: &run-nettest
      - nix build -L -f. nettest
-     - mkdir -p test/resources/
-     - nix-build -A tezos-contract -o test/resources/stablecoin.tz
+     - eval "$FETCH_CONTRACT"
      - nix run -f. tezos-client -c ./scripts/ci/run-local-chain-nettest.sh result/bin/stablecoin-nettest
    retry: &retry-nettest
       automatic:
@@ -52,9 +61,6 @@ steps:
      MONEYBAG: "unencrypted:edsk4EYgVvKVKppJXAyeoqxJrNeyoktNqmcx5op1CFht9P1p8pPxp7"
    commands: *run-nettest
    retry: *retry-nettest
- - label: check LIGO contract
-   if: *not_scheduled
-   command: nix build -L -f. tezos-contract
  - label: weeder
    if: *not_scheduled
    commands:
