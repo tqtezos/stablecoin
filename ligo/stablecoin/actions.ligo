@@ -69,13 +69,14 @@ function authorize_master_minter
     )
 
 (*
- * Authorizes minter and fails otherwise.
+ * Authorizes minter and returns it's current minting allowance.
+ * Fails if sender is not minter.
  *)
 function authorize_minter
   ( const store : storage
-  ) : unit is case store.minting_allowances[Tezos.sender] of
-    Some (u) -> unit
-  | None -> failwith ("NOT_MINTER")
+  ) : nat is case store.minting_allowances[Tezos.sender] of
+    Some (currentAllowance) -> currentAllowance
+  | None -> (failwith ("NOT_MINTER") : nat)
   end
 
 (*
@@ -536,29 +537,29 @@ function mint
   ; const store      : storage
   ) : entrypoint is block
 { ensure_not_paused (store)
-; authorize_minter (store)
+; var current_allowance : nat := authorize_minter (store)
+; var current_storage : storage := store
 
 ; const senderAddress : address = Tezos.sender
 
-; function mint_tokens
-    ( const accumulator       : storage
-    ; const mint_param        : mint_param
-    ; const current_allowance : nat
-    ) : storage is block
-  { const unwrapped_parameter : mint_param_ =
-      Layout.convert_from_right_comb ((mint_param : mint_param))
-  ; const updated_allowance : nat =
+; for mint_param in list parameters block {
+    const unwrapped_parameter : mint_param_ = record 
+      [ to_ = mint_param.0
+      ; amount = mint_param.1
+      ]
+  ; current_allowance :=
       case is_nat (current_allowance - unwrapped_parameter.amount) of
         Some (n) -> n
       | None -> (failwith ("ALLOWANCE_EXCEEDED") : nat)
       end
   ; const updated_allowances : minting_allowances =
-      Big_map.update (Tezos.sender, Some (updated_allowance), accumulator.minting_allowances)
-  ; const updated_store : storage = accumulator with record
+      Big_map.update (Tezos.sender, Some (current_allowance), current_storage.minting_allowances)
+  ; current_storage := current_storage with record
       [ minting_allowances = updated_allowances
-      ; total_supply = accumulator.total_supply + unwrapped_parameter.amount
+      ; total_supply = current_storage.total_supply + unwrapped_parameter.amount
       ]
-  } with credit_to (unwrapped_parameter, updated_store)
+  ; current_storage := credit_to (unwrapped_parameter, current_storage)
+  } 
 
 ; const receivers : list(address) =
     List.map
@@ -575,19 +576,9 @@ function mint
 
 } with
   ( upds
-  , List.fold
-      ( function
-          ( const accumulator : storage
-          ; const mint_param  : mint_param
-          ) : storage is case accumulator.minting_allowances[senderAddress] of
-            None -> (failwith ("NOT_MINTER") : storage)
-          | Some (current_allowance) ->
-              mint_tokens (accumulator, mint_param, current_allowance)
-          end
-      , parameters
-      , store
-      )
+  , current_storage
   )
+
 
 (*
  * Decreases balance and total supply of tokens by the given amount
@@ -597,7 +588,7 @@ function burn
   ; const store      : storage
   ) : entrypoint is block
 { ensure_not_paused (store)
-; authorize_minter (store)
+; const unused : nat = authorize_minter (store)
 ; const sender_address : address = Tezos.sender
 ; function burn_tokens
     ( const accumulator : storage
