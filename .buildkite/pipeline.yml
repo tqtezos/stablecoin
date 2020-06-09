@@ -63,6 +63,7 @@ steps:
    if: *not_scheduled
    commands:
      - cd haskell
+     - find . -name "*.hie"
      - nix run -f.. weeder-2 -c weeder
 
 notify:
