@@ -20,7 +20,7 @@ let
         packages = pkgs.lib.genAttrs local-packages-names (packageName: {
             package.ghcOptions = with pkgs.lib;
               concatStringsSep " " ([
-                "-ddump-to-file" "-ddump-hi"
+                "-ddump-to-file" "-ddump-hi" "-fwrite-ide-info"
               ]);
             postInstall = weeder-hacks.collect-dump-hi-files;
         });
@@ -39,11 +39,12 @@ let
     hs-pkgs = project;
     local-packages = local-packages;
   };
-in
+  weeder-2 = (import sources.nixpkgs-with-new-weeder {}).haskellPacakges.weeder;
+ in
 {
   all = project.stablecoin.components.all;
   lib = project.stablecoin.components.library;
   test = project.stablecoin.components.tests.stablecoin-test;
   nettest = project.stablecoin.components.tests.stablecoin-nettest;
-  inherit tezos-contract tezos-client pkgs weeder-script;
+  inherit tezos-contract tezos-client pkgs weeder-script weeder-2;
 }

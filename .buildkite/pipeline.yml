@@ -59,6 +59,11 @@ steps:
      # weeder needs .cabal file:
      - nix run -f.. pkgs.haskellPackages.hpack -c hpack
      - ./result
+ - label: weeder-2.0
+   if: *not_scheduled
+   commands:
+     - cd haskell
+     - nix run -f.. weeder-2 -c weeder
 
 notify:
   - email: "tezos-alerts@serokell.io"

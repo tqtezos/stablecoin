@@ -52,5 +52,17 @@
         "type": "tarball",
         "url": "https://github.com/serokell/tezos-packaging/archive/8e7e651e5a02858ffbb9900fb200498777651df6.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "nixpkgs-with-new-weeder": {
+        "branch": "master",
+        "description": "Pinned Nixpkgs tree (master follows nixos-unstable-small, only tags have stable history)",
+        "homepage": "",
+        "owner": "serokell",
+        "repo": "nixpkgs",
+        "rev": "07bddd28ee5f29e1615e500fde7ad460b08fb4e0",
+        "sha256": "1ygyyy9msg63a0ah2bq8z3mhn8wxk5pngd638gl4rwync4dnkc1q",
+        "type": "tarball",
+        "url": "https://github.com/serokell/nixpkgs/archive/07bddd28ee5f29e1615e500fde7ad460b08fb4e0.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     }
 }

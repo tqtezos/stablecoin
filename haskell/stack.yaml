@@ -6,6 +6,9 @@ resolver: lts-15.7
 packages:
 - .
 
+ghc-options:
+  "$locals": -fwrite-ide-info
+
 extra-deps:
 - git:
     https://gitlab.com/morley-framework/morley.git
