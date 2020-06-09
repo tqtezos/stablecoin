@@ -751,9 +751,10 @@ If we should, the questions from (2) apply here.
 Who should be allowed to do it in this project?
 
 Overall, the response from TQ was that there are no strict requirements and we should pick the best approaches from the business logic.
-At the early development stage we propose the following:
-1. We will implement both options (starting from the monolithic one because it's simpler), measure gas costs and then will decide what is better.
-The "transfer hook" approach is recommended, but may be infeasible due to gas costs.
+At this stage of development we make the following decisions:
+1. We will implement only monolithic contract for two reasons:
+  + We were told that the "transfer hook" approach would likely run out of gas.
+  + Communication between contracts in Tezos is currently complicated and is hard to do right without any security vulnerabilities.
 2. We will implement a single permission policy (as part of the token contract or as a separate transfer_hook – that depends on the previous point).
  + Self transfer is permitted as well as operator transfer.
  + Owner transfer policy for both sender and receiver is `Optional_owner_hook`.
