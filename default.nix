@@ -39,7 +39,7 @@ let
     hs-pkgs = project;
     local-packages = local-packages;
   };
-  weeder-2 = (import sources.nixpkgs-with-new-weeder {}).haskellPacakges.weeder;
+  weeder-2 = (import sources.nixpkgs-with-new-weeder {}).haskellPackages.weeder;
  in
 {
   all = project.stablecoin.components.all;
