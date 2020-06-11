@@ -250,10 +250,7 @@ type transfer_descriptor_param is michelson_pair_right_comb(transfer_descriptor_
  * SafeList
  *)
 
-type safelist_transfer_item is record
-  from_ : address
-; to_ : list(address)
-end
+type safelist_transfer_item is michelson_pair(address, "from", list(address), "tos")
 
 type safelist_assert_transfers_param is list(safelist_transfer_item)
 

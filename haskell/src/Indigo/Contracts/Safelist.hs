@@ -31,7 +31,7 @@ mkStorage transfers receivers = Storage
   }
 
 data Parameter
-  = AssertTransfers [("from" :! Address, "to" :! [Address])]
+  = AssertTransfers [("from" :! Address, "tos" :! [Address])]
   | AssertReceiver Address
   | AssertReceivers [Address]
   deriving stock Generic
@@ -58,7 +58,7 @@ safelistIndigo param = contractName "Dummy safelist" $ do
     ( #cAssertTransfers //-> \transfers -> forEach transfers $ \transfer -> do
         let fromAddr = transfer !. #from
         res <- new False
-        forEach (transfer !. #to) $ \toAddr ->
+        forEach (transfer !. #tos) $ \toAddr ->
           forEach (storage !. #sTransfers) $ \it ->
             Indigo.when ((Indigo.fst it ==. fromAddr) &&. (Indigo.snd it ==. toAddr)) $ setVar res True
         assertCustom_ #assertionFailure res

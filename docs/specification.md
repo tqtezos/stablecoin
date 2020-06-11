@@ -78,12 +78,8 @@ Additionally, each minter is associated with its current minting allowance.
 Before describing the token contract's entrypoints we describe the `Safelist` interface.
 The syntax is: `entrypointName(argumentType)`.
 Required `Safelist` entrypoints:
-* `assertTransfers(list(pair (address :from) (address :to)))`
+* `assertTransfers(list (pair (address %from) (list %tos address)))`
   * Checks whether a transfer is permitted from one address to the other one.
-
-    TODO: currently implementation doesn't match this interface because of the recent changes to FA2 interface
-    and we are discussing what's the best way to proceed
-
   Fails if transfer is prohibited for any item from this list.
 * `assertReceiver(address)`
   * Fails if address is not whitelisted or it is blacklisted.
