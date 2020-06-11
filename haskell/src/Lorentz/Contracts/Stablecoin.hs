@@ -2,9 +2,16 @@
 -- SPDX-License-Identifier: MIT
 
 module Lorentz.Contracts.Stablecoin
-  ( ParameterC
+  ( ConfigureMinterParam
+  , ChangeMasterMinterParam
+  , RemoveMinterParam
+  , MintParams
+  , MintParam
+  , BurnParams
+  , ParameterC
   , Parameter (..)
   , Storage
+  , TransferOwnershipParam
   , mkPermissionDescriptor
   , stablecoinPermissionsDescriptor
   , stablecoinTokenMetadata
@@ -20,7 +27,11 @@ module Lorentz.Contracts.Stablecoin
   , pattern OwnerRole
   , pattern PauserRole
   , pattern PendingOwnerRole
+  , pattern ConfigureMinterParams
   ) where
+
+import Fmt
+import qualified Text.Show
 
 import Lorentz
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
@@ -39,6 +50,12 @@ type ConfigureMinterParam =
     , "new_minting_allowance" :! Natural
     )
   )
+
+pattern ConfigureMinterParams :: Address -> Maybe Natural -> Natural -> ConfigureMinterParam
+pattern ConfigureMinterParams addr cma nma <-
+  ( arg #minter -> addr
+  , (arg #current_minting_allowance -> cma, arg #new_minting_allowance -> nma))
+{-# COMPLETE ConfigureMinterParams #-}
 
 type RemoveMinterParam = Address
 
@@ -70,8 +87,14 @@ data Parameter
   | Change_master_minter ChangeMasterMinterParam
   | Change_pauser ChangePauserParam
   | Set_safelist SetSafelistParam
-  deriving stock (Generic, Show)
+  deriving stock Generic
   deriving anyclass (IsoValue)
+
+instance Buildable Parameter where
+  build = genericF
+
+instance Show Parameter where
+  show = pretty
 
 instance ParameterHasEntryPoints Parameter where
   type ParameterEntryPointsDerivation Parameter = EpdRecursive
@@ -108,11 +131,16 @@ type Operators = "operators" :! OperatorsInner
 type TotalSupply = "total_supply" :! Natural
 type IsPaused = "paused" :! Bool
 
+type MasterMinter = Address
+type Owner = Address
+type PendingOwner = Maybe Address
+type Pauser = Address
+
 type MintingAllowancesInner = Map Address Natural
 type MintingAllowances = "minting_allowances" :! (BigMap Address Natural)
 
-type RolesInner = (("master_minter" :! Address, "owner" :! Address)
-             , ("pauser" :! Address, "pending_owner_address" :! Maybe Address))
+type RolesInner = (("master_minter" :! MasterMinter, "owner" :! Owner)
+             , ("pauser" :! Pauser, "pending_owner_address" :! PendingOwner))
 
 type Roles = "roles" :! RolesInner
 
@@ -124,40 +152,43 @@ type Storage =
 
 pattern StorageLedger :: LedgerInner -> Storage
 pattern StorageLedger ledger <- (((arg #ledger -> (BigMap ledger), _ ), _), _)
+{-# COMPLETE StorageLedger #-}
 
 pattern StorageMinters :: MintingAllowancesInner -> Storage
 pattern StorageMinters minters <- (((_, arg #minting_allowances -> (BigMap minters)), _), _)
+{-# COMPLETE StorageMinters #-}
 
 pattern StorageOperators :: OperatorsInner -> Storage
 pattern StorageOperators operators <- ((_, (arg #operators -> operators, _)), _)
+{-# COMPLETE StorageOperators #-}
 
 pattern StoragePaused :: Bool -> Storage
 pattern StoragePaused paused <- ((_, (_, arg #paused -> paused)), _)
+{-# COMPLETE StoragePaused #-}
 
 pattern StorageRoles :: RolesInner -> Storage
 pattern StorageRoles roles <- (_ , ((arg #roles -> roles, _), _))
+{-# COMPLETE StorageRoles #-}
 
 pattern StorageSafelistContract :: Maybe Address -> Storage
 pattern StorageSafelistContract safelistContract <- (_ , ((_, arg #safelist_contract -> safelistContract), _))
-
-------------------------------------------------------------------
-
-type MasterMinter = Address
-type Owner = Address
-type PendingOwner = Maybe Address
-type Pauser = Address
+{-# COMPLETE StorageSafelistContract #-}
 
 pattern MasterMinterRole :: MasterMinter -> RolesInner
 pattern MasterMinterRole masterMinter <- ((arg #master_minter -> masterMinter, _), _)
+{-# COMPLETE MasterMinterRole #-}
 
 pattern OwnerRole :: Owner -> RolesInner
 pattern OwnerRole owner <- ((_, arg #owner -> owner), _)
+{-# COMPLETE OwnerRole #-}
 
 pattern PauserRole :: Pauser -> RolesInner
 pattern PauserRole pauser <- (_, (arg #pauser -> pauser, _))
+{-# COMPLETE PauserRole #-}
 
 pattern PendingOwnerRole :: PendingOwner -> RolesInner
 pattern PendingOwnerRole pendingOwner <- (_, (_, arg #pending_owner_address -> pendingOwner))
+{-# COMPLETE PendingOwnerRole #-}
 
 -- Permissions descriptor
 data OwHookOptReq = OptOH | ReqOp

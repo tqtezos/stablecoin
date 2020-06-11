@@ -47,9 +47,12 @@ tests:
       - tasty-hunit-compat
       - tasty-hspec
       - tasty-quickcheck
+      - QuickCheck
       - stablecoin
       - hspec
       - containers
+      - mtl
+      - fmt
 
   stablecoin-nettest:
     <<: *test-common
