@@ -154,15 +154,14 @@ function debit_from
 function convert_to_safelist_transfer
   ( const tp : transfer_param
   ) : safelist_transfer_item is
-    record
-      [ from_ = tp.0
-      ; to_ = List.map
+    ( tp.0
+    , List.map
           ( function
               ( const dst: transfer_destination
               ) : address is dst.0
           , tp.1
           )
-      ]
+    )
 
 (*
  * Calls `assert_transfer` of the provided safelist contract using
