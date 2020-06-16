@@ -41,7 +41,7 @@ function validate_operators
 { const operator : address = Tezos.sender
 ; const owner : address = transfer_param.0
 } with if owner = operator or Big_map.mem ((owner, operator), operators)
-  then unit else failwith ("NOT_OPERATOR")
+  then unit else failwith ("FA2_NOT_OPERATOR")
 
 (*
  * Add operator from the given parameter and operator storage

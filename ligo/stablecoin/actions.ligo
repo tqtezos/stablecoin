@@ -141,7 +141,7 @@ function debit_from
   end
 
 ; if parameter.amount > curr_balance
-      then failwith ("INSUFFICIENT_BALANCE")
+      then failwith ("FA2_INSUFFICIENT_BALANCE")
       else
       { const updated_balance : nat = abs (curr_balance - parameter.amount)
       ; updated_ledger := Big_map.update(parameter.from_, Some (updated_balance), updated_ledger)

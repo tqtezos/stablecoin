@@ -50,7 +50,7 @@ mgmContractNotPaused :: ExecutorError -> Bool
 mgmContractNotPaused = lExpectFailWith (== [mt|CONTRACT_NOT_PAUSED|])
 
 mgmInsufficientBalance :: ExecutorError -> Bool
-mgmInsufficientBalance = lExpectFailWith (== [mt|INSUFFICIENT_BALANCE|])
+mgmInsufficientBalance = lExpectFailWith (== [mt|FA2_INSUFFICIENT_BALANCE|])
 
 mgmNotTokenOwner :: ExecutorError -> Bool
 mgmNotTokenOwner = lExpectFailWith (== [mt|NOT_TOKEN_OWNER|])

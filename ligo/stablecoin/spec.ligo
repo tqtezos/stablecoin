@@ -25,7 +25,7 @@ function validate_token_type
   ( const token_id : token_id
   ) : unit is
     if token_id =/= default_token_id
-    then failwith ("TOKEN_UNDEFINED")
+    then failwith ("FA2_TOKEN_UNDEFINED")
     else unit
 
 (*

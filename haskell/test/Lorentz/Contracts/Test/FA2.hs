@@ -844,7 +844,7 @@ fa2Spec fa2Originate = do
 
           withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
 
-          validate $ Left fa2SenderHookUndefined
+          validate $ Left fa2SenderHookFailed
 
     it "fails if owner hook is not available in receiver and RequiredOwnerHook is configured for receiver" $
       integrationalTestExpectation $ do
@@ -860,25 +860,25 @@ fa2Spec fa2Originate = do
               (#amount 10)
 
           withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
-          validate $ Left fa2ReceiverHookUndefined
+          validate $ Left fa2ReceiverHookFailed
 
 fa2TokenUndefined :: ExecutorError -> Bool
-fa2TokenUndefined = lExpectFailWith (== [mt|TOKEN_UNDEFINED|])
+fa2TokenUndefined = lExpectFailWith (== [mt|FA2_TOKEN_UNDEFINED|])
 
 fa2InsufficientBalance :: ExecutorError -> Bool
-fa2InsufficientBalance = lExpectFailWith (== [mt|INSUFFICIENT_BALANCE|])
+fa2InsufficientBalance = lExpectFailWith (== [mt|FA2_INSUFFICIENT_BALANCE|])
 
 fa2TxDenied :: ExecutorError -> Bool
-fa2TxDenied = lExpectFailWith (== [mt|TX_DENIED|])
+fa2TxDenied = lExpectFailWith (== [mt|FA2_TX_DENIED|])
 
 fa2NotOwner :: ExecutorError -> Bool
-fa2NotOwner = lExpectFailWith (== [mt|NOT_OWNER|])
+fa2NotOwner = lExpectFailWith (== [mt|FA2_NOT_OWNER|])
 
 fa2NotOperator :: ExecutorError -> Bool
-fa2NotOperator = lExpectFailWith (== [mt|NOT_OPERATOR|])
+fa2NotOperator = lExpectFailWith (== [mt|FA2_NOT_OPERATOR|])
 
-fa2ReceiverHookUndefined :: ExecutorError -> Bool
-fa2ReceiverHookUndefined = lExpectFailWith (== [mt|RECEIVER_HOOK_UNDEFINED|])
+fa2ReceiverHookFailed :: ExecutorError -> Bool
+fa2ReceiverHookFailed = lExpectFailWith (== [mt|FA2_RECEIVER_HOOK_FAILED|])
 
-fa2SenderHookUndefined :: ExecutorError -> Bool
-fa2SenderHookUndefined = lExpectFailWith (== [mt|SENDER_HOOK_UNDEFINED|])
+fa2SenderHookFailed :: ExecutorError -> Bool
+fa2SenderHookFailed = lExpectFailWith (== [mt|FA2_SENDER_HOOK_FAILED|])

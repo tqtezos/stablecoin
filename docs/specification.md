@@ -92,11 +92,11 @@ In error scenarios the stablecoin contract fails with a string.
 Here is a summary of all the strings used as error messages.
 We start with standard FA2 errors which are part of the FA2 specification.
 
-| Error                  | Description |
-|------------------------|-------------|
-| `TOKEN_UNDEFINED`      | One of the specified `token_id`s is not defined (i. e. not zero) |
-| `INSUFFICIENT_BALANCE` | Cannot debit from a wallet because of excessive amount of tokens |
-| `NOT_OPERATOR`         | A transfer is initiated neither by the token owner nor a permitted operator |
+| Error                      | Description                                                                 |
+|----------------------------|-----------------------------------------------------------------------------|
+| `FA2_TOKEN_UNDEFINED`      | One of the specified `token_id`s is not defined (i.e. not zero)             |
+| `FA2_INSUFFICIENT_BALANCE` | Cannot debit from a wallet because of excessive amount of tokens            |
+| `FA2_NOT_OPERATOR`         | A transfer is initiated neither by the token owner nor a permitted operator |
 
 The next group consists of the errors that are not part of the FA2 specification.
 
@@ -648,7 +648,7 @@ Parameter (in Michelson): `list nat`.
 
 - Fails with `NOT_MINTER` if the sender is not a minter.
 
-- Fails with `INSUFFICIENT_BALANCE` if the sender does not have enough tokens to burn.
+- Fails with `FA2_INSUFFICIENT_BALANCE` if the sender does not have enough tokens to burn.
 
 - A minter with 0 minting allowance is allowed to burn tokens.
 
