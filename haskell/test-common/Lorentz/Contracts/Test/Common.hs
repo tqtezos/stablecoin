@@ -34,6 +34,7 @@ module Lorentz.Contracts.Test.Common
   , constructSingleTransfer
   , withOriginated
   , mkInitialStorage
+  , skipTest
 
   , lExpectAnyMichelsonFailed
   ) where
