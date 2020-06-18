@@ -24,3 +24,22 @@
     - message:
       - name: Redundant build-depends entry
       - depends: base-noprelude
+  - section:
+    - name: test:stablecoin-nettest test:stablecoin-test
+    - message:
+      - name: Module reused between components
+      - module:
+        - Lorentz.Contracts.Test.Common
+    # This function is used only in test:stablecoin-test, but not used
+    # in test:stablecoin-nettest, so weeder considers it redundant.
+    - message:
+      - name: Weeds exported
+      - module:
+        - name: Lorentz.Contracts.Test.Common
+        - identifier:
+            - defaultPermissionDescriptor
+  - section:
+    - name: test:stablecoin-nettest
+    - message:
+      - name: Redundant build-depends entry
+      - depends: base-noprelude

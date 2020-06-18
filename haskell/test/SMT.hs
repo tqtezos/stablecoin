@@ -6,10 +6,10 @@ module SMT
   ( smtProperty
   ) where
 
-import Data.Maybe (fromJust)
 import qualified Data.Map as Map
 import Data.Typeable (cast)
 import Fmt
+import qualified Unsafe (fromJust)
 
 import Test.Tasty.QuickCheck
   ( Arbitrary, Gen, Property, arbitrary, choose, arbitraryBoundedEnum, elements
@@ -68,7 +68,7 @@ generateContractInputs count = do
   gsMasterMinterPool <- vectorOf poolSize (arbitrary @Address)
   gsPauserPool <- vectorOf poolSize (arbitrary @Address)
   gsTokenOwnerPool <- vectorOf poolSize (arbitrary @Address)
-  gsMinterPool <- Map.fromList <$> (fmap unMintingAllowance) <$> (vectorOf 3 (arbitrary @MintingAllowance))
+  gsMinterPool <- Map.fromList . fmap unMintingAllowance <$> vectorOf 3 (arbitrary @MintingAllowance)
   owner <- elements gsOwnerPool
   masterMinter <- elements gsMasterMinterPool
   pauser <- elements gsPauserPool
@@ -502,7 +502,7 @@ stablecoinMichelsonModel
   -> ContractState
 stablecoinMichelsonModel contract cc@(ContractCall {..}) cs = let
   contractEnv = dummyContractEnv { ceSender = ccSender, ceAmount = unsafeMkMutez 0 }
-  initSt = fromJust $ mkInitialStorage $ ssToOriginationParams $ csStorage cs
+  initSt = Unsafe.fromJust $ mkInitialStorage $ ssToOriginationParams $ csStorage cs
   iResult = callEntrypoint contract cc initSt contractEnv
   in case iResult of
     Right iRes -> let
@@ -745,9 +745,8 @@ applySingleTransfer ccSender estorage
     singleTranferTx
       (Right storage@(SimpleStorage {..}))
       (arg #to_ -> to, (arg #token_id -> _, arg #amount -> amount)) = let
-        srcBalance = case Map.lookup from ssLedger of -- consider zero balance if account is not found
-          Just src -> src
-          Nothing -> 0
+        -- consider zero balance if account is not found
+        srcBalance = fromMaybe 0 (Map.lookup from ssLedger)
         in if srcBalance >= amount
           then Right $ applyCredit to amount $ applyDebit from amount storage
           else Left INSUFFICIENT_BALANCE
