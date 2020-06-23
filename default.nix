@@ -14,7 +14,10 @@ let
   }];
   local-packages-names = map (p: p.name) local-packages;
   project = pkgs.haskell-nix.stackProject {
-    src = ./haskell;
+    src = pkgs.haskell-nix.haskellLib.cleanGit {
+      name = "stablecoin";
+      src = ./haskell;
+    };
     modules = [
       {
         packages = pkgs.lib.genAttrs local-packages-names (packageName: {
@@ -39,11 +42,15 @@ let
     hs-pkgs = project;
     local-packages = local-packages;
   };
+  morley =
+    (pkgs.haskell-nix.hackage-package
+      { name = "morley"; version = "1.4.0"; compiler-nix-name = "ghc883"; }
+    ).components.exes.morley;
 in
 {
   all = project.stablecoin.components.all;
   lib = project.stablecoin.components.library;
   test = project.stablecoin.components.tests.stablecoin-test;
   nettest = project.stablecoin.components.tests.stablecoin-nettest;
-  inherit tezos-contract tezos-client pkgs weeder-script;
+  inherit tezos-contract tezos-client pkgs weeder-script morley;
 }

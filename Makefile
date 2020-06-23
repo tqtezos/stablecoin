@@ -1,7 +1,11 @@
 # SPDX-FileCopyrightText: 2020 tqtezos
 # SPDX-License-Identifier: MIT
 
-.PHONY: all build-ligo build-haskell test test-dumb-term test-hide-successes nettest clean
+.PHONY: all build-ligo build-haskell optimize-ligo test test-dumb-term test-hide-successes nettest clean
+
+# Morley executable, it is used for optimizing Michelsion version
+# of stablecoin.tz
+MORLEY ?= morley
 
 MAKE_HASKELL = $(MAKE) -C haskell/
 MAKE_LIGO = $(MAKE) -C ligo/
@@ -15,6 +19,10 @@ build-ligo:
 # Build everything haskell-related (including tests and benchmarks) with development options.
 build-haskell:
 	$(MAKE_HASKELL) build
+
+# Optimize built ligo contract using morley optimizer
+optimize-ligo:
+	$(MORLEY) optimize --contract ligo/stablecoin.tz --output ligo/stablecoin.tz
 
 test:
 	$(MAKE_HASKELL) test

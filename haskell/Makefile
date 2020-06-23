@@ -3,7 +3,8 @@
 
 .PHONY: build test test-dumb-term test-hide-successes nettest haddock haddock-no-deps stylish lint clean all
 
-LIGO_DIR = ../ligo/
+MORLEY ?= morley
+LIGO_DIR = ../ligo
 MAKE_LIGO = $(MAKE) -C $(LIGO_DIR)
 
 # Options for development
@@ -28,7 +29,7 @@ endef
 define build_stablecoin_contract
 	$(MAKE_LIGO) stablecoin.tz
 	mkdir -p test/resources
-	ln -sf "../../$(LIGO_DIR)/stablecoin.tz" "test/resources/stablecoin.tz"
+	$(MORLEY) optimize --contract "$(LIGO_DIR)/stablecoin.tz" --output "test/resources/stablecoin.tz"
 endef
 
 # Build everything haskell-related (including tests and benchmarks) with development options.
