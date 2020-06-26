@@ -7,7 +7,6 @@ module SMT
   ) where
 
 import qualified Data.Map as Map
-import Data.Maybe (fromJust)
 import Data.Typeable (cast)
 import Fmt
 import qualified Unsafe (fromJust)
@@ -189,7 +188,7 @@ storageToSs storage = let
   StorageRoles (PendingOwnerRole ssPendingOwner) = storage
   StorageSafelistContract ssSafelistContract = storage
   StoragePaused ssIsPaused = storage
-  (_, (_, arg #total_supply -> ssTotalSupply)) = storage
+  StorageTotalSupply ssTotalSupply = storage
   in SimpleStorage {..}
 
 ssToOriginationParams

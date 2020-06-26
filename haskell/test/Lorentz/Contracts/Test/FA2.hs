@@ -519,95 +519,6 @@ fa2Spec fa2Originate = do
         validate . Right $
           lExpectViewConsumerStorage consumer [balanceExpected]
 
-  describe "Total_supply entrypoint" $ do
-    it "returns results in the expected order" $ integrationalTestExpectation $ do
-      let originationParams = addAccount (wallet1, (commonOperators, 10)) $
-            addAccount (wallet2, (commonOperators, 20)) $
-            addAccount (wallet3, (commonOperators, 30)) $
-            addAccount (wallet4, (commonOperators, 40)) $
-            addAccount (wallet5, (commonOperators, 50)) $ defaultOriginationParams
-      withOriginated fa2Originate originationParams $ \fa2contract -> do
-        consumer <- lOriginateEmpty @[TotalSupplyResponse] contractConsumer "consumer"
-        let
-          totalSupplyRequest = mkView (#token_ids .! [0]) consumer
-          result =
-            [ (#token_id .! 0, #total_supply .! 150) ]
-
-        lCallEP fa2contract (Call @"Total_supply") totalSupplyRequest
-
-        validate . Right $
-          lExpectViewConsumerStorage consumer [result]
-
-    it "returns results in without de-duplication" $ integrationalTestExpectation $ do
-      let originationParams = addAccount (wallet1, (commonOperators, 10)) $
-            addAccount (wallet2, (commonOperators, 20)) $
-            addAccount (wallet3, (commonOperators, 30)) $
-            addAccount (wallet4, (commonOperators, 40)) $
-            addAccount (wallet5, (commonOperators, 50)) $ defaultOriginationParams
-      withOriginated fa2Originate originationParams $ \fa2contract -> do
-        consumer <- lOriginateEmpty @[TotalSupplyResponse] contractConsumer "consumer"
-        let
-          totalSupplyRequest = mkView (#token_ids .! [0, 0]) consumer
-          result =
-            [ (#token_id .! 0, #total_supply .! 150)
-            , (#token_id .! 0, #total_supply .! 150)
-            ]
-
-        lCallEP fa2contract (Call @"Total_supply") totalSupplyRequest
-
-        validate . Right $
-          lExpectViewConsumerStorage consumer [result]
-
-    it "validates token id" $ integrationalTestExpectation $ do
-      let originationParams =
-            addAccount (wallet1, (commonOperators, 10)) $ defaultOriginationParams
-
-      withOriginated fa2Originate originationParams $ \fa2contract -> do
-        consumer <- lOriginateEmpty @[TotalSupplyResponse] contractConsumer "consumer"
-        let
-          totalSupplyRequest = mkView (#token_ids .! [1]) consumer
-
-        lCallEP fa2contract (Call @"Total_supply") totalSupplyRequest
-        validate $ Left fa2TokenUndefined
-
-  -- Metadata tests
-  describe "Metadata query entrypoint" $ do
-    it "returns at least one items" $ integrationalTestExpectation $
-      withOriginated fa2Originate defaultOriginationParams $ \fa2contract -> do
-        consumer <- lOriginateEmpty @[TokenMetadata] contractConsumer "consumer"
-        let tokenMetadataQuery = mkView (#token_ids .! [0]) consumer
-        lCallEP fa2contract (Call @"Token_metadata") tokenMetadataQuery
-
-        validate . Right $
-          lExpectConsumerStorage consumer
-            (\(tds :: [[TokenMetadata]]) -> case tds of
-                [[(L.arg #token_id -> tid, _)]] -> if tid == 0 then Right () else Left $ CustomValidationError "Token metadata query returned unexpected token id"
-                _ -> Left $ CustomValidationError "Token metadata query returned list of unexpected length")
-
-    it "returns items without de-duplication when queried with duplicates" $ integrationalTestExpectation $
-      withOriginated fa2Originate defaultOriginationParams $ \fa2contract -> do
-        consumer <- lOriginateEmpty @[TokenMetadata] contractConsumer "consumer"
-        let tokenMetadataQuery = mkView (#token_ids .! [0, 0]) consumer
-        lCallEP fa2contract (Call @"Token_metadata") tokenMetadataQuery
-
-        validate . Right $
-          lExpectConsumerStorage consumer
-            (\(tds :: [[TokenMetadata]]) -> case tds of
-                [[md1@(L.arg #token_id -> tid, _), md2]] ->
-                  if tid == 0 && md1 == md2
-                    then Right ()
-                    else Left $
-                      CustomValidationError "Token metadata query returned unexpected token id"
-                _ -> Left $
-                  CustomValidationError "Token metadata query returned list of unexpected length")
-
-    it "validates token id" $ integrationalTestExpectation $
-      withOriginated fa2Originate defaultOriginationParams $ \fa2contract -> do
-        consumer <- lOriginateEmpty @[TokenMetadata] contractConsumer "consumer"
-        let tokenMetadataQuery = mkView (#token_ids .! [1]) consumer
-        lCallEP fa2contract (Call @"Token_metadata") tokenMetadataQuery
-        validate $ Left fa2TokenUndefined
-
   -- Permission descriptor query
   describe "Permissions_descriptor entrypoint" $
     it "is available" $ integrationalTestExpectation $
@@ -844,7 +755,7 @@ fa2Spec fa2Originate = do
 
           withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
 
-          validate $ Left fa2SenderHookFailed
+          validate $ Left fa2SenderHookUndefined
 
     it "fails if owner hook is not available in receiver and RequiredOwnerHook is configured for receiver" $
       integrationalTestExpectation $ do
@@ -860,7 +771,7 @@ fa2Spec fa2Originate = do
               (#amount 10)
 
           withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
-          validate $ Left fa2ReceiverHookFailed
+          validate $ Left fa2ReceiverHookUndefined
 
 fa2TokenUndefined :: ExecutorError -> Bool
 fa2TokenUndefined = lExpectFailWith (== [mt|FA2_TOKEN_UNDEFINED|])
@@ -877,8 +788,8 @@ fa2NotOwner = lExpectFailWith (== [mt|FA2_NOT_OWNER|])
 fa2NotOperator :: ExecutorError -> Bool
 fa2NotOperator = lExpectFailWith (== [mt|FA2_NOT_OPERATOR|])
 
-fa2ReceiverHookFailed :: ExecutorError -> Bool
-fa2ReceiverHookFailed = lExpectFailWith (== [mt|FA2_RECEIVER_HOOK_FAILED|])
+fa2ReceiverHookUndefined :: ExecutorError -> Bool
+fa2ReceiverHookUndefined = lExpectFailWith (== [mt|FA2_RECEIVER_HOOK_UNDEFINED|])
 
-fa2SenderHookFailed :: ExecutorError -> Bool
-fa2SenderHookFailed = lExpectFailWith (== [mt|FA2_SENDER_HOOK_FAILED|])
+fa2SenderHookUndefined :: ExecutorError -> Bool
+fa2SenderHookUndefined = lExpectFailWith (== [mt|FA2_SENDER_HOOK_UNDEFINED|])

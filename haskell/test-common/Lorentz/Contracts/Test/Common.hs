@@ -19,6 +19,7 @@ module Lorentz.Contracts.Test.Common
   , OriginationParams (..)
   , defaultOriginationParams
   , defaultPermissionDescriptor
+  , defaultTokenMetadataBigMap
   , permissionDescriptorOwnerTransfer
   , permissionDescriptorOwnerOrOperatorTransfer
   , permissionDescriptorNoTransfer
@@ -99,7 +100,7 @@ data OriginationParams = OriginationParams
   , opMinters :: Map Address Natural
   , opPendingOwner :: Maybe Address
   , opPermissionsDescriptor :: PermissionsDescriptorMaybe
-  , opTokenMetadata :: TokenMetadata
+  , opTokenMetadata :: FA2.TokenMetadata
   , opSafelistContract :: Maybe (TAddress Safelist.Parameter)
   }
 
@@ -147,7 +148,7 @@ permissionDescriptorReqSenderHook =
     & (_2.namedL #pdr2._2.namedL #pdr3._1)
     .~ (#sender .! (Just $ RequiredOwnerHook (#required_owner_hook .! ())))
 
-defaultTokenMetadata :: TokenMetadata
+defaultTokenMetadata :: FA2.TokenMetadata
 defaultTokenMetadata =
   ( #token_id .! 0
   , #mdr .! (#symbol .! [mt|TestTokenSymbol|]
@@ -156,6 +157,9 @@ defaultTokenMetadata =
   , #extras .! (Map.fromList $
        [([mt|attr1|], [mt|val1|]), ([mt|attr2|], [mt|val2|]) ]))))
   )
+
+defaultTokenMetadataBigMap :: BigMap FA2.TokenId SC.TokenMetadata
+defaultTokenMetadataBigMap = BigMap $ Map.fromList [((0 :: Natural), mkTokenMetadata defaultTokenMetadata)]
 
 defaultOriginationParams :: OriginationParams
 defaultOriginationParams = OriginationParams
@@ -267,7 +271,6 @@ originationRequestCompatible op =
       in customFlag && operatorTransferFlag &&
          owHookSenderFlag && owHookReceiverFlag
 
-
 mkInitialStorage :: OriginationParams -> Maybe Storage
 mkInitialStorage op@OriginationParams{..} =
   if originationRequestCompatible op then let
@@ -283,8 +286,9 @@ mkInitialStorage op@OriginationParams{..} =
     isPaused = #paused .! opPaused
     safelistContract = #safelist_contract .! (unTAddress <$> opSafelistContract)
     totalSupply = #total_supply .! (sum $ Map.elems ledgerMap)
+    tokenMetadata = #token_metadata .! (BigMap $ Map.fromList [(0, mkTokenMetadata $ opTokenMetadata)])
   in Just (((ledger, mintingAllowances), (operators, isPaused))
-           , ((roles, safelistContract), totalSupply))
+           , ((roles, safelistContract), (tokenMetadata, totalSupply)))
   else Nothing
   where
     foldFn

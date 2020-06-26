@@ -93,6 +93,13 @@ managementSpec originate = do
           (constructTransfersFromSender (#from_ .! wallet1) [])
         validate . Left $ mgmXtzReceived
 
+    it "token metadata big map is present in storage" $ integrationalTestExpectation $ do
+      withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
+        validate . Right . lExpectStorage stablecoinContract $ \case
+          StorageMetadataBigMap metadata
+            | metadata == defaultTokenMetadataBigMap -> Right ()
+            | otherwise -> Left $ CustomValidationError "Malformed token metadata big map in contract storage"
+
   describe "Contract pausing" $ do
     it "pauses contract as expected" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do

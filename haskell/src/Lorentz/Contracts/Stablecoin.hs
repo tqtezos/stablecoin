@@ -4,6 +4,8 @@
 module Lorentz.Contracts.Stablecoin
   ( ConfigureMinterParam
   , ChangeMasterMinterParam
+  , TokenMetadata
+  , TokenMetadataBigMap
   , RemoveMinterParam
   , MintParams
   , MintParam
@@ -13,6 +15,7 @@ module Lorentz.Contracts.Stablecoin
   , Storage
   , TransferOwnershipParam
   , mkPermissionDescriptor
+  , mkTokenMetadata
   , stablecoinPermissionsDescriptor
   , stablecoinTokenMetadata
 
@@ -23,6 +26,8 @@ module Lorentz.Contracts.Stablecoin
   , pattern StorageOperators
   , pattern StoragePaused
   , pattern StorageSafelistContract
+  , pattern StorageMetadataBigMap
+  , pattern StorageTotalSupply
   , pattern MasterMinterRole
   , pattern OwnerRole
   , pattern PauserRole
@@ -146,9 +151,11 @@ type Roles = "roles" :! RolesInner
 
 type SafelistContract = "safelist_contract" :! (Maybe Address)
 
+type TokenMetadataBigMap = "token_metadata" :! (BigMap FA2.TokenId TokenMetadata)
+
 type Storage =
   (((Ledger, MintingAllowances), (Operators, IsPaused))
-   , ((Roles, SafelistContract), TotalSupply))
+   , ((Roles, SafelistContract), (TokenMetadataBigMap, TotalSupply)))
 
 pattern StorageLedger :: LedgerInner -> Storage
 pattern StorageLedger ledger <- (((arg #ledger -> (BigMap ledger), _ ), _), _)
@@ -165,6 +172,14 @@ pattern StorageOperators operators <- ((_, (arg #operators -> operators, _)), _)
 pattern StoragePaused :: Bool -> Storage
 pattern StoragePaused paused <- ((_, (_, arg #paused -> paused)), _)
 {-# COMPLETE StoragePaused #-}
+
+pattern StorageMetadataBigMap :: BigMap FA2.TokenId TokenMetadata -> Storage
+pattern StorageMetadataBigMap bigMap <- (_, (_, (arg #token_metadata -> bigMap, _)))
+{-# COMPLETE StorageMetadataBigMap #-}
+
+pattern StorageTotalSupply :: Natural -> Storage
+pattern StorageTotalSupply totalSupply <- (_, (_, (_, arg #total_supply -> totalSupply)))
+{-# COMPLETE StorageTotalSupply #-}
 
 pattern StorageRoles :: RolesInner -> Storage
 pattern StorageRoles roles <- (_ , ((arg #roles -> roles, _), _))
@@ -228,7 +243,7 @@ mkTokenMetadata
   , L.arg #mdr -> (L.arg #symbol -> symbol
   , L.arg #mdr2 -> (L.arg #name -> name
   , L.arg #mdr3 -> (L.arg #decimals -> decimals
-  , L.arg #extras -> extras)))) = (((decimals, extras), (name, symbol)), token_id)
+  , L.arg #extras -> extras)))) = (token_id, (symbol, (name, (decimals, extras))))
 
 mkPermissionDescriptor :: FA2.PermissionsDescriptor -> PermissionsDescriptor
 mkPermissionDescriptor
@@ -251,7 +266,6 @@ mkPermissionDescriptor
 
   in ((custom, ot), (owHookRec, owHookSend))
 
--- Metadata
-type TokenMetadataDecimalsAndExtra = (Natural, Map L.MText L.MText)
-type TokenMetadataNameAndSymbol = (L.MText, L.MText)
-type TokenMetadata = ((TokenMetadataDecimalsAndExtra, TokenMetadataNameAndSymbol), FA2.TokenId)
+
+
+type TokenMetadata = (Natural, (L.MText, (L.MText, (Natural, Map L.MText L.MText))))
