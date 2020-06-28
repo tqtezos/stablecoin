@@ -73,6 +73,12 @@ Each address can have any number of operators and be an operator of any number o
 Every address that is stored in ledger is associated with its current balance.
 Additionally, each minter is associated with its current minting allowance.
 
+## Token metadata
+
+Stablecoin contract MUST provide an additional metadata `big_map` for its tokens.
+This `big_map` MUST be annotated as `%token_metadata` and can be at any position within
+contract storage. The structure of this `big_map` MUST follow [FA2 requirements](https://gitlab.com/tzip/tzip/-/blob/master/proposals/tzip-12/tzip-12.md#token_metadata-big_map).
+
 # Safelist
 
 Before describing the token contract's entrypoints we describe the `Safelist` interface.
@@ -92,11 +98,11 @@ In error scenarios the stablecoin contract fails with a string.
 Here is a summary of all the strings used as error messages.
 We start with standard FA2 errors which are part of the FA2 specification.
 
-| Error                  | Description |
-|------------------------|-------------|
-| `TOKEN_UNDEFINED`      | One of the specified `token_id`s is not defined (i. e. not zero) |
-| `INSUFFICIENT_BALANCE` | Cannot debit from a wallet because of excessive amount of tokens |
-| `NOT_OPERATOR`         | A transfer is initiated neither by the token owner nor a permitted operator |
+| Error                      | Description                                                                 |
+|----------------------------|-----------------------------------------------------------------------------|
+| `FA2_TOKEN_UNDEFINED`      | One of the specified `token_id`s is not defined (i.e. not zero)             |
+| `FA2_INSUFFICIENT_BALANCE` | Cannot debit from a wallet because of excessive amount of tokens            |
+| `FA2_NOT_OPERATOR`         | A transfer is initiated neither by the token owner nor a permitted operator |
 
 The next group consists of the errors that are not part of the FA2 specification.
 
@@ -127,8 +133,7 @@ Since they are internal, they can be changed any time without updating this part
 Full list:
 * [`transfer`](#transfer)
 * [`balance_of`](#balance_of)
-* [`total_supply`](#total_supply)
-* [`token_metadata`](#token_metadata)
+* [`token_metadata_registry`](#token_metadata_registry)
 * [`permissions_descriptor`](#permissions_descriptor)
 * [`update_operators`](#update_operators)
 * [`is_operator`](#is_operator)
@@ -271,90 +276,21 @@ Parameter (in Michelson):
 - Since the contract supports only a single token type, all `token_id` values MUST be 0.
   They are passed because FA2 requires that.
 
-### **total_supply**
+### **token_metadata_registry**
 
 Types
 ```
-token_id = nat
-
-total_supply_response =
-  ( token_id :token_id
-  , nat :total_supply
-  )
-
-total_supply =
-  ( list token_id :token_ids
-  , contract (list total_supply_response) :callback
-  )
+token_metadata_registry is contract (address)
 ```
 
 Parameter (in Michelson)
 ```
-(pair %total_supply
-  (list %token_ids nat)
-  (contract %callback
-    (list
-      (pair
-        (nat %token_id)
-        (nat %total_supply)
-      )
-    )
-  )
-)
+(contract %token_metadata_registry address)
 ```
 
-- This entrypoint MUST follow the FA2 requirements.
+- Return contract address that holds token metadata.
 
-- Since the contract supports only a single token type, all `token_id` values MUST be 0.
-  They are passed because FA2 requires that.
-
-### **token_metadata**
-
-Types
-```
-token_id = nat
-
-token_metadata_response =
-  ( token_id             :token_id
-  , string               :symbol
-  , string               :name
-  , nat                  :decimals
-  , map (string, string) :extras
-  )
-
-token_metadata =
-  ( list token_id                           :token_ids
-  , contract (list token_metadata_response) :callback
-  )
-```
-
-Parameter (in Michelson)
-```
-(pair %token_metadata
-  (list %token_ids nat)
-  (contract %callback
-    (list
-      (pair
-        (nat %token_id)
-        (pair
-          (string %symbol)
-          (pair
-            (string %name)
-            (pair
-              (nat %decimals)
-              (map %extras string string)
-      ))))
-    )
-  )
-)
-```
-
-- This entrypoint MUST follow the FA2 requirements.
-
-- Since the contract supports only a single token type, all `token_id` values MUST be 0.
-  They are passed because FA2 requires that.
-
-- Token metadata for 0 `token_id` is constant and should be hardcoded in contract code or put into storage during origination.
+- Since the contract owns its token metadata the returned value of this entrypoint call will always be equal to `SELF`.
 
 ### **permissions_descriptor**
 
@@ -648,7 +584,7 @@ Parameter (in Michelson): `list nat`.
 
 - Fails with `NOT_MINTER` if the sender is not a minter.
 
-- Fails with `INSUFFICIENT_BALANCE` if the sender does not have enough tokens to burn.
+- Fails with `FA2_INSUFFICIENT_BALANCE` if the sender does not have enough tokens to burn.
 
 - A minter with 0 minting allowance is allowed to burn tokens.
 
@@ -764,7 +700,6 @@ Regarding `update_operators` we will stick to the following logic:
 
 Note that operator relation is not transitive.
 
-One more uncertainty is related to the `token_metadata` entrypoint: whether metadata is constant or can be changed during contract's lifetime.
 We assume that token metadata stays constant forever.
 
 Note: these decisions may change as the project moves forward.

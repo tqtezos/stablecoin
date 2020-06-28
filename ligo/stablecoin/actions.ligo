@@ -141,7 +141,7 @@ function debit_from
   end
 
 ; if parameter.amount > curr_balance
-      then failwith ("INSUFFICIENT_BALANCE")
+      then failwith ("FA2_INSUFFICIENT_BALANCE")
       else
       { const updated_balance : nat = abs (curr_balance - parameter.amount)
       ; updated_ledger := Big_map.update(parameter.from_, Some (updated_balance), updated_ledger)
@@ -321,70 +321,20 @@ function balance_of
 } with (list [transfer_operation], store)
 
 (*
- * Retrieves a list of `total_supply` that is specified for multiple
- * token types in FA2 spec and leaves the storage untouched. In reality
- * we restrict all of them to be of `default_token_id`.
+ * Returns address of the contract that holds tokens metadata.
+ * Since our contract holds its own metadata, then it always
+ * returns `SELF` address.
  *)
-function total_supply
-  ( const parameter : total_supply_params
+function token_metadata_registry
+  ( const parameter : token_metadata_registry_params
   ; const store     : storage
-  ) : entrypoint is block
-{ // We suppose that the token is already validated in `get_total_supply`
-  // and equal to `default_token_id`
-  const total_supply_response_ : total_supply_response_ = record
-    [ token_id     = default_token_id
-    ; total_supply = store.total_supply
-    ]
-; const total_supply_response : total_supply_response =
-    Layout.convert_to_right_comb ((total_supply_response_ : total_supply_response_))
-; function get_total_supply
-    ( const ops      : list (total_supply_response)
-    ; const token_id : token_id
-    ) : list (total_supply_response) is block
-    { validate_token_type (token_id)
-    } with total_supply_response # ops
-} with
+  ) : entrypoint is
   ( list [Tezos.transaction
-    ( List.fold
-        ( get_total_supply
-        , parameter.0
-        , (nil : list (total_supply_response))
-        )
+    ( Tezos.self_address
     , 0mutez
-    , parameter.1
-    )]
-  , store
-  )
-
-(*
- * Returns a list of `token_metadata` responses in one call.
- * This is supposed to be used for multiple token types but
- * in this smart-contract we restrict all of them to be of
- * `default_token_type`. Fails if one of the parameters has
- * different token id that is specified
- *)
-function token_metadata
-  ( const parameter : token_metadata_params
-  ; const store     : storage
-  ) : entrypoint is block
-{ const token_metadata : token_metadata =
-    (0n, ("USDC", ("tz", (0n, (Map.empty : map (string, string))))))
-; function get_token_metadata
-    ( const ops      : list (token_metadata_response)
-    ; const token_id : token_id
-    ) : list (token_metadata_response) is block
-    { validate_token_type (token_id)
-    } with token_metadata # ops
-} with
-  ( list [Tezos.transaction
-    ( List.fold
-        ( get_token_metadata
-        , parameter.0
-        , (nil : list (token_metadata_response))
-        )
-    , 0mutez
-    , parameter.1
-    )]
+    , parameter
+    )
+  ]
   , store
   )
 

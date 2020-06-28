@@ -12,24 +12,24 @@ import Fmt
 import qualified Unsafe (fromJust)
 
 import Test.Tasty.QuickCheck
-  ( Arbitrary, Gen, Property, arbitrary, choose, arbitraryBoundedEnum, elements
-  , sublistOf, shuffle, vectorOf)
+  (Arbitrary, Gen, Property, arbitrary, arbitraryBoundedEnum, choose, elements, shuffle, sublistOf,
+  vectorOf)
 import qualified Text.Show
 
 import Tezos.Core (unsafeMkMutez)
 
-import Lorentz (NiceParameter, arg, toVal, fromVal, def)
+import Lorentz (NiceParameter, arg, def, fromVal, toVal)
 import Lorentz.Address
-import Lorentz.Contracts.Stablecoin
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
-import Lorentz.Contracts.Test.FA2
+import Lorentz.Contracts.Stablecoin
 import Lorentz.Contracts.Test.Common
-import Michelson.Test.Integrational
-import Michelson.Test.Dummy
+import Lorentz.Contracts.Test.FA2
 import Michelson.Interpret
-import Michelson.Typed (untypeValue)
+import Michelson.Test.Dummy
+import Michelson.Test.Integrational
 import Michelson.Text
 import Michelson.TypeCheck
+import Michelson.Typed (untypeValue)
 import qualified Michelson.Typed as T
 import qualified Michelson.Untyped as U
 import Util.Named
@@ -134,9 +134,9 @@ testSize = 100
 
 -- The possible contract errors for the models
 data ModelError
-  = INSUFFICIENT_BALANCE
+  = FA2_INSUFFICIENT_BALANCE
   | ALLOWANCE_EXCEEDED
-  | NOT_OPERATOR
+  | FA2_NOT_OPERATOR
   | NOT_CONTRACT_OWNER
   | NOT_TOKEN_OWNER
   | NOT_PAUSER
@@ -188,7 +188,7 @@ storageToSs storage = let
   StorageRoles (PendingOwnerRole ssPendingOwner) = storage
   StorageSafelistContract ssSafelistContract = storage
   StoragePaused ssIsPaused = storage
-  (_, (_, arg #total_supply -> ssTotalSupply)) = storage
+  StorageTotalSupply ssTotalSupply = storage
   in SimpleStorage {..}
 
 ssToOriginationParams
@@ -473,12 +473,12 @@ contractErrorToModelError m = let
  in case txtError of
    "CONTRACT_PAUSED" -> CONTRACT_PAUSED
    "NOT_CONTRACT_OWNER" -> NOT_CONTRACT_OWNER
-   "NOT_OPERATOR" -> NOT_OPERATOR
+   "FA2_NOT_OPERATOR" -> FA2_NOT_OPERATOR
    "NOT_MASTER_MINTER" -> NOT_MASTERMINTER
    "NOT_MINTER" -> NOT_MINTER
    "NOT_PAUSER" -> NOT_PAUSER
    "NOT_PENDING_OWNER" -> NOT_PENDING_OWNER
-   "INSUFFICIENT_BALANCE" -> INSUFFICIENT_BALANCE
+   "FA2_INSUFFICIENT_BALANCE" -> FA2_INSUFFICIENT_BALANCE
    "CONTRACT_NOT_PAUSED" -> CONTRACT_NOT_PAUSED
    "NO_PENDING_OWNER_SET" -> CONTRACT_NOT_IN_TRANSFER
    "ADDR_NOT_MINTER" -> ADDR_NOT_MINTER
@@ -678,7 +678,7 @@ applyBurn ccSender cs burnparams = do
           Nothing -> error "Unexpected burn"
           Just x -> Just $ x - value) ccSender $ ssLedger cs }
       in Right $ amendTotalSupply (\x -> x - totalBurn) $ foldr burn cs burnparams
-    else Left INSUFFICIENT_BALANCE
+    else Left FA2_INSUFFICIENT_BALANCE
 
 amendTotalSupply :: (Natural -> Natural) -> SimpleStorage  -> SimpleStorage
 amendTotalSupply fn ss = ss { ssTotalSupply = fn (ssTotalSupply ss) }
@@ -739,7 +739,7 @@ applySingleTransfer ccSender estorage
         if ccSender == from || isOperatorOf storage ccSender from
           then let
             in foldl' singleTranferTx (Right storage) toItems
-          else Left NOT_OPERATOR
+          else Left FA2_NOT_OPERATOR
   where
     singleTranferTx (Left err) _ =  Left err
     singleTranferTx
@@ -749,7 +749,7 @@ applySingleTransfer ccSender estorage
         srcBalance = fromMaybe 0 (Map.lookup from ssLedger)
         in if srcBalance >= amount
           then Right $ applyCredit to amount $ applyDebit from amount storage
-          else Left INSUFFICIENT_BALANCE
+          else Left FA2_INSUFFICIENT_BALANCE
 
 applyUpdateOperator :: Address -> Either ModelError SimpleStorage -> FA2.UpdateOperator -> Either ModelError SimpleStorage
 applyUpdateOperator ccSender estorage op = case estorage of

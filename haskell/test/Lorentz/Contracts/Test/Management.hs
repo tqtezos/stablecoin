@@ -50,7 +50,7 @@ mgmContractNotPaused :: ExecutorError -> Bool
 mgmContractNotPaused = lExpectFailWith (== [mt|CONTRACT_NOT_PAUSED|])
 
 mgmInsufficientBalance :: ExecutorError -> Bool
-mgmInsufficientBalance = lExpectFailWith (== [mt|INSUFFICIENT_BALANCE|])
+mgmInsufficientBalance = lExpectFailWith (== [mt|FA2_INSUFFICIENT_BALANCE|])
 
 mgmNotTokenOwner :: ExecutorError -> Bool
 mgmNotTokenOwner = lExpectFailWith (== [mt|NOT_TOKEN_OWNER|])
@@ -92,6 +92,13 @@ managementSpec originate = do
           -- Dummy transfer needed to call something from a contract since we don't have default entrypoint set
           (constructTransfersFromSender (#from_ .! wallet1) [])
         validate . Left $ mgmXtzReceived
+
+    it "token metadata big map is present in storage" $ integrationalTestExpectation $ do
+      withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
+        validate . Right . lExpectStorage stablecoinContract $ \case
+          StorageMetadataBigMap metadata
+            | metadata == defaultTokenMetadataBigMap -> Right ()
+            | otherwise -> Left $ CustomValidationError "Malformed token metadata big map in contract storage"
 
   describe "Contract pausing" $ do
     it "pauses contract as expected" $ integrationalTestExpectation $ do

@@ -24,8 +24,6 @@ module Lorentz.Contracts.Spec.FA2Interface
   , TokenId
   , TokenMetaDataParam
   , TokenMetadata
-  , TotalSupplyRequestParams
-  , TotalSupplyResponse
   , TransferDestination
   , TransferDescriptor
   , TransferDescriptorParam
@@ -74,15 +72,6 @@ type BalanceRequestParams = View ("requests" :! [BalanceRequestItem]) [BalanceRe
 instance Buildable BalanceResponseItem where
   build = genericF
 
--- TotalSupply query
---
-type TotalSupplyResponse = ("token_id" :! TokenId, "total_supply" :! Natural)
-
-type TotalSupplyRequestParams = View ("token_ids" :! [TokenId]) [TotalSupplyResponse]
-
-instance Buildable TotalSupplyResponse where
-  build = genericF
-
 -- Token MetaData query
 
 type TokenMetadata =
@@ -93,7 +82,12 @@ type TokenMetadata =
   , "extras" :! Map MText MText)))
   )
 
-type TokenMetaDataParam = View ("token_ids" :! [TokenId]) [TokenMetadata]
+type TokenMetaDataParam =
+  ( "token_ids" :! [TokenId]
+  , "handler" :! Lambda [TokenMetadata] ()
+  )
+
+type TokenMetadataRegistryParam = ContractRef Address
 
 instance Buildable TokenMetadata where
   build
@@ -202,13 +196,17 @@ type IsOperatorParam = View ("operator" :! OperatorParam) IsOperatorResponse
 data Parameter
   = Transfer TransferParams
   | Balance_of BalanceRequestParams
-  | Total_supply TotalSupplyRequestParams
   | Token_metadata TokenMetaDataParam
+  | Token_metadata_registry TokenMetadataRegistryParam
   | Permissions_descriptor PermissionsDescriptorParam
   | Update_operators UpdateOperatorsParam
   | Is_operator IsOperatorParam
   deriving stock (Generic, Show)
   deriving anyclass (IsoValue)
+
+-- That missing instance for lorentz lambdas
+instance Buildable (inp :-> out) where
+  build = show
 
 instance Buildable Parameter where
   build = genericF
@@ -219,8 +217,8 @@ instance ParameterHasEntryPoints Parameter where
 type FA2ParameterMichelsonEntrypoints =
   [ "Transfer" :> TransferParams
   , "Balance_of" :> BalanceRequestParams
-  , "Total_supply" :> TotalSupplyRequestParams
   , "Token_metadata" :> TokenMetaDataParam
+  , "Token_metadata_registry" :> TokenMetadataRegistryParam
   , "Permissions_descriptor" :> PermissionsDescriptorParam
   , "Update_operators" :> UpdateOperatorsParam
   , "Is_operator" :> IsOperatorParam

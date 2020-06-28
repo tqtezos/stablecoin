@@ -25,7 +25,7 @@ function validate_token_type
   ( const token_id : token_id
   ) : unit is
     if token_id =/= default_token_id
-    then failwith ("TOKEN_UNDEFINED")
+    then failwith ("FA2_TOKEN_UNDEFINED")
     else unit
 
 (*
@@ -78,20 +78,6 @@ end
 
 type balance_of_params is michelson_pair_right_comb(balance_of_params_)
 
-type total_supply_response_ is record
-  token_id     : token_id
-; total_supply : nat
-end
-
-type total_supply_response is michelson_pair_right_comb (total_supply_response_)
-
-type total_supply_params_ is record
-  token_ids : list (token_id)
-; callback  : contract (list (total_supply_response))
-end
-
-type total_supply_params is michelson_pair_right_comb(total_supply_params_)
-
 type token_metadata_ is record
   token_id  : token_id
 ; symbol    : string
@@ -102,14 +88,7 @@ end
 
 type token_metadata is michelson_pair_right_comb(token_metadata_)
 
-type token_metadata_response is token_metadata
-
-type token_metadata_params_ is record
-  token_ids : list (token_id)
-; callback  : contract (list (token_metadata_response))
-end
-
-type token_metadata_params is michelson_pair_right_comb(token_metadata_params_)
+type token_metadata_registry_params is contract (address)
 
 type operator_param_ is record
   owner    : address
@@ -207,13 +186,12 @@ type change_master_minter_param is address
 type change_pauser_param is address
 
 type parameter is
-  Transfer               of transfer_params
-| Balance_of             of balance_of_params
-| Total_supply           of total_supply_params
-| Token_metadata         of token_metadata_params
-| Permissions_descriptor of permissions_descriptor_params
-| Update_operators       of update_operator_params
-| Is_operator            of is_operator_params
+  Transfer                of transfer_params
+| Balance_of              of balance_of_params
+| Token_metadata_registry of token_metadata_registry_params
+| Permissions_descriptor  of permissions_descriptor_params
+| Update_operators        of update_operator_params
+| Is_operator             of is_operator_params
 
 (* ------------------------------------------------------------- *)
 
@@ -302,6 +280,7 @@ type minting_allowances is big_map (address, nat)
 
 type storage is record
   ledger             : ledger
+; token_metadata     : big_map (token_id, token_metadata)
 ; minting_allowances : minting_allowances
 ; total_supply       : nat
 ; paused             : bool
