@@ -1,6 +1,7 @@
 -- SPDX-FileCopyrightText: 2020 tqtezos
 -- SPDX-License-Identifier: MIT
 {-# OPTIONS_GHC -Wno-orphans #-}
+{-# OPTIONS_GHC -Wno-deprecations #-}
 
 module SMT
   ( smtProperty
@@ -23,7 +24,6 @@ import Lorentz.Address
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
 import Lorentz.Contracts.Test.Common
-import Lorentz.Contracts.Test.FA2
 import Michelson.Interpret
 import Michelson.Test.Dummy
 import Michelson.Test.Integrational
@@ -112,12 +112,12 @@ applyBothAndCompare
   -> [ContractCall Parameter]
   -> ContractState
   -> IntegrationalScenario
-applyBothAndCompare _ [] _ = skipTest
+applyBothAndCompare _ [] _ = pass
 applyBothAndCompare contract (cc:ccs) cs = let
   haskellResult = stablecoinHaskellModel cc cs
   michelsonResult = stablecoinMichelsonModel contract cc cs
   in if haskellResult /= michelsonResult
-    then integrationalFail $ CustomValidationError ("Models differ : " <> (show (cc, cs, haskellResult, michelsonResult)))
+    then integrationalFail $ CustomTestError ("Models differ : " <> (show (cc, cs, haskellResult, michelsonResult)))
     else applyBothAndCompare contract ccs haskellResult
 
 -- Size of the random address pool
@@ -521,12 +521,12 @@ interpretUntyped_
   -> ContractEnv
   -> Either InterpretError InterpretResult
 interpretUntyped_ uContract@U.Contract{..} epName paramU initStU env = do
-  SomeContract (T.Contract (instr :: T.ContractCode cp st) cpNotes _)
-      <- first IllTypedContract $ typeCheckContract (ceContracts env) uContract
+  SomeContract (T.Contract (instr :: T.ContractCode cp st) cpNotes _ _)
+      <- first IllTypedContract $ typeCheckContract uContract
   let
     runTC :: forall t. T.SingI t => U.Value -> Either TCError (T.Value t)
     runTC =
-      runTypeCheck contractParameter (ceContracts env) .
+      runTypeCheck (TypeCheckInstr contractParameter) .
       usingReaderT def .
       typeCheckValue @t
 

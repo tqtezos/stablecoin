@@ -16,6 +16,7 @@ import qualified Data.Set as Set
 
 import Indigo
 import Lorentz.Run (Contract)
+import Prelude ()
 
 data Storage = Storage
   { sTransfers :: Set (Address, Address)
@@ -56,17 +57,17 @@ safelistIndigo
 safelistIndigo param = contractName "Dummy safelist" $ do
   entryCase (Proxy @PlainEntryPointsKind) param
     ( #cAssertTransfers //-> \transfers -> forEach transfers $ \transfer -> do
-        let fromAddr = transfer !. #from
+        let fromAddr = transfer #! #from
         res <- new False
-        forEach (transfer !. #tos) $ \toAddr ->
-          forEach (storage !. #sTransfers) $ \it ->
-            Indigo.when ((Indigo.fst it ==. fromAddr) &&. (Indigo.snd it ==. toAddr)) $ setVar res True
+        forEach (transfer #! #tos) $ \toAddr ->
+          forEach (storage #! #sTransfers) $ \it ->
+            Indigo.when ((Indigo.fst it == fromAddr) && (Indigo.snd it == toAddr)) $ setVar res True
         assertCustom_ #assertionFailure res
     , #cAssertReceiver //-> \receiver -> do
-        assertCustom_ #assertionFailure $ (storage !. #sReceivers) #? receiver
+        assertCustom_ #assertionFailure $ (storage #! #sReceivers) ?: receiver
     , #cAssertReceivers //-> \receivers -> do
         forEach receivers $ \receiver -> do
-          assertCustom_ #assertionFailure $ (storage !. #sReceivers) #? receiver
+          assertCustom_ #assertionFailure $ (storage #! #sReceivers) ?: receiver
     )
 
 storage :: HasStorage Storage => Var Storage
