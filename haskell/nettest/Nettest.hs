@@ -5,6 +5,9 @@ module Nettest
   ( scTransferScenario
   ) where
 
+import qualified Data.Set as Set
+
+import qualified Indigo.Contracts.Safelist as SF
 import Lorentz hiding (comment, (>>))
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Test.Common
@@ -16,31 +19,70 @@ import Util.Named
 import Lorentz.Contracts.Stablecoin
 
 scTransferScenario
-  :: (OriginationParams -> Storage)
+  :: forall m capsM.
+     (Monad m, capsM ~ NettestT m)
+  => (OriginationParams -> Storage)
   -> U.Contract
-  -> NettestScenario
-scTransferScenario constructInitialStorage contract_ = uncapsNettest $ do
+  -> U.Contract -- Note that we do not distinguish safelist and stablecoin contracts
+  -> NettestImpl m
+  -> m ()
+scTransferScenario constructInitialStorage stablecoinContract safelistContract = uncapsNettest $ do
+  comment "Resolving contract managers"
+
   superuser <- resolveNettestAddress
+
+  nettestOwner <- newAddress "nettestOwner"
+  nettestPauser <- newAddress "nettestPauser"
+  nettestMasterMinter <- newAddress "nettestMasterMinter"
+
+  comment "Resolving owners and operators"
 
   owner1 <- newAddress "Steve"
   owner2 <- newAddress "Megan"
   owner3 <- newAddress "Karen"
 
   operator <- newAddress "Some operator"
+  otherOperator <- newAddress "Other operator"
 
   let
     initialStorage =
-        addAccount (superuser , ([operator], 111))
+        addAccount (superuser , ([operator], 1110000))
       . addAccount (owner1, ([operator], 100))
       . addAccount (owner2, ([operator], 0))
       . addAccount (owner3, ([operator], 0))
+      . addAccount (nettestPauser, ([operator], 0))
+      . addMinter (superuser, 200)
       $ defaultOriginationParams
+          { opOwner = nettestOwner
+          , opPauser = nettestPauser
+          , opMasterMinter = nettestMasterMinter
+          }
+
+  comment "Originating stablecoin contract"
 
   scAddress <- do
     let str = constructInitialStorage initialStorage
-    originateUntypedSimple "nettest.Stablecoin" (untypeValue $ toVal str) contract_
+    originateUntypedSimple "nettest.Stablecoin" (untypeValue $ toVal str) stablecoinContract
+
+  comment "Originating safelist contract"
 
   let
+    -- Dummy storage for safelist used in `safelistScenario`
+    initialSafelistStorage = SF.Storage
+      { SF.sTransfers = Set.fromList
+          [ (owner1, owner2)
+          , (owner2, owner3)
+          , (owner3, owner1)
+          ]
+      , SF.sReceivers = Set.fromList [owner1, owner2]
+      }
+
+  sfAddress <- do
+    originateUntypedSimple "nettest.Safelist" (untypeValue $ toVal initialSafelistStorage) safelistContract
+
+  let
+    expectFailed = flip expectFailure NettestFailedWith
+
     sc :: AddressOrAlias
     sc = AddressResolved scAddress
 
@@ -50,10 +92,257 @@ scTransferScenario constructInitialStorage contract_ = uncapsNettest $ do
       (#to_ .! to)
       (#amount .! value)
 
-    -- In this transfer sender and @from@ address are always equal.
-    callTransfer from to value =
-      callFrom (AddressResolved from) sc (ep "transfer") (tp from to value)
+    callTransferWithOperator op from to value =
+      callFrom (AddressResolved op) sc (ep "transfer") (tp from to value)
 
-  comment "Transfer from superuser to superuser"
-  callTransfer superuser superuser 111
-  callTransfer superuser owner1 20
+    callTransfer = join callTransferWithOperator
+
+    callTransfers
+      :: [("from_" :! Address, [("to_" :! Address, "amount" :! Natural)])]
+      -> capsM ()
+    callTransfers = mapM_ $ \(from@(arg #from_ -> from_), destinations) ->
+      callFrom
+        (AddressResolved from_)
+        sc
+        (ep "transfer")
+        (constructTransfersFromSender from destinations)
+
+    configureMinter :: Address -> Address -> Maybe Natural -> Natural -> capsM ()
+    configureMinter from for expectedAllowance newAllowance =
+      callFrom
+        (AddressResolved from)
+        sc
+        (ep "configure_minter")
+        ( #minter .! for
+        , ( #current_minting_allowance .! expectedAllowance
+          , #new_minting_allowance .! newAllowance))
+
+    removeMinter :: Address -> Address -> capsM ()
+    removeMinter from whom =
+      callFrom
+        (AddressResolved from)
+        sc
+        (ep "remove_minter")
+        whom
+
+    addOperatorNettest :: Address -> Address -> capsM ()
+    addOperatorNettest from op =
+      callFrom
+        (AddressResolved from)
+        sc
+        (ep "update_operators")
+        [FA2.Add_operator (#owner .! from, #operator .! op)]
+
+    removeOperator :: Address -> Address -> capsM ()
+    removeOperator from op =
+      callFrom
+        (AddressResolved from)
+        sc
+        (ep "update_operators")
+        [FA2.Remove_operator (#owner .! from, #operator .! op)]
+
+    mint :: Address -> Natural -> capsM ()
+    mint to_ value =
+      callFrom
+        (AddressResolved to_)
+        sc
+        (ep "mint")
+        [(#to_ .! to_, #amount .! value)]
+
+    burn :: Address -> Natural -> capsM ()
+    burn from amount_ =
+      callFrom
+        (AddressResolved from)
+        sc
+        (ep "burn")
+        [amount_]
+
+    pause :: Address -> capsM ()
+    pause from =
+      callFrom
+        (AddressResolved from)
+        sc
+        (ep "pause")
+        ()
+
+    unpause :: Address -> capsM ()
+    unpause from =
+      callFrom
+        (AddressResolved from)
+        sc
+        (ep "unpause")
+        ()
+
+    transferOwnership :: Address -> Address -> capsM ()
+    transferOwnership from to =
+      callFrom
+        (AddressResolved from)
+        sc
+        (ep "transfer_ownership")
+        to
+
+    acceptOwnership :: Address -> capsM ()
+    acceptOwnership from =
+      callFrom
+        (AddressResolved from)
+        sc
+        (ep "accept_ownership")
+        ()
+
+    changeMasterMinter :: Address -> Address -> capsM ()
+    changeMasterMinter from to =
+      callFrom
+        (AddressResolved from)
+        sc
+        (ep "change_master_minter")
+        to
+
+    changePauser :: Address -> Address -> capsM ()
+    changePauser from to =
+      callFrom
+        (AddressResolved from)
+        sc
+        (ep "change_pauser")
+        to
+
+    setSafelist :: Address -> Address -> capsM ()
+    setSafelist from safelistAddress =
+      callFrom
+        (AddressResolved from)
+        sc
+        (ep "set_safelist")
+        (Just safelistAddress)
+
+    unsetSafelist :: Address -> capsM ()
+    unsetSafelist from =
+      callFrom
+        (AddressResolved from)
+        sc
+        (ep "set_safelist")
+        (Nothing :: Maybe Address)
+
+  let
+    transferScenario = do
+      comment "Transfers from superuser"
+      callTransfer superuser superuser 111
+      callTransfer superuser owner1 40
+
+      comment "Transfers between owners"
+      callTransfers
+        [ (#from_ .! owner1, [(#to_ .! owner2, #amount .! 10)])
+        , (#from_ .! owner2, [(#to_ .! owner3, #amount .! 10)])
+        , (#from_ .! owner3, [(#to_ .! owner1, #amount .! 10)])
+        ]
+
+      comment "Pausing contract for transfers"
+      callTransfer superuser nettestPauser 600000 -- storage fee
+      expectFailed $ pause owner1 -- Not enough permissions
+      pause nettestPauser
+      expectFailed $ pause nettestPauser -- Cannot be called multiple times
+
+      expectFailed $ callTransfer owner3 owner2 10
+
+      comment "Unpausing contract for transfers"
+      expectFailed $ unpause owner3 -- Not enough permissions
+      unpause nettestPauser
+      expectFailed $ unpause nettestPauser -- Cannot be called multiple times
+
+      callTransfer owner1 owner2 10
+      callTransfer owner2 owner1 10
+
+      comment $ "Updating transfer operators for owners"
+      callTransfer superuser owner1 10
+      addOperatorNettest owner1 otherOperator
+      callTransferWithOperator otherOperator owner1 owner2 10
+      expectFailed $ callTransferWithOperator otherOperator owner2 owner1 10
+      removeOperator owner1 otherOperator
+      expectFailed $ callTransferWithOperator otherOperator owner1 owner2 10
+
+      callTransfer owner2 owner1 10
+
+    mintScenario = do
+      comment $ "Mint to superuser"
+      mint superuser 200
+      callTransfer superuser nettestMasterMinter 1200 -- Needed to pay transfer fee
+
+      comment "Configuring minter for owner1 and owner2"
+      configureMinter nettestMasterMinter owner1 Nothing 100
+      expectFailed $ configureMinter nettestMasterMinter owner1 (Just 20) 10 -- Mismatched expected allowance
+      configureMinter nettestMasterMinter owner1 (Just 100) 50
+      expectFailed $ configureMinter nettestMasterMinter owner2 (Just 20) 10 -- Not a minter
+      configureMinter nettestMasterMinter owner2 Nothing 10
+
+      comment $ "Minting for owner1 and owner2"
+      callTransfer superuser owner1 10 -- Needed to pay transfer fee
+      mint owner1 20
+      expectFailed $ mint owner1 200 -- Allowance exceeded
+
+      comment "Transfer between owner1 and owner2"
+      callTransfer superuser owner1 10 -- Needed to pay transfer fee
+      callTransfer owner1 owner2 20
+      mint owner2 10
+
+      callTransfer owner2 owner1 30
+
+      comment "Remove owner1 and owner2 from minters"
+      removeMinter nettestMasterMinter owner2
+      expectFailed $ removeMinter nettestMasterMinter owner2 -- Already removed
+      removeMinter nettestMasterMinter owner1
+
+    burnScenario = do
+      comment $ "Burning for owner1"
+      callTransfer superuser owner1 10 -- Needed to pay transfer fee
+      callTransfer superuser nettestMasterMinter 1000
+      configureMinter nettestMasterMinter owner1 Nothing 100
+      mint owner1 100
+      burn owner1 20
+      expectFailed $ burn owner1 2000 -- Not enough tokens to burn
+      comment "Transfer rest of the tokens after burn from owner1"
+      callTransfer owner1 owner2 80
+      removeMinter nettestMasterMinter owner1
+
+    permissionReassigmentScenario = do
+      comment "Transferring contract ownership"
+      transferOwnership nettestOwner owner1
+      transferOwnership nettestOwner owner2
+      expectFailed $ acceptOwnership owner1 -- Pending owner is changed
+      acceptOwnership owner2
+      transferOwnership owner2 nettestOwner
+      acceptOwnership nettestOwner
+
+      comment "Changing master minter"
+      changeMasterMinter nettestOwner owner1
+      configureMinter owner1 owner2 Nothing 10
+      mint owner2 10
+      changeMasterMinter nettestOwner nettestMasterMinter
+      removeMinter nettestMasterMinter owner2
+
+      comment "Changing contract pauser"
+      changePauser nettestOwner owner1
+      pause owner1
+      expectFailed $ pause nettestPauser -- nettestPauser is not pauser
+      unpause owner1
+      changePauser nettestOwner nettestPauser
+
+    safelistScenario = do
+      comment $ "Safelist interaction"
+
+      setSafelist nettestOwner sfAddress
+
+      callTransfer owner2 owner3 10
+      expectFailed $ callTransfer owner3 owner2 20 -- Transfer is not in safelist
+
+      configureMinter nettestMasterMinter owner1 Nothing 100
+      configureMinter nettestMasterMinter owner2 Nothing 100
+
+      mint owner2 20
+      expectFailed $ mint owner3 20 -- Minter is not set in safelist
+
+      comment "Unsetting safelist"
+      unsetSafelist nettestOwner
+
+  transferScenario
+  mintScenario
+  burnScenario
+  permissionReassigmentScenario
+  safelistScenario
