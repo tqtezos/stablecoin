@@ -11,7 +11,7 @@ extra-deps:
     https://gitlab.com/morley-framework/morley.git
     # ^ CI cannot use ssh, so we use http clone here
   commit:
-    f3dc4f2fd475e60a9c4894eb019ca5c78e52371b # master
+    37449aa1c4e889557058e6895822fa97e5a0215a # master
   subdirs:
     - code/morley
     - code/lorentz

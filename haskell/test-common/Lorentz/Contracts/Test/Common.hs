@@ -35,7 +35,6 @@ module Lorentz.Contracts.Test.Common
   , constructSingleTransfer
   , withOriginated
   , mkInitialStorage
-  , skipTest
 
   , lExpectAnyMichelsonFailed
   ) where
@@ -45,13 +44,11 @@ import qualified Data.Map as Map
 
 import Lorentz (arg)
 import qualified Indigo.Contracts.Safelist as Safelist
-import qualified Lorentz as L
 import Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin as SC
 import Lorentz.Test
 import Lorentz.Value
 import Michelson.Runtime (ExecutorError)
-import Tezos.Core (unsafeMkMutez)
 import Util.Named
 
 
@@ -87,7 +84,7 @@ addOperator (owner_, operator) op = op
           Nothing -> Just [operator]) owner_ $ opOwnerToOperators op
   }
 -- TODO: move to morley
-lExpectAnyMichelsonFailed :: (ToAddress addr) => addr -> ExecutorError -> Bool
+lExpectAnyMichelsonFailed :: (ToAddress addr) => addr -> ExecutorError -> IntegrationalScenario
 lExpectAnyMichelsonFailed = lExpectMichelsonFailed (const True)
 
 data OriginationParams = OriginationParams
@@ -220,17 +217,6 @@ constructSingleTransfer from to amount
 -- on such custom configuration will be skipped.
 type OriginationFn param = (OriginationParams -> IntegrationalScenarioM (Maybe (TAddress param)))
 
--- | This is a temporary hack to workaround the inability to skip the
--- tests from an IntegrationalScenario without doing any validations.
-skipTest :: IntegrationalScenario
-skipTest = do
-  let
-    dummyContract :: L.ContractCode () ()
-    dummyContract = L.unpair L.# L.drop L.# L.nil L.# L.pair
-  c <- lOriginate (L.defaultContract dummyContract) "skip test dummy" () (unsafeMkMutez 0)
-  lCallEP c CallDefault ()
-  validate (Right expectAnySuccess)
-
 withOriginated
   :: forall param. OriginationFn param
   -> OriginationParams
@@ -238,7 +224,7 @@ withOriginated
   -> IntegrationalScenario
 withOriginated fn op tests = do
   (fn op) >>= \case
-    Nothing -> skipTest
+    Nothing -> pass
     Just contract -> tests contract
 
 -- | This function accepts origination params with @Just@ values indicating
