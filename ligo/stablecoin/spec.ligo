@@ -225,18 +225,18 @@ end
 type transfer_descriptor_param is michelson_pair_right_comb(transfer_descriptor_param_)
 
 (*
- * SafeList
+ * Transferlist
  *)
 
-type safelist_transfer_item is michelson_pair(address, "from", list(address), "tos")
+type transferlist_transfer_item is michelson_pair(address, "from", list(address), "tos")
 
-type safelist_assert_transfers_param is list(safelist_transfer_item)
+type transferlist_assert_transfers_param is list(transferlist_transfer_item)
 
-type safelist_assert_receiver_param is address
+type transferlist_assert_receiver_param is address
 
-type safelist_assert_receivers_param is list(address)
+type transferlist_assert_receivers_param is list(address)
 
-type set_safelist_param is option(address)
+type set_transferlist_param is option(address)
 
 (* ------------------------------------------------------------- *)
 
@@ -253,7 +253,7 @@ type closed_parameter is
 | Accept_ownership      of accept_ownership_param
 | Change_master_minter  of change_master_minter_param
 | Change_pauser         of change_pauser_param
-| Set_safelist          of set_safelist_param
+| Set_transferlist      of set_transferlist_param
 
 (* ------------------------------------------------------------- *)
 
@@ -286,7 +286,7 @@ type storage is record
 ; paused             : bool
 ; roles              : roles
 ; operators          : operators
-; safelist_contract  : option(address)
+; transferlist_contract  : option(address)
 end
 
 type entrypoint is list (operation) * storage

@@ -39,5 +39,5 @@ function stablecoin_main
   | Accept_ownership      (params) -> accept_ownership      (params, store)
   | Change_master_minter  (params) -> change_master_minter  (params, store)
   | Change_pauser         (params) -> change_pauser         (params, store)
-  | Set_safelist          (params) -> set_safelist          (params, store)
+  | Set_transferlist      (params) -> set_transferlist      (params, store)
   end

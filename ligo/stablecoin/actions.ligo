@@ -149,11 +149,11 @@ function debit_from
 } with store with record [ ledger = updated_ledger ]
 
 (*
- * Converts a transfer item into a safelist transfer item
+ * Converts a transfer item into a transferlist transfer item
  *)
-function convert_to_safelist_transfer
+function convert_to_transferlist_transfer
   ( const tp : transfer_param
-  ) : safelist_transfer_item is
+  ) : transferlist_transfer_item is
     ( tp.0
     , List.map
           ( function
@@ -164,7 +164,7 @@ function convert_to_safelist_transfer
     )
 
 (*
- * Calls `assert_transfer` of the provided safelist contract using
+ * Calls `assert_transfer` of the provided transferlist contract using
  * the provided transfer_descriptors.
  *)
 function call_assert_transfers
@@ -175,20 +175,20 @@ function call_assert_transfers
   { const operations: list(operation) =
       case opt_sl_address of
         Some (sl_address) ->
-          case (Tezos.get_entrypoint_opt ("%assertTransfers", sl_address) : option(contract(safelist_assert_transfers_param))) of
+          case (Tezos.get_entrypoint_opt ("%assertTransfers", sl_address) : option(contract(transferlist_assert_transfers_param))) of
             Some (sl_caddress) ->
               Tezos.transaction
-                ( List.map(convert_to_safelist_transfer, transfer_params)
+                ( List.map(convert_to_transferlist_transfer, transfer_params)
                 , 0mutez
                 , sl_caddress) # ops_in
-            | None -> (failwith ("BAD_SAFELIST_CONTRACT") : list(operation))
+            | None -> (failwith ("BAD_TRANSFERLIST_CONTRACT") : list(operation))
             end
         | None -> ops_in
         end
   } with operations
 
 (*
- * Calls `Assert_receivers` of the provided safelist contract using
+ * Calls `Assert_receivers` of the provided transferlist contract using
  * the provided transfer_descriptors.
  *)
 function call_assert_receivers
@@ -200,37 +200,13 @@ function call_assert_receivers
   ; const operations:list(operation) =
       case opt_sl_address of
         Some (sl_address) ->
-          case (Tezos.get_entrypoint_opt ("%assertReceivers", sl_address) : option(contract(safelist_assert_receivers_param))) of
+          case (Tezos.get_entrypoint_opt ("%assertReceivers", sl_address) : option(contract(transferlist_assert_receivers_param))) of
             Some (sl_caddress) ->
               Tezos.transaction
                 ( receivers
                 , 0mutez
                 , sl_caddress) # ops_in
-            | None -> (failwith ("BAD_SAFELIST_CONTRACT") : list(operation))
-            end
-      | None -> ops_in
-      end
-  } with operations
-
-(*
- * Calls `Assert_receiver` of the provided safelist contract using
- * the provided transfer_descriptors.
- *)
-function call_assert_receiver
-  ( const opt_sl_address : option(address)
-  ; const receiver : address
-  ) : list(operation) is block
-  { const ops_in : list(operation) = nil
-  ; const operations:list(operation) =
-      case opt_sl_address of
-        Some (sl_address) ->
-          case (Tezos.get_entrypoint_opt ("%assertReceiver", sl_address) : option(contract(safelist_assert_receiver_param))) of
-            Some (sl_caddress) ->
-              Tezos.transaction
-                ( receiver
-                , 0mutez
-                , sl_caddress) # ops_in
-            | None -> (failwith ("BAD_SAFELIST_CONTRACT") : list(operation))
+            | None -> (failwith ("BAD_TRANSFERLIST_CONTRACT") : list(operation))
             end
       | None -> ops_in
       end
@@ -286,7 +262,7 @@ function transfer
   ; const upd : list (operation) =
       call_assert_transfers
         ( generic_transfer_hook (parameter)
-        , store.safelist_contract
+        , store.transferlist_contract
         , params
         )
   ; const ups : storage =
@@ -518,7 +494,7 @@ function mint
       )
 
 ; const upds : list(operation) = call_assert_receivers
-    ( store.safelist_contract
+    ( store.transferlist_contract
     , Tezos.sender # receivers
     )
 
@@ -566,9 +542,9 @@ function burn
         end
       ]
 
-; const upds : list(operation) = call_assert_receiver
-    ( store.safelist_contract
-    , Tezos.sender
+; const upds : list(operation) = call_assert_receivers
+    ( store.transferlist_contract
+    , Tezos.sender # nil
     )
 
 } with
@@ -633,30 +609,27 @@ function change_pauser
   )
 
 (*
- * Sets safelist contract address
+ * Sets transferlist contract address
  *)
-function set_safelist
-  ( const parameter : set_safelist_param
+function set_transferlist
+  ( const parameter : set_transferlist_param
   ; const store     : storage
   ) : entrypoint is block
 { authorize_contract_owner (store)
 
 ; case parameter of
     Some (sl_address) ->
-      case (Tezos.get_entrypoint_opt ("%assertTransfers", sl_address) : option(contract(safelist_assert_transfers_param))) of
-        Some (sl_caddress) -> case (Tezos.get_entrypoint_opt ("%assertReceivers", sl_address) : option(contract(safelist_assert_receivers_param))) of
-          Some (sl_caddress) -> case (Tezos.get_entrypoint_opt ("%assertReceiver", sl_address) : option(contract(safelist_assert_receiver_param))) of
-            Some (sl_caddress) -> skip
-          | None -> failwith ("BAD_SAFELIST")
-          end
-        | None -> failwith ("BAD_SAFELIST")
+      case (Tezos.get_entrypoint_opt ("%assertTransfers", sl_address) : option(contract(transferlist_assert_transfers_param))) of
+        Some (sl_caddress) -> case (Tezos.get_entrypoint_opt ("%assertReceivers", sl_address) : option(contract(transferlist_assert_receivers_param))) of
+          Some (sl_caddress) -> skip
+        | None -> failwith ("BAD_TRANSFERLIST")
         end
-      | None -> failwith ("BAD_SAFELIST")
+      | None -> failwith ("BAD_TRANSFERLIST")
       end
   | None -> skip
   end
 
 } with
   ( (nil : list (operation))
-  , store with record [ safelist_contract = parameter ]
+  , store with record [ transferlist_contract = parameter ]
   )
