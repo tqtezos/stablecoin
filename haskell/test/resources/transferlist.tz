@@ -1,0 +1,322 @@
+# SPDX-FileCopyrightText: 2020 Michael J. Klein Tocqueville Group
+# SPDX-License-Identifier: LicenseRef-MIT-Klein
+
+parameter (or (list %assertTransfers (pair address
+                                           (list address)))
+              (or (list %assertReceivers address)
+                  (or (or (or (address %setIssuer)
+                              (pair %updateUser address
+                                                (option nat)))
+                          (or (pair %setTransferlistOutbound nat
+                                                             (option (pair bool
+                                                                           (set nat))))
+                              (address %setAdmin)))
+                      (or (or (pair %getIssuer unit
+                                               (contract address))
+                              (pair %getUser address
+                                             (contract (option nat))))
+                          (or (pair %assertTransferlist nat
+                                                        (option (pair bool
+                                                                      (set nat))))
+                              (pair %getAdmin unit
+                                              (contract address)))))));
+storage (pair (pair address
+                    (big_map address
+                             nat))
+              (pair (big_map nat
+                             (pair bool
+                                   (set nat)))
+                    address));
+code { CAST (pair (or (list (pair address (list address))) (or (list address) (or (or (or address (pair address (option nat))) (or (pair nat (option (pair bool (set nat)))) address)) (or (or (pair unit (contract address)) (pair address (contract (option nat)))) (or (pair nat (option (pair bool (set nat)))) (pair unit (contract address))))))) (pair (pair address (big_map address nat)) (pair (big_map nat (pair bool (set nat))) address)));
+       DUP;
+       CAR;
+       DIP { CDR };
+       IF_LEFT { DIP { DUP;
+                       DUP;
+                       CAR;
+                       DIP { CDR };
+                       DIP { CAR;
+                             DIP { NIL operation } };
+                       DUP;
+                       CAR;
+                       DIP { CDR };
+                       DIP { NIL (list address) } };
+                 ITER { DIP {  };
+                        DUP;
+                        CAR;
+                        DIP { CDR };
+                        DIG 2;
+                        DUP;
+                        DIP { DIP { DUP };
+                              COMPARE;
+                              EQ;
+                              IF { DROP;
+                                   CONS }
+                                 { DIG 3;
+                                   DUP;
+                                   DIP { SWAP;
+                                         GET;
+                                         IF_NONE { PUSH string "User not on a transferlist";
+                                                   FAILWITH }
+                                                 {  };
+                                         DIG 3;
+                                         DUP;
+                                         DIP { SWAP;
+                                               GET;
+                                               IF_NONE { PUSH string "Transferlist does not exist";
+                                                         FAILWITH }
+                                                       {  };
+                                               DUP;
+                                               CAR;
+                                               DIP { CDR };
+                                               IF {  }
+                                                  { PUSH string "outbound restricted";
+                                                    FAILWITH } } };
+                                   DUP;
+                                   DIP { SWAP;
+                                         DUG 3;
+                                         DIG 2;
+                                         ITER { SWAP;
+                                                DUP;
+                                                DIP { SWAP;
+                                                      GET;
+                                                      IF_NONE { PUSH string "User not on a transferlist";
+                                                                FAILWITH }
+                                                              {  };
+                                                      DIP { DUP };
+                                                      MEM;
+                                                      IF {  }
+                                                         { PUSH string "outbound not transferlisted";
+                                                           FAILWITH } } };
+                                         DROP 2 };
+                                   DIG 2 } } };
+                 SWAP;
+                 DIP { DROP 3 } }
+               { IF_LEFT { DIP { NIL operation;
+                                 NIL (list address) };
+                           CONS }
+                         { PAIR;
+                           DUP;
+                           CAR;
+                           DIP { CDR };
+                           IF_LEFT { IF_LEFT { IF_LEFT { DIP { DUP;
+                                                               CAR;
+                                                               DIP { CDR };
+                                                               DIP { DUP;
+                                                                     CAR;
+                                                                     DIP { CDR };
+                                                                     DIP { DUP;
+                                                                           DIP { SENDER;
+                                                                                 COMPARE;
+                                                                                 EQ;
+                                                                                 IF {  }
+                                                                                    { PUSH string "only admin may update";
+                                                                                      FAILWITH } } };
+                                                                     PAIR };
+                                                               CDR };
+                                                         PAIR;
+                                                         PAIR;
+                                                         NIL operation;
+                                                         PAIR }
+                                                       { DIP { DUP;
+                                                               CAR;
+                                                               DIP { CDR };
+                                                               DIP { DUP;
+                                                                     CAR;
+                                                                     DIP { CDR };
+                                                                     DIP { DUP;
+                                                                           DIP { SENDER;
+                                                                                 COMPARE;
+                                                                                 EQ;
+                                                                                 IF {  }
+                                                                                    { PUSH string "only admin may update";
+                                                                                      FAILWITH } } };
+                                                                     PAIR };
+                                                               DUP;
+                                                               CAR;
+                                                               DIP { CDR } };
+                                                         DUP;
+                                                         CAR;
+                                                         DIP { CDR };
+                                                         SWAP;
+                                                         DIP { DUP;
+                                                               DIP { DIP { DUP };
+                                                                     COMPARE;
+                                                                     NEQ;
+                                                                     IF {  }
+                                                                        { PUSH string "issuer is not a user";
+                                                                          FAILWITH } } };
+                                                         PAIR;
+                                                         SWAP;
+                                                         DIP { DUP;
+                                                               CAR;
+                                                               DIP { CDR };
+                                                               SWAP;
+                                                               UPDATE };
+                                                         PAIR;
+                                                         PAIR;
+                                                         NIL operation;
+                                                         PAIR } }
+                                             { IF_LEFT { DIP { DUP;
+                                                               CAR;
+                                                               DIP { CDR };
+                                                               SWAP;
+                                                               DUP;
+                                                               CAR;
+                                                               DIP { CDR };
+                                                               DIP { DUP;
+                                                                     DIP { SENDER;
+                                                                           COMPARE;
+                                                                           EQ;
+                                                                           IF {  }
+                                                                              { PUSH string "only admin may update";
+                                                                                FAILWITH } } } };
+                                                         DUP;
+                                                         CAR;
+                                                         DIP { CDR };
+                                                         UPDATE;
+                                                         PAIR;
+                                                         SWAP;
+                                                         PAIR;
+                                                         NIL operation;
+                                                         PAIR }
+                                                       { DIP { DUP;
+                                                               CAR;
+                                                               DIP { CDR };
+                                                               DIP { DUP;
+                                                                     CAR;
+                                                                     DIP { CDR };
+                                                                     DIP { SENDER;
+                                                                           COMPARE;
+                                                                           EQ;
+                                                                           IF {  }
+                                                                              { PUSH string "only admin may update";
+                                                                                FAILWITH } } } };
+                                                         SWAP;
+                                                         DIP { SWAP;
+                                                               PAIR };
+                                                         PAIR;
+                                                         NIL operation;
+                                                         PAIR } } }
+                                   { IF_LEFT { IF_LEFT { DUP;
+                                                         CAR;
+                                                         DIP { CDR };
+                                                         DIP { DIP { DUP };
+                                                               SWAP };
+                                                         PAIR;
+                                                         CDR;
+                                                         CAR;
+                                                         CAR;
+                                                         DIP { AMOUNT };
+                                                         TRANSFER_TOKENS;
+                                                         NIL operation;
+                                                         SWAP;
+                                                         CONS;
+                                                         PAIR }
+                                                       { DUP;
+                                                         CAR;
+                                                         DIP { CDR };
+                                                         DIP { DIP { DUP };
+                                                               SWAP };
+                                                         PAIR;
+                                                         DUP;
+                                                         CAR;
+                                                         DIP { CDR };
+                                                         DIP { CAR;
+                                                               CDR };
+                                                         GET;
+                                                         DIP { AMOUNT };
+                                                         TRANSFER_TOKENS;
+                                                         NIL operation;
+                                                         SWAP;
+                                                         CONS;
+                                                         PAIR } }
+                                             { IF_LEFT { DIP { DUP;
+                                                               CDR;
+                                                               CAR };
+                                                         DUP;
+                                                         CAR;
+                                                         DIP { CDR };
+                                                         SWAP;
+                                                         DIP { GET };
+                                                         IF_NONE { IF_NONE {  }
+                                                                           { PUSH string "exists";
+                                                                             FAILWITH } }
+                                                                 { DIP { IF_NONE { PUSH string "doesn't exist";
+                                                                                   FAILWITH }
+                                                                                 {  } };
+                                                                   DIP { DUP;
+                                                                         CAR;
+                                                                         DIP { CDR } };
+                                                                   DUP;
+                                                                   CAR;
+                                                                   DIP { CDR };
+                                                                   SWAP;
+                                                                   DIP { COMPARE;
+                                                                         EQ;
+                                                                         IF {  }
+                                                                            { PUSH string "unequal unrestricted";
+                                                                              FAILWITH } };
+                                                                   ITER { DIP { DUP };
+                                                                          MEM;
+                                                                          IF {  }
+                                                                             { PUSH string "unequal sets";
+                                                                               FAILWITH } };
+                                                                   DROP };
+                                                         NIL operation;
+                                                         PAIR }
+                                                       { DUP;
+                                                         CAR;
+                                                         DIP { CDR };
+                                                         DIP { DIP { DUP };
+                                                               SWAP };
+                                                         PAIR;
+                                                         CDR;
+                                                         CDR;
+                                                         CDR;
+                                                         DIP { AMOUNT };
+                                                         TRANSFER_TOKENS;
+                                                         NIL operation;
+                                                         SWAP;
+                                                         CONS;
+                                                         PAIR } } };
+                           DUP;
+                           CAR;
+                           DIP { CDR };
+                           NIL (list address) } };
+       ITER { DIP { DIP { DUP;
+                          DUP;
+                          CAR;
+                          DIP { CDR };
+                          DIP { CAR };
+                          DUP;
+                          CAR;
+                          DIP { CDR } } };
+              ITER { SWAP;
+                     DIP { SWAP;
+                           DUP;
+                           DIP { DIP { DUP };
+                                 COMPARE;
+                                 EQ;
+                                 IF { PUSH string "issuer not receiver";
+                                      FAILWITH }
+                                    { DIP { DUP };
+                                      GET;
+                                      IF_NONE { PUSH string "User not on a transferlist";
+                                                FAILWITH }
+                                              {  };
+                                      SWAP;
+                                      DIP { DIP { DUP };
+                                            GET;
+                                            IF_NONE { PUSH string "Transferlist does not exist";
+                                                      FAILWITH }
+                                                    {  };
+                                            DUP;
+                                            CAR;
+                                            DIP { CDR };
+                                            IF {  }
+                                               { PUSH string "outbound restricted";
+                                                 FAILWITH };
+                                            DROP } } } } };
+              DIP { DROP 3 } };
+       PAIR };
