@@ -54,8 +54,8 @@ import Util.Named
 -- same pool). This is supposed to create inputs that have a little more
 -- chance of being valid input that has a chance to execute successfully.
 
--- Right now safelist interaction is not tested, since it seems that doing it
--- in a useful way require modeling a safelist contract as well.
+-- Right now transferlist interaction is not tested, since it seems that doing it
+-- in a useful way require modeling a transferlist contract as well.
 
 -- | Assign pools of random address for main roles. Then generate
 -- a list of contract calls of given size. When creating the calls, addresses
@@ -163,7 +163,7 @@ data SimpleStorage = SimpleStorage
   , ssMasterMinter :: Address
   , ssPauser :: Address
   , ssPendingOwner :: Maybe Address
-  , ssSafelistContract :: Maybe Address
+  , ssTransferlistContract :: Maybe Address
   , ssOperators :: Map (Address, Address) ()
   , ssIsPaused :: Bool
   , ssTotalSupply :: Natural
@@ -186,7 +186,7 @@ storageToSs storage = let
   StorageRoles (PauserRole ssPauser) = storage
   StorageRoles (OwnerRole ssOwner) = storage
   StorageRoles (PendingOwnerRole ssPendingOwner) = storage
-  StorageSafelistContract ssSafelistContract = storage
+  StorageTransferlistContract ssTransferlistContract = storage
   StoragePaused ssIsPaused = storage
   StorageTotalSupply ssTotalSupply = storage
   in SimpleStorage {..}
@@ -205,7 +205,7 @@ ssToOriginationParams SimpleStorage {..} = let
     , opPaused = ssIsPaused
     , opMinters = minters
     , opPendingOwner = ssPendingOwner
-    , opSafelistContract = TAddress <$> ssSafelistContract
+    , opTransferlistContract = TAddress <$> ssTransferlistContract
     }
   where
     mkOwnerToOperator :: Map (Address, Address) () -> Map Address [Address]
@@ -308,7 +308,7 @@ generateOwnerAction idx = do
     , acceptOwnershipAction
     , changeMasterMinterAction
     , changePauserAction
-    ] -- We don't include `Set_safelist` in the operations.
+    ] -- We don't include `Set_transferlist` in the operations.
   pure $ ContractCall sender param idx
   where
     generateTransferOwnershipAction = do
@@ -556,7 +556,7 @@ callEntrypoint contract cc st env = case ccParameter cc of
   Accept_ownership -> callContract "accept_ownership" ()
   Change_master_minter p -> callContract "change_master_minter" p
   Change_pauser p -> callContract "change_pauser" p
-  Set_safelist p -> callContract "set_safelist" p
+  Set_transferlist p -> callContract "set_transferlist" p
   Call_FA2 fa2Param -> case fa2Param of
     FA2.Transfer p -> callContract "transfer" p
     FA2.Update_operators p -> callContract "update_operators" p
