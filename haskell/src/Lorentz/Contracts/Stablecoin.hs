@@ -25,7 +25,7 @@ module Lorentz.Contracts.Stablecoin
   , pattern StorageMinters
   , pattern StorageOperators
   , pattern StoragePaused
-  , pattern StorageSafelistContract
+  , pattern StorageTransferlistContract
   , pattern StorageMetadataBigMap
   , pattern StorageTotalSupply
   , pattern MasterMinterRole
@@ -76,7 +76,7 @@ type BurnParams = List Natural
 type TransferOwnershipParam = Address
 type ChangeMasterMinterParam = Address
 type ChangePauserParam = Address
-type SetSafelistParam = Maybe Address
+type SetTransferlistParam = Maybe Address
 
 -- | Parameter of Stablecoin contract
 data Parameter
@@ -91,7 +91,7 @@ data Parameter
   | Accept_ownership
   | Change_master_minter ChangeMasterMinterParam
   | Change_pauser ChangePauserParam
-  | Set_safelist SetSafelistParam
+  | Set_transferlist SetTransferlistParam
   deriving stock Generic
   deriving anyclass (IsoValue)
 
@@ -115,7 +115,7 @@ type ManagementMichelsonEntrypoints =
     , "Accept_ownership" :> ()
     , "Change_master_minter" :> ChangeMasterMinterParam
     , "Change_pauser" :> ChangePauserParam
-    , "Set_safelist" :> SetSafelistParam
+    , "Set_transferlist" :> SetTransferlistParam
     ]
 
 type ParameterC param =
@@ -149,13 +149,13 @@ type RolesInner = (("master_minter" :! MasterMinter, "owner" :! Owner)
 
 type Roles = "roles" :! RolesInner
 
-type SafelistContract = "safelist_contract" :! (Maybe Address)
+type TransferlistContract = "transferlist_contract" :! (Maybe Address)
 
 type TokenMetadataBigMap = "token_metadata" :! (BigMap FA2.TokenId TokenMetadata)
 
 type Storage =
   (((Ledger, MintingAllowances), (Operators, IsPaused))
-   , ((Roles, SafelistContract), (TokenMetadataBigMap, TotalSupply)))
+   , ((Roles, TokenMetadataBigMap), (TotalSupply, TransferlistContract)))
 
 pattern StorageLedger :: LedgerInner -> Storage
 pattern StorageLedger ledger <- (((arg #ledger -> (BigMap ledger), _ ), _), _)
@@ -174,20 +174,20 @@ pattern StoragePaused paused <- ((_, (_, arg #paused -> paused)), _)
 {-# COMPLETE StoragePaused #-}
 
 pattern StorageMetadataBigMap :: BigMap FA2.TokenId TokenMetadata -> Storage
-pattern StorageMetadataBigMap bigMap <- (_, (_, (arg #token_metadata -> bigMap, _)))
+pattern StorageMetadataBigMap bigMap <- (_, ((_, arg #token_metadata -> bigMap), _))
 {-# COMPLETE StorageMetadataBigMap #-}
 
 pattern StorageTotalSupply :: Natural -> Storage
-pattern StorageTotalSupply totalSupply <- (_, (_, (_, arg #total_supply -> totalSupply)))
+pattern StorageTotalSupply totalSupply <- (_, (_, (arg #total_supply -> totalSupply, _)))
 {-# COMPLETE StorageTotalSupply #-}
 
 pattern StorageRoles :: RolesInner -> Storage
 pattern StorageRoles roles <- (_ , ((arg #roles -> roles, _), _))
 {-# COMPLETE StorageRoles #-}
 
-pattern StorageSafelistContract :: Maybe Address -> Storage
-pattern StorageSafelistContract safelistContract <- (_ , ((_, arg #safelist_contract -> safelistContract), _))
-{-# COMPLETE StorageSafelistContract #-}
+pattern StorageTransferlistContract :: Maybe Address -> Storage
+pattern StorageTransferlistContract transferlistContract <- (_, (_, (_, arg #transferlist_contract -> transferlistContract)))
+{-# COMPLETE StorageTransferlistContract #-}
 
 pattern MasterMinterRole :: MasterMinter -> RolesInner
 pattern MasterMinterRole masterMinter <- ((arg #master_minter -> masterMinter, _), _)

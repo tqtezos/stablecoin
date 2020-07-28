@@ -43,14 +43,13 @@ import Data.List.NonEmpty ((!!))
 import qualified Data.Map as Map
 
 import Lorentz (arg)
-import qualified Indigo.Contracts.Safelist as Safelist
+import qualified Indigo.Contracts.Transferlist.Internal as Transferlist
 import Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin as SC
 import Lorentz.Test
 import Lorentz.Value
 import Michelson.Runtime (ExecutorError)
 import Util.Named
-
 
 testOwner, testPauser, testMasterMinter, wallet1, wallet2, wallet3, wallet4, wallet5, commonOperator :: Address
 wallet1 = genesisAddress1
@@ -98,7 +97,7 @@ data OriginationParams = OriginationParams
   , opPendingOwner :: Maybe Address
   , opPermissionsDescriptor :: PermissionsDescriptorMaybe
   , opTokenMetadata :: FA2.TokenMetadata
-  , opSafelistContract :: Maybe (TAddress Safelist.Parameter)
+  , opTransferlistContract :: Maybe (TAddress Transferlist.Parameter)
   }
 
 defaultPermissionDescriptor :: PermissionsDescriptorMaybe
@@ -170,7 +169,7 @@ defaultOriginationParams = OriginationParams
   , opPendingOwner = Nothing
   , opPermissionsDescriptor = defaultPermissionDescriptor
   , opTokenMetadata = defaultTokenMetadata
-  , opSafelistContract = Nothing
+  , opTransferlistContract = Nothing
   }
 
 addMinter
@@ -270,11 +269,11 @@ mkInitialStorage op@OriginationParams{..} =
     roles = #roles .! ((masterMinter_, owner_), (pauser_, (#pending_owner_address .! opPendingOwner)))
     operators = #operators .! (BigMap operatorMap)
     isPaused = #paused .! opPaused
-    safelistContract = #safelist_contract .! (unTAddress <$> opSafelistContract)
+    transferlistContract = #transferlist_contract .! (unTAddress <$> opTransferlistContract)
     totalSupply = #total_supply .! (sum $ Map.elems ledgerMap)
     tokenMetadata = #token_metadata .! (BigMap $ Map.fromList [(0, mkTokenMetadata $ opTokenMetadata)])
   in Just (((ledger, mintingAllowances), (operators, isPaused))
-           , ((roles, safelistContract), (tokenMetadata, totalSupply)))
+           , ((roles, tokenMetadata), (totalSupply, transferlistContract)))
   else Nothing
   where
     foldFn

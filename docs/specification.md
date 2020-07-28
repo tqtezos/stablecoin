@@ -33,8 +33,8 @@ Note that the actual storage type is implementation detail and is not specified 
 
 * The contract maintains a ledger of addresses and manages some special roles as described below.
 * Token operations can be paused, so the contract also knows whether it is paused.
-* Token operations can be guarded by the [`Safelist` contract](#safelist), so the contract also optionally stores an address of such contract.
-If its value is `None`, no safelist checks are performed.
+* Token operations can be guarded by the [`Transferlist` contract](#transferlist), so the contract also optionally stores an address of such contract.
+If its value is `None`, no transferlist checks are performed.
 
 ## Roles
 
@@ -79,18 +79,18 @@ Stablecoin contract MUST provide an additional metadata `big_map` for its tokens
 This `big_map` MUST be annotated as `%token_metadata` and can be at any position within
 contract storage. The structure of this `big_map` MUST follow [FA2 requirements](https://gitlab.com/tzip/tzip/-/blob/master/proposals/tzip-12/tzip-12.md#token_metadata-big_map).
 
-# Safelist
+# Transferlist
 
-Before describing the token contract's entrypoints we describe the `Safelist` interface.
+Before describing the token contract's entrypoints we describe the `Transferlist` interface.
 The syntax is: `entrypointName(argumentType)`.
-Required `Safelist` entrypoints:
+Required `Transferlist` entrypoints:
 * `assertTransfers(list (pair (address %from) (list %tos address)))`
   * Checks whether a transfer is permitted from one address to the other one.
   Fails if transfer is prohibited for any item from this list.
-* `assertReceiver(address)`
-  * Fails if address is not whitelisted or it is blacklisted.
 * `assertReceivers(list address)`
   * Fails if any address in the list is not whitelisted or is blacklisted.
+
+The specific interface of transferlist contracts is described in [TZIP-15](https://gitlab.com/tzip/tzip/-/blob/c38f4c2dc9da883d01e85409d34d0015d6ad272a/proposals/tzip-15/tzip-15.md)
 
 # Errors
 
@@ -122,7 +122,7 @@ The next group consists of the errors that are not part of the FA2 specification
 | `ALLOWANCE_MISMATCH`         | In `configure_minter` both allowances are not `None`, but different                                                            |
 | `ADDR_NOT_MINTER`            | An attempt is made to modify minter data of an address that's not a minter                                                     |
 | `ALLOWANCE_EXCEEDED`         | Throws when trying to mint tokens more than currently allowed for an address                                                   |
-| `BAD_SAFELIST`               | Given address is a not a smart contract complying with the safelist interface                                                  |
+| `BAD_TRANSFERLIST`           | Given address is a not a smart contract complying with the transferlist interface                                                  |
 
 Finally there are some internal errors that should be considered implementation detail and are supposed to never happen as long as the contract is originated correctly (with consistent storage).
 Since they are internal, they can be changed any time without updating this part of the specification.
@@ -147,7 +147,7 @@ Full list:
 * [`accept_ownership`](#accept_ownership)
 * [`change_master_minter`](#change_master_minter)
 * [`change_pauser`](#change_pauser)
-* [`set_safelist`](#set_safelist)
+* [`set_transferlist`](#set_transferlist)
 
 Format:
 ```
@@ -219,7 +219,7 @@ Parameter (in Michelson):
 
 - Permission logic requirements specific to this contract are described in the ["FA2 Specifics"](#fa2-specifics) chapter.
 
-- If safelist contract is set, this entrypoint MUST call its `assertTransfers` entrypoint (either directly or from the transfer hook).
+- If transferlist contract is set, this entrypoint MUST call its `assertTransfers` entrypoint (either directly or from the transfer hook).
 
 - Since the contract supports only a single token type, all `token_id` values MUST be 0.
   They are passed because FA2 requires that.
@@ -567,7 +567,7 @@ Parameter (in Michelson):
 - Minting allowance will decrease by the amount of tokens minted
   and increase the balance of receiver and total minted value.
 
-- If safelist contract is set, this entrypoint MUST call its `assertReceivers` entrypoint (either directly or from the transfer hook) checking the minter and all receivers.
+- If transferlist contract is set, this entrypoint MUST call its `assertReceivers` entrypoint (either directly or from the transfer hook) checking the minter and all receivers.
 
 - Fails with `CONTRACT_PAUSED` if the contract is paused.
 
@@ -590,7 +590,7 @@ Parameter (in Michelson): `list nat`.
 
 - Burning tokens will not increase the mintingAllowance of the address doing the burning.
 
-- If safelist contract is set, this entrypoint MUST call its `assertReceiver` entrypoint (either directly or from the transfer hook) checking the minter (`SENDER`).
+- If transferlist contract is set, this entrypoint MUST call its `assertReceivers` entrypoint (either directly or from the transfer hook) checking the minter (`SENDER`).
 
 - Fails with `CONTRACT_PAUSED` if the contract is paused.
 
@@ -635,15 +635,15 @@ Parameter (in Michelson): `address`.
 
 - Fails with `NOT_CONTRACT_OWNER` if the sender is not the contract owner.
 
-## Safelist update
+## Transferlist update
 
-### **set_safelist**
+### **set_transferlist**
 
 Parameter (in Michelson): `option address`.
 
-- Set the stored (optional) safelist address to the new one.
+- Set the stored (optional) transferlist address to the new one.
 
-- If the address does not have any entrypoint listed in the [`Safelist`](#safelist) specification, this call MUST fail with `BAD_SAFELIST`.
+- If the address does not have any entrypoint listed in the [`Transferlist`](#transferlist) specification, this call MUST fail with `BAD_TRANSFERLIST`.
 
 - Fails with `NOT_CONTRACT_OWNER` if the sender is not the contract owner.
 
@@ -724,6 +724,6 @@ In CENTRE they take a single item (a pair or an amount).
 6. CENTRE does not have `update_operator`, the closest analog is `approve`, but it does not explicitly say whether `approve` is paused by `pause`.
 In this contract `update_operator` IS paused.
 7. CENTRE defines the `blacklister` role and blacklisting is part of the CENTRE Fiat Token contract.
-Our project is different: whitelisting and blacklisting are offloaded to a separate [`Safelist` contract](#safelist).
+Our project is different: whitelisting and blacklisting are offloaded to a separate [`Transferlist` contract](#transferlist).
 
 [FA2]: https://gitlab.com/tzip/tzip/-/blob/b916f32718234b7c4016f46e00327d66702511a2/proposals/tzip-12/tzip-12.md

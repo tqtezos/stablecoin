@@ -1,15 +1,15 @@
 -- SPDX-FileCopyrightText: 2020 Globacap
 -- SPDX-License-Identifier: MPL-2.0
 --
--- | This is a simple implementation of a safelist contract that is only
+-- | This is a simple implementation of a transferlist contract that is only
 -- used in tests.
 
 {-# OPTIONS_GHC -Wno-orphans #-}
-module Indigo.Contracts.Safelist
+module Indigo.Contracts.Transferlist.Internal
   ( Parameter
   , Storage (..)
   , mkStorage
-  , safelistContract
+  , transferlistContract
   ) where
 
 import qualified Data.Set as Set
@@ -33,7 +33,6 @@ mkStorage transfers receivers = Storage
 
 data Parameter
   = AssertTransfers [("from" :! Address, "tos" :! [Address])]
-  | AssertReceiver Address
   | AssertReceivers [Address]
   deriving stock Generic
   deriving anyclass IsoValue
@@ -48,13 +47,13 @@ instance CustomErrorHasDoc "assertionFailure" where
   customErrDocMdCause =
     "Assertion failed."
 
-safelistContract :: Contract Parameter Storage
-safelistContract = defaultContract $ compileIndigoContract safelistIndigo
+transferlistContract :: Contract Parameter Storage
+transferlistContract = defaultContract $ compileIndigoContract transferlistIndigo
 
-safelistIndigo
+transferlistIndigo
   :: (HasStorage Storage)
   => Var Parameter -> IndigoProcedure
-safelistIndigo param = contractName "Dummy safelist" $ do
+transferlistIndigo param = contractName "Dummy transferlist" $ do
   entryCase (Proxy @PlainEntryPointsKind) param
     ( #cAssertTransfers //-> \transfers -> forEach transfers $ \transfer -> do
         let fromAddr = transfer #! #from
@@ -63,8 +62,6 @@ safelistIndigo param = contractName "Dummy safelist" $ do
           forEach (storage #! #sTransfers) $ \it ->
             Indigo.when ((Indigo.fst it == fromAddr) && (Indigo.snd it == toAddr)) $ setVar res True
         assertCustom_ #assertionFailure res
-    , #cAssertReceiver //-> \receiver -> do
-        assertCustom_ #assertionFailure $ (storage #! #sReceivers) ?: receiver
     , #cAssertReceivers //-> \receivers -> do
         forEach receivers $ \receiver -> do
           assertCustom_ #assertionFailure $ (storage #! #sReceivers) ?: receiver

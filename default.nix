@@ -24,6 +24,7 @@ let
             package.ghcOptions = with pkgs.lib;
               concatStringsSep " " ([
                 "-ddump-to-file" "-ddump-hi"
+                "-O0" "-Werror"
               ]);
             postInstall = weeder-hacks.collect-dump-hi-files;
         });

@@ -2,12 +2,11 @@
 -- SPDX-License-Identifier: MIT
 
 module Nettest
-  ( scTransferScenario
+  ( scNettestScenario
   ) where
 
 import qualified Data.Set as Set
 
-import qualified Indigo.Contracts.Safelist as SF
 import Lorentz hiding (comment, (>>))
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Test.Common
@@ -18,15 +17,15 @@ import Util.Named
 
 import Lorentz.Contracts.Stablecoin
 
-scTransferScenario
+scNettestScenario
   :: forall m capsM.
      (Monad m, capsM ~ NettestT m)
   => (OriginationParams -> Storage)
   -> U.Contract
-  -> U.Contract -- Note that we do not distinguish safelist and stablecoin contracts
+  -> (Set (Address, Address) -> Set Address -> capsM Address)
   -> NettestImpl m
   -> m ()
-scTransferScenario constructInitialStorage stablecoinContract safelistContract = uncapsNettest $ do
+scNettestScenario constructInitialStorage stablecoinContract originateTransferlist = uncapsNettest $ do
   comment "Resolving contract managers"
 
   superuser <- resolveNettestAddress
@@ -64,21 +63,19 @@ scTransferScenario constructInitialStorage stablecoinContract safelistContract =
     let str = constructInitialStorage initialStorage
     originateUntypedSimple "nettest.Stablecoin" (untypeValue $ toVal str) stablecoinContract
 
-  comment "Originating safelist contract"
+  comment "Originating transferlist contract"
 
   let
-    -- Dummy storage for safelist used in `safelistScenario`
-    initialSafelistStorage = SF.Storage
-      { SF.sTransfers = Set.fromList
-          [ (owner1, owner2)
-          , (owner2, owner3)
-          , (owner3, owner1)
-          ]
-      , SF.sReceivers = Set.fromList [owner1, owner2]
-      }
+    transfers =
+      Set.fromList
+        [ (owner1, owner2)
+        , (owner2, owner3)
+        , (owner3, owner1)
+        ]
 
-  sfAddress <- do
-    originateUntypedSimple "nettest.Safelist" (untypeValue $ toVal initialSafelistStorage) safelistContract
+    receivers = Set.fromList [owner1, owner2]
+
+  sfAddress <- originateTransferlist transfers receivers
 
   let
     expectFailed = flip expectFailure NettestFailedWith
@@ -205,20 +202,20 @@ scTransferScenario constructInitialStorage stablecoinContract safelistContract =
         (ep "change_pauser")
         to
 
-    setSafelist :: Address -> Address -> capsM ()
-    setSafelist from safelistAddress =
+    setTransferlist :: Address -> Address -> capsM ()
+    setTransferlist from transferlistAddress =
       callFrom
         (AddressResolved from)
         sc
-        (ep "set_safelist")
-        (Just safelistAddress)
+        (ep "set_transferlist")
+        (Just transferlistAddress)
 
-    unsetSafelist :: Address -> capsM ()
-    unsetSafelist from =
+    unsetTransferlist :: Address -> capsM ()
+    unsetTransferlist from =
       callFrom
         (AddressResolved from)
         sc
-        (ep "set_safelist")
+        (ep "set_transferlist")
         (Nothing :: Maybe Address)
 
   let
@@ -324,25 +321,26 @@ scTransferScenario constructInitialStorage stablecoinContract safelistContract =
       unpause owner1
       changePauser nettestOwner nettestPauser
 
-    safelistScenario = do
-      comment $ "Safelist interaction"
 
-      setSafelist nettestOwner sfAddress
+    transferlistScenario = do
+      comment $ "Transferlist interaction"
+
+      setTransferlist nettestOwner sfAddress
 
       callTransfer owner2 owner3 10
-      expectFailed $ callTransfer owner3 owner2 20 -- Transfer is not in safelist
+      expectFailed $ callTransfer owner3 owner2 20 -- Transfer is not in transferlist
 
       configureMinter nettestMasterMinter owner1 Nothing 100
       configureMinter nettestMasterMinter owner2 Nothing 100
 
       mint owner2 20
-      expectFailed $ mint owner3 20 -- Minter is not set in safelist
+      expectFailed $ mint owner3 20 -- Minter is not set in transferlist
 
-      comment "Unsetting safelist"
-      unsetSafelist nettestOwner
+      comment "Unsetting transferlist"
+      unsetTransferlist nettestOwner
 
   transferScenario
   mintScenario
   burnScenario
   permissionReassigmentScenario
-  safelistScenario
+  transferlistScenario
