@@ -18,4 +18,4 @@ tezos_client_args=(-A "$node_addr" -P "$node_port" -d "$TEMPDIR")
 
 tezos-client "${tezos_client_args[@]}" import secret key nettest \
              "$MONEYBAG" --force
-"$nettest_scenario" "${tezos_client_args[@]}"
+"$nettest_scenario" "${tezos_client_args[@]}" -VV
