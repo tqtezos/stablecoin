@@ -84,6 +84,6 @@ steps:
    artifact_paths:
      - ./stablecoin-client
 
-notify:
-  - email: "tezos-alerts@serokell.io"
-    if: build.state == "failed" && build.source == "schedule"
+# notify:
+#   - email: "tezos-alerts@serokell.io"
+#     if: build.state == "failed" && build.source == "schedule"
