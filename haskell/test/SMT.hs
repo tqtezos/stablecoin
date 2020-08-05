@@ -525,13 +525,14 @@ interpretUntyped_ uContract@U.Contract{..} epName paramU initStU env = do
       <- first IllTypedContract $ typeCheckContract uContract
   let
     runTC :: forall t. T.SingI t => U.Value -> Either TCError (T.Value t)
-    runTC =
-      runTypeCheck (TypeCheckInstr contractParameter) .
-      usingReaderT def .
-      typeCheckValue @t
+    runTC value = do
+      paramType <- mkSomeParamType contractParameter
+      runTypeCheck (TypeCheckContract paramType) .
+        usingReaderT def $
+        typeCheckValue @t value
 
-  case T.mkEntryPointCall epName cpNotes of
-      Just (T.MkEntryPointCallRes (_ :: T.Notes arg) epCallT) -> do
+  case T.mkEntrypointCall epName cpNotes of
+      Just (T.MkEntrypointCallRes (_ :: T.Notes arg) epCallT) -> do
         paramV <- first IllTypedParam $ runTC @arg paramU
         case cast instr of
           Just (cInst :: T.ContractCode cp (T.ToT Storage)) ->

@@ -41,6 +41,7 @@ tests:
       - morley
       - morley-prelude
       - lorentz
+      - cleveland
       - tasty
       - tasty-hspec
       - tasty-quickcheck
@@ -61,7 +62,7 @@ tests:
       - containers
       - lorentz
       - morley
-      - morley-nettest
+      - cleveland
       - morley-prelude
       - optparse-applicative
       - stablecoin

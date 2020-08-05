@@ -23,7 +23,7 @@ data Storage = Storage
   , sReceivers :: Set Address
   }
   deriving stock Generic
-  deriving anyclass IsoValue
+  deriving anyclass (IsoValue, HasAnnotation)
 
 mkStorage :: Set (Address, Address) -> [Address] -> Storage
 mkStorage transfers receivers = Storage
@@ -37,8 +37,8 @@ data Parameter
   deriving stock Generic
   deriving anyclass IsoValue
 
-instance ParameterHasEntryPoints Parameter where
-  type ParameterEntryPointsDerivation Parameter = EpdPlain
+instance ParameterHasEntrypoints Parameter where
+  type ParameterEntrypointsDerivation Parameter = EpdPlain
 
 type instance ErrorArg "assertionFailure" = ()
 
@@ -54,7 +54,7 @@ transferlistIndigo
   :: (HasStorage Storage)
   => Var Parameter -> IndigoProcedure
 transferlistIndigo param = contractName "Dummy transferlist" $ do
-  entryCase (Proxy @PlainEntryPointsKind) param
+  entryCase (Proxy @PlainEntrypointsKind) param
     ( #cAssertTransfers //-> \transfers -> forEach transfers $ \transfer -> do
         let fromAddr = transfer #! #from
         res <- new False
