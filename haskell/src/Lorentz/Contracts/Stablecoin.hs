@@ -14,6 +14,9 @@ module Lorentz.Contracts.Stablecoin
   , Parameter (..)
   , Storage
   , TransferOwnershipParam
+  , PermissionsDescriptor
+  , OwHook(..)
+  , OwHookOptReq(..)
   , mkPermissionDescriptor
   , mkTokenMetadata
   , stablecoinPermissionsDescriptor
@@ -33,18 +36,22 @@ module Lorentz.Contracts.Stablecoin
   , pattern PauserRole
   , pattern PendingOwnerRole
   , pattern ConfigureMinterParams
+
+  , stablecoinPath
   ) where
 
 import Fmt
 import qualified Text.Show
 
 import Lorentz
-import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
-import Lorentz.Contracts.Spec.FA2Interface
-  (OperatorTransferPolicy(..), OwnerTransferMode(..))
 import qualified Lorentz as L
+import Lorentz.Contracts.Spec.FA2Interface (OperatorTransferPolicy(..), OwnerTransferMode(..))
+import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Util.Named
 
+-- | The path to the compiled stablecoin contract.
+stablecoinPath :: FilePath
+stablecoinPath = "./test/resources/stablecoin.tz"
 
 ------------------------------------------------------------------
 -- Parameter

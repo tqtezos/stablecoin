@@ -34,6 +34,7 @@ endef
 
 # Build everything haskell-related (including tests and benchmarks) with development options.
 build:
+	$(call build_stablecoin_contract)
 	stack build $(STACK_DEV_OPTIONS) $(STACK_BUILD_MORE_OPTIONS) $(PACKAGE)
 
 test:
@@ -59,10 +60,12 @@ nettest:
 
 # Run haddock for all packages.
 haddock:
+	$(call build_stablecoin_contract)
 	stack haddock $(STACK_DEV_OPTIONS) $(PACKAGE)
 
 # Run haddock for all our packages, but not for dependencies.
 haddock-no-deps:
+	$(call build_stablecoin_contract)
 	stack haddock $(STACK_DEV_OPTIONS) $(PACKAGE) --no-haddock-deps
 
 stylish:

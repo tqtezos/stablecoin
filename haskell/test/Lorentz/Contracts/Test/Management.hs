@@ -776,7 +776,7 @@ managementSpec originate = do
   describe "Contract's Permissions_descriptor entrypoint" $
     it "returns the expected value" $ integrationalTestExpectation $
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
-        consumer <- lOriginateEmpty @PermissionsDescriptor contractConsumer "consumer"
+        consumer <- lOriginateEmpty @FA2.PermissionsDescriptor contractConsumer "consumer"
         let permissionsDescriptorQuery = toContractRef consumer
         lCallEP stablecoinContract (Call @"Permissions_descriptor") permissionsDescriptorQuery
 
@@ -785,4 +785,3 @@ managementSpec originate = do
             then Right ()
             else Left $ CustomTestError "Unexpected permission descriptor"
           _ -> Left $ CustomTestError "Unexpected permission descriptor"
-

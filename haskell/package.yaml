@@ -9,6 +9,7 @@ version:             1.0.0
 extra-source-files:
 - README.md
 - ChangeLog.md
+- test/resources/stablecoin.tz
 
 synopsis:            FA2-based tezos stablecoin smart contract
 category:            Blockchain
@@ -23,12 +24,24 @@ library:
 
   dependencies:
     - morley-prelude
+    - morley-client
     - lorentz
     - morley
     - containers
     - indigo
     - tasty-quickcheck
     - fmt
+    - optparse-applicative
+    - file-embed
+
+executables:
+  stablecoin-client:
+    main: Main.hs
+    source-dirs: client
+
+    dependencies:
+      - morley-prelude
+      - stablecoin
 
 tests:
   stablecoin-test:
