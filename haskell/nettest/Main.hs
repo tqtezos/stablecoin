@@ -11,7 +11,7 @@ import qualified Indigo.Contracts.Transferlist.External as External
 import qualified Indigo.Contracts.Transferlist.Internal as Internal
 import Lorentz (ToT, compileLorentzContract, toVal)
 import Lorentz.Contracts.Test.Common
-import Michelson.Runtime (parseExpandContract, prepareContract)
+import Michelson.Runtime (parseExpandContract)
 import Michelson.Typed (untypeValue)
 import Michelson.Typed.Convert (convertContract)
 import Morley.Nettest
@@ -19,6 +19,8 @@ import Nettest (scNettestScenario)
 import Tezos.Address
 import Util.IO
 import Util.Named
+
+import Stablecoin.Client.Contract (parseStablecoinContract)
 
 externalTransferlistContractPath :: FilePath
 externalTransferlistContractPath = "test/resources/transferlist.tz"
@@ -32,7 +34,7 @@ main = do
       (#description .! "Stablecoin nettest scenarioWithInternalTransferlist")
       (#header .! "ManagedLedger nettest")
       (#parser .! clientParser)
-  stablecoinContract <- prepareContract $ Just "test/resources/stablecoin.tz"
+  stablecoinContract <- parseStablecoinContract
   externalTransferlistFile <- readFileUtf8 externalTransferlistContractPath
   externalTransferlistContract <- either (error "cannot parse transferlist contract") pure $
     parseExpandContract (Just externalTransferlistContractPath) externalTransferlistFile

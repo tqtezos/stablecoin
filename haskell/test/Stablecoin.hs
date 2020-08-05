@@ -9,6 +9,7 @@ module Stablecoin
 
 import Test.Hspec (Spec)
 import Test.Tasty (TestTree)
+import Test.Tasty.Hspec (runIO)
 import Test.Tasty.QuickCheck (testProperty, withMaxSuccess)
 
 import Lorentz (TAddress(..))
@@ -17,15 +18,13 @@ import Lorentz.Contracts.Stablecoin as SC
 import Lorentz.Contracts.Test.Common
 import Lorentz.Contracts.Test.FA2
 import Lorentz.Contracts.Test.Management
-import Michelson.Test.Import
 import Michelson.Test.Integrational
 import Michelson.Typed hiding (TAddress)
 import qualified Michelson.Untyped as U
 import SMT
 import Tezos.Core
 
-contractPath :: FilePath
-contractPath = "test/resources/stablecoin.tz"
+import Stablecoin.Client.Contract (parseStablecoinContract)
 
 origination :: forall param . U.Contract -> OriginationFn param
 origination contract (mkInitialStorage -> Just storageVal) = pure . TAddress @param <$>
@@ -33,13 +32,17 @@ origination contract (mkInitialStorage -> Just storageVal) = pure . TAddress @pa
 origination _ _ = pure Nothing
 
 spec_FA2 :: Spec
-spec_FA2 = specWithUntypedContract contractPath $ fa2Spec . origination @FA2.Parameter
+spec_FA2 =
+  runIO parseStablecoinContract >>= fa2Spec . origination @FA2.Parameter
 
 test_SMT :: IO [TestTree]
-test_SMT = testTreesWithUntypedContract contractPath $ \contract -> pure
-  [ testProperty "have the same state as the model after running the inputs"
-    (withMaxSuccess 20 $ smtProperty contract)
-  ]
+test_SMT = do
+  contract <- parseStablecoinContract
+  pure
+    [ testProperty "have the same state as the model after running the inputs"
+      (withMaxSuccess 20 $ smtProperty contract)
+    ]
 
 spec_Management :: Spec
-spec_Management = specWithUntypedContract contractPath $ managementSpec . origination @SC.Parameter
+spec_Management =
+  runIO parseStablecoinContract >>= managementSpec . origination @SC.Parameter
