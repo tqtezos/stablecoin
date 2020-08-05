@@ -53,5 +53,6 @@ in
   lib = project.stablecoin.components.library;
   test = project.stablecoin.components.tests.stablecoin-test;
   nettest = project.stablecoin.components.tests.stablecoin-nettest;
+  stablecoin-client = project.stablecoin.components.exes.stablecoin-client;
   inherit tezos-contract tezos-client pkgs weeder-script morley;
 }

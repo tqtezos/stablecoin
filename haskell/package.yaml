@@ -33,6 +33,11 @@ library:
     - fmt
     - optparse-applicative
     - file-embed
+    - cleveland
+    - process
+    - megaparsec
+    - caps
+    - text
 
 executables:
   stablecoin-client:
