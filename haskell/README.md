@@ -5,12 +5,28 @@ SPDX-License-Identifier: MIT
 
 # Stablecoin Haskell
 
-This folder contains a Haskell library to interact with the stablecoin contract (basically Haskell bindings) and tests for it.
+This folder contains:
+
+1. a Haskell library to interact with the stablecoin contract (basically Haskell bindings) and tests for it.
+2. a `stablecoin-client` executable to deploy and interact with the stablecoin contract.
 
 ## Build Instructions
 
 You need [Stack](http://haskellstack.org/) to build this package.
-Run `stack build` to build the library.
+
+To build the library and the executable:
+1. Copy the stablecoin contract to `test/resources/stablecoin.tz` and then run `stack build`.
+2. Or, alternatively, run `make build`.
+
+Run `stack install` to install the `stablecoin-client` globally.
+
+## Run Instructions
+
+Pre-requisites: `tezos-client` must be installed.
+
+If the `stablecoin-client` was installed globally with `stack install`, then run `stablecoin-client --help`
+to see a list of the available commands.
+Otherwise, run `stack run stablecoin-client -- --help`.
 
 ## Tests
 

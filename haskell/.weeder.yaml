@@ -8,6 +8,11 @@
       - name: Redundant build-depends entry
       - depends: base-noprelude
   - section:
+    - name: exe:stablecoin-client
+    - message:
+      - name: Redundant build-depends entry
+      - depends: base-noprelude
+  - section:
     - name: library
     - message:
       - name: Redundant build-depends entry

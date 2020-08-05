@@ -14,6 +14,9 @@ module Lorentz.Contracts.Stablecoin
   , Parameter (..)
   , Storage
   , TransferOwnershipParam
+  , PermissionsDescriptor
+  , OwHook(..)
+  , OwHookOptReq(..)
   , mkPermissionDescriptor
   , mkTokenMetadata
   , stablecoinPermissionsDescriptor
@@ -33,18 +36,22 @@ module Lorentz.Contracts.Stablecoin
   , pattern PauserRole
   , pattern PendingOwnerRole
   , pattern ConfigureMinterParams
+
+  , stablecoinPath
   ) where
 
 import Fmt
 import qualified Text.Show
 
 import Lorentz
-import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
-import Lorentz.Contracts.Spec.FA2Interface
-  (OperatorTransferPolicy(..), OwnerTransferMode(..))
 import qualified Lorentz as L
+import Lorentz.Contracts.Spec.FA2Interface (OperatorTransferPolicy(..), OwnerTransferMode(..))
+import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Util.Named
 
+-- | The path to the compiled stablecoin contract.
+stablecoinPath :: FilePath
+stablecoinPath = "./test/resources/stablecoin.tz"
 
 ------------------------------------------------------------------
 -- Parameter
@@ -101,8 +108,8 @@ instance Buildable Parameter where
 instance Show Parameter where
   show = pretty
 
-instance ParameterHasEntryPoints Parameter where
-  type ParameterEntryPointsDerivation Parameter = EpdRecursive
+instance ParameterHasEntrypoints Parameter where
+  type ParameterEntrypointsDerivation Parameter = EpdRecursive
 
 type ManagementMichelsonEntrypoints =
     [ "Pause" :> ()
@@ -120,7 +127,7 @@ type ManagementMichelsonEntrypoints =
 
 type ParameterC param =
   ( FA2.FA2ParameterC param
-  , ParameterContainsEntryPoints param ManagementMichelsonEntrypoints
+  , ParameterContainsEntrypoints param ManagementMichelsonEntrypoints
   )
 
 ------------------------------------------------------------------
@@ -208,11 +215,11 @@ pattern PendingOwnerRole pendingOwner <- (_, (_, arg #pending_owner_address -> p
 -- Permissions descriptor
 data OwHookOptReq = OptOH | ReqOp
   deriving stock (Eq, Generic, Show)
-  deriving anyclass (IsoValue, L.HasTypeAnn)
+  deriving anyclass (IsoValue, L.HasAnnotation)
 
 data OwHook =  OwNoOp | OwOptReq OwHookOptReq
   deriving stock (Eq, Generic, Show)
-  deriving anyclass (IsoValue, L.HasTypeAnn)
+  deriving anyclass (IsoValue, L.HasAnnotation)
 
 type PermissionsDescriptor =
   ((Maybe FA2.CustomPermissionPolicy, FA2.OperatorTransferPolicy), (OwHook, OwHook))

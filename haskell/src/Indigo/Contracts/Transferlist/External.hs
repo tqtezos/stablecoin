@@ -26,7 +26,7 @@ data OutboundTransferlists = OutboundTransferlists
   , allowedTransferlists :: Set TransferlistId
   }
   deriving stock (Generic, Show)
-  deriving anyclass (IsoValue, HasTypeAnn)
+  deriving anyclass (IsoValue, HasAnnotation)
 
 data Storage = Storage
   { issuer :: Address
@@ -35,7 +35,7 @@ data Storage = Storage
   , admin :: Address
   }
   deriving stock Generic
-  deriving anyclass (IsoValue, HasTypeAnn)
+  deriving anyclass (IsoValue, HasAnnotation)
 
 -- | Construct an external whitelist storage from our internal one.
 -- This function basically converts `Set (from, to)` to

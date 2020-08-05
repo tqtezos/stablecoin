@@ -90,7 +90,7 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
       (#amount .! value)
 
     callTransferWithOperator op from to value =
-      callFrom (AddressResolved op) sc (ep "transfer") (tp from to value)
+      callFrom' (AddressResolved op) sc (ep "transfer") (tp from to value)
 
     callTransfer = join callTransferWithOperator
 
@@ -98,7 +98,7 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
       :: [("from_" :! Address, [("to_" :! Address, "amount" :! Natural)])]
       -> capsM ()
     callTransfers = mapM_ $ \(from@(arg #from_ -> from_), destinations) ->
-      callFrom
+      callFrom'
         (AddressResolved from_)
         sc
         (ep "transfer")
@@ -106,7 +106,7 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
 
     configureMinter :: Address -> Address -> Maybe Natural -> Natural -> capsM ()
     configureMinter from for expectedAllowance newAllowance =
-      callFrom
+      callFrom'
         (AddressResolved from)
         sc
         (ep "configure_minter")
@@ -116,7 +116,7 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
 
     removeMinter :: Address -> Address -> capsM ()
     removeMinter from whom =
-      callFrom
+      callFrom'
         (AddressResolved from)
         sc
         (ep "remove_minter")
@@ -124,7 +124,7 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
 
     addOperatorNettest :: Address -> Address -> capsM ()
     addOperatorNettest from op =
-      callFrom
+      callFrom'
         (AddressResolved from)
         sc
         (ep "update_operators")
@@ -132,7 +132,7 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
 
     removeOperator :: Address -> Address -> capsM ()
     removeOperator from op =
-      callFrom
+      callFrom'
         (AddressResolved from)
         sc
         (ep "update_operators")
@@ -140,7 +140,7 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
 
     mint :: Address -> Natural -> capsM ()
     mint to_ value =
-      callFrom
+      callFrom'
         (AddressResolved to_)
         sc
         (ep "mint")
@@ -148,7 +148,7 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
 
     burn :: Address -> Natural -> capsM ()
     burn from amount_ =
-      callFrom
+      callFrom'
         (AddressResolved from)
         sc
         (ep "burn")
@@ -156,7 +156,7 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
 
     pause :: Address -> capsM ()
     pause from =
-      callFrom
+      callFrom'
         (AddressResolved from)
         sc
         (ep "pause")
@@ -164,7 +164,7 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
 
     unpause :: Address -> capsM ()
     unpause from =
-      callFrom
+      callFrom'
         (AddressResolved from)
         sc
         (ep "unpause")
@@ -172,7 +172,7 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
 
     transferOwnership :: Address -> Address -> capsM ()
     transferOwnership from to =
-      callFrom
+      callFrom'
         (AddressResolved from)
         sc
         (ep "transfer_ownership")
@@ -180,7 +180,7 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
 
     acceptOwnership :: Address -> capsM ()
     acceptOwnership from =
-      callFrom
+      callFrom'
         (AddressResolved from)
         sc
         (ep "accept_ownership")
@@ -188,7 +188,7 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
 
     changeMasterMinter :: Address -> Address -> capsM ()
     changeMasterMinter from to =
-      callFrom
+      callFrom'
         (AddressResolved from)
         sc
         (ep "change_master_minter")
@@ -196,7 +196,7 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
 
     changePauser :: Address -> Address -> capsM ()
     changePauser from to =
-      callFrom
+      callFrom'
         (AddressResolved from)
         sc
         (ep "change_pauser")
@@ -204,7 +204,7 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
 
     setTransferlist :: Address -> Address -> capsM ()
     setTransferlist from transferlistAddress =
-      callFrom
+      callFrom'
         (AddressResolved from)
         sc
         (ep "set_transferlist")
@@ -212,7 +212,7 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
 
     unsetTransferlist :: Address -> capsM ()
     unsetTransferlist from =
-      callFrom
+      callFrom'
         (AddressResolved from)
         sc
         (ep "set_transferlist")
@@ -344,3 +344,29 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
   burnScenario
   permissionReassigmentScenario
   transferlistScenario
+
+-- This is a temporary solution.
+-- Changes made in cleveland's `callFrom` have caused some issues when calling
+-- entrypoints other than the default.
+-- So we've temporarily copied the old `callFrom` implementation here and
+-- renamed it to `callFrom'`.
+-- See discussion here: https://github.com/tqtezos/stablecoin/pull/79#discussion_r464983707
+--
+-- TODO: delete this after these comments have been addressed:
+-- https://gitlab.com/morley-framework/morley/-/merge_requests/499#note_388448660
+callFrom'
+  :: (MonadNettest caps base m, NiceParameter v)
+  => AddressOrAlias
+  -> AddressOrAlias
+  -> EpName
+  -> v
+  -> m ()
+callFrom' from to epName param =
+  transfer $
+    TransferData
+      { tdFrom = from
+      , tdTo = to
+      , tdAmount = zeroMutez
+      , tdEntrypoint = epName
+      , tdParameter = param
+      }

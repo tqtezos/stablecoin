@@ -3,7 +3,7 @@
 
 env:
   FETCH_CONTRACT:
-    "mkdir -p test/resources/ && buildkite-agent artifact download stablecoin.tz test/resources/ --step \"LIGO-contract\""
+    "mkdir -p haskell/test/resources/ && buildkite-agent artifact download stablecoin.tz haskell/test/resources/ --step \"LIGO-contract\""
 
 steps:
  - label: hlint
@@ -21,20 +21,23 @@ steps:
    if: *not_scheduled
    label: xrefcheck
    soft_fail: true
- - label: build library
-   if: *not_scheduled
-   command: nix build -L -f. lib
  - label: LIGO-contract
    commands:
      - nix-build -A tezos-contract -o stablecoin_raw.tz
      - nix run -f. morley -c morley optimize --contract stablecoin_raw.tz --output stablecoin.tz
    artifact_paths:
      - stablecoin.tz
+ - label: build library
+   if: *not_scheduled
+   commands:
+     - eval "$FETCH_CONTRACT"
+     - nix build -L -f. lib
  - label: test
    if: *not_scheduled
    commands:
      - eval "$FETCH_CONTRACT"
-     - nix build -L -f. test
+     - cd haskell
+     - nix build -L -f .. test
      - ./result/bin/stablecoin-test
  - label: nettest-local-chain
    if: *not_scheduled
@@ -44,10 +47,10 @@ steps:
      NETTEST_NODE_PORT: "8734"
      MONEYBAG: "unencrypted:edsk3GjD83F7oj2LrnRGYQer99Fj69U2QLyjWGiJ4UoBZNQwS38J4v"
    commands: &run-nettest
-     - nix build -L -f. nettest
-     - cd haskell/
      - eval "$FETCH_CONTRACT"
-     - nix run -f ../ tezos-client -c ../scripts/ci/run-local-chain-nettest.sh ../result/bin/stablecoin-nettest
+     - cd haskell/
+     - nix build -L -f ../ nettest
+     - nix run -f ../ tezos-client stablecoin-client -c ../scripts/ci/run-local-chain-nettest.sh ./result/bin/stablecoin-nettest
    retry: &retry-nettest
       automatic:
         limit: 1
@@ -66,6 +69,7 @@ steps:
  - label: weeder
    if: *not_scheduled
    commands:
+     - eval "$FETCH_CONTRACT"
      - cd haskell
      - nix-build .. -A weeder-script
      # weeder needs .cabal file:

@@ -19,6 +19,11 @@ Apart from LIGO implementation of the contract we have [a Haskell library](haske
 It is based on the [morley framework](https://gitlab.com/morley-framework/morley).
 It allows us to use features of `morley` (such as testing engine) with this contract.
 
+## Stablecoin client
+
+We have a `stablecoin-client` executable that allows deploying and interacting with the stablecoin contract.
+Please refer to the [`haskell/`] directory for details.
+
 ## Tests
 
 Tests are implemented in the same Haskell package.

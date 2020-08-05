@@ -104,7 +104,7 @@ data OperatorTransferPolicy
   | NoTransfer ("no_transfer" :! ())
   | OwnerOrOperatorTransfer ("owner_or_operator_transfer" :! ())
   deriving stock (Eq, Generic, Show)
-  deriving anyclass (IsoValue, HasTypeAnn)
+  deriving anyclass (IsoValue, HasAnnotation)
 
 instance Arbitrary OperatorTransferPolicy where
   arbitrary =
@@ -122,7 +122,7 @@ data OwnerTransferMode
   | OptionalOwnerHook ("optional_owner_hook" :! ())
   | RequiredOwnerHook ("required_owner_hook" :! ())
   deriving stock (Generic, Show)
-  deriving anyclass (IsoValue, HasTypeAnn)
+  deriving anyclass (IsoValue, HasAnnotation)
 
 instance Arbitrary OwnerTransferMode where
   arbitrary =
@@ -169,7 +169,7 @@ data UpdateOperator
   = Add_operator OperatorParam
   | Remove_operator OperatorParam
   deriving stock (Generic, Show)
-  deriving anyclass (IsoValue, HasTypeAnn)
+  deriving anyclass (IsoValue, HasAnnotation)
 
 instance Buildable UpdateOperator where
   build = genericF
@@ -211,8 +211,8 @@ instance Buildable (inp :-> out) where
 instance Buildable Parameter where
   build = genericF
 
-instance ParameterHasEntryPoints Parameter where
-  type ParameterEntryPointsDerivation Parameter = EpdPlain
+instance ParameterHasEntrypoints Parameter where
+  type ParameterEntrypointsDerivation Parameter = EpdPlain
 
 type FA2ParameterMichelsonEntrypoints =
   [ "Transfer" :> TransferParams
@@ -225,7 +225,7 @@ type FA2ParameterMichelsonEntrypoints =
   ]
 
 type FA2ParameterC param =
-  ParameterContainsEntryPoints param FA2ParameterMichelsonEntrypoints
+  ParameterContainsEntrypoints param FA2ParameterMichelsonEntrypoints
 
 -- | Owner hook interface
 --
@@ -245,7 +245,7 @@ data FA2OwnerHook
   = Tokens_sent TransferDescriptorParam
   | Tokens_received TransferDescriptorParam
   deriving stock (Generic, Eq, Show)
-  deriving anyclass (IsoValue, HasTypeAnn)
+  deriving anyclass (IsoValue, HasAnnotation)
 
 instance Buildable TransferDestinationDescriptor where
   build = genericF
@@ -259,5 +259,5 @@ instance Buildable TransferDestination where
 instance Buildable FA2OwnerHook where
   build = genericF
 
-instance ParameterHasEntryPoints FA2OwnerHook where
-  type ParameterEntryPointsDerivation FA2OwnerHook = EpdPlain
+instance ParameterHasEntrypoints FA2OwnerHook where
+  type ParameterEntrypointsDerivation FA2OwnerHook = EpdPlain

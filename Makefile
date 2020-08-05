@@ -16,7 +16,8 @@ all: build-ligo build-haskell
 build-ligo:
 	$(MAKE_LIGO) stablecoin.tz
 
-# Build everything haskell-related (including tests and benchmarks) with development options.
+# Compile LIGO contract and then build everything haskell-related (including tests and benchmarks)
+# with development options.
 build-haskell:
 	$(MAKE_HASKELL) build
 
