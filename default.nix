@@ -46,10 +46,20 @@ let
     installPhase = "cp stablecoin.tz $out";
   };
   tezos-client = (import "${sources.tezos-packaging}/pkgs.nix" {}).ocamlPackages.tezos-client;
+
+  # nixpkgs has weeder 2, but we use weeder 1
+  weeder-legacy = pkgs.haskellPackages.callHackageDirect {
+    pkg = "weeder";
+    ver = "1.0.9";
+    sha256 = "0gfvhw7n8g2274k74g8gnv1y19alr1yig618capiyaix6i9wnmpa";
+  } {};
+
   weeder-script = weeder-hacks.weeder-script {
+    weeder = weeder-legacy;
     hs-pkgs = project;
     local-packages = local-packages;
   };
+
   morley =
     (pkgs.haskell-nix.hackage-package
       { name = "morley"; version = "1.4.0"; compiler-nix-name = "ghc883"; }
