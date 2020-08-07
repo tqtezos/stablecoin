@@ -56,7 +56,6 @@ let
     ).components.exes.morley;
 in
 {
-  all = project.stablecoin.components.all;
   lib = project.stablecoin.components.library;
   test = project.stablecoin.components.tests.stablecoin-test;
   nettest = project.stablecoin.components.tests.stablecoin-nettest;
