@@ -343,7 +343,6 @@ getStorage (arg #contract -> contract) = do
 
 data StablecoinClientError
   = SCEExpressionParseError Expression FromExpressionError
-  | forall k v. SCEBigMapNotFound Text (BigMapId k v)
 
 deriving stock instance Show StablecoinClientError
 
@@ -352,8 +351,6 @@ instance Buildable StablecoinClientError where
     "Failed to parse expression:\n" +|
     expr |+ "\n" <>
     "Parse error: " +| err |+ ""
-  build (SCEBigMapNotFound bigMapName bigMapId) =
-    "Big map '" +| bigMapName |+ "' with ID '" +| bigMapId |+ "' not found"
 
 instance Exception StablecoinClientError where
   displayException = pretty
