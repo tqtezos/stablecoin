@@ -1,16 +1,4 @@
 {
-    "haskell.nix": {
-        "branch": "master",
-        "description": "Alternative Haskell Infrastructure for Nixpkgs",
-        "homepage": "https://input-output-hk.github.io/haskell.nix",
-        "owner": "input-output-hk",
-        "repo": "haskell.nix",
-        "rev": "f4136211c933b444ab2e0f358abd223929970220",
-        "sha256": "1b9nxzkg29hwczr6pb6a7arxka8z0swzq7b2bqyxqzr4qvpcjlc1",
-        "type": "tarball",
-        "url": "https://github.com/input-output-hk/haskell.nix/archive/f4136211c933b444ab2e0f358abd223929970220.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
-    },
     "haskell-nix-weeder": {
         "branch": "master",
         "description": "haskell.nix + weeder",
@@ -23,10 +11,22 @@
         "url": "https://github.com/serokell/haskell-nix-weeder/archive/7f11f514b54474c3281b25ac2c09975c918e0492.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
+    "haskell.nix": {
+        "branch": "master",
+        "description": "Alternative Haskell Infrastructure for Nixpkgs",
+        "homepage": "https://input-output-hk.github.io/haskell.nix",
+        "owner": "input-output-hk",
+        "repo": "haskell.nix",
+        "rev": "f4136211c933b444ab2e0f358abd223929970220",
+        "sha256": "1b9nxzkg29hwczr6pb6a7arxka8z0swzq7b2bqyxqzr4qvpcjlc1",
+        "type": "tarball",
+        "url": "https://github.com/input-output-hk/haskell.nix/archive/f4136211c933b444ab2e0f358abd223929970220.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
     "ligo": {
         "ref": "dev",
         "repo": "https://gitlab.com/ligolang/ligo",
-        "rev": "599944343d117de1fd929aa77134d5ef3ecbd479",
+        "rev": "3862c0444416a2e4aba7ad116eff675cacc324d3",
         "type": "git"
     },
     "nixpkgs": {
