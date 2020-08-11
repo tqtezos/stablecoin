@@ -75,6 +75,14 @@ steps:
      # weeder needs .cabal file:
      - nix run -f.. pkgs.haskellPackages.hpack -c hpack
      - ./result
+ - label: packaging
+   if: *not_scheduled
+   commands:
+     - eval "$FETCH_CONTRACT"
+     - nix-build -A stablecoin-client -o stablecoin-static
+     - nix run -f . pkgs.upx -c upx stablecoin-static/bin/stablecoin-client -o stablecoin-client
+   artifact_paths:
+     - ./stablecoin-client
 
 notify:
   - email: "tezos-alerts@serokell.io"

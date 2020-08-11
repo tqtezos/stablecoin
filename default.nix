@@ -2,19 +2,24 @@
 # SPDX-License-Identifier: MIT
 
 { sources ? import ./nix/sources.nix
+, static ? true
 , haskell-nix ? import sources."haskell.nix" { }
 , pkgs ? import sources.nixpkgs haskell-nix.nixpkgsArgs
 , weeder-hacks ? import sources.haskell-nix-weeder { inherit pkgs; }
 , ligo ? (import "${sources.ligo}/nix" { }).ligo-bin
 }:
 let
+  haskell-nix =
+    if static
+    then pkgs.pkgsCross.musl64.haskell-nix
+    else pkgs.haskell-nix;
   local-packages = [{
       name = "stablecoin";
       subdirectory = ".";
   }];
   local-packages-names = map (p: p.name) local-packages;
-  project = pkgs.haskell-nix.stackProject {
-    src = pkgs.haskell-nix.haskellLib.cleanGit {
+  project = haskell-nix.stackProject {
+    src = haskell-nix.haskellLib.cleanGit {
       name = "stablecoin";
       src = ./haskell;
     };
