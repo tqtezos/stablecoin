@@ -270,10 +270,9 @@ mkInitialStorage op@OriginationParams{..} =
     operators = #operators .! (BigMap operatorMap)
     isPaused = #paused .! opPaused
     transferlistContract = #transferlist_contract .! (unTAddress <$> opTransferlistContract)
-    totalSupply = #total_supply .! (sum $ Map.elems ledgerMap)
     tokenMetadata = #token_metadata .! (BigMap $ Map.fromList [(0, mkTokenMetadata $ opTokenMetadata)])
   in Just (((ledger, mintingAllowances), (operators, isPaused))
-           , ((roles, tokenMetadata), (totalSupply, transferlistContract)))
+           , ((roles, tokenMetadata), transferlistContract))
   else Nothing
   where
     foldFn

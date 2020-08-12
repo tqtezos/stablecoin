@@ -19,7 +19,7 @@ import Stablecoin.Client
 import Stablecoin.Client.Cleveland
   (StablecoinScenario, acceptOwnership, assertEq, burn, changeMasterMinter, changePauser,
   configureMinter, deploy, getBalanceOf, getContractOwner, getMasterMinter, getMintingAllowance,
-  getPaused, getPauser, getPendingContractOwner, getTokenMetadata, getTotalSupply, getTransferlist,
+  getPaused, getPauser, getPendingContractOwner, getTokenMetadata, getTransferlist,
   isOperator, mint, pause, permissionsDescriptor, removeMinter, revealKeyUnlessRevealed,
   setTransferlist, transferOwnership, unpause, updateOperators)
 import qualified Stablecoin.Client.Cleveland as SC
@@ -81,7 +81,6 @@ stablecoinClientScenario aliasPrefix = do
   burn (#sender .! minter) contract [1]
   getBalanceOf contract user1 >>=  \balance -> balance `assertEq` 7
   getBalanceOf contract user2 >>=  \balance -> balance `assertEq` 0
-  getTotalSupply contract >>= \supply -> supply `assertEq` 7
 
   SC.transfer (#sender .! minter) contract user1 user2 2
   getBalanceOf contract user1 >>=  \balance -> balance `assertEq` 5

@@ -33,7 +33,6 @@ module Stablecoin.Client.Cleveland.Caps
   , getMasterMinter
   , getPauser
   , getTransferlist
-  , getTotalSupply
   , getMintingAllowance
   , getTokenMetadata
   , assertEq
@@ -99,7 +98,6 @@ stablecoinCapImpl stablecoinImpl = Caps.CapImpl $ StablecoinImpl
   , siGetMasterMinter = lift ... siGetMasterMinter stablecoinImpl
   , siGetPauser = lift ... siGetPauser stablecoinImpl
   , siGetTransferlist = lift ... siGetTransferlist stablecoinImpl
-  , siGetTotalSupply = lift ... siGetTotalSupply stablecoinImpl
   , siGetMintingAllowance = lift ... siGetMintingAllowance stablecoinImpl
   , siGetTokenMetadata = lift ... siGetTokenMetadata stablecoinImpl
   , siAssertEq = lift ... siAssertEq stablecoinImpl
@@ -220,9 +218,6 @@ getPauser = actionToCaps siGetPauser
 
 getTransferlist :: MonadStablecoin caps base m => "contract" :! AddressOrAlias -> m (Maybe AddressAndAlias)
 getTransferlist = actionToCaps siGetTransferlist
-
-getTotalSupply :: MonadStablecoin caps base m => "contract" :! AddressOrAlias -> m Natural
-getTotalSupply = actionToCaps siGetTotalSupply
 
 getMintingAllowance :: MonadStablecoin caps base m => "contract" :! AddressOrAlias -> AddressOrAlias -> m Natural
 getMintingAllowance = actionToCaps siGetMintingAllowance

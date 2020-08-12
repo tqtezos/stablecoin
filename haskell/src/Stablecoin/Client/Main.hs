@@ -21,7 +21,7 @@ import Stablecoin.Client.Contract (InitialStorageData(..))
 import Stablecoin.Client.Impl
   (AddressAndAlias(..), acceptOwnership, burn, changeMasterMinter, changePauser, configureMinter,
   deploy, getBalance, getBalanceOf, getContractOwner, getMasterMinter, getMintingAllowance,
-  getPaused, getPauser, getPendingContractOwner, getTokenMetadata, getTotalSupply, getTransferlist,
+  getPaused, getPauser, getPendingContractOwner, getTokenMetadata, getTransferlist,
   isOperator, mint, pause, removeMinter, setTransferlist, transfer, transferOwnership, unpause,
   updateOperators)
 import Stablecoin.Client.Parser
@@ -175,10 +175,6 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
       getTransferlist contract >>= \case
         Nothing -> putTextLn "Transferlist contract is not set."
         Just addrAndAlias -> putAddressAndAlias "Transferlist contract" addrAndAlias
-
-    CmdGetTotalSupply -> do
-      totalSupply <- getTotalSupply contract
-      putTextLn $ "Total supply: " <> pretty totalSupply
 
     CmdGetMintingAllowance GetMintingAllowanceOptions {..} -> do
       allowance <- getMintingAllowance contract gmaoMinter

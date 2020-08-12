@@ -481,7 +481,6 @@ function mint
       Big_map.update (Tezos.sender, Some (updated_allowance), accumulator.minting_allowances)
   ; const updated_store : storage = accumulator with record
       [ minting_allowances = updated_allowances
-      ; total_supply = accumulator.total_supply + unwrapped_parameter.amount
       ]
   } with credit_to (unwrapped_parameter, updated_store)
 
@@ -515,7 +514,7 @@ function mint
   )
 
 (*
- * Decreases balance and total supply of tokens by the given amount
+ * Decreases balance of tokens by the given amount
  *)
 function burn
   ( const parameters : burn_params
@@ -535,12 +534,7 @@ function burn
           ]
       , accumulator
       )
-  } with debited_storage with record
-      [ total_supply = case is_nat (debited_storage.total_supply - burn_amount) of
-          Some (nat) -> nat
-        | None -> (failwith ("NEGATIVE_TOTAL_SUPPLY") : nat)
-        end
-      ]
+  } with debited_storage
 
 ; const upds : list(operation) = call_assert_receivers
     ( store.transferlist_contract

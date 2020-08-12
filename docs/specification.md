@@ -124,10 +124,6 @@ The next group consists of the errors that are not part of the FA2 specification
 | `ALLOWANCE_EXCEEDED`         | Throws when trying to mint tokens more than currently allowed for an address                                                   |
 | `BAD_TRANSFERLIST`           | Given address is a not a smart contract complying with the transferlist interface                                                  |
 
-Finally there are some internal errors that should be considered implementation detail and are supposed to never happen as long as the contract is originated correctly (with consistent storage).
-Since they are internal, they can be changed any time without updating this part of the specification.
-* `NEGATIVE_TOTAL_SUPPLY`
-
 # Entrypoints
 
 Full list:
@@ -575,7 +571,7 @@ Parameter (in Michelson):
 
 Parameter (in Michelson): `list nat`.
 
-- Decreases balance for sender and the total supply of tokens by the sum of given amounts.
+- Decreases balance for sender.
 
 - Each burning operation must happen atomically, so if one of them fails,
   then the whole operation must fail.

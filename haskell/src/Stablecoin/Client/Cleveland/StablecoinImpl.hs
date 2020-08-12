@@ -89,7 +89,6 @@ data StablecoinImpl m = StablecoinImpl
   , siGetMasterMinter :: "contract" :! AddressOrAlias -> m AddressAndAlias
   , siGetPauser :: "contract" :! AddressOrAlias -> m AddressAndAlias
   , siGetTransferlist :: "contract" :! AddressOrAlias -> m (Maybe AddressAndAlias)
-  , siGetTotalSupply :: "contract" :! AddressOrAlias -> m Natural
   , siGetMintingAllowance :: "contract" :! AddressOrAlias -> AddressOrAlias -> m Natural
   , siGetTokenMetadata
       :: "contract" :! AddressOrAlias
@@ -233,9 +232,6 @@ stablecoinImplClient conf env = StablecoinImpl
       if "Transferlist contract is not set" `isInfixOf` output
         then pure Nothing
         else Just <$> runParser output (addressAndAliasParser "Transferlist contract")
-  , siGetTotalSupply = \contract -> do
-      output <- callStablecoinClient conf $ [ "get-total-supply" ] <> mkContractOpt contract
-      runParser output (labelled "Total supply" naturalParser)
   , siGetMintingAllowance = \contract minter -> do
       output <- callStablecoinClient conf $
         [ "get-minting-allowance"

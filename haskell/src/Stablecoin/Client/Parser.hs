@@ -79,7 +79,6 @@ data ClientArgsRaw
   | CmdGetMasterMinter
   | CmdGetPauser
   | CmdGetTransferlist
-  | CmdGetTotalSupply
   | CmdGetMintingAllowance GetMintingAllowanceOptions
   | CmdGetTokenMetadata
   deriving stock Show
@@ -212,7 +211,6 @@ clientArgsRawParser = Opt.subparser $
   <> getMasterMinterCmd
   <> getPauserCmd
   <> getTransferlistCmd
-  <> getTotalSupplyCmd
   <> getMintingAllowanceCmd
   <> getTokenMetadataCmd
   where
@@ -595,13 +593,6 @@ clientArgsRawParser = Opt.subparser $
         "get-transferlist"
         (pure CmdGetTransferlist)
         "Get the transferlist's address"
-
-    getTotalSupplyCmd :: Opt.Mod Opt.CommandFields ClientArgsRaw
-    getTotalSupplyCmd =
-      mkCommandParser
-        "get-total-supply"
-        (pure CmdGetTotalSupply)
-        "Get the total supply of tokens"
 
     getMintingAllowanceCmd :: Opt.Mod Opt.CommandFields ClientArgsRaw
     getMintingAllowanceCmd =

@@ -30,7 +30,6 @@ module Lorentz.Contracts.Stablecoin
   , pattern StoragePaused
   , pattern StorageTransferlistContract
   , pattern StorageMetadataBigMap
-  , pattern StorageTotalSupply
   , pattern MasterMinterRole
   , pattern OwnerRole
   , pattern PauserRole
@@ -140,7 +139,6 @@ type LedgerInner = Map Address Natural
 type Ledger = "ledger" :! (BigMap Address Natural)
 
 type Operators = "operators" :! OperatorsInner
-type TotalSupply = "total_supply" :! Natural
 type IsPaused = "paused" :! Bool
 
 type MasterMinter = Address
@@ -162,7 +160,7 @@ type TokenMetadataBigMap = "token_metadata" :! (BigMap FA2.TokenId TokenMetadata
 
 type Storage =
   (((Ledger, MintingAllowances), (Operators, IsPaused))
-   , ((Roles, TokenMetadataBigMap), (TotalSupply, TransferlistContract)))
+   , ((Roles, TokenMetadataBigMap), TransferlistContract))
 
 pattern StorageLedger :: LedgerInner -> Storage
 pattern StorageLedger ledger <- (((arg #ledger -> (BigMap ledger), _ ), _), _)
@@ -184,16 +182,12 @@ pattern StorageMetadataBigMap :: BigMap FA2.TokenId TokenMetadata -> Storage
 pattern StorageMetadataBigMap bigMap <- (_, ((_, arg #token_metadata -> bigMap), _))
 {-# COMPLETE StorageMetadataBigMap #-}
 
-pattern StorageTotalSupply :: Natural -> Storage
-pattern StorageTotalSupply totalSupply <- (_, (_, (arg #total_supply -> totalSupply, _)))
-{-# COMPLETE StorageTotalSupply #-}
-
 pattern StorageRoles :: RolesInner -> Storage
 pattern StorageRoles roles <- (_ , ((arg #roles -> roles, _), _))
 {-# COMPLETE StorageRoles #-}
 
 pattern StorageTransferlistContract :: Maybe Address -> Storage
-pattern StorageTransferlistContract transferlistContract <- (_, (_, (_, arg #transferlist_contract -> transferlistContract)))
+pattern StorageTransferlistContract transferlistContract <- (_, (_, arg #transferlist_contract -> transferlistContract))
 {-# COMPLETE StorageTransferlistContract #-}
 
 pattern MasterMinterRole :: MasterMinter -> RolesInner

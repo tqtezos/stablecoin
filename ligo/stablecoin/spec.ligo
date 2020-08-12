@@ -282,7 +282,6 @@ type storage is record
   ledger             : ledger
 ; token_metadata     : big_map (token_id, token_metadata)
 ; minting_allowances : minting_allowances
-; total_supply       : nat
 ; paused             : bool
 ; roles              : roles
 ; operators          : operators
