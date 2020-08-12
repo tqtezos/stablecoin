@@ -58,8 +58,8 @@ steps:
    if: build.source == "schedule"
    env:
      TEZOS_CLIENT_UNSAFE_DISABLE_DISCLAIMER: "Y"
-     NETTEST_NODE_ADDR: "carthage.testnet.tezos.serokell.team"
-     NETTEST_NODE_PORT: "8732"
+     NETTEST_NODE_ADDR: "testnet-tezos.giganode.io"
+     NETTEST_NODE_PORT: "443"
      # Note that testnet moneybag can run out of tz. If this happened, someone should transfer it some
      # more tz, its address: tz1ij8gUYbMRUXa4xX3mNvKguhaWG9GGbURn
      MONEYBAG: "unencrypted:edsk4EYgVvKVKppJXAyeoqxJrNeyoktNqmcx5op1CFht9P1p8pPxp7"
