@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: 2020 tqtezos
 # SPDX-License-Identifier: MIT
 
+# To update hackage and stackage indexes used by CI run:
+# $ niv update hackage.nix; niv update stackage.nix
 resolver: lts-16.5
 
 packages:
