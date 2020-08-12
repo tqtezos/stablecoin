@@ -720,7 +720,9 @@ applyParameter cc@(ContractCall {..}) cs = case ccParameter of
   _ -> error "Unexpected call"
 
 applyDebit :: Address -> Natural ->  SimpleStorage -> SimpleStorage
-applyDebit from amount ss@SimpleStorage {..} =  ss { ssLedger = Map.update (\x -> Just $ x - amount) from ssLedger }
+applyDebit from amount ss@SimpleStorage {..} =  ss
+  { ssLedger =
+      Map.update (\x -> let n = x - amount in if n == 0 then Nothing else Just n) from ssLedger }
 
 applyCredit :: Address -> Natural -> SimpleStorage -> SimpleStorage
 applyCredit from amount ss@SimpleStorage {..} =

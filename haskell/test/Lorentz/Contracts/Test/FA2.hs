@@ -12,10 +12,12 @@ module Lorentz.Contracts.Test.FA2
   , fa2Spec
   ) where
 
+import Data.Map as M (lookup)
 import Test.Hspec (Spec, describe, it)
 
 import Lorentz (mkView)
 import Lorentz.Contracts.Spec.FA2Interface as FA2
+import Lorentz.Contracts.Stablecoin (pattern StorageLedger)
 import Lorentz.Contracts.Test.Common
 import Lorentz.Test
 import Lorentz.Value
@@ -263,6 +265,29 @@ fa2Spec fa2Originate = do
         lCallEP fa2contract (Call @"Balance_of") balanceRequest
         lExpectViewConsumerStorage consumer [balanceExpected]
 
+    it "removes zero balance accounts after transfer" $ integrationalTestExpectation $ do
+      let
+        originationParams =
+            addAccount (wallet1, (commonOperators, 10))
+          $ addAccount (wallet3, (commonOperators, 0))
+          $ defaultOriginationParams
+              { opPermissionsDescriptor = permissionDescriptorOwnerOrOperatorTransfer
+              }
+
+      withOriginated fa2Originate originationParams $ \stablecoinContract -> do
+        let
+          transfer1 = constructTransfersFromSender (#from_ .! wallet1)
+            [ (#to_ .! wallet2, #amount .! 10)
+            ]
+
+        withSender commonOperator $ lCallEP stablecoinContract (Call @"Transfer") transfer1
+
+        lExpectStorage stablecoinContract $ \case
+          (StorageLedger ledger)
+            | M.lookup wallet1 ledger == Nothing -> Right ()
+            | otherwise ->
+                Left $ CustomTestError "Zero balance account was not removed"
+
   describe "Self transfer" $ do
 
     it "Cannot transfer foreign money" $ integrationalTestExpectation $ do
@@ -342,7 +367,6 @@ fa2Spec fa2Originate = do
               (#amount .! 0)
 
           withSender wallet1 $ lCallEP fa2contract (Call @"Transfer") transfers
-
 
     it "aborts if there is a failure (due to low source balance)" $
       integrationalTestExpectation $ do

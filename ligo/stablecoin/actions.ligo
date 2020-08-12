@@ -140,12 +140,12 @@ function debit_from
   | None -> 0n // Interpret non existant account as zero balance as per FA2
   end
 
-; if parameter.amount > curr_balance
-      then failwith ("FA2_INSUFFICIENT_BALANCE")
-      else
-      { const updated_balance : nat = abs (curr_balance - parameter.amount)
-      ; updated_ledger := Big_map.update(parameter.from_, Some (updated_balance), updated_ledger)
-      }
+ ; const updated_balance: option(nat) = case is_nat(curr_balance - parameter.amount) of
+       Some (ub) -> if ub = 0n then (None : option(nat)) else Some(ub) // If balance is 0 set None to remove it from ledger
+     | None -> (failwith ("FA2_INSUFFICIENT_BALANCE") : option(nat))
+     end
+ ; updated_ledger := Big_map.update(parameter.from_, updated_balance, updated_ledger)
+
 } with store with record [ ledger = updated_ledger ]
 
 (*

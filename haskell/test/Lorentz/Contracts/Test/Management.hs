@@ -7,7 +7,7 @@ module Lorentz.Contracts.Test.Management
   ( managementSpec
   ) where
 
-import Data.Map (fromList)
+import Data.Map as M (fromList, lookup)
 import qualified Data.Set as Set
 import Test.Hspec (Spec, describe, it)
 
@@ -200,7 +200,6 @@ managementSpec originate = do
         lCallEP stablecoinContract (Call @"Balance_of") balanceRequest
 
         lExpectViewConsumerStorage consumer [balanceExpected]
-
 
   describe "Configure minter" $ do
     it "configures minter properly" $ integrationalTestExpectation $ do
@@ -456,6 +455,23 @@ managementSpec originate = do
         lCallEP stablecoinContract (Call @"Balance_of") balanceRequest
 
         lExpectViewConsumerStorage consumer [balanceExpected]
+
+    it "removes account if balance after burning is zero" $ integrationalTestExpectation $ do
+
+      let
+        originationParams =
+            addMinter (wallet1, 0)
+          $ addAccount (wallet1, (commonOperators, 35))
+          $ defaultOriginationParams
+      withOriginated originate originationParams $ \stablecoinContract -> do
+
+        withSender wallet1 $ lCallEP stablecoinContract (Call @"Burn") [ 35 ]
+
+        lExpectStorage stablecoinContract $ \case
+          (StorageLedger ledger)
+            | M.lookup wallet1 ledger == Nothing -> Right ()
+            | otherwise ->
+                Left $ CustomTestError "Zero balance account was not removed after burning"
 
     it "fails to burn tokens if sender is not minter" $ integrationalTestExpectation $ do
       let
