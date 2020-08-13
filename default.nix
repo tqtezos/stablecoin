@@ -43,7 +43,7 @@ let
     buildPhase = "make stablecoin.tz";
     installPhase = "cp stablecoin.tz $out";
   };
-  tezos-client = (import "${sources.tezos-packaging}/pkgs.nix" {}).ocamlPackages.tezos-client;
+  tezos-client = (import "${sources.tezos-packaging}/nix/build/pkgs.nix" {}).ocamlPackages.tezos-client;
   weeder-script = weeder-hacks.weeder-script {
     hs-pkgs = project;
     local-packages = local-packages;
