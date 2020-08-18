@@ -18,9 +18,6 @@ module Lorentz.Contracts.Spec.FA2Interface
   , OwnerTransferMode (..)
   , Parameter (..)
   , FA2ParameterC
-  , PermissionsDescriptor
-  , PermissionsDescriptorMaybe
-  , PermissionsDescriptorParam
   , TokenId
   , TokenMetaDataParam
   , TokenMetadata
@@ -138,30 +135,6 @@ instance TypeHasDoc OwnerTransferMode where
 type CustomPermissionPolicy
   = ("tag" :! MText, "config_api" :! Maybe Address)
 
--- A helper type and typefamily to enable switching of fields
--- of the permission descriptor to a maybe value.
-data PdTag = PdMaybe | PdFull
-
-type family PdFld (f :: PdTag) t where
-  PdFld 'PdFull t = t
-  PdFld 'PdMaybe t = Maybe t
-
--- | The permission descriptor of the FA2 contract.
--- The dummy names for every second tuple item is a temporary
--- workaround for the strict requirement of having to name all the
--- tuple elements that is used for setting some specific parameter
--- when passing them in tests.
-type PermissionsDescriptorPoly t =
-  ( "operator" :! PdFld t OperatorTransferPolicy
-  , "pdr2" :! ( "receiver" :! PdFld t OwnerTransferMode
-  , "pdr3" :!
-      ("sender" :! PdFld t OwnerTransferMode, "custom" :! PdFld t (Maybe CustomPermissionPolicy))))
-
-type PermissionsDescriptor = PermissionsDescriptorPoly 'PdFull
-type PermissionsDescriptorMaybe = PermissionsDescriptorPoly 'PdMaybe
-
-type PermissionsDescriptorParam = ContractRef PermissionsDescriptor
-
 type OperatorParam =
   ("owner" :! Address, "operator" :! Address)
 
@@ -198,7 +171,6 @@ data Parameter
   | Balance_of BalanceRequestParams
   | Token_metadata TokenMetaDataParam
   | Token_metadata_registry TokenMetadataRegistryParam
-  | Permissions_descriptor PermissionsDescriptorParam
   | Update_operators UpdateOperatorsParam
   | Is_operator IsOperatorParam
   deriving stock (Generic, Show)
@@ -219,7 +191,6 @@ type FA2ParameterMichelsonEntrypoints =
   , "Balance_of" :> BalanceRequestParams
   , "Token_metadata" :> TokenMetaDataParam
   , "Token_metadata_registry" :> TokenMetadataRegistryParam
-  , "Permissions_descriptor" :> PermissionsDescriptorParam
   , "Update_operators" :> UpdateOperatorsParam
   , "Is_operator" :> IsOperatorParam
   ]

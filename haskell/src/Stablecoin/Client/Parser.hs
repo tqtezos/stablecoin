@@ -58,7 +58,6 @@ data ClientArgsRaw
   | CmdGetBalanceOf GetBalanceOfOptions
   | CmdUpdateOperators UpdateOperatorsOptions
   | CmdIsOperator IsOperatorOptions
-  | CmdPermissionsDescriptor
   -- Stablecoin entrypoints
   | CmdPause
   | CmdUnpause
@@ -192,7 +191,6 @@ clientArgsRawParser = Opt.subparser $
   <> getBalanceOfCmd
   <> updateOperatorsCmd
   <> isOperatorCmd
-  <> permissionsDescriptorCmd
   <> pauseCmd
   <> unpauseCmd
   <> configureMinterCmd
@@ -355,13 +353,6 @@ clientArgsRawParser = Opt.subparser $
           (#name .! "operator")
           (#help .! "Address of the potential operator")
       pure $ IsOperatorOptions {..}
-
-    permissionsDescriptorCmd :: Opt.Mod Opt.CommandFields ClientArgsRaw
-    permissionsDescriptorCmd =
-      mkCommandParser
-        "permissions-descriptor"
-        (pure CmdPermissionsDescriptor) $
-        "Display the stablecoin's permissions descriptor."
 
     pauseCmd :: Opt.Mod Opt.CommandFields ClientArgsRaw
     pauseCmd =

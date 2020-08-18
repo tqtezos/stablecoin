@@ -12,7 +12,6 @@ import Morley.Nettest as NT
 import Tezos.Address (Address)
 import Util.Named ((.!))
 
-import Lorentz.Contracts.Stablecoin (stablecoinPermissionsDescriptor)
 import Stablecoin.Client
   (AddressAndAlias(..), Alias, InitialStorageData(..),
   UpdateOperatorData(AddOperator, RemoveOperator))
@@ -20,7 +19,7 @@ import Stablecoin.Client.Cleveland
   (StablecoinScenario, acceptOwnership, assertEq, burn, changeMasterMinter, changePauser,
   configureMinter, deploy, getBalanceOf, getContractOwner, getMasterMinter, getMintingAllowance,
   getPaused, getPauser, getPendingContractOwner, getTokenMetadata, getTransferlist,
-  isOperator, mint, pause, permissionsDescriptor, removeMinter, revealKeyUnlessRevealed,
+  isOperator, mint, pause, removeMinter, revealKeyUnlessRevealed,
   setTransferlist, transferOwnership, unpause, updateOperators)
 import qualified Stablecoin.Client.Cleveland as SC
 
@@ -52,10 +51,6 @@ stablecoinClientScenario aliasPrefix = do
   actualBalance <- SC.getBalance contract
   expectedBalance <- NT.getBalance (AddressResolved contractAddr)
   actualBalance `assertEq` expectedBalance
-
-  comment "Testing permissions descriptor"
-  permissionsDescriptor >>= \pd ->
-    pd `assertEq` stablecoinPermissionsDescriptor
 
   comment "Testing set/get-transferlist"
   getTransferlist contract >>= \tl ->

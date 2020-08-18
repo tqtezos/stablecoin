@@ -14,12 +14,9 @@ module Lorentz.Contracts.Stablecoin
   , Parameter (..)
   , Storage
   , TransferOwnershipParam
-  , PermissionsDescriptor
   , OwHook(..)
   , OwHookOptReq(..)
-  , mkPermissionDescriptor
   , mkTokenMetadata
-  , stablecoinPermissionsDescriptor
   , stablecoinTokenMetadata
 
   -- We use these patterns only for validation
@@ -44,7 +41,6 @@ import qualified Text.Show
 
 import Lorentz
 import qualified Lorentz as L
-import Lorentz.Contracts.Spec.FA2Interface (OperatorTransferPolicy(..), OwnerTransferMode(..))
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Util.Named
 
@@ -215,19 +211,6 @@ data OwHook =  OwNoOp | OwOptReq OwHookOptReq
   deriving stock (Eq, Generic, Show)
   deriving anyclass (IsoValue, L.HasAnnotation)
 
-type PermissionsDescriptor =
-  ((Maybe FA2.CustomPermissionPolicy, FA2.OperatorTransferPolicy), (OwHook, OwHook))
-
--- We will hard code permissions descriptor of Stablecoin contract here
-stablecoinPermissionsDescriptor :: PermissionsDescriptor
-stablecoinPermissionsDescriptor = mkPermissionDescriptor stablecoinPermissionsDescriptorFA2
-  where
-  stablecoinPermissionsDescriptorFA2 :: FA2.PermissionsDescriptor
-  stablecoinPermissionsDescriptorFA2 =
-    ( #operator .! OwnerOrOperatorTransfer (#owner_or_operator_transfer .! ())
-    , #pdr2 .! ( #receiver .! OptionalOwnerHook (#optional_owner_hook .! ())
-               , #pdr3 .! (#sender .! (OptionalOwnerHook (#optional_owner_hook .! ())), #custom .! Nothing )))
-
 -- We will hard code stablecoin token metadata here
 stablecoinTokenMetadata :: TokenMetadata
 stablecoinTokenMetadata = mkTokenMetadata stablecoinTokenMetadataFA2
@@ -245,28 +228,5 @@ mkTokenMetadata
   , L.arg #mdr2 -> (L.arg #name -> name
   , L.arg #mdr3 -> (L.arg #decimals -> decimals
   , L.arg #extras -> extras)))) = (token_id, (symbol, (name, (decimals, extras))))
-
-mkPermissionDescriptor :: FA2.PermissionsDescriptor -> PermissionsDescriptor
-mkPermissionDescriptor
-    (L.arg #operator -> ot
-     , L.arg #pdr2 -> (L.arg #receiver -> owtmr
-            , L.arg #pdr3 -> (L.arg #sender -> otms, L.arg #custom -> cst))) = let
-  custom = case cst of
-    Just (L.arg #tag -> tag, L.arg #config_api -> config_api) -> Just (#tag .! tag, #config_api .! config_api)
-    Nothing -> Nothing
-
-  owHookRec = case owtmr of
-    FA2.OptionalOwnerHook _ -> OwOptReq OptOH
-    FA2.OwnerNoHook _ -> OwNoOp
-    FA2.RequiredOwnerHook _ -> OwOptReq ReqOp
-
-  owHookSend = case otms of
-    FA2.OptionalOwnerHook _ -> OwOptReq OptOH
-    FA2.OwnerNoHook _ -> OwNoOp
-    FA2.RequiredOwnerHook _ -> OwOptReq ReqOp
-
-  in ((custom, ot), (owHookRec, owHookSend))
-
-
 
 type TokenMetadata = (Natural, (L.MText, (L.MText, (Natural, Map L.MText L.MText))))

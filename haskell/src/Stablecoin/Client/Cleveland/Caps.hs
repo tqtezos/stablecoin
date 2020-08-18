@@ -14,7 +14,6 @@ module Stablecoin.Client.Cleveland.Caps
   , getBalanceOf
   , updateOperators
   , isOperator
-  , permissionsDescriptor
   , pause
   , unpause
   , configureMinter
@@ -49,7 +48,6 @@ import Tezos.Core (Mutez)
 import Util.Exception (displayUncaughtException)
 import Util.Named ((:!))
 
-import Lorentz.Contracts.Stablecoin (PermissionsDescriptor)
 import Stablecoin.Client (AddressAndAlias(..), InitialStorageData(..), UpdateOperatorData)
 import Stablecoin.Client.Cleveland.StablecoinImpl (StablecoinImpl(..), stablecoinImplClient)
 
@@ -79,7 +77,6 @@ stablecoinCapImpl stablecoinImpl = Caps.CapImpl $ StablecoinImpl
   , siGetBalanceOf = lift ... siGetBalanceOf stablecoinImpl
   , siUpdateOperators = lift ... siUpdateOperators stablecoinImpl
   , siIsOperator = lift ... siIsOperator stablecoinImpl
-  , siPermissionsDescriptor = lift ... siPermissionsDescriptor stablecoinImpl
   , siPause = lift ... siPause stablecoinImpl
   , siUnpause = lift ... siUnpause stablecoinImpl
   , siConfigureMinter = lift ... siConfigureMinter stablecoinImpl
@@ -134,9 +131,6 @@ isOperator
   => "contract" :! AddressOrAlias
   -> AddressOrAlias -> AddressOrAlias -> m Bool
 isOperator = actionToCaps siIsOperator
-
-permissionsDescriptor :: MonadStablecoin caps base m => m PermissionsDescriptor
-permissionsDescriptor = actionToCaps siPermissionsDescriptor
 
 pause :: MonadStablecoin caps base m => "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias -> m ()
 pause = actionToCaps siPause

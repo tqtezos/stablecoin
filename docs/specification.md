@@ -130,7 +130,6 @@ Full list:
 * [`transfer`](#transfer)
 * [`balance_of`](#balance_of)
 * [`token_metadata_registry`](#token_metadata_registry)
-* [`permissions_descriptor`](#permissions_descriptor)
 * [`update_operators`](#update_operators)
 * [`is_operator`](#is_operator)
 * [`pause`](#pause)
@@ -287,81 +286,6 @@ Parameter (in Michelson)
 - Return contract address that holds token metadata.
 
 - Since the contract owns its token metadata the returned value of this entrypoint call will always be equal to `SELF`.
-
-### **permissions_descriptor**
-
-Types
-```
-operator_transfer_policy =
-  | No_transfer
-  | Owner_transfer
-  | Owner_or_operator_transfer
-
-owner_hook_policy =
-  | Owner_no_hook
-  | Optional_owner_hook
-  | Required_owner_hook
-
-custom_permission_policy =
-  ( string         :tag
-  , option address :config_api
-  )
-
-permissions_descriptor_param
-  ( operator_transfer_policy        :operator
-  , owner_hook_policy               :receiver
-  , owner_hook_policy               :sender
-  , option custom_permission_policy :custom
-  )
-
-permissions_descriptor = contract permissions_descriptor_param
-```
-
-Parameter (in Michelson)
-```
-(contract %permissions_descriptor
-  (pair
-    (or %operator
-      (unit %no_transfer)
-      (or
-        (unit %owner_transfer)
-        (unit %owner_or_operator_transfer)
-      )
-    )
-    (pair
-      (or %receiver
-        (unit %owner_no_hook)
-        (or
-          (unit %optional_owner_hook)
-          (unit %required_owner_hook)
-        )
-      )
-      (pair
-        (or %sender
-          (unit %owner_no_hook)
-          (or
-            (unit %optional_owner_hook)
-            (unit %required_owner_hook)
-          )
-        )
-        (option %custom
-          (pair
-            (string %tag)
-            (option %config_api address)
-          )
-        )
-      )
-    )
-  )
-)
-```
-
-- This entrypoint MUST follow the FA2 requirements.
-
-- Permission logic requirements specific to this contract are described in the ["FA2 Specifics"](#fa2-specifics) chapter.
-
-- Since the contract supports only a single token type, all `token_id` values MUST be 0.
-  They are passed because FA2 requires that.
 
 ### **update_operators**
 
@@ -685,10 +609,10 @@ At this stage of development we make the following decisions:
   + Communication between contracts in Tezos is currently complicated and is hard to do right without any security vulnerabilities.
 2. We will implement a single permission policy (as part of the token contract or as a separate transfer_hook – that depends on the previous point).
  + Self transfer is permitted as well as operator transfer.
- + Owner transfer policy for both sender and receiver is `Optional_owner_hook`.
+ + Owner transfer policy for both sender and receiver is `Owner_no_hook`.
  + No custom permission policy.
 3. We will not implement any `owner_hook`.
-The contract is usable without them because we stick to `Optional_owner_hook`.
+The contract is usable without them because we stick to `Owner_no_hook`.
 
 Regarding `update_operators` we will stick to the following logic:
 1. In each `update_operator` item `owner` MUST be equal to `SENDER`.

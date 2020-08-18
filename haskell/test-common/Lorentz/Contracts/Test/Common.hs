@@ -18,15 +18,7 @@ module Lorentz.Contracts.Test.Common
   , OriginationFn
   , OriginationParams (..)
   , defaultOriginationParams
-  , defaultPermissionDescriptor
   , defaultTokenMetadataBigMap
-  , permissionDescriptorOwnerTransfer
-  , permissionDescriptorOwnerOrOperatorTransfer
-  , permissionDescriptorNoTransfer
-  , permissionDescriptorReqSenderHook
-  , permissionDescriptorReqReceiverHook
-  , permissionDescriptorNoOpReceiverHook
-  , permissionDescriptorNoOpSenderHook
   , addAccount
   , addOperator
   , addMinter
@@ -42,7 +34,6 @@ module Lorentz.Contracts.Test.Common
 import Data.List.NonEmpty ((!!))
 import qualified Data.Map as Map
 
-import Lorentz (arg)
 import qualified Indigo.Contracts.Transferlist.Internal as Transferlist
 import Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin as SC
@@ -95,54 +86,9 @@ data OriginationParams = OriginationParams
   , opPaused :: Bool
   , opMinters :: Map Address Natural
   , opPendingOwner :: Maybe Address
-  , opPermissionsDescriptor :: PermissionsDescriptorMaybe
   , opTokenMetadata :: FA2.TokenMetadata
   , opTransferlistContract :: Maybe (TAddress Transferlist.Parameter)
   }
-
-defaultPermissionDescriptor :: PermissionsDescriptorMaybe
-defaultPermissionDescriptor =
-  ( #operator .! Nothing
-  , #pdr2 .! ( #receiver .! Nothing
-             , #pdr3 .! (#sender .! Nothing, #custom .! Nothing)))
-
-permissionDescriptorNoTransfer :: PermissionsDescriptorMaybe
-permissionDescriptorNoTransfer =
-  defaultPermissionDescriptor
-   & _1 .~ (#operator .! (Just $ NoTransfer (#no_transfer .! ())))
-
-permissionDescriptorOwnerOrOperatorTransfer :: PermissionsDescriptorMaybe
-permissionDescriptorOwnerOrOperatorTransfer =
-  defaultPermissionDescriptor &
-    _1 .~ (#operator .! (Just $ OwnerOrOperatorTransfer (#owner_or_operator_transfer .! ())))
-
-permissionDescriptorOwnerTransfer :: PermissionsDescriptorMaybe
-permissionDescriptorOwnerTransfer =
-  defaultPermissionDescriptor &
-    _1 .~ (#operator .! (Just $ OwnerTransfer (#owner_transfer .! ())))
-
-permissionDescriptorNoOpReceiverHook :: PermissionsDescriptorMaybe
-permissionDescriptorNoOpReceiverHook =
-  defaultPermissionDescriptor
-    & (_2.namedL #pdr2._1) .~ (#receiver .! (Just $ OwnerNoHook (#owner_no_op .! ())))
-
-permissionDescriptorReqReceiverHook :: PermissionsDescriptorMaybe
-permissionDescriptorReqReceiverHook =
-  defaultPermissionDescriptor
-    & (_2.namedL #pdr2._1)
-    .~ (#receiver .! (Just $ RequiredOwnerHook (#required_owner_hook .! ())))
-
-permissionDescriptorNoOpSenderHook :: PermissionsDescriptorMaybe
-permissionDescriptorNoOpSenderHook =
-  defaultPermissionDescriptor
-    & (_2.namedL #pdr2._2.namedL #pdr3._1)
-    .~ (#sender .! (Just $ OwnerNoHook (#owner_no_op .! ())))
-
-permissionDescriptorReqSenderHook :: PermissionsDescriptorMaybe
-permissionDescriptorReqSenderHook =
-  defaultPermissionDescriptor
-    & (_2.namedL #pdr2._2.namedL #pdr3._1)
-    .~ (#sender .! (Just $ RequiredOwnerHook (#required_owner_hook .! ())))
 
 defaultTokenMetadata :: FA2.TokenMetadata
 defaultTokenMetadata =
@@ -167,7 +113,6 @@ defaultOriginationParams = OriginationParams
   , opPaused = False
   , opMinters = mempty
   , opPendingOwner = Nothing
-  , opPermissionsDescriptor = defaultPermissionDescriptor
   , opTokenMetadata = defaultTokenMetadata
   , opTransferlistContract = Nothing
   }
@@ -226,54 +171,22 @@ withOriginated fn op tests = do
     Nothing -> pass
     Just contract -> tests contract
 
--- | This function accepts origination params with @Just@ values indicating
--- the mandatory configuration, and @Nothing@ values for permission parameters
--- that are not relavant for the test. The return flag indicate if the
--- contract's permission parameter can meet the required permission configuration.
-originationRequestCompatible :: OriginationParams -> Bool
-originationRequestCompatible op =
-  isPermissionsCompatible (opPermissionsDescriptor op)
-  where
-    isPermissionsCompatible :: PermissionsDescriptorMaybe -> Bool
-    isPermissionsCompatible
-      (arg #operator -> ot
-        , arg #pdr2 ->
-          ( arg #receiver -> owtmr
-          , arg #pdr3 -> (arg #sender -> otms, arg #custom -> cst))) = let
-      customFlag = not $ isJust cst
-      operatorTransferFlag = case ot of
-        Nothing -> True
-        Just (FA2.OwnerOrOperatorTransfer _) -> True
-        _ -> False
-      owHookSenderFlag = case otms of
-        Nothing -> True
-        Just (OptionalOwnerHook _) -> True
-        _ -> False
-      owHookReceiverFlag = case owtmr of
-        Nothing -> True
-        Just (OptionalOwnerHook _) -> True
-        _ -> False
-      in customFlag && operatorTransferFlag &&
-         owHookSenderFlag && owHookReceiverFlag
-
 mkInitialStorage :: OriginationParams -> Maybe Storage
-mkInitialStorage op@OriginationParams{..} =
-  if originationRequestCompatible op then let
-    ledgerMap = opBalances
-    mintingAllowances = #minting_allowances .! (BigMap opMinters)
-    operatorMap = Map.foldrWithKey foldFn mempty opOwnerToOperators
-    ledger = #ledger .! (BigMap ledgerMap)
-    owner_ = #owner .! opOwner
-    pauser_ = #pauser .! opPauser
-    masterMinter_ = #master_minter .! opMasterMinter
-    roles = #roles .! ((masterMinter_, owner_), (pauser_, (#pending_owner_address .! opPendingOwner)))
-    operators = #operators .! (BigMap operatorMap)
-    isPaused = #paused .! opPaused
-    transferlistContract = #transferlist_contract .! (unTAddress <$> opTransferlistContract)
-    tokenMetadata = #token_metadata .! (BigMap $ Map.fromList [(0, mkTokenMetadata $ opTokenMetadata)])
+mkInitialStorage OriginationParams{..} = let
+  ledgerMap = opBalances
+  mintingAllowances = #minting_allowances .! (BigMap opMinters)
+  operatorMap = Map.foldrWithKey foldFn mempty opOwnerToOperators
+  ledger = #ledger .! (BigMap ledgerMap)
+  owner_ = #owner .! opOwner
+  pauser_ = #pauser .! opPauser
+  masterMinter_ = #master_minter .! opMasterMinter
+  roles = #roles .! ((masterMinter_, owner_), (pauser_, (#pending_owner_address .! opPendingOwner)))
+  operators = #operators .! (BigMap operatorMap)
+  isPaused = #paused .! opPaused
+  transferlistContract = #transferlist_contract .! (unTAddress <$> opTransferlistContract)
+  tokenMetadata = #token_metadata .! (BigMap $ Map.fromList [(0, mkTokenMetadata $ opTokenMetadata)])
   in Just (((ledger, mintingAllowances), (operators, isPaused))
            , ((roles, tokenMetadata), transferlistContract))
-  else Nothing
   where
     foldFn
       :: Address
