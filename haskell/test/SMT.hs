@@ -85,9 +85,8 @@ generateContractInputs count = do
         gsOwnerPool gsMasterMinterPool gsMinterPool
          gsPauserPool gsTokenOwnerPool
     operatorsMap = Map.fromList $ zip operators $ repeat ()
-    totalSupply = sum $ Map.elems ledgerBalances
     startingStorage = SimpleStorage
-      gsMinterPool ledgerBalances owner masterMinter pauser pendingOwner Nothing operatorsMap isPaused totalSupply
+      gsMinterPool ledgerBalances owner masterMinter pauser pendingOwner Nothing operatorsMap isPaused
   inputs <- runReaderT (mapM generateAction [1..count]) generatorState
   pure (inputs, ContractState startingStorage [])
 
@@ -166,7 +165,6 @@ data SimpleStorage = SimpleStorage
   , ssTransferlistContract :: Maybe Address
   , ssOperators :: Map (Address, Address) ()
   , ssIsPaused :: Bool
-  , ssTotalSupply :: Natural
   } deriving stock (Eq, Generic, Show)
 
 instance Buildable SimpleStorage where
@@ -188,7 +186,6 @@ storageToSs storage = let
   StorageRoles (PendingOwnerRole ssPendingOwner) = storage
   StorageTransferlistContract ssTransferlistContract = storage
   StoragePaused ssIsPaused = storage
-  StorageTotalSupply ssTotalSupply = storage
   in SimpleStorage {..}
 
 ssToOriginationParams
@@ -664,7 +661,7 @@ applyMint sender cs mintparams = do
   ma <- ensureMinter sender cs
   let totalMint = sum $ (arg #amount . snd) <$> mintparams
   if ma >= totalMint
-    then Right $ amendTotalSupply (+ totalMint) $ reduceMintingAllowance sender totalMint $ foldr applySingleMint cs mintparams
+    then Right $ reduceMintingAllowance sender totalMint $ foldr applySingleMint cs mintparams
     else Left ALLOWANCE_EXCEEDED
 
 applyBurn :: Address -> SimpleStorage -> BurnParams -> Either ModelError SimpleStorage
@@ -678,11 +675,8 @@ applyBurn ccSender cs burnparams = do
         storage { ssLedger = Map.alter (\case
           Nothing -> error "Unexpected burn"
           Just x -> Just $ x - value) ccSender $ ssLedger cs }
-      in Right $ amendTotalSupply (\x -> x - totalBurn) $ foldr burn cs burnparams
+      in Right $ foldr burn cs burnparams
     else Left FA2_INSUFFICIENT_BALANCE
-
-amendTotalSupply :: (Natural -> Natural) -> SimpleStorage  -> SimpleStorage
-amendTotalSupply fn ss = ss { ssTotalSupply = fn (ssTotalSupply ss) }
 
 applyTransferOwnership :: Address -> SimpleStorage -> TransferOwnershipParam -> Either ModelError SimpleStorage
 applyTransferOwnership sender cs newOwner = do

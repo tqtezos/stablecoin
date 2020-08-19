@@ -4,6 +4,13 @@ SPDX-License-Identifier: MIT
 -->
 # Changelog for stablecoin
 
+## Unreleased
+
+* [#85](https://github.com/tqtezos/stablecoin/pull/92)
+  Removed `permissions_descriptor` entrypoint.
+  Removed 'total_supply' from storage.
+  Changed owner hook behavior to `Owner_no_hook`.
+
 ## 1.1.0
 * [#84](https://github.com/tqtezos/stablecoin/pull/84)
   Update LIGO version.

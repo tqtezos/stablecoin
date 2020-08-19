@@ -14,7 +14,6 @@ module Stablecoin.Client.Cleveland.Caps
   , getBalanceOf
   , updateOperators
   , isOperator
-  , permissionsDescriptor
   , pause
   , unpause
   , configureMinter
@@ -33,7 +32,6 @@ module Stablecoin.Client.Cleveland.Caps
   , getMasterMinter
   , getPauser
   , getTransferlist
-  , getTotalSupply
   , getMintingAllowance
   , getTokenMetadata
   , assertEq
@@ -50,7 +48,6 @@ import Tezos.Core (Mutez)
 import Util.Exception (displayUncaughtException)
 import Util.Named ((:!))
 
-import Lorentz.Contracts.Stablecoin (PermissionsDescriptor)
 import Stablecoin.Client (AddressAndAlias(..), InitialStorageData(..), UpdateOperatorData)
 import Stablecoin.Client.Cleveland.StablecoinImpl (StablecoinImpl(..), stablecoinImplClient)
 
@@ -80,7 +77,6 @@ stablecoinCapImpl stablecoinImpl = Caps.CapImpl $ StablecoinImpl
   , siGetBalanceOf = lift ... siGetBalanceOf stablecoinImpl
   , siUpdateOperators = lift ... siUpdateOperators stablecoinImpl
   , siIsOperator = lift ... siIsOperator stablecoinImpl
-  , siPermissionsDescriptor = lift ... siPermissionsDescriptor stablecoinImpl
   , siPause = lift ... siPause stablecoinImpl
   , siUnpause = lift ... siUnpause stablecoinImpl
   , siConfigureMinter = lift ... siConfigureMinter stablecoinImpl
@@ -99,7 +95,6 @@ stablecoinCapImpl stablecoinImpl = Caps.CapImpl $ StablecoinImpl
   , siGetMasterMinter = lift ... siGetMasterMinter stablecoinImpl
   , siGetPauser = lift ... siGetPauser stablecoinImpl
   , siGetTransferlist = lift ... siGetTransferlist stablecoinImpl
-  , siGetTotalSupply = lift ... siGetTotalSupply stablecoinImpl
   , siGetMintingAllowance = lift ... siGetMintingAllowance stablecoinImpl
   , siGetTokenMetadata = lift ... siGetTokenMetadata stablecoinImpl
   , siAssertEq = lift ... siAssertEq stablecoinImpl
@@ -136,9 +131,6 @@ isOperator
   => "contract" :! AddressOrAlias
   -> AddressOrAlias -> AddressOrAlias -> m Bool
 isOperator = actionToCaps siIsOperator
-
-permissionsDescriptor :: MonadStablecoin caps base m => m PermissionsDescriptor
-permissionsDescriptor = actionToCaps siPermissionsDescriptor
 
 pause :: MonadStablecoin caps base m => "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias -> m ()
 pause = actionToCaps siPause
@@ -220,9 +212,6 @@ getPauser = actionToCaps siGetPauser
 
 getTransferlist :: MonadStablecoin caps base m => "contract" :! AddressOrAlias -> m (Maybe AddressAndAlias)
 getTransferlist = actionToCaps siGetTransferlist
-
-getTotalSupply :: MonadStablecoin caps base m => "contract" :! AddressOrAlias -> m Natural
-getTotalSupply = actionToCaps siGetTotalSupply
 
 getMintingAllowance :: MonadStablecoin caps base m => "contract" :! AddressOrAlias -> AddressOrAlias -> m Natural
 getMintingAllowance = actionToCaps siGetMintingAllowance

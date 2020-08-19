@@ -78,8 +78,6 @@ managementSpec originate = do
         originationParams =
             addAccount (wallet1, (commonOperators, 0))
           $ defaultOriginationParams
-              { opPermissionsDescriptor = permissionDescriptorOwnerOrOperatorTransfer
-              }
       withOriginated originate originationParams $ \stablecoinContract -> do
         err <- expectError $ lTransfer @param
           (#from .! commonOperator)
@@ -147,10 +145,7 @@ managementSpec originate = do
         originationParams =
             addAccount (wallet1, (commonOperators, 10))
           $ addAccount (wallet2, ([], 0))
-          $ defaultOriginationParams
-              { opPermissionsDescriptor = permissionDescriptorOwnerOrOperatorTransfer
-              , opPaused = True
-              }
+          $ defaultOriginationParams { opPaused = True }
       withOriginated originate originationParams $ \stablecoinContract -> do
         let transfers = constructSingleTransfer (#from_ .! wallet1) (#to_ .! wallet2) (#amount .! 10)
         err <- expectError $ withSender commonOperator $ lCallEP stablecoinContract (Call @"Transfer") transfers
@@ -162,10 +157,7 @@ managementSpec originate = do
             addAccount (wallet1, (commonOperators, 10))
           $ addAccount (wallet2, (commonOperators, 0))
           $ addAccount (wallet3, (commonOperators, 0))
-          $ defaultOriginationParams
-              { opPermissionsDescriptor = permissionDescriptorOwnerOrOperatorTransfer
-              , opPaused = True
-              }
+          $ defaultOriginationParams { opPaused = True }
 
       withOriginated originate originationParams $ \stablecoinContract -> do
         withSender testPauser $ lCallEP stablecoinContract (Call @"Unpause") ()
@@ -362,7 +354,6 @@ managementSpec originate = do
         originationParams =
             addMinter (wallet1, 30)
           $ defaultOriginationParams
-              { opPermissionsDescriptor = permissionDescriptorOwnerOrOperatorTransfer }
       withOriginated originate originationParams $ \stablecoinContract -> do
         let
           mintings =
@@ -694,10 +685,7 @@ managementSpec originate = do
         transferlistContract <- lOriginate Transferlist.transferlistContract "Transferlist test dummy" transferlistStorage (unsafeMkMutez 0)
         let
           originationParams = addAccount (wallet1, (commonOperators, 10))
-              $ defaultOriginationParams {
-                  opPermissionsDescriptor = permissionDescriptorOwnerOrOperatorTransfer,
-                  opTransferlistContract = Just transferlistContract
-                }
+              $ defaultOriginationParams { opTransferlistContract = Just transferlistContract }
         withOriginated originate originationParams $ \stablecoinContract -> do
           let
             transfers =
@@ -713,10 +701,7 @@ managementSpec originate = do
         let
           originationParams = addAccount (wallet1, (commonOperators, 10))
               $ addMinter (wallet1, 30)
-              $ defaultOriginationParams {
-                  opPermissionsDescriptor = permissionDescriptorOwnerOrOperatorTransfer,
-                  opTransferlistContract = Just transferlistContract
-                }
+              $ defaultOriginationParams { opTransferlistContract = Just transferlistContract }
         withOriginated originate originationParams $ \stablecoinContract -> do
           let
             mintings =
@@ -749,10 +734,7 @@ managementSpec originate = do
         transferlistContract <- lOriginate Transferlist.transferlistContract "Transferlist test dummy" transferlistStorage (unsafeMkMutez 0)
         let
           originationParams = addAccount (wallet1, (commonOperators, 10))
-              $ defaultOriginationParams {
-                  opPermissionsDescriptor = permissionDescriptorOwnerOrOperatorTransfer,
-                  opTransferlistContract = Just transferlistContract
-                }
+              $ defaultOriginationParams { opTransferlistContract = Just transferlistContract }
         withOriginated originate originationParams $ \stablecoinContract -> do
           let
             transfers =
@@ -765,10 +747,7 @@ managementSpec originate = do
         let
           originationParams = addAccount (wallet1, (commonOperators, 10))
               $ addMinter (wallet1, 30)
-              $ defaultOriginationParams {
-                  opPermissionsDescriptor = permissionDescriptorOwnerOrOperatorTransfer,
-                  opTransferlistContract = Just transferlistContract
-                }
+              $ defaultOriginationParams { opTransferlistContract = Just transferlistContract }
         withOriginated originate originationParams $ \stablecoinContract -> do
 
           let
@@ -787,17 +766,3 @@ managementSpec originate = do
             $ defaultOriginationParams { opTransferlistContract = Just transferlistContract }
         withOriginated originate originationParams $ \stablecoinContract -> do
           withSender wallet1 $ lCallEP stablecoinContract (Call @"Burn") [ 10 ]
-
-  -- Permission descriptor query
-  describe "Contract's Permissions_descriptor entrypoint" $
-    it "returns the expected value" $ integrationalTestExpectation $
-      withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
-        consumer <- lOriginateEmpty @FA2.PermissionsDescriptor contractConsumer "consumer"
-        let permissionsDescriptorQuery = toContractRef consumer
-        lCallEP stablecoinContract (Call @"Permissions_descriptor") permissionsDescriptorQuery
-
-        lExpectConsumerStorage consumer $ \case
-          (pd:_) -> if mkPermissionDescriptor pd == stablecoinPermissionsDescriptor
-            then Right ()
-            else Left $ CustomTestError "Unexpected permission descriptor"
-          _ -> Left $ CustomTestError "Unexpected permission descriptor"

@@ -7,7 +7,6 @@ module Stablecoin.Client.Main
   ) where
 
 import Fmt (pretty)
-import Lorentz (arg)
 import Morley.Client
   (AddressOrAlias(AddressAlias), Alias, MorleyClientM, TezosClientError(UnknownAddressAlias),
   mkMorleyClientEnv, rememberContract, resolveAddress, runMorleyClientM)
@@ -15,13 +14,11 @@ import qualified Options.Applicative as Opt
 import Util.Exception (displayUncaughtException)
 import Util.Named ((.!))
 
-import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
-import Lorentz.Contracts.Stablecoin (OwHook(..), OwHookOptReq(..), stablecoinPermissionsDescriptor)
 import Stablecoin.Client.Contract (InitialStorageData(..))
 import Stablecoin.Client.Impl
   (AddressAndAlias(..), acceptOwnership, burn, changeMasterMinter, changePauser, configureMinter,
   deploy, getBalance, getBalanceOf, getContractOwner, getMasterMinter, getMintingAllowance,
-  getPaused, getPauser, getPendingContractOwner, getTokenMetadata, getTotalSupply, getTransferlist,
+  getPaused, getPauser, getPendingContractOwner, getTokenMetadata, getTransferlist,
   isOperator, mint, pause, removeMinter, setTransferlist, transfer, transferOwnership, unpause,
   updateOperators)
 import Stablecoin.Client.Parser
@@ -95,29 +92,6 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
         (putTextLn "This account is an operator.")
         (putTextLn "This account is not an operator.")
 
-    CmdPermissionsDescriptor -> do
-      let ((customPolicy, transferPolicy), (receiver, sender)) =
-            stablecoinPermissionsDescriptor
-
-      whenJust customPolicy $ \(arg #tag -> tag, arg #config_api -> configApiMaybe) -> do
-        putTextLn $ "Tag: " <> pretty tag
-        whenJust configApiMaybe $ \configApi ->
-          putTextLn $ "Config API: " <> pretty configApi
-
-      putTextLn $ "Transfer policy: " <>
-        case transferPolicy of
-          FA2.OwnerTransfer _ -> "owner_transfer"
-          FA2.NoTransfer _ -> "no_transfer"
-          FA2.OwnerOrOperatorTransfer _ -> "owner_or_operator_transfer"
-
-      let displayOwnerTransferMode = \case
-            OwOptReq OptOH -> "optional_owner_hook"
-            OwOptReq ReqOp -> "required_owner_hook"
-            OwNoOp -> "owner_no_op"
-
-      putTextLn $ "Receiver: " <> displayOwnerTransferMode receiver
-      putTextLn $ "Sender: " <> displayOwnerTransferMode sender
-
     CmdPause -> pause user contract
     CmdUnpause -> unpause user contract
 
@@ -175,10 +149,6 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
       getTransferlist contract >>= \case
         Nothing -> putTextLn "Transferlist contract is not set."
         Just addrAndAlias -> putAddressAndAlias "Transferlist contract" addrAndAlias
-
-    CmdGetTotalSupply -> do
-      totalSupply <- getTotalSupply contract
-      putTextLn $ "Total supply: " <> pretty totalSupply
 
     CmdGetMintingAllowance GetMintingAllowanceOptions {..} -> do
       allowance <- getMintingAllowance contract gmaoMinter

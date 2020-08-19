@@ -14,7 +14,6 @@ is case action of
     Transfer                (params) -> transfer                (params, store)
   | Balance_of              (params) -> balance_of              (params, store)
   | Token_metadata_registry (params) -> token_metadata_registry (params, store)
-  | Permissions_descriptor  (params) -> permission_descriptor   (params, store)
   | Update_operators        (params) -> update_operators_action (params, store)
   | Is_operator             (params) -> is_operator_action      (params, store)
 end

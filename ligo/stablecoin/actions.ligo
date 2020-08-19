@@ -168,8 +168,7 @@ function convert_to_transferlist_transfer
  * the provided transfer_descriptors.
  *)
 function call_assert_transfers
-  ( const ops_in : list(operation)
-  ; const opt_sl_address : option(address)
+  ( const opt_sl_address : option(address)
   ; const transfer_params : transfer_params
   ) : list(operation) is block
   { const operations: list(operation) =
@@ -180,10 +179,10 @@ function call_assert_transfers
               Tezos.transaction
                 ( List.map(convert_to_transferlist_transfer, transfer_params)
                 , 0mutez
-                , sl_caddress) # ops_in
+                , sl_caddress) # (nil : list(operation))
             | None -> (failwith ("BAD_TRANSFERLIST_CONTRACT") : list(operation))
             end
-        | None -> ops_in
+        | None -> (nil : list(operation))
         end
   } with operations
 
@@ -261,8 +260,7 @@ function transfer
 
   ; const upd : list (operation) =
       call_assert_transfers
-        ( generic_transfer_hook (parameter)
-        , store.transferlist_contract
+        ( store.transferlist_contract
         , params
         )
   ; const ups : storage =
@@ -311,27 +309,6 @@ function token_metadata_registry
     , parameter
     )
   ]
-  , store
-  )
-
-(*
- * Retrieves current permissions for stablecoin smart contract.
- *)
-function permission_descriptor
-  ( const parameter : permissions_descriptor_params
-  ; const store     : storage
-  ) : entrypoint is block
-  { const operator_permissions : operator_transfer_policy = Layout.convert_to_right_comb((Owner_or_operator_transfer : operator_transfer_policy_))
-  ; const owner_hook_policy : owner_hook_policy = Layout.convert_to_right_comb((Optional_owner_hook : owner_hook_policy_))
-  ; const permissions : permissions_descriptor =
-      (operator_permissions, (owner_hook_policy, (owner_hook_policy, (None : option (custom_permission_policy)))))
-
-} with
-  ( list [Tezos.transaction
-    ( permissions
-    , 0mutez
-    , parameter
-    )]
   , store
   )
 
@@ -481,7 +458,6 @@ function mint
       Big_map.update (Tezos.sender, Some (updated_allowance), accumulator.minting_allowances)
   ; const updated_store : storage = accumulator with record
       [ minting_allowances = updated_allowances
-      ; total_supply = accumulator.total_supply + unwrapped_parameter.amount
       ]
   } with credit_to (unwrapped_parameter, updated_store)
 
@@ -515,7 +491,7 @@ function mint
   )
 
 (*
- * Decreases balance and total supply of tokens by the given amount
+ * Decreases balance of tokens by the given amount
  *)
 function burn
   ( const parameters : burn_params
@@ -535,12 +511,7 @@ function burn
           ]
       , accumulator
       )
-  } with debited_storage with record
-      [ total_supply = case is_nat (debited_storage.total_supply - burn_amount) of
-          Some (nat) -> nat
-        | None -> (failwith ("NEGATIVE_TOTAL_SUPPLY") : nat)
-        end
-      ]
+  } with debited_storage
 
 ; const upds : list(operation) = call_assert_receivers
     ( store.transferlist_contract

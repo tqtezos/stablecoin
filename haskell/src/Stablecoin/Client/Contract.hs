@@ -61,9 +61,7 @@ mkInitialStorage (InitialStorageData {..}) =
         )
       , #token_metadata .! tokenMetadata
       )
-    , ( #total_supply .! 0
-      , #transferlist_contract .! isdTransferlist
-      )
+    , #transferlist_contract .! isdTransferlist
     )
   )
   where

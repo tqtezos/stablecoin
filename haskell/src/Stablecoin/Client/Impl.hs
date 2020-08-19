@@ -33,7 +33,6 @@ module Stablecoin.Client.Impl
   , getMasterMinter
   , getPauser
   , getTransferlist
-  , getTotalSupply
   , getMintingAllowance
   , getTokenMetadata
   ) where
@@ -189,8 +188,7 @@ mint sender contract to amount = do
   toAddr <- resolveAddress to
   call sender contract (Call @"Mint") [(#to_ .! toAddr, #amount .! amount)]
 
--- | Decreases balance for sender and the total supply of tokens by
--- the sum of given amounts.
+-- | Decreases balance for sender by the sum of given amounts.
 burn
   :: "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias
   -> NonEmpty Natural -> MorleyClientM ()
@@ -277,13 +275,7 @@ getPauser contract =
 getTransferlist :: "contract" :! AddressOrAlias -> MorleyClientM (Maybe AddressAndAlias)
 getTransferlist contract =
   getStorage contract >>= \case
-    (_, (_, (_, arg #transferlist_contract -> transferlistMb))) -> traverse pairWithAlias transferlistMb
-
--- | Get the total supply of tokens.
-getTotalSupply :: "contract" :! AddressOrAlias -> MorleyClientM Natural
-getTotalSupply contract =
-  getStorage contract <&> \case
-    (_, (_, (arg #total_supply -> totalSupply, _))) -> totalSupply
+    (_, (_, arg #transferlist_contract -> transferlistMb)) -> traverse pairWithAlias transferlistMb
 
 -- | Get the minting allowance for the given minter.
 getMintingAllowance :: "contract" :! AddressOrAlias -> AddressOrAlias -> MorleyClientM Natural
@@ -365,12 +357,11 @@ instance Exception StablecoinClientError where
 -- big_maps' IDs instead of their contents.
 type StorageView =
   (((Ledger, MintingAllowances), (Operators, IsPaused))
-   , ((Roles, TokenMetadataBigMap), (TotalSupply, TransferlistContract)))
+   , ((Roles, TokenMetadataBigMap), TransferlistContract))
 
 type Ledger = "ledger" :! BigMapId Address Natural
 
 type Operators = "operators" :! BigMapId (Address, Address) ()
-type TotalSupply = "total_supply" :! Natural
 type IsPaused = "paused" :! Bool
 
 type MasterMinter = Address

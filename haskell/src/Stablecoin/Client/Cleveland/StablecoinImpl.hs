@@ -16,12 +16,11 @@ import Tezos.Address (Address)
 import Tezos.Core (Mutez)
 import Util.Named ((:!), (.!))
 
-import Lorentz.Contracts.Stablecoin (PermissionsDescriptor)
 import Stablecoin.Client
   (AddressAndAlias(..), InitialStorageData(..), UpdateOperatorData(AddOperator, RemoveOperator))
 import Stablecoin.Client.Cleveland.IO
   (OutputParseError(..), addressAndAliasParser, addressParser, callStablecoinClient,
-  encodeMaybeOption, labelled, mutezParser, naturalParser, permissionsDescriptorParser, runParser,
+  encodeMaybeOption, labelled, mutezParser, naturalParser, runParser,
   textParser)
 
 data StablecoinTestError where
@@ -52,7 +51,6 @@ data StablecoinImpl m = StablecoinImpl
   , siIsOperator
       :: "contract" :! AddressOrAlias
       -> AddressOrAlias -> AddressOrAlias -> m Bool
-  , siPermissionsDescriptor :: m PermissionsDescriptor
   , siPause :: "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias -> m ()
   , siUnpause :: "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias -> m ()
   , siConfigureMinter
@@ -89,7 +87,6 @@ data StablecoinImpl m = StablecoinImpl
   , siGetMasterMinter :: "contract" :! AddressOrAlias -> m AddressAndAlias
   , siGetPauser :: "contract" :! AddressOrAlias -> m AddressAndAlias
   , siGetTransferlist :: "contract" :! AddressOrAlias -> m (Maybe AddressAndAlias)
-  , siGetTotalSupply :: "contract" :! AddressOrAlias -> m Natural
   , siGetMintingAllowance :: "contract" :! AddressOrAlias -> AddressOrAlias -> m Natural
   , siGetTokenMetadata
       :: "contract" :! AddressOrAlias
@@ -146,9 +143,6 @@ stablecoinImplClient conf env = StablecoinImpl
          | otherwise ->
               throwM $ OutputParseError "is-operator" $
                 "Unexpected stablecoin-client output: " <> pretty output
-  , siPermissionsDescriptor = do
-      output <- callStablecoinClient conf $ [ "permissions-descriptor" ]
-      runParser output permissionsDescriptorParser
   , siPause = \sender contract ->
       void $ callStablecoinClient conf $
         [ "pause" ]
@@ -233,9 +227,6 @@ stablecoinImplClient conf env = StablecoinImpl
       if "Transferlist contract is not set" `isInfixOf` output
         then pure Nothing
         else Just <$> runParser output (addressAndAliasParser "Transferlist contract")
-  , siGetTotalSupply = \contract -> do
-      output <- callStablecoinClient conf $ [ "get-total-supply" ] <> mkContractOpt contract
-      runParser output (labelled "Total supply" naturalParser)
   , siGetMintingAllowance = \contract minter -> do
       output <- callStablecoinClient conf $
         [ "get-minting-allowance"

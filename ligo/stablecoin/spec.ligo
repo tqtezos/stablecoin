@@ -126,32 +126,6 @@ type operator_transfer_policy_ is
 
 type operator_transfer_policy is michelson_or_right_comb(operator_transfer_policy_)
 
-type owner_hook_policy_ is
-| Owner_no_hook
-| Optional_owner_hook
-| Required_owner_hook
-
-type owner_hook_policy is michelson_or_right_comb(owner_hook_policy_)
-
-type custom_permission_policy_ is record
-  tag        : string
-; config_api : option (address)
-end
-
-type custom_permission_policy is michelson_pair_right_comb(custom_permission_policy_)
-
-type permissions_descriptor_ is record
-  operator : operator_transfer_policy
-; receiver : owner_hook_policy
-; sender   : owner_hook_policy
-; custom   : option (custom_permission_policy)
-end
-
-type permissions_descriptor is michelson_pair_right_comb(permissions_descriptor_)
-
-type permissions_descriptor_params is
-  contract (permissions_descriptor)
-
 type pause_params is unit
 
 type unpause_params is unit
@@ -189,7 +163,6 @@ type parameter is
   Transfer                of transfer_params
 | Balance_of              of balance_of_params
 | Token_metadata_registry of token_metadata_registry_params
-| Permissions_descriptor  of permissions_descriptor_params
 | Update_operators        of update_operator_params
 | Is_operator             of is_operator_params
 
@@ -282,7 +255,6 @@ type storage is record
   ledger             : ledger
 ; token_metadata     : big_map (token_id, token_metadata)
 ; minting_allowances : minting_allowances
-; total_supply       : nat
 ; paused             : bool
 ; roles              : roles
 ; operators          : operators

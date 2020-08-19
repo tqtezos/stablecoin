@@ -16,12 +16,10 @@ module Stablecoin.Client.Cleveland.IO
   , textParser
   , addressParser
   , addressAndAliasParser
-  , permissionsDescriptorParser
   ) where
 
 import Data.Char (isAlpha, isDigit)
 import Fmt (Buildable, pretty, (+|), (|+))
-import Michelson.Text (MText, mkMText)
 import Morley.Client (Alias)
 import qualified Morley.Client as MorleyClient
 import Morley.Nettest (MorleyClientConfig(..))
@@ -34,10 +32,7 @@ import Text.Megaparsec.Char.Lexer (decimal)
 import Text.Megaparsec.Error (ShowErrorComponent(..))
 import Tezos.Address (Address, parseAddress)
 import Tezos.Core (Mutez, unsafeMkMutez)
-import Util.Named ((.!))
 
-import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
-import Lorentz.Contracts.Stablecoin (OwHook(..), OwHookOptReq(..), PermissionsDescriptor)
 import Stablecoin.Client (AddressAndAlias(..))
 
 ----------------------------------------------------------------------------
@@ -114,12 +109,6 @@ naturalParser = decimal
 textParser :: Parser Text
 textParser = fromString <$> some printChar
 
-mTextParser :: Parser MText
-mTextParser =
-  textParser <&> mkMText >>= \case
-    Left err -> P.customFailure $ OutputParseError "MText" err
-    Right mt -> pure mt
-
 addressParser :: Parser Address
 addressParser = do
   rawAddr <- P.many (P.satisfy isBase58Char)
@@ -139,31 +128,3 @@ addressAndAliasParser label =
   AddressAndAlias
     <$> labelled (label <> " address") addressParser
     <*> optional (P.try (labelled (label <> " alias") aliasParser))
-
-permissionsDescriptorParser :: Parser PermissionsDescriptor
-permissionsDescriptorParser = do
-  custom <- customPolicyParser
-  transferPolicy <- labelled "Transfer policy" transferPolicyParser
-  receiver <- labelled "Receiver" ownerTransferModeParser
-  sender <- labelled "Sender" ownerTransferModeParser
-  pure ((custom, transferPolicy), (receiver, sender))
-
-  where
-  customPolicyParser :: Parser (Maybe FA2.CustomPermissionPolicy)
-  customPolicyParser =
-    optional . P.try $ do
-      tag <- labelled "Tag" mTextParser
-      configApiMaybe <- optional $ P.try $ labelled "Config API" addressParser
-      pure $ (#tag .! tag, #config_api .! configApiMaybe)
-
-  ownerTransferModeParser :: Parser OwHook
-  ownerTransferModeParser =
-    string "optional_owner_hook" $> OwOptReq OptOH
-    <|> string "required_owner_hook" $> OwOptReq ReqOp
-    <|> string "owner_no_op" $> OwNoOp
-
-  transferPolicyParser :: Parser FA2.OperatorTransferPolicy
-  transferPolicyParser =
-    string "owner_transfer" $> FA2.OwnerTransfer (#owner_transfer .! ())
-    <|> string "no_transfer" $> FA2.NoTransfer (#no_transfer .! ())
-    <|> string "owner_or_operator_transfer" $> FA2.OwnerOrOperatorTransfer (#owner_or_operator_transfer .! ())

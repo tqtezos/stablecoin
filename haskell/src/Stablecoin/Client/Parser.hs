@@ -58,7 +58,6 @@ data ClientArgsRaw
   | CmdGetBalanceOf GetBalanceOfOptions
   | CmdUpdateOperators UpdateOperatorsOptions
   | CmdIsOperator IsOperatorOptions
-  | CmdPermissionsDescriptor
   -- Stablecoin entrypoints
   | CmdPause
   | CmdUnpause
@@ -79,7 +78,6 @@ data ClientArgsRaw
   | CmdGetMasterMinter
   | CmdGetPauser
   | CmdGetTransferlist
-  | CmdGetTotalSupply
   | CmdGetMintingAllowance GetMintingAllowanceOptions
   | CmdGetTokenMetadata
   deriving stock Show
@@ -193,7 +191,6 @@ clientArgsRawParser = Opt.subparser $
   <> getBalanceOfCmd
   <> updateOperatorsCmd
   <> isOperatorCmd
-  <> permissionsDescriptorCmd
   <> pauseCmd
   <> unpauseCmd
   <> configureMinterCmd
@@ -212,7 +209,6 @@ clientArgsRawParser = Opt.subparser $
   <> getMasterMinterCmd
   <> getPauserCmd
   <> getTransferlistCmd
-  <> getTotalSupplyCmd
   <> getMintingAllowanceCmd
   <> getTokenMetadataCmd
   where
@@ -357,13 +353,6 @@ clientArgsRawParser = Opt.subparser $
           (#name .! "operator")
           (#help .! "Address of the potential operator")
       pure $ IsOperatorOptions {..}
-
-    permissionsDescriptorCmd :: Opt.Mod Opt.CommandFields ClientArgsRaw
-    permissionsDescriptorCmd =
-      mkCommandParser
-        "permissions-descriptor"
-        (pure CmdPermissionsDescriptor) $
-        "Display the stablecoin's permissions descriptor."
 
     pauseCmd :: Opt.Mod Opt.CommandFields ClientArgsRaw
     pauseCmd =
@@ -595,13 +584,6 @@ clientArgsRawParser = Opt.subparser $
         "get-transferlist"
         (pure CmdGetTransferlist)
         "Get the transferlist's address"
-
-    getTotalSupplyCmd :: Opt.Mod Opt.CommandFields ClientArgsRaw
-    getTotalSupplyCmd =
-      mkCommandParser
-        "get-total-supply"
-        (pure CmdGetTotalSupply)
-        "Get the total supply of tokens"
 
     getMintingAllowanceCmd :: Opt.Mod Opt.CommandFields ClientArgsRaw
     getMintingAllowanceCmd =
