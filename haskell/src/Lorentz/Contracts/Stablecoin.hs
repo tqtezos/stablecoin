@@ -16,6 +16,7 @@ module Lorentz.Contracts.Stablecoin
   , TransferOwnershipParam
   , OwHook(..)
   , OwHookOptReq(..)
+  , minterLimit
   , mkTokenMetadata
   , stablecoinTokenMetadata
 
@@ -143,7 +144,7 @@ type PendingOwner = Maybe Address
 type Pauser = Address
 
 type MintingAllowancesInner = Map Address Natural
-type MintingAllowances = "minting_allowances" :! (BigMap Address Natural)
+type MintingAllowances = "minting_allowances" :! (Map Address Natural)
 
 type RolesInner = (("master_minter" :! MasterMinter, "owner" :! Owner)
              , ("pauser" :! Pauser, "pending_owner_address" :! PendingOwner))
@@ -163,7 +164,7 @@ pattern StorageLedger ledger <- (((arg #ledger -> (BigMap ledger), _ ), _), _)
 {-# COMPLETE StorageLedger #-}
 
 pattern StorageMinters :: MintingAllowancesInner -> Storage
-pattern StorageMinters minters <- (((_, arg #minting_allowances -> (BigMap minters)), _), _)
+pattern StorageMinters minters <- (((_, arg #minting_allowances -> minters), _), _)
 {-# COMPLETE StorageMinters #-}
 
 pattern StorageOperators :: OperatorsInner -> Storage
@@ -230,3 +231,7 @@ mkTokenMetadata
   , L.arg #extras -> extras)))) = (token_id, (symbol, (name, (decimals, extras))))
 
 type TokenMetadata = (Natural, (L.MText, (L.MText, (Natural, Map L.MText L.MText))))
+
+-- Currently the contract allows to add upto 12 minters.
+minterLimit :: Int
+minterLimit = 12

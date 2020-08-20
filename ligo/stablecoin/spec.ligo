@@ -249,7 +249,7 @@ end
 
 type ledger is big_map (address, nat)
 
-type minting_allowances is big_map (address, nat)
+type minting_allowances is map (address, nat)
 
 type storage is record
   ledger             : ledger

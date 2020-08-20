@@ -174,7 +174,7 @@ withOriginated fn op tests = do
 mkInitialStorage :: OriginationParams -> Maybe Storage
 mkInitialStorage OriginationParams{..} = let
   ledgerMap = opBalances
-  mintingAllowances = #minting_allowances .! (BigMap opMinters)
+  mintingAllowances = #minting_allowances .! opMinters
   operatorMap = Map.foldrWithKey foldFn mempty opOwnerToOperators
   ledger = #ledger .! (BigMap ledgerMap)
   owner_ = #owner .! opOwner

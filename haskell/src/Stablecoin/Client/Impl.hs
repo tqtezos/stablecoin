@@ -37,6 +37,7 @@ module Stablecoin.Client.Impl
   , getTokenMetadata
   ) where
 
+import qualified Data.Map as M
 import Fmt (Buildable(build), pretty, (+|), (|+))
 import Lorentz (EntrypointRef(Call), HasEntrypointArg, arg, useHasEntrypointArg)
 import Michelson.Typed (Dict(..), IsoValue, fromVal, toVal)
@@ -281,8 +282,8 @@ getTransferlist contract =
 getMintingAllowance :: "contract" :! AddressOrAlias -> AddressOrAlias -> MorleyClientM Natural
 getMintingAllowance contract minter = do
   minterAddr <- resolveAddress minter
-  (((_, arg #minting_allowances -> bigMapId), _), _) <- getStorage contract
-  allowanceMaybe <- readBigMapValueMaybe bigMapId minterAddr
+  (((_, arg #minting_allowances -> mintingAllowances), _), _) <- getStorage contract
+  let allowanceMaybe = M.lookup minterAddr mintingAllowances
   pure $ fromMaybe 0 allowanceMaybe
 
 -- | Get the minting allowance for the given minter.
@@ -369,7 +370,7 @@ type Owner = Address
 type PendingOwner = Maybe Address
 type Pauser = Address
 
-type MintingAllowances = "minting_allowances" :! BigMapId Address Natural
+type MintingAllowances = "minting_allowances" :! Map Address Natural
 
 type RolesInner = (("master_minter" :! MasterMinter, "owner" :! Owner)
              , ("pauser" :! Pauser, "pending_owner_address" :! PendingOwner))

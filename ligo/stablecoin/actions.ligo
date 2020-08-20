@@ -383,10 +383,13 @@ function configure_minter
 ; authorize_master_minter (store)
 ; const present_minting_allowance : option (nat) =
     store.minting_allowances[parameter.0]
+; const minter_limit : nat = 12n
 ; case parameter.1.0 of
     None -> case present_minting_allowance of
       Some (u) -> failwith ("CURRENT_ALLOWANCE_REQUIRED")
-    | None -> skip
+    | None ->
+        // We are adding a new minter. Check the minter limit is not exceeded.
+        if Map.size(store.minting_allowances) >= minter_limit then failwith ("MINTER_LIMIT_REACHED") else skip
     end
   | Some (current_minting_allowance) ->
       case present_minting_allowance of
@@ -399,7 +402,7 @@ function configure_minter
 } with
   ( (nil : list (operation))
   , store with record
-      [ minting_allowances = Big_map.update
+      [ minting_allowances = Map.update
           ( parameter.0
           , Some (parameter.1.1)
           , store.minting_allowances
