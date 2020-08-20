@@ -211,6 +211,30 @@ type transferlist_assert_receivers_param is list(address)
 
 type set_transferlist_param is option(address)
 
+type blake2b_hash is bytes
+
+type seconds is nat
+
+type permit_info is
+  record [
+    created_at: timestamp
+  ; expiry: option(seconds)
+  ]
+
+type user_permits is
+  record [
+    permits: map (blake2b_hash, permit_info)
+  ; expiry: option(seconds)
+  ]
+
+type permits is big_map (address, user_permits)
+
+type permit_param is (key * (signature * blake2b_hash))
+
+type revoke_parameter is list(blake2b_hash * address)
+
+type set_expiry_parameter is (seconds * option(blake2b_hash * address))
+
 (* ------------------------------------------------------------- *)
 
 (* Stablecoin parameter *)
@@ -227,6 +251,7 @@ type closed_parameter is
 | Change_master_minter  of change_master_minter_param
 | Change_pauser         of change_pauser_param
 | Set_transferlist      of set_transferlist_param
+| Permit                of permit_param
 
 (* ------------------------------------------------------------- *)
 
@@ -252,13 +277,16 @@ type ledger is big_map (address, nat)
 type minting_allowances is map (address, nat)
 
 type storage is record
-  ledger                      : ledger
-; token_metadata_registry     : address
-; minting_allowances          : minting_allowances
-; paused                      : bool
-; roles                       : roles
-; operators                   : operators
-; transferlist_contract       : option(address)
+  ledger                  : ledger
+; token_metadata_registry : address
+; minting_allowances      : minting_allowances
+; paused                  : bool
+; roles                   : roles
+; operators               : operators
+; transferlist_contract   : option(address)
+; permit_counter          : nat
+; permits                 : permits
+; default_expiry          : seconds
 end
 
 type entrypoint is list (operation) * storage

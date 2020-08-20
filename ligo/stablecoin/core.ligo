@@ -22,11 +22,11 @@ end
  * Root entrypoint of stablecoin smart-contract
  *)
 function stablecoin_main
-  ( const action : closed_parameter
+  ( const full_param : closed_parameter
   ; const store  : storage
   ) : entrypoint is block
 { fail_on (Tezos.amount =/= 0tz, "XTZ_RECEIVED") // Validate whether the contract receives non-zero amount of tokens
-} with case action of
+} with case full_param of
     Call_FA2              (params) -> fa2_main              (params, store)
   | Pause                 (params) -> pause                 (params, store)
   | Unpause               (params) -> unpause               (params, store)
@@ -39,4 +39,5 @@ function stablecoin_main
   | Change_master_minter  (params) -> change_master_minter  (params, store)
   | Change_pauser         (params) -> change_pauser         (params, store)
   | Set_transferlist      (params) -> set_transferlist      (params, store)
+  | Permit                (params) -> add_permit            (params, store)
   end

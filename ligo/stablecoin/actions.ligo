@@ -6,6 +6,7 @@
  *)
 
 #include "operator.ligo"
+#include "permit.ligo"
 
 (* ------------------------------------------------------------- *)
 
@@ -607,3 +608,46 @@ function set_transferlist
   ( (nil : list (operation))
   , store with record [ transferlist_contract = parameter ]
   )
+
+(*
+ * Creates a new permit, allowing any user to act on behalf of the user
+ * who signed the permit.
+ *)
+function add_permit
+  ( const parameter: permit_param
+  ; const store    : storage
+  ) : entrypoint is block
+{ const key : key = parameter.0
+; const signature : signature = parameter.1.0
+; const permit : blake2b_hash = parameter.1.1
+; const issuer: address = Tezos.address(Tezos.implicit_account(Crypto.hash_key(key)))
+
+// form the structure that is to be signed by pairing self contract address, chain id, counter
+// and permit hash and pack it to get bytes.
+; const to_sign : bytes = Bytes.pack (((Tezos.self_address, Tezos.chain_id), (store.permit_counter, permit)))
+
+// check the included signature against public_key from parameter and bytes derived from the
+// operation in parameter.
+; const store : storage =
+    if (Crypto.check (key, signature, to_sign)) then
+      store with record
+        [ permit_counter = store.permit_counter + 1n
+        ; permits =
+            delete_expired_permits(store.default_expiry, issuer,
+              insert_permit(issuer, permit, store.permits)
+            )
+        ]
+    else block {
+      // We're using Embedded Michelson here to get around the limitation that,
+      // currently, Ligo's `failwith` only supports strings and numeric types.
+      // https://ligolang.org/docs/advanced/embedded-michelson/
+      //
+      // Once this MR is merged, we should be able to use Ligo's `failwith`:
+      // https://gitlab.com/ligolang/ligo/-/issues/193
+      const failwith_ : (string * bytes -> storage) =
+        [%Michelson ({| { FAILWITH } |} : string * bytes -> storage)];
+    } with failwith_(("MISSIGNED", to_sign))
+} with
+    ( (nil : list(operation))
+    , store
+    )
