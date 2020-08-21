@@ -122,7 +122,8 @@ The next group consists of the errors that are not part of the FA2 specification
 | `ALLOWANCE_MISMATCH`         | In `configure_minter` both allowances are not `None`, but different                                                            |
 | `ADDR_NOT_MINTER`            | An attempt is made to modify minter data of an address that's not a minter                                                     |
 | `ALLOWANCE_EXCEEDED`         | Throws when trying to mint tokens more than currently allowed for an address                                                   |
-| `BAD_TRANSFERLIST`           | Given address is a not a smart contract complying with the transferlist interface                                                  |
+| `BAD_TRANSFERLIST`           | Given address is a not a smart contract complying with the transferlist interface                                              |
+| `MINTER_LIMIT_REACHED`       | Cannot add new minter because the number of minters is already at the limit.                                                   |
 
 # Entrypoints
 
@@ -423,6 +424,7 @@ Parameter (in Michelson)
 ```
 
 - Adds `minter` to the minter list to allow him to mint tokens (if `minter` is not in the list already).
+  Currently we allow upto 12 minters.
 
 - Sets the specified minting allowance (`new_minting_allowance`) for this minter.
 
@@ -438,6 +440,9 @@ We distinguish three error cases, each has a dedicated error message:
 - Fails with `NOT_MASTER_MINTER` if the sender is not master minter.
 
 - Fails with `CONTRACT_PAUSED` if the contract is paused.
+
+- Fails with `MINTER_LIMIT_REACHED` if the current number of minters is at the limit
+  and the request is trying to add a new minter.
 
 #### **remove_minter**
 

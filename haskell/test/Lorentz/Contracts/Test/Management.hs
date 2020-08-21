@@ -8,6 +8,7 @@ module Lorentz.Contracts.Test.Management
   ) where
 
 import Data.Map as M (fromList, lookup)
+import Data.Map.Strict as M (size)
 import qualified Data.Set as Set
 import Test.Hspec (Spec, describe, it)
 
@@ -19,6 +20,7 @@ import Lorentz.Contracts.Stablecoin
 import Lorentz.Contracts.Test.Common
 import Lorentz.Test
 import Michelson.Runtime (ExecutorError)
+import Tezos.Address (detGenKeyAddress)
 import Tezos.Core (unsafeMkMutez)
 import Util.Named
 
@@ -66,6 +68,9 @@ mgmAllowanceExceeded = lExpectFailWith (== [mt|ALLOWANCE_EXCEEDED|])
 
 mgmBadTransferlist :: ExecutorError -> IntegrationalScenario
 mgmBadTransferlist = lExpectFailWith (== [mt|BAD_TRANSFERLIST|])
+
+mgmMinterLimitExceeded :: ExecutorError -> IntegrationalScenario
+mgmMinterLimitExceeded = lExpectFailWith (== [mt|MINTER_LIMIT_REACHED|])
 
 managementSpec
   :: forall param. ParameterC param
@@ -301,7 +306,33 @@ managementSpec originate = do
 
         mgmContractPaused err
 
+  describe "Minter limit check" $ do
+    let
+      configureMinterParam :: Int -> ConfigureMinterParam
+      configureMinterParam i =
+        ( #minter .! (detGenKeyAddress $ encodeUtf8 @Text ("a" <> show i))
+        , ( #current_minting_allowance .! Nothing
+          , #new_minting_allowance .! 20
+          ))
 
+    it "Can add minter until minter limit" $ integrationalTestExpectation $ do
+
+      withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
+        withSender testMasterMinter $ do
+          mapM_ (lCallEP stablecoinContract (Call @"Configure_minter")) (configureMinterParam <$> [1..minterLimit])
+
+          lExpectStorage stablecoinContract $ \case
+            (StorageMinters minters) ->
+              unless (M.size minters == minterLimit) $
+                  Left $ CustomTestError "Configure_minter call produced a malformed minter list"
+
+    it "Throws error when minter limit is exceeded" $ integrationalTestExpectation $ do
+
+      withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
+        withSender testMasterMinter $ do
+         err <- expectError $ mapM_ (lCallEP stablecoinContract (Call @"Configure_minter")) (configureMinterParam <$> [1..(minterLimit + 1)])
+
+         mgmMinterLimitExceeded err
 
   describe "Remove minter" $ do
     it "successfully removes minter from minting list" $ integrationalTestExpectation $ do

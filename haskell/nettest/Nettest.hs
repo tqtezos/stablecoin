@@ -105,10 +105,13 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
         (constructTransfersFromSender from destinations)
 
     configureMinter :: Address -> Address -> Maybe Natural -> Natural -> capsM ()
-    configureMinter from for expectedAllowance newAllowance =
+    configureMinter = configureMinter' sc
+
+    configureMinter' :: AddressOrAlias -> Address -> Address -> Maybe Natural -> Natural -> capsM ()
+    configureMinter' sc' from for expectedAllowance newAllowance =
       callFrom'
         (AddressResolved from)
-        sc
+        sc'
         (ep "configure_minter")
         ( #minter .! for
         , ( #current_minting_allowance .! expectedAllowance
@@ -339,11 +342,36 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
       comment "Unsetting transferlist"
       unsetTransferlist nettestOwner
 
+    configureMinterScenario = do
+      comment $ "Adding minters to limit"
+
+      -- We originate a new contract to make sure the minters list is empty
+      scAddress' <- do
+        let str = constructInitialStorage $ initialStorage { opMinters = mempty }
+        originateUntypedSimple "nettest.Stablecoin_for_minter_test" (untypeValue $ toVal str) stablecoinContract
+
+      let
+        sc' = AddressResolved scAddress'
+        addMinter' ma = configureMinter' sc' nettestMasterMinter ma Nothing 100
+
+      comment "Send some tez to master minter"
+      transfer $
+        TransferData
+          { tdFrom = AddressResolved superuser
+          , tdTo = AddressResolved nettestMasterMinter
+          , tdAmount = toMutez 100000000
+          , tdEntrypoint = DefEpName
+          , tdParameter = ()
+          }
+
+      mapM_ (\i -> newAddress  ("minter" <> show i) >>= addMinter') [1..minterLimit]
+
   transferScenario
   mintScenario
   burnScenario
   permissionReassigmentScenario
   transferlistScenario
+  configureMinterScenario
 
 -- This is a temporary solution.
 -- Changes made in cleveland's `callFrom` have caused some issues when calling
