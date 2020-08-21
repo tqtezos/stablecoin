@@ -15,6 +15,7 @@ all: build-ligo build-haskell
 # Compile LIGO contract into its michelson representation
 build-ligo:
 	$(MAKE_LIGO) stablecoin.tz
+	$(MAKE_LIGO) metadata.tz
 
 # Compile LIGO contract and then build everything haskell-related (including tests and benchmarks)
 # with development options.

@@ -304,7 +304,7 @@ function token_metadata_registry
   ; const store     : storage
   ) : entrypoint is
   ( list [Tezos.transaction
-    ( Tezos.self_address
+    ( store.token_metadata_registry
     , 0mutez
     , parameter
     )

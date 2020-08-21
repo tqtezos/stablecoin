@@ -5,8 +5,10 @@ module Lorentz.Contracts.Stablecoin
   ( ConfigureMinterParam
   , ChangeMasterMinterParam
   , TokenMetadata
-  , TokenMetadataBigMap
+  , TokenMetadataRegistryAddress
   , RemoveMinterParam
+  , MetadataRegistryStorage
+  , MetadataRegistryStorageView
   , MintParams
   , MintParam
   , BurnParams
@@ -27,14 +29,16 @@ module Lorentz.Contracts.Stablecoin
   , pattern StorageOperators
   , pattern StoragePaused
   , pattern StorageTransferlistContract
-  , pattern StorageMetadataBigMap
+  , pattern StorageMetadataRegistery
   , pattern MasterMinterRole
   , pattern OwnerRole
   , pattern PauserRole
   , pattern PendingOwnerRole
   , pattern ConfigureMinterParams
+  , pattern RegistryMetadata
 
   , stablecoinPath
+  , metadataRegistryContractPath
   ) where
 
 import Fmt
@@ -43,11 +47,16 @@ import qualified Text.Show
 import Lorentz
 import qualified Lorentz as L
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
+import Morley.Client (BigMapId(..))
 import Util.Named
 
 -- | The path to the compiled stablecoin contract.
 stablecoinPath :: FilePath
 stablecoinPath = "./test/resources/stablecoin.tz"
+
+-- | The path to the compiled metadata registry.
+metadataRegistryContractPath :: FilePath
+metadataRegistryContractPath = "./test/resources/metadata.tz"
 
 ------------------------------------------------------------------
 -- Parameter
@@ -144,7 +153,7 @@ type PendingOwner = Maybe Address
 type Pauser = Address
 
 type MintingAllowancesInner = Map Address Natural
-type MintingAllowances = "minting_allowances" :! (Map Address Natural)
+type MintingAllowances = "minting_allowances" :! MintingAllowancesInner
 
 type RolesInner = (("master_minter" :! MasterMinter, "owner" :! Owner)
              , ("pauser" :! Pauser, "pending_owner_address" :! PendingOwner))
@@ -153,11 +162,11 @@ type Roles = "roles" :! RolesInner
 
 type TransferlistContract = "transferlist_contract" :! (Maybe Address)
 
-type TokenMetadataBigMap = "token_metadata" :! (BigMap FA2.TokenId TokenMetadata)
+type TokenMetadataRegistryAddress = "token_metadata_registry" :! Address
 
 type Storage =
   (((Ledger, MintingAllowances), (Operators, IsPaused))
-   , ((Roles, TokenMetadataBigMap), TransferlistContract))
+   , ((Roles, TokenMetadataRegistryAddress), TransferlistContract))
 
 pattern StorageLedger :: LedgerInner -> Storage
 pattern StorageLedger ledger <- (((arg #ledger -> (BigMap ledger), _ ), _), _)
@@ -175,9 +184,9 @@ pattern StoragePaused :: Bool -> Storage
 pattern StoragePaused paused <- ((_, (_, arg #paused -> paused)), _)
 {-# COMPLETE StoragePaused #-}
 
-pattern StorageMetadataBigMap :: BigMap FA2.TokenId TokenMetadata -> Storage
-pattern StorageMetadataBigMap bigMap <- (_, ((_, arg #token_metadata -> bigMap), _))
-{-# COMPLETE StorageMetadataBigMap #-}
+pattern StorageMetadataRegistery :: Address -> Storage
+pattern StorageMetadataRegistery registry <- (_, ((_, arg #token_metadata_registry -> registry), _))
+{-# COMPLETE StorageMetadataRegistery #-}
 
 pattern StorageRoles :: RolesInner -> Storage
 pattern StorageRoles roles <- (_ , ((arg #roles -> roles, _), _))
@@ -235,3 +244,14 @@ type TokenMetadata = (Natural, (L.MText, (L.MText, (Natural, Map L.MText L.MText
 -- Currently the contract allows to add upto 12 minters.
 minterLimit :: Int
 minterLimit = 12
+
+type MetadataRegistryStorage' bt = ("dummy_field" :! (), "token_metadata" :! bt)
+
+type MetadataRegistryStorageView = MetadataRegistryStorage' (BigMapId FA2.TokenId TokenMetadata)
+type MetadataRegistryStorage = MetadataRegistryStorage' (BigMap FA2.TokenId TokenMetadata)
+
+pattern RegistryMetadata :: a -> MetadataRegistryStorage' a
+pattern RegistryMetadata metadata <- (_, arg #token_metadata -> metadata)
+  where
+    RegistryMetadata metadata = (#dummy_field .! (), #token_metadata .! metadata)
+{-# COMPLETE RegistryMetadata #-}

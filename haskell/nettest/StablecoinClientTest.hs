@@ -34,6 +34,7 @@ stablecoinClientScenario aliasPrefix = do
   (contractOwnerAlias, contractOwnerAddr, contractOwner) <- createRole "contract-owner"
   (_, _, minter) <- createRole "minter"
   (transferlistAlias, transferlistAddr, transferlist) <- createRole "transferlist"
+  (_, _, mdRegisty) <- createRole "metadata-registry"
 
   comment "Deploying contract"
   contractAddr <- deploy (#sender.! originator) InitialStorageData
@@ -44,6 +45,7 @@ stablecoinClientScenario aliasPrefix = do
     , isdTokenSymbol = [mt|a|]
     , isdTokenName = [mt|b|]
     , isdTokenDecimals = 3
+    , isdTokenMetadataRegistry = Just mdRegisty
     }
   let contract = #contract .! AddressResolved contractAddr
 
