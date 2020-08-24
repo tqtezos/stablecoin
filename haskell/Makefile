@@ -28,8 +28,10 @@ endef
 
 define build_stablecoin_contract
 	$(MAKE_LIGO) stablecoin.tz
+	$(MAKE_LIGO) metadata.tz
 	mkdir -p test/resources
 	$(MORLEY) optimize --contract "$(LIGO_DIR)/stablecoin.tz" --output "test/resources/stablecoin.tz"
+	cp "$(LIGO_DIR)/metadata.tz" "test/resources/metadata.tz"
 endef
 
 # Build everything haskell-related (including tests and benchmarks) with development options.
@@ -77,3 +79,4 @@ lint:
 clean:
 	stack clean $(PACKAGE)
 	rm -f stablecoin.tz
+	rm -f metadata.tz

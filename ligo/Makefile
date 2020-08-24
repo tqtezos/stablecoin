@@ -12,6 +12,10 @@ sources = stablecoin/*.ligo
 stablecoin.tz: $(sources)
 	$(LIGO) compile-contract --syntax pascaligo stablecoin/core.ligo stablecoin_main > stablecoin.tz
 
+# Compile metadata LIGO contract into its michelson representation
+metadata.tz: $(sources)
+	$(LIGO) compile-contract --syntax pascaligo stablecoin/metadata.ligo metadata > metadata.tz
+
 .PHONY: clean
 clean:
 	rm -f *.tz

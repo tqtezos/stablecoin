@@ -14,11 +14,11 @@ module Lorentz.Contracts.Test.Common
   , wallet5
   , commonOperator
   , commonOperators
+  , registryAddress
 
   , OriginationFn
   , OriginationParams (..)
   , defaultOriginationParams
-  , defaultTokenMetadataBigMap
   , addAccount
   , addOperator
   , addMinter
@@ -40,9 +40,10 @@ import Lorentz.Contracts.Stablecoin as SC
 import Lorentz.Test
 import Lorentz.Value
 import Michelson.Runtime (ExecutorError)
+import Tezos.Address (detGenKeyAddress)
 import Util.Named
 
-testOwner, testPauser, testMasterMinter, wallet1, wallet2, wallet3, wallet4, wallet5, commonOperator :: Address
+registryAddress, testOwner, testPauser, testMasterMinter, wallet1, wallet2, wallet3, wallet4, wallet5, commonOperator :: Address
 wallet1 = genesisAddress1
 wallet2 = genesisAddress2
 wallet3 = genesisAddress3
@@ -52,6 +53,7 @@ commonOperator = genesisAddress6
 testOwner = genesisAddresses !! 7
 testPauser = genesisAddresses !! 8
 testMasterMinter = genesisAddresses !! 9
+registryAddress = detGenKeyAddress "metadata-registry"
 
 commonOperators :: [Address]
 commonOperators = [commonOperator]
@@ -86,22 +88,9 @@ data OriginationParams = OriginationParams
   , opPaused :: Bool
   , opMinters :: Map Address Natural
   , opPendingOwner :: Maybe Address
-  , opTokenMetadata :: FA2.TokenMetadata
+  , opTokenMetadataRegistry :: Address
   , opTransferlistContract :: Maybe (TAddress Transferlist.Parameter)
   }
-
-defaultTokenMetadata :: FA2.TokenMetadata
-defaultTokenMetadata =
-  ( #token_id .! 0
-  , #mdr .! (#symbol .! [mt|TestTokenSymbol|]
-  , #mdr2 .! (#name .! [mt|TestTokenName|]
-  , #mdr3 .! (#decimals .! 8
-  , #extras .! (Map.fromList $
-       [([mt|attr1|], [mt|val1|]), ([mt|attr2|], [mt|val2|]) ]))))
-  )
-
-defaultTokenMetadataBigMap :: BigMap FA2.TokenId SC.TokenMetadata
-defaultTokenMetadataBigMap = BigMap $ Map.fromList [((0 :: Natural), mkTokenMetadata defaultTokenMetadata)]
 
 defaultOriginationParams :: OriginationParams
 defaultOriginationParams = OriginationParams
@@ -113,7 +102,7 @@ defaultOriginationParams = OriginationParams
   , opPaused = False
   , opMinters = mempty
   , opPendingOwner = Nothing
-  , opTokenMetadata = defaultTokenMetadata
+  , opTokenMetadataRegistry = registryAddress
   , opTransferlistContract = Nothing
   }
 
@@ -184,7 +173,7 @@ mkInitialStorage OriginationParams{..} = let
   operators = #operators .! (BigMap operatorMap)
   isPaused = #paused .! opPaused
   transferlistContract = #transferlist_contract .! (unTAddress <$> opTransferlistContract)
-  tokenMetadata = #token_metadata .! (BigMap $ Map.fromList [(0, mkTokenMetadata $ opTokenMetadata)])
+  tokenMetadata = #token_metadata_registry .! opTokenMetadataRegistry
   in Just (((ledger, mintingAllowances), (operators, isPaused))
            , ((roles, tokenMetadata), transferlistContract))
   where

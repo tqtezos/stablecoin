@@ -43,7 +43,7 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
       let contractAlias = "stablecoin"
       aliasAlreadyExists <- checkIfAliasExists contractAlias
 
-      (opHash, contractAddr) <- deploy user contractAlias InitialStorageData
+      (opHash, contractAddr, metadataRegAddr) <- deploy user contractAlias InitialStorageData
         { isdMasterMinter = dcoMasterMinter
         , isdContractOwner = dcoContractOwner
         , isdPauser = dcoPauser
@@ -51,11 +51,13 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
         , isdTokenName = dcoTokenName
         , isdTokenSymbol = dcoTokenSymbol
         , isdTokenDecimals = dcoTokenDecimals
+        , isdTokenMetadataRegistry = dcoTokenMetadataRegistry
         }
 
       putTextLn "Contract was successfully deployed."
       putTextLn $ "Operation hash: " <> pretty opHash
       putTextLn $ "Contract address: " <> pretty contractAddr
+      putTextLn $ "Metadata registry contract address: " <> pretty metadataRegAddr
 
       let printAlias = putTextLn $ "Created alias '" <> pretty contractAlias <> "'."
 

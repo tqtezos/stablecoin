@@ -93,12 +93,12 @@ managementSpec originate = do
           (constructTransfersFromSender (#from_ .! wallet1) [])
         mgmXtzReceived err
 
-    it "token metadata big map is present in storage" $ integrationalTestExpectation $ do
+    it "token metadata registry is present in storage" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         lExpectStorage stablecoinContract $ \case
-          StorageMetadataBigMap metadata
-            | metadata == defaultTokenMetadataBigMap -> Right ()
-            | otherwise -> Left $ CustomTestError "Malformed token metadata big map in contract storage"
+          StorageMetadataRegistery regAddr
+            | regAddr == registryAddress -> Right ()
+            | otherwise -> Left $ CustomTestError "Malformed token metadata registry address in contract storage"
 
   describe "Contract pausing" $ do
     it "pauses contract as expected" $ integrationalTestExpectation $ do

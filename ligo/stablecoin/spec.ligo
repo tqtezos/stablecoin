@@ -252,13 +252,13 @@ type ledger is big_map (address, nat)
 type minting_allowances is map (address, nat)
 
 type storage is record
-  ledger             : ledger
-; token_metadata     : big_map (token_id, token_metadata)
-; minting_allowances : minting_allowances
-; paused             : bool
-; roles              : roles
-; operators          : operators
-; transferlist_contract  : option(address)
+  ledger                      : ledger
+; token_metadata_registry     : address
+; minting_allowances          : minting_allowances
+; paused                      : bool
+; roles                       : roles
+; operators                   : operators
+; transferlist_contract       : option(address)
 end
 
 type entrypoint is list (operation) * storage
