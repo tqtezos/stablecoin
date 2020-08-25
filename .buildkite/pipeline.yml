@@ -67,7 +67,7 @@ steps:
      MONEYBAG: "unencrypted:edsk4EYgVvKVKppJXAyeoqxJrNeyoktNqmcx5op1CFht9P1p8pPxp7"
    commands: *run-nettest
    retry: *retry-nettest
-   timeout_in_minutes: 90
+   timeout_in_minutes: 120
  - label: weeder
    if: *not_scheduled
    commands:
