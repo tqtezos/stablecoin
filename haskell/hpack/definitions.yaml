@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2020 tqtezos
+# SPDX-FileCopyrightText: 2020 TQ Tezos
 # SPDX-License-Identifier: MIT
 
 # This file defines sensible defaults but does not actually apply
@@ -9,7 +9,7 @@ _definitions:
     - &meta
         author:              Serokell, TQ Tezos
         maintainer:          Serokell <hi@serokell.io>
-        copyright:           2020 tqtezos
+        copyright:           2020 TQ Tezos
         license:             MIT
         license-file:        LICENSE
         git:                 git@github.com:tqtezos/stablecoin.git

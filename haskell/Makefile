@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2020 tqtezos
+# SPDX-FileCopyrightText: 2020 TQ Tezos
 # SPDX-License-Identifier: MIT
 
 .PHONY: build test test-dumb-term test-hide-successes nettest haddock haddock-no-deps stylish lint clean all

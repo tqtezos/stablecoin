@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2020 tqtezos
+# SPDX-FileCopyrightText: 2020 TQ Tezos
 # SPDX-License-Identifier: MIT
 #!/usr/bin/env bash
 files=$(git ls-files -- . | xargs grep --files-with-matches --binary-files=without-match '[[:blank:]]$')
