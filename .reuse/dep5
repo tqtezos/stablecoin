@@ -1,7 +1,7 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 
 Files: .github/* nix/sources.json
-Copyright: 2020 tqtezos
+Copyright: 2020 TQ Tezos
 License: MIT
 
 Files: nix/sources.nix

@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2020 tqtezos
+SPDX-FileCopyrightText: 2020 TQ Tezos
 SPDX-License-Identifier: MIT
 -->
 
@@ -13,21 +13,22 @@ The contract is implemented in the [LIGO language](https://ligolang.org/).
 See the [`ligo/`](ligo/) folder.
 Contract specification is [available](/docs/specification.md).
 
+## Stablecoin client
+
+We have a `stablecoin-client` executable that allows deploying and interacting with the stablecoin contract.
+You can download it as a static Linux binary from GitHub [releases](https://github.com/tqtezos/stablecoin/releases).
+Please refer to the [`haskell/`](/haskell/) directory for details.
+
 ## Haskell bindings
 
 Apart from LIGO implementation of the contract we have [a Haskell library](haskell/) with data types corresponding to this contract.
 It is based on the [morley framework](https://gitlab.com/morley-framework/morley).
 It allows us to use features of `morley` (such as testing engine) with this contract.
 
-## Stablecoin client
-
-We have a `stablecoin-client` executable that allows deploying and interacting with the stablecoin contract.
-Please refer to the [`haskell/`] directory for details.
-
 ## Tests
 
 Tests are implemented in the same Haskell package.
-Please refer to the [`haskell/`] directory for details.
+Please refer to the [`haskell/`](/haskell/) directory for details.
 
 ## Issue Tracker
 

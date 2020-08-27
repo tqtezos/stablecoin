@@ -1,11 +1,19 @@
 <!--
-SPDX-FileCopyrightText: 2020 tqtezos
+SPDX-FileCopyrightText: 2020 TQ Tezos
 SPDX-License-Identifier: MIT
 -->
 # Changelog for stablecoin
 
-## Unreleased
+## 1.2.0
 
+Operations on the contract got cheaper in this release:
+
+* [#96](https://github.com/tqtezos/stablecoin/pull/96)
+  Metadata was moved into a separate contract.
+* [#95](https://github.com/tqtezos/stablecoin/pull/95)
+  Maximal number of minters is limited, they are stored in strict `map`.
+* [#89](https://github.com/tqtezos/stablecoin/pull/89)
+  Prune 0 balance accounts from the storage.
 * [#85](https://github.com/tqtezos/stablecoin/pull/92)
   Removed `permissions_descriptor` entrypoint.
   Removed 'total_supply' from storage.
