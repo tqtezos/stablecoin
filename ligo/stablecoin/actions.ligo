@@ -29,22 +29,22 @@ function fail_on
  *)
 function authorize_contract_owner
   ( const store : storage
-  ) : unit is
-  fail_on
-    ( Tezos.sender =/= store.roles.owner
-    , "NOT_CONTRACT_OWNER"
-    )
+  ; const full_param : closed_parameter
+  ) : storage is
+  sender_check(store.roles.owner, store, full_param, "NOT_CONTRACT_OWNER")
 
 (*
  * Ensures that sender is current pending contract owner.
  *)
 function authorize_pending_owner
   ( const store : storage
-  ) : address is case store.roles.pending_owner of
-    Some (pending_owner) -> if Tezos.sender =/= pending_owner
-      then (failwith ("NOT_PENDING_OWNER") : address)
-      else pending_owner
-    | None -> (failwith ("NO_PENDING_OWNER_SET") : address)
+  ; const full_param : closed_parameter
+  ) : storage * address is case store.roles.pending_owner of
+    Some (pending_owner) ->
+      ( sender_check(pending_owner, store, full_param, "NOT_PENDING_OWNER")
+      , pending_owner
+      )
+    | None -> (failwith ("NO_PENDING_OWNER_SET") : storage * address)
     end
 
 (*
@@ -52,22 +52,18 @@ function authorize_pending_owner
  *)
 function authorize_pauser
   ( const store : storage
-  ) : unit is
-  fail_on
-    ( Tezos.sender =/= store.roles.pauser
-    , "NOT_PAUSER"
-    )
+  ; const full_param : closed_parameter
+  ) : storage is
+  sender_check(store.roles.pauser, store, full_param, "NOT_PAUSER")
 
 (*
  * Authorizes master_minter and fails otherwise.
  *)
 function authorize_master_minter
   ( const store : storage
-  ) : unit is
-  fail_on
-    ( Tezos.sender =/= store.roles.master_minter
-    , "NOT_MASTER_MINTER"
-    )
+  ; const full_param : closed_parameter
+  ) : storage is
+  sender_check(store.roles.master_minter, store, full_param, "NOT_MASTER_MINTER")
 
 (*
  * Authorizes minter and fails otherwise.
@@ -212,11 +208,66 @@ function call_assert_receivers
       end
   } with operations
 
+
+(*
+ * Returns `True` if all booleans in the list are `True`,
+ * or `False` otherwise.
+ *)
+function all(const xs: list(bool)): bool is
+  List.fold
+    ( function(const acc: bool; const x: bool) is acc and x
+    , xs
+    , True
+    )
+
 (* ------------------------------------------------------------- *)
 
 (*
  * FA2-specific entrypoints
  *)
+
+(*
+ * Verify the sender of an `transfer` action.
+ *
+ * The check is successful if either of these is true:
+ * 1) The sender is either the owner or an approved operator for each and every
+ *    account from which funds will be withdrawn.
+ * 2) All transfers withdraw funds from a single account, and the account owner
+ *    has issued a permit allowing this call to go through.
+ *)
+function transfer_sender_check
+  ( const params : transfer_params
+  ; const store : storage
+  ; const full_param : closed_parameter
+  ) : storage is block
+{ // check if the sender is either the owner or an approved operator for all transfers
+  const is_approved_operator_for_all : bool =
+    all(
+      List.map(
+        function(const p : transfer_param) : bool is is_approved_operator(p, store.operators),
+        params
+      )
+    )
+} with
+    if is_approved_operator_for_all then
+      store
+    else
+      case params of
+        nil -> store
+      | first_param # rest -> block {
+          // check whether `from_` has issued a permit
+          const from_: address = first_param.0
+        ; const updated_store : storage = sender_check(from_, store, full_param, "FA2_NOT_OPERATOR")
+          // check that all operations relate to the same owner.
+        ; List.iter
+            ( function (const param : transfer_param): unit is
+                if param.0 =/= from_
+                  then failwith ("FA2_NOT_OPERATOR")
+                  else Unit
+            , rest
+            )
+        } with updated_store
+      end
 
 (*
  * Initiates transfers from a given list of parameters. Fails
@@ -227,8 +278,10 @@ function call_assert_receivers
 function transfer
   ( const params : transfer_params
   ; const store  : storage
+  ; const full_param : closed_parameter
   ) : entrypoint is block
 { ensure_not_paused (store)
+; const store : storage = transfer_sender_check(params, store, full_param)
 
 ; const sender_addr : address = Tezos.sender
 
@@ -236,8 +289,7 @@ function transfer
     ( const acc       : entrypoint
     ; const parameter : transfer_param
     ) : entrypoint is block
-  { validate_operators (parameter, acc.1.operators)
-  ; function transfer_tokens
+  { function transfer_tokens
       ( const accumulator : storage
       ; const destination : transfer_destination
       ) : storage is block
@@ -319,12 +371,15 @@ function token_metadata_registry
 function update_operators_action
   ( const parameter : update_operator_params
   ; const store     : storage
+  ; const full_param : closed_parameter
   ) : entrypoint is block
-{ const updated_operators : operators =
-    update_operators (parameter, store.operators)
+{ const updated_store : storage =
+    update_operators_sender_check(parameter, store, full_param)
+; const updated_operators : operators =
+    update_operators (parameter, updated_store.operators)
 } with
   ( (nil : list (operation))
-  , store with record [ operators = updated_operators ]
+  , updated_store with record [ operators = updated_operators ]
   )
 
 (*
@@ -347,9 +402,10 @@ function is_operator_action
 function pause
   ( const parameter : pause_params
   ; const store     : storage
+  ; const full_param : closed_parameter
   ) : entrypoint is block
 { ensure_not_paused (store)
-; authorize_pauser (store)
+; const store: storage = sender_check(store.roles.pauser, store, full_param, "NOT_PAUSER")
 } with
   ( (nil : list (operation))
   , store with record [paused = True]
@@ -363,9 +419,10 @@ function pause
 function unpause
   ( const parameter : unpause_params
   ; const store     : storage
+  ; const full_param : closed_parameter
   ) : entrypoint is block
 { ensure_is_paused (store)
-; authorize_pauser (store)
+; const store: storage = sender_check(store.roles.pauser, store, full_param, "NOT_PAUSER")
 } with
   ( (nil : list (operation))
   , store with record [paused = False]
@@ -379,9 +436,10 @@ function unpause
 function configure_minter
   ( const parameter : configure_minter_params
   ; const store     : storage
+  ; const full_param : closed_parameter
   ) : entrypoint is block
 { ensure_not_paused (store)
-; authorize_master_minter (store)
+; const store : storage = authorize_master_minter (store, full_param)
 ; const present_minting_allowance : option (nat) =
     store.minting_allowances[parameter.0]
 ; const minter_limit : nat = 12n
@@ -418,8 +476,9 @@ function configure_minter
 function remove_minter
   ( const parameter : remove_minter_params
   ; const store     : storage
+  ; const full_param : closed_parameter
   ) : entrypoint is block
-{ authorize_master_minter (store)
+{ const store : storage = authorize_master_minter (store, full_param)
 ; case store.minting_allowances[parameter] of
     Some (u) -> skip
   | None -> failwith ("ADDR_NOT_MINTER")
@@ -533,8 +592,9 @@ function burn
 function transfer_ownership
   ( const parameter : transfer_ownership_param
   ; const store     : storage
+  ; const full_param : closed_parameter
   ) : entrypoint is block
-{ authorize_contract_owner (store)
+{ const store : storage = authorize_contract_owner (store, full_param)
 } with
   ( (nil : list (operation))
   , store with record [roles.pending_owner = Some (parameter)]
@@ -547,11 +607,14 @@ function transfer_ownership
 function accept_ownership
   ( const parameter : accept_ownership_param
   ; const store     : storage
-  ) : entrypoint is
+  ; const full_param : closed_parameter
+  ) : entrypoint is block
+{ const auth_result : (storage * address) = authorize_pending_owner (store, full_param)
+} with
   ( (nil : list (operation))
-  , store with record
+  , auth_result.0 with record
       [ roles.pending_owner = (None : option (address))
-      ; roles.owner = authorize_pending_owner (store)
+      ; roles.owner = auth_result.1
       ]
   )
 
@@ -562,8 +625,9 @@ function accept_ownership
 function change_master_minter
   ( const parameter : change_master_minter_param
   ; const store     : storage
+  ; const full_param : closed_parameter
   ) : entrypoint is block
-{ authorize_contract_owner (store)
+{ const store : storage = authorize_contract_owner (store, full_param)
 } with
   ( (nil : list (operation))
   , store with record [ roles.master_minter = parameter ]
@@ -576,8 +640,9 @@ function change_master_minter
 function change_pauser
   ( const parameter : change_pauser_param
   ; const store     : storage
+  ; const full_param : closed_parameter
   ) : entrypoint is block
-{ authorize_contract_owner (store)
+{ const store : storage = authorize_contract_owner (store, full_param)
 } with
   ( (nil : list (operation))
   , store with record [ roles.pauser = parameter ]
@@ -589,8 +654,9 @@ function change_pauser
 function set_transferlist
   ( const parameter : set_transferlist_param
   ; const store     : storage
+  ; const full_param : closed_parameter
   ) : entrypoint is block
-{ authorize_contract_owner (store)
+{ const store : storage = authorize_contract_owner (store, full_param)
 
 ; case parameter of
     Some (sl_address) ->
