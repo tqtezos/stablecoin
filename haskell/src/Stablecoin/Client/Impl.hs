@@ -55,10 +55,12 @@ import Util.Named ((:!), (.!))
 
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
-  (MetadataRegistryStorageView, MetadataRegistryStorage, pattern MasterMinterRole, pattern RegistryMetadata, pattern OwnerRole, Parameter, pattern PauserRole,
-  pattern PendingOwnerRole, TokenMetadata)
+  (DefaultExpiry, pattern MasterMinterRole, MetadataRegistryStorage, MetadataRegistryStorageView,
+  pattern OwnerRole, Parameter, pattern PauserRole, pattern PendingOwnerRole, PermitCounter,
+  pattern RegistryMetadata, TokenMetadata, UserPermits)
 import Stablecoin.Client.Contract
-  (InitialStorageData(..), mkInitialStorage, mkRegistryStorage, parseRegistryContract, parseStablecoinContract)
+  (InitialStorageData(..), mkInitialStorage, mkRegistryStorage, parseRegistryContract,
+  parseStablecoinContract)
 
 -- | An address and an optional alias, if one is found.
 data AddressAndAlias = AddressAndAlias Address (Maybe Alias)
@@ -134,7 +136,7 @@ getBalanceOf
   -> AddressOrAlias -> MorleyClientM Natural
 getBalanceOf contract owner = do
   ownerAddr <- resolveAddress owner
-  (((arg #ledger -> bigMapId, _ ), _), _) <- getStorage contract
+  ((((_, arg #ledger -> bigMapId), _), _), _) <- getStorage contract
   balanceMaybe <- readBigMapValueMaybe bigMapId ownerAddr
   pure $ fromMaybe 0 balanceMaybe
 
@@ -164,7 +166,7 @@ isOperator
 isOperator contract owner operator = do
   ownerAddr <- resolveAddress owner
   operatorAddr <- resolveAddress operator
-  ((_, (arg #operators -> operatorsId, _)), _) <- getStorage contract
+  (((_, (_, arg #operators -> operatorsId)), ((_, _), _)), _) <- getStorage contract
   isJust @() <$> readBigMapValueMaybe operatorsId (ownerAddr, operatorAddr)
 
 -- | Pauses transferring, burning and minting operations so that they
@@ -265,7 +267,7 @@ getBalance (arg #contract -> contract) = do
 getPaused :: "contract" :! AddressOrAlias -> MorleyClientM Bool
 getPaused contract =
   getStorage contract <&> \case
-    ((_, (_, arg #paused -> paused)), _) -> paused
+    ((_, ((arg #paused -> paused, _), _)), _) -> paused
 
 -- | Get the address and optional alias of the current contract owner.
 getContractOwner :: "contract" :! AddressOrAlias -> MorleyClientM AddressAndAlias
@@ -302,14 +304,14 @@ getTransferlist contract =
 getMintingAllowance :: "contract" :! AddressOrAlias -> AddressOrAlias -> MorleyClientM Natural
 getMintingAllowance contract minter = do
   minterAddr <- resolveAddress minter
-  (((_, arg #minting_allowances -> mintingAllowances), _), _) <- getStorage contract
+  (((_, (arg #minting_allowances -> mintingAllowances, _)), _), _) <- getStorage contract
   let allowanceMaybe = M.lookup minterAddr mintingAllowances
   pure $ fromMaybe 0 allowanceMaybe
 
 -- | Get the token metadata of the contract
 getTokenMetadata :: "contract" :! AddressOrAlias -> MorleyClientM TokenMetadata
 getTokenMetadata contract = do
-  (_, ((_, arg #token_metadata_registry -> mdRegistry), _)) <- getStorage contract
+  (_, (arg #token_metadata_registry -> mdRegistry, _)) <- getStorage contract
   getRegistryStorage mdRegistry >>= \case
     -- failable pattern triggers here for some reason, hence the case stm
     RegistryMetadata bigmapId -> readBigMapValue bigmapId (0 :: FA2.TokenId)
@@ -387,8 +389,13 @@ instance Exception StablecoinClientError where
 -- This is because, when a contract's storage is queried, the tezos RPC returns
 -- big_maps' IDs instead of their contents.
 type StorageView =
-  (((Ledger, MintingAllowances), (Operators, IsPaused))
-   , ((Roles, TokenMetadataRegistry), TransferlistContract))
+  ((((DefaultExpiry, Ledger),
+     (MintingAllowances, Operators)),
+    ((IsPaused, PermitCounter),
+     (Permits, Roles))),
+   (TokenMetadataRegistryAddress, TransferlistContract))
+
+type Permits = "permits" :! BigMapId Address UserPermits
 
 type Ledger = "ledger" :! BigMapId Address Natural
 
@@ -409,8 +416,8 @@ type Roles = "roles" :! RolesInner
 
 type TransferlistContract = "transferlist_contract" :! (Maybe Address)
 
-type TokenMetadataRegistry = "token_metadata_registry" :! Address
+type TokenMetadataRegistryAddress = "token_metadata_registry" :! Address
 
 pattern StorageViewRoles :: RolesInner -> StorageView
-pattern StorageViewRoles roles <- (_ , ((arg #roles -> roles, _), _))
+pattern StorageViewRoles roles <- ((_, (_, (_, arg #roles -> roles))), _)
 {-# COMPLETE StorageViewRoles #-}

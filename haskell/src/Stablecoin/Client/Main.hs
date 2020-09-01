@@ -18,8 +18,8 @@ import Stablecoin.Client.Contract (InitialStorageData(..))
 import Stablecoin.Client.Impl
   (AddressAndAlias(..), acceptOwnership, burn, changeMasterMinter, changePauser, configureMinter,
   deploy, getBalance, getBalanceOf, getContractOwner, getMasterMinter, getMintingAllowance,
-  getPaused, getPauser, getPendingContractOwner, getTokenMetadata, getTransferlist,
-  isOperator, mint, pause, removeMinter, setTransferlist, transfer, transferOwnership, unpause,
+  getPaused, getPauser, getPendingContractOwner, getTokenMetadata, getTransferlist, isOperator,
+  mint, pause, removeMinter, setTransferlist, transfer, transferOwnership, unpause,
   updateOperators)
 import Stablecoin.Client.Parser
   (BurnOptions(..), ChangeMasterMinterOptions(..), ChangePauserOptions(..), ClientArgs(..),
@@ -52,6 +52,7 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
         , isdTokenSymbol = dcoTokenSymbol
         , isdTokenDecimals = dcoTokenDecimals
         , isdTokenMetadataRegistry = dcoTokenMetadataRegistry
+        , isdDefaultExpiry = dcoDefaultExpiry
         }
 
       putTextLn "Contract was successfully deployed."

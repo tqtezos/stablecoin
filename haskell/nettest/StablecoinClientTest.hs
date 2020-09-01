@@ -18,9 +18,9 @@ import Stablecoin.Client
 import Stablecoin.Client.Cleveland
   (StablecoinScenario, acceptOwnership, assertEq, burn, changeMasterMinter, changePauser,
   configureMinter, deploy, getBalanceOf, getContractOwner, getMasterMinter, getMintingAllowance,
-  getPaused, getPauser, getPendingContractOwner, getTokenMetadata, getTransferlist,
-  isOperator, mint, pause, removeMinter, revealKeyUnlessRevealed,
-  setTransferlist, transferOwnership, unpause, updateOperators)
+  getPaused, getPauser, getPendingContractOwner, getTokenMetadata, getTransferlist, isOperator,
+  mint, pause, removeMinter, revealKeyUnlessRevealed, setTransferlist, transferOwnership, unpause,
+  updateOperators)
 import qualified Stablecoin.Client.Cleveland as SC
 
 -- | Check that all the `stablecoin-client` commands work.
@@ -46,6 +46,7 @@ stablecoinClientScenario aliasPrefix = do
     , isdTokenName = [mt|b|]
     , isdTokenDecimals = 3
     , isdTokenMetadataRegistry = Just mdRegisty
+    , isdDefaultExpiry = 1000
     }
   let contract = #contract .! AddressResolved contractAddr
 

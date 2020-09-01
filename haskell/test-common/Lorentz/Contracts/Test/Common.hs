@@ -90,6 +90,8 @@ data OriginationParams = OriginationParams
   , opPendingOwner :: Maybe Address
   , opTokenMetadataRegistry :: Address
   , opTransferlistContract :: Maybe (TAddress Transferlist.Parameter)
+  , opDefaultExpiry :: Natural
+  , opPermits :: Map Address (Maybe Expiry, Map PermitHash (Timestamp, Maybe Expiry))
   }
 
 defaultOriginationParams :: OriginationParams
@@ -104,6 +106,8 @@ defaultOriginationParams = OriginationParams
   , opPendingOwner = Nothing
   , opTokenMetadataRegistry = registryAddress
   , opTransferlistContract = Nothing
+  , opDefaultExpiry = 1000
+  , opPermits = mempty
   }
 
 addMinter
@@ -160,6 +164,7 @@ withOriginated fn op tests = do
     Nothing -> pass
     Just contract -> tests contract
 
+{-# ANN module ("HLint: ignore Use bimap" :: Text) #-}
 mkInitialStorage :: OriginationParams -> Maybe Storage
 mkInitialStorage OriginationParams{..} = let
   ledgerMap = opBalances
@@ -174,8 +179,19 @@ mkInitialStorage OriginationParams{..} = let
   isPaused = #paused .! opPaused
   transferlistContract = #transferlist_contract .! (unTAddress <$> opTransferlistContract)
   tokenMetadata = #token_metadata_registry .! opTokenMetadataRegistry
-  in Just (((ledger, mintingAllowances), (operators, isPaused))
-           , ((roles, tokenMetadata), transferlistContract))
+  permits =
+    #permits .! BigMap (opPermits <&> \(userExpiry, userPermits) ->
+      ( #expiry .! userExpiry
+      , #permits .! (userPermits <&> \(createdAt, expiry) -> (#created_at .! createdAt, #expiry .! expiry))
+      )
+    )
+  permitCounter = #permit_counter .! 0
+  defaultExpiry = #default_expiry .! opDefaultExpiry
+  in Just ((((defaultExpiry, ledger),
+             (mintingAllowances, operators)),
+             ((isPaused, permitCounter),
+             (permits, roles))),
+           (tokenMetadata, transferlistContract))
   where
     foldFn
       :: Address

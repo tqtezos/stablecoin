@@ -36,6 +36,7 @@ import Paths_stablecoin (version)
 import Util.CLI (mkCLOptionParser)
 import Util.Named ((:!), (.!))
 
+import Lorentz.Contracts.Stablecoin (Expiry)
 import Stablecoin.Client.Impl (UpdateOperatorData(..))
 
 data ClientArgs = ClientArgs
@@ -92,6 +93,7 @@ data DeployContractOptions = DeployContractOptions
   , dcoTokenDecimals :: Natural
   , dcoTokenMetadataRegistry :: Maybe AddressOrAlias
   , dcoReplaceAlias :: Bool
+  , dcoDefaultExpiry :: Expiry
   }
   deriving stock Show
 
@@ -263,7 +265,6 @@ clientArgsRawParser = Opt.subparser $
           Nothing
           (#name .! "token-metadata-registry")
           (#help .! "Address or alias of the metadata registry contract")
-
       dcoReplaceAlias <-
         Opt.switch $
           Opt.long "replace-alias" <>
@@ -272,6 +273,11 @@ clientArgsRawParser = Opt.subparser $
             \by '--contract' already exists, the alias will be silently \
             \replaced. If it's not set, the user will be asked whether they \
             \want to replace it."
+      dcoDefaultExpiry <-
+        naturalOption
+          Nothing
+          (#name .! "default-expiry")
+          (#help .! "Number of seconds it takes for a permit to expire")
       pure $ DeployContractOptions {..}
 
     transferCmd :: Opt.Mod Opt.CommandFields ClientArgsRaw

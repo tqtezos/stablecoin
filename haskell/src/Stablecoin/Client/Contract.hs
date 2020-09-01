@@ -20,7 +20,8 @@ import Tezos.Address (Address)
 import Util.Named ((.!))
 
 import Lorentz.Contracts.Stablecoin
-  (MetadataRegistryStorage, pattern RegistryMetadata, Storage, mkTokenMetadata, stablecoinPath, metadataRegistryContractPath)
+  (Expiry, MetadataRegistryStorage, pattern RegistryMetadata, Storage,
+  metadataRegistryContractPath, mkTokenMetadata, stablecoinPath)
 
 -- | Parse the stablecoin contract.
 parseStablecoinContract :: MonadThrow m => m U.Contract
@@ -52,6 +53,7 @@ data InitialStorageData addr = InitialStorageData
   , isdTokenName :: MText
   , isdTokenDecimals :: Natural
   , isdTokenMetadataRegistry :: ComputeRegistryAddressType addr
+  , isdDefaultExpiry :: Expiry
   }
 
 -- | Construct the stablecoin contract's initial storage in order to deploy it.
@@ -59,25 +61,32 @@ mkInitialStorage :: InitialStorageData Address -> Storage
 mkInitialStorage (InitialStorageData {..}) =
   (
     (
-      ( #ledger .! mempty
-      , #minting_allowances .! mempty
+      (
+        ( #default_expiry .! isdDefaultExpiry
+        , #ledger .! mempty
+        )
+      , ( #minting_allowances .! mempty
+        , #operators .! mempty
+        )
       )
-    , ( #operators .! mempty
-      , #paused .! False
-      )
-    )
-  , (
-      ( #roles .!
-        (
-          ( #master_minter .! isdMasterMinter
-          , #owner .! isdContractOwner
-          )
-        , ( #pauser .! isdPauser
-          , #pending_owner_address .! Nothing
+    , (
+        ( #paused .! False
+        , #permit_counter .! 0
+        )
+      , ( #permits .! mempty
+        , #roles .!
+          (
+            ( #master_minter .! isdMasterMinter
+            , #owner .! isdContractOwner
+            )
+          , ( #pauser .! isdPauser
+            , #pending_owner_address .! Nothing
+            )
           )
         )
-      , #token_metadata_registry .! isdTokenMetadataRegistry
       )
+    )
+  , ( #token_metadata_registry .! isdTokenMetadataRegistry
     , #transferlist_contract .! isdTransferlist
     )
   )
