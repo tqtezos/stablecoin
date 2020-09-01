@@ -231,9 +231,30 @@ type permits is big_map (address, user_permits)
 
 type permit_param is (key * (signature * blake2b_hash))
 
-type revoke_parameter is list(blake2b_hash * address)
+type revoke_param is blake2b_hash * address
+type revoke_params is list(revoke_param)
 
-type set_expiry_parameter is (seconds * option(blake2b_hash * address))
+type set_expiry_param is (seconds * option(blake2b_hash * address))
+
+type get_default_expiry_param is michelson_pair_right_comb(record
+  param : unit
+; callback : contract(seconds)
+end)
+
+(*
+ * A counter that's incremented everytime a permit is created.
+ *
+ * When creating a new permit, the `permit` entrypoint verifies that the permit has
+ * been signed with the contract's current counter. It then increments the counter by 1.
+ *
+ * This ensures that a permit's signature is valid for one use only.
+ *)
+type counter is nat
+
+type get_counter_param is michelson_pair_right_comb(record
+  param : unit
+; callback : contract(counter)
+end)
 
 (* ------------------------------------------------------------- *)
 
@@ -252,6 +273,10 @@ type closed_parameter is
 | Change_pauser         of change_pauser_param
 | Set_transferlist      of set_transferlist_param
 | Permit                of permit_param
+| Revoke                of revoke_params
+| Set_expiry            of set_expiry_param
+| Get_default_expiry    of get_default_expiry_param
+| Get_counter           of get_counter_param
 
 (* ------------------------------------------------------------- *)
 
@@ -284,7 +309,7 @@ type storage is record
 ; roles                   : roles
 ; operators               : operators
 ; transferlist_contract   : option(address)
-; permit_counter          : nat
+; permit_counter          : counter
 ; permits                 : permits
 ; default_expiry          : seconds
 end

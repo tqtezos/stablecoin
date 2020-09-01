@@ -147,3 +147,84 @@ function insert_permit
   }
   with
    Big_map.update(user, Some(updated_user_permits), permits)
+
+(*
+ * Deletes the given permit.
+ * This operation does not fail if the permit is not found.
+ *)
+function remove_permit
+  ( const user: address
+  ; const permit: blake2b_hash
+  ; const permits: permits
+  ) : permits is
+  // look for the user's permits
+  case Big_map.find_opt(user, permits) of
+  | None -> permits
+  | Some(user_permits) ->
+      block {
+        // remove this permit from the user's permits
+        const updated_user_permits : user_permits =
+          user_permits with record [
+            permits = Map.remove(
+              permit,
+              user_permits.permits
+            )
+          ]
+      } with
+        Big_map.update(user, Some(updated_user_permits), permits)
+  end
+
+(*
+ * Sets the default expiry for a user.
+ *
+ * If the user already had an expiry set, the old expiry is overriden by the new one.
+ *)
+function set_user_default_expiry
+  ( const user : address
+  ; const new_expiry : seconds
+  ; const permits : permits
+  ) : permits is block
+{ const user_permits: user_permits =
+    case Big_map.find_opt(user, permits) of
+    | Some(user_permits) -> user_permits
+    | None -> new_user_permits
+    end
+; const updated_user_permits: user_permits =
+    user_permits with record [
+      expiry = Some(new_expiry)
+    ]
+} with Big_map.update(user, Some(updated_user_permits), permits)
+
+(*
+ * Sets the expiry for a permit.
+ *
+ * If the permit already had an expiry set, the old expiry is overriden by the new one.
+ * If the permit does not exist, nothing happens.
+ *)
+function set_permit_expiry
+  ( const user : address
+  ; const permit : blake2b_hash
+  ; const new_expiry : seconds
+  ; const permits : permits
+  ) : permits is
+  case Big_map.find_opt(user, permits) of
+  | None -> permits
+  | Some(user_permits) ->
+      case Map.find_opt(permit, user_permits.permits) of
+      | None -> permits
+      | Some(permit_info) ->
+          block {
+            const updated_permit_info : permit_info =
+              permit_info with record [ expiry = Some(new_expiry) ]
+
+          ; const updated_user_permits : user_permits =
+              user_permits with record [
+                permits = Map.update(
+                  permit,
+                  Some(updated_permit_info),
+                  user_permits.permits
+                )
+              ]
+          } with Big_map.update(user, Some(updated_user_permits), permits)
+      end
+  end

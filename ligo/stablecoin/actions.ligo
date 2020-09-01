@@ -220,6 +220,31 @@ function all(const xs: list(bool)): bool is
     , True
     )
 
+(*
+ * Assert that all addresses in a list are equal,
+ * fails with `err_msg` otherwise.
+ *
+ * If the list is empty, returns `None`,
+ * otherwise returns `Some` with the unique address.
+ *)
+function all_equal
+  ( const addrs: list(address)
+  ; const err_msg: string
+  ) : option(address) is
+  case addrs of
+  | nil -> (None : option(address))
+  | first # rest ->
+      block {
+        List.iter
+          ( function (const addr : address): unit is
+              if addr =/= first
+                then failwith (err_msg)
+                else Unit
+          , rest
+          )
+      } with Some(first)
+  end
+
 (* ------------------------------------------------------------- *)
 
 (*
@@ -369,17 +394,26 @@ function token_metadata_registry
  * Add or remove operators for provided owners.
  *)
 function update_operators_action
-  ( const parameter : update_operator_params
-  ; const store     : storage
+  ( const params : update_operator_params
+  ; const store : storage
   ; const full_param : closed_parameter
   ) : entrypoint is block
-{ const updated_store : storage =
-    update_operators_sender_check(parameter, store, full_param)
+{ const owners : list(address) = List.map(get_owner, params)
+
+// A user can only modify their own operators.
+// So we check that all operations affect the same `owner`,
+// and that the sender *is* the owner or the owner has issued a permit.
+; const store : storage =
+    case all_equal(owners, "NOT_TOKEN_OWNER") of
+    | None -> store
+    | Some(owner) -> sender_check(owner, store, full_param, "NOT_TOKEN_OWNER")
+    end
+
 ; const updated_operators : operators =
-    update_operators (parameter, updated_store.operators)
+    update_operators (params, store.operators)
 } with
   ( (nil : list (operation))
-  , updated_store with record [ operators = updated_operators ]
+  , store with record [ operators = updated_operators ]
   )
 
 (*
@@ -715,5 +749,95 @@ function add_permit
     } with failwith_(("MISSIGNED", to_sign))
 } with
     ( (nil : list(operation))
+    , store
+    )
+
+(*
+ * Deletes the given permits.
+ *
+ * Only the issuer X of a permit can revoke X's permits.
+ * Otherwise, X can issue a separate permit allowing other users to revoke X's permits.
+ *
+ * This operation does not fail if a given permit is not found.
+ *
+ * Fails with 'NOT_PERMIT_ISSUER' if:
+ *   a) the sender is not the issuer of any of the given permits,
+ *   b) and the issuer has not issued a permit allowing others to revoke their permits
+ *)
+function revoke_permits
+  ( const params: revoke_params
+  ; const store : storage
+  ; const full_param : closed_parameter
+  ) : entrypoint is block
+{ const issuers : list(address) =
+    List.map(function(const p: revoke_param): address is p.1, params)
+
+; const store : storage =
+    case all_equal(issuers, "NOT_PERMIT_ISSUER") of
+    | None -> store
+    | Some(issuer) -> sender_check(issuer, store, full_param, "NOT_PERMIT_ISSUER")
+    end
+
+;  const updated_permits : permits =
+    List.fold
+      ( function(const permits: permits; const param: revoke_param) : permits is
+          remove_permit(param.1, param.0, permits)
+      , params
+      , store.permits
+      )
+} with
+    ( (nil : list(operation))
+    , store with record [ permits = updated_permits ]
+    )
+
+(*
+ * Sets the default expiry for the sender (if the param contains a `None`)
+ * or for a specific permit (if the param contains a `Some`).
+ *
+ * When the permit whose expiry should be set does not exist,
+ * nothing happens.
+ *)
+function set_expiry
+  ( const param: set_expiry_param
+  ; const store : storage
+  ) : entrypoint is block
+{ const new_expiry : seconds = param.0
+; const updated_permits : permits =
+    case param.1 of
+    | None ->
+        set_user_default_expiry(Tezos.sender, new_expiry, store.permits)
+    | Some(hash_and_address) ->
+        set_permit_expiry(hash_and_address.1, hash_and_address.0, new_expiry, store.permits)
+    end
+} with
+    ( (nil : list(operation))
+    , store with record [ permits = updated_permits ]
+    )
+
+(*
+ * Retrieves the contract's default permit expiry and leaves the storage untouched.
+ *)
+function get_default_expiry
+  ( const parameter: get_default_expiry_param
+  ; const store : storage
+  ) : entrypoint is block
+{ const transfer_operation : operation =
+    Tezos.transaction (store.default_expiry, 0mutez, parameter.1)
+} with
+    ( list [transfer_operation]
+    , store
+    )
+
+(*
+ * Retrieves the contract's permit counter and leaves the storage untouched.
+ *)
+function get_counter
+  ( const parameter: get_counter_param
+  ; const store : storage
+  ) : entrypoint is block
+{ const transfer_operation : operation =
+    Tezos.transaction (store.permit_counter, 0mutez, parameter.1)
+} with
+    ( list [transfer_operation]
     , store
     )

@@ -85,34 +85,3 @@ function get_owner
     Add_operator    (param) -> param.0
   | Remove_operator (param) -> param.0
   end
-
-(*
- * Verify the sender of an `update_operators` action.
- *
- * A user can only modify their own operators.
- *
- * Therefore, we check that the sender is the owner whose operators we're trying to change,
- * or that the owner issued a permit allowing this call to go through.
- *)
-function update_operators_sender_check
-  ( const parameter : update_operator_params
-  ; const store : storage
-  ; const full_param : closed_parameter
-  ) : storage is
-    case parameter of
-      nil -> store
-    | first_param # rest ->
-        block {
-          // check the owner of the first operation.
-          const owner : address = get_owner(first_param)
-        ; const updated_store : storage = sender_check(owner, store, full_param, "NOT_TOKEN_OWNER")
-          // check that all operations relate to the same owner.
-        ; List.iter
-            ( function (const op : update_operator_param): unit is
-                if get_owner(op) =/= owner
-                  then failwith ("NOT_TOKEN_OWNER")
-                  else Unit
-            , rest
-            )
-        } with updated_store
-    end
