@@ -46,6 +46,7 @@ module Lorentz.Contracts.Stablecoin
   , pattern PendingOwnerRole
   , pattern ConfigureMinterParams
   , pattern RegistryMetadata
+  , pattern StoragePermits
 
   , stablecoinPath
   , metadataRegistryContractPath
@@ -303,6 +304,10 @@ pattern PauserRole pauser <- (_, (arg #pauser -> pauser, _))
 pattern PendingOwnerRole :: PendingOwner -> RolesInner
 pattern PendingOwnerRole pendingOwner <- (_, (_, arg #pending_owner_address -> pendingOwner))
 {-# COMPLETE PendingOwnerRole #-}
+
+pattern StoragePermits :: Map Address UserPermits -> Storage
+pattern StoragePermits permits <- ((_, (_, (arg #permits -> BigMap permits, _))), _)
+{-# COMPLETE StoragePermits #-}
 
 -- Permissions descriptor
 data OwHookOptReq = OptOH | ReqOp

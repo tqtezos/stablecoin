@@ -9,6 +9,8 @@ module Lorentz.Contracts.Test.FA2
   , addAccount
   , defaultOriginationParams
   , fa2Spec
+  , fa2NotOperator
+  , fa2NotOwner
   ) where
 
 import Data.Map as M (lookup)

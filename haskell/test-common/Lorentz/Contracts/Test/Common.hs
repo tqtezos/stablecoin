@@ -5,10 +5,20 @@
 
 module Lorentz.Contracts.Test.Common
   ( testOwner
+  , testOwnerPK
+  , testOwnerSK
   , testPauser
+  , testPauserSK
+  , testPauserPK
   , testMasterMinter
+  , testMasterMinterSK
+  , testMasterMinterPK
   , wallet1
+  , wallet1SK
+  , wallet1PK
   , wallet2
+  , wallet2SK
+  , wallet2PK
   , wallet3
   , wallet4
   , wallet5
@@ -40,7 +50,9 @@ import Lorentz.Contracts.Stablecoin as SC
 import Lorentz.Test
 import Lorentz.Value
 import Michelson.Runtime (ExecutorError)
+import Michelson.Runtime.GState (genesisSecrets)
 import Tezos.Address (detGenKeyAddress)
+import Tezos.Crypto (SecretKey, toPublic)
 import Util.Named
 
 registryAddress, testOwner, testPauser, testMasterMinter, wallet1, wallet2, wallet3, wallet4, wallet5, commonOperator :: Address
@@ -54,6 +66,20 @@ testOwner = genesisAddresses !! 7
 testPauser = genesisAddresses !! 8
 testMasterMinter = genesisAddresses !! 9
 registryAddress = detGenKeyAddress "metadata-registry"
+
+wallet1SK, wallet2SK, testOwnerSK, testPauserSK, testMasterMinterSK :: SecretKey
+wallet1SK = genesisSecrets !! 1
+wallet2SK = genesisSecrets !! 2
+testOwnerSK = genesisSecrets !! 7
+testPauserSK = genesisSecrets !! 8
+testMasterMinterSK = genesisSecrets !! 9
+
+wallet1PK, wallet2PK, testOwnerPK, testPauserPK, testMasterMinterPK :: PublicKey
+wallet1PK = toPublic wallet1SK
+wallet2PK = toPublic wallet2SK
+testOwnerPK = toPublic testOwnerSK
+testPauserPK = toPublic testPauserSK
+testMasterMinterPK = toPublic testMasterMinterSK
 
 commonOperators :: [Address]
 commonOperators = [commonOperator]
