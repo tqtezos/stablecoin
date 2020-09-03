@@ -268,7 +268,7 @@ fa2Spec fa2Originate = do
         err <- expectError $ withSender wallet2 $ lCallEP fa2contract (Call @"Transfer") transfers
         fa2NotOperator err
 
-    it "is permitted if self transfer is permitted in permissions descriptior" $ integrationalTestExpectation $ do
+    it "is permitted" $ integrationalTestExpectation $ do
       let originationParams = addAccount (wallet1, (commonOperators, 10)) defaultOriginationParams
       consumer <- lOriginateEmpty @[BalanceResponseItem] contractConsumer "consumer"
 
@@ -603,11 +603,10 @@ fa2Spec fa2Originate = do
         err <- expectError $ lCallEP stablecoinContract (Call @"Update_operators") [removeOperatorParam]
         fa2NotOwner err
 
-  ---- Owner hook test
-  ----
-  ---- Tests that validate that senders owner hook is not-called on transfer
-  ---- using default origination options where both sender/receiver hooks
-  ---- are set to be not called no matter what.
+  ---- Owner hook tests
+  --
+  ---- The contract implements the default (as per FA2) permission descriptor and thus does not
+  ---- call the hooks in either sender or receiver addresses.
   describe "Owner hook behavior on transfer" $ do
     it "does not call sender's transfer hook on transfer" $ integrationalTestExpectation $ do
         senderWithHook <- lOriginateEmpty @FA2OwnerHook contractConsumer "Sender hook consumer"
@@ -638,38 +637,6 @@ fa2Spec fa2Originate = do
           withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
 
           lExpectStorageConst @[FA2OwnerHook] receiverWithHook []
-
-    -- Tests that the senders/receiver owner hook are NOT called on transfer
-    it "does not call sender's transfer hook if `OwnerNoHook` is selected in permission descriptor" $
-      integrationalTestExpectation $ do
-        senderWithHook <- lOriginateEmpty @FA2OwnerHook contractConsumer "Sender hook consumer"
-        let originationParams = addAccount (unTAddress senderWithHook, (commonOperators, 10)) defaultOriginationParams
-
-        withOriginated fa2Originate originationParams $ \fa2contract -> do
-          let
-            transfers = constructSingleTransfer
-              (#from_ .! unTAddress senderWithHook)
-              (#to_ .! wallet2)
-              (#amount .! 10)
-
-          withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
-
-          lExpectStorageConst senderWithHook ([] :: [FA2OwnerHook])
-
-    it "does not call receivers's transfer hook if `OwnerNoHook` is selected in permission descriptor" $
-      integrationalTestExpectation $ do
-        receiverWithHook <- lOriginateEmpty @FA2OwnerHook contractConsumer "Receiver hook consumer"
-        let originationParams = addAccount (wallet1, (commonOperators, 10)) defaultOriginationParams
-        withOriginated fa2Originate originationParams $ \fa2contract -> do
-          let
-            transfers = constructSingleTransfer
-              (#from_ .! wallet1)
-              (#to_ .! unTAddress receiverWithHook)
-              (#amount .! 10)
-
-          withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
-
-          lExpectStorageConst receiverWithHook ([] :: [FA2OwnerHook])
 
 fa2TokenUndefined :: ExecutorError -> IntegrationalScenario
 fa2TokenUndefined = lExpectFailWith (== [mt|FA2_TOKEN_UNDEFINED|])

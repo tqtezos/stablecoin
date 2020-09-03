@@ -6,7 +6,6 @@ module Main
 
 import Fmt (pretty)
 import Options.Applicative (execParser)
-import qualified Unsafe (fromJust)
 
 import qualified Data.Text.IO.Utf8 as Utf8
 import qualified Indigo.Contracts.Transferlist.External as External
@@ -68,7 +67,7 @@ main = do
     scenarioWithInternalTransferlist impl = do
       niComment impl "Stablecoin contract nettest scenarioWithInternalTransferlist"
       scNettestScenario
-        (Unsafe.fromJust . mkInitialStorage)
+        mkInitialStorage
         stablecoinContract
         originateTransferlistInternal
         Internal
@@ -78,7 +77,7 @@ main = do
     scenarioWithExternalTransferlist impl = do
       niComment impl "Stablecoin contract nettest scenarioWithExternalTransferlist"
       scNettestScenario
-        (Unsafe.fromJust . mkInitialStorage)
+        mkInitialStorage
         stablecoinContract
         (originateTransferlistExternal @m @capsM)
         External
