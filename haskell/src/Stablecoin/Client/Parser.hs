@@ -244,12 +244,12 @@ clientArgsRawParser = Opt.subparser $
           (#help .! "Address or alias of the Transferlist contract")
       dcoTokenSymbol <-
         mTextOption
-          (Just [mt|USDC|])
+          (Just [mt|TEST|])
           (#name .! "token-symbol")
           (#help .! "Token symbol")
       dcoTokenName <-
         mTextOption
-          (Just [mt|USDC|])
+          (Just [mt|Test|])
           (#name .! "token-name")
           (#help .! "Token name")
       dcoTokenDecimals <-
