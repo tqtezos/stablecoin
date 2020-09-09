@@ -227,8 +227,8 @@ stablecoinTokenMetadata = mkTokenMetadata stablecoinTokenMetadataFA2
   where
     stablecoinTokenMetadataFA2 :: FA2.TokenMetadata
     stablecoinTokenMetadataFA2 =
-      (#token_id .! 0, #mdr .! ( #symbol .! [mt|USDC|]
-                               , #mdr2 .! ( #name .! [mt|USDC|]
+      (#token_id .! 0, #mdr .! ( #symbol .! [mt|TEST|]
+                               , #mdr2 .! ( #name .! [mt|Test|]
                                           , #mdr3 .! ( #decimals .! 8, #extras .! mempty))))
 
 mkTokenMetadata :: FA2.TokenMetadata -> TokenMetadata
