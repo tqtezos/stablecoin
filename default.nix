@@ -4,7 +4,7 @@
 { sources ? import ./nix/sources.nix
 , static ? true
 , haskell-nix ? import sources."haskell.nix" {
-    sourceOverrides = { hackage = sources."hackage.nix"; stackage = sources."stackage.nix"; };
+    sourcesOverride = { hackage = sources."hackage.nix"; stackage = sources."stackage.nix"; };
   }
 , pkgs ? import sources.nixpkgs haskell-nix.nixpkgsArgs
 , weeder-hacks ? import sources.haskell-nix-weeder { inherit pkgs; }
