@@ -78,12 +78,6 @@ Each address can have any number of operators and be an operator of any number o
 Every address that is stored in ledger is associated with its current balance.
 Additionally, each minter is associated with its current minting allowance.
 
-## Token metadata
-
-Stablecoin contract MUST provide an additional metadata `big_map` for its tokens.
-This `big_map` MUST be annotated as `%token_metadata` and can be at any position within
-contract storage. The structure of this `big_map` MUST follow [FA2 requirements](https://gitlab.com/tzip/tzip/-/blob/master/proposals/tzip-12/tzip-12.md#token_metadata-big_map).
-
 # Permits
 
 A user can pre-sign a parameter, allowing other users to call this contract on the user's behalf.
@@ -341,8 +335,6 @@ Parameter (in Michelson)
 ```
 
 - Return contract address that holds token metadata.
-
-- Since the contract owns its token metadata the returned value of this entrypoint call will always be equal to `SELF`.
 
 ### **update_operators**
 
