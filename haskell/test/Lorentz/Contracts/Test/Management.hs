@@ -382,9 +382,9 @@ managementSpec originate = do
       withOriginated originate originationParams $ \stablecoinContract -> do
         let
           mintings =
-            [ (#to_ .! wallet1, #amount .! 10)
-            , (#to_ .! wallet2, #amount .! 5)
-            , (#to_ .! wallet3, #amount .! 15)
+            [ MintParam wallet1 10
+            , MintParam wallet2 5
+            , MintParam wallet3 15
             ]
 
         withSender wallet1 $ lCallEP stablecoinContract (Call @"Mint") mintings
@@ -415,9 +415,9 @@ managementSpec originate = do
       withOriginated originate originationParams $ \stablecoinContract -> do
         let
           mintings =
-            [ (#to_ .! wallet1, #amount .! 5)
-            , (#to_ .! wallet2, #amount .! 10) -- Error here
-            , (#to_ .! wallet3, #amount .! 5)
+            [ MintParam wallet1 5
+            , MintParam wallet2 10 -- Error here
+            , MintParam wallet3 5
             ]
 
         err <- expectError $ withSender wallet1 $ lCallEP stablecoinContract (Call @"Mint") mintings
@@ -426,7 +426,7 @@ managementSpec originate = do
 
     it "fails if sender is not minter" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
-        let mintings = [(#to_ .! wallet1, #amount .! 5)]
+        let mintings = [MintParam wallet1 5]
         err <- expectError $ withSender wallet1 $ lCallEP stablecoinContract (Call @"Mint") mintings
         lExpectAnyMichelsonFailed stablecoinContract err
 
@@ -436,7 +436,7 @@ managementSpec originate = do
             addMinter (wallet1, 10)
           $ defaultOriginationParams { opPaused = True }
       withOriginated originate originationParams $ \stablecoinContract -> do
-        let mintings = [(#to_ .! wallet1, #amount .! 5)]
+        let mintings = [MintParam wallet1 5]
         err <- expectError $ withSender wallet1 $ lCallEP stablecoinContract (Call @"Mint") mintings
         mgmContractPaused err
 
@@ -514,7 +514,7 @@ managementSpec originate = do
           $ defaultOriginationParams
       withOriginated originate originationParams $ \stablecoinContract -> do
         withSender wallet1 $ lCallEP stablecoinContract (Call @"Burn") [ 10 ]
-        let mintings = [(#to_ .! wallet1, #amount .! 10)]
+        let mintings = [MintParam wallet1 10]
         err <- expectError $ withSender wallet1 $ lCallEP stablecoinContract (Call @"Mint") mintings
         mgmAllowanceExceeded err
 
@@ -718,11 +718,7 @@ managementSpec originate = do
               $ addMinter (wallet1, 30)
               $ defaultOriginationParams { opTransferlistContract = Just transferlistContract }
         withOriginated originate originationParams $ \stablecoinContract -> do
-          let
-            mintings =
-              [ (#to_ .! wallet1, #amount .! 10)
-              ]
-
+          let mintings = [MintParam wallet1 10]
           err <- expectError $ withSender wallet1 $
             lCallEP stablecoinContract (Call @"Mint") mintings
 
@@ -765,11 +761,7 @@ managementSpec originate = do
               $ defaultOriginationParams { opTransferlistContract = Just transferlistContract }
         withOriginated originate originationParams $ \stablecoinContract -> do
 
-          let
-            mintings =
-              [ (#to_ .! wallet1, #amount .! 10)
-              ]
-
+          let mintings = [MintParam wallet1 10]
           withSender wallet1 $ lCallEP stablecoinContract (Call @"Mint") mintings
 
       it "can approve burn operation" $ integrationalTestExpectation $ do

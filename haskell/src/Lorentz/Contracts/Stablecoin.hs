@@ -12,7 +12,7 @@ module Lorentz.Contracts.Stablecoin
   , MetadataRegistryStorage
   , MetadataRegistryStorageView
   , MintParams
-  , MintParam
+  , MintParam(..)
   , BurnParams
   , ParameterC
   , Parameter (..)
@@ -80,12 +80,17 @@ pattern ConfigureMinterParams addr cma nma <-
 
 type RemoveMinterParam = Address
 
-type MintParam =
-  ( "to_" :! Address
-  , "amount" :! Natural
-  )
+data MintParam = MintParam
+  { mpTo :: Address
+  , mpAmount :: Natural
+  }
+  deriving stock (Generic)
+  deriving anyclass (IsoValue, HasAnnotation)
 
-type MintParams = List MintParam
+instance Buildable MintParam where
+  build = genericF
+
+type MintParams = [MintParam]
 
 type BurnParams = List Natural
 
@@ -138,7 +143,6 @@ data Parameter
   | Set_transferlist SetTransferlistParam
   | Transfer_ownership TransferOwnershipParam
   | Unpause
-
 
 -- | In order to be able to construct valid permits,
 -- the shape of the @or@ tree generated

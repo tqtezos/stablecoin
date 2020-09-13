@@ -160,7 +160,7 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
         (AddressResolved to_)
         sc
         (Call @"Mint")
-        [(#to_ .! to_, #amount .! value)]
+        [MintParam to_ value]
 
     burn :: Address -> Natural -> capsM ()
     burn from amount_ =

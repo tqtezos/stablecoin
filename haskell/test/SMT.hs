@@ -442,7 +442,7 @@ generateMintAction idx = do
     targetTokenOwner <- getRandomTokenOwner
     target <- lift $ elements [targetMinter, targetTokenOwner]
     mintValue <- lift $ choose @Int (0, amountRange)
-    pure (#to_ .! target, #amount .! fromIntegral mintValue)
+    pure (MintParam target (fromIntegral mintValue))
   parameter <- lift $ sublistOf mints
   pure $ ContractCall sender (Mint parameter) idx
 
@@ -630,14 +630,14 @@ reduceMintingAllowance minter amount ss@SimpleStorage {..} =
   ss { ssMintingAllowances = Map.update (\m -> Just $ m - amount) minter ssMintingAllowances }
 
 applySingleMint :: MintParam -> SimpleStorage -> SimpleStorage
-applySingleMint (arg #to_ -> to, arg #amount -> value) storage =
+applySingleMint (MintParam to value) storage =
   storage { ssLedger = Map.alter (\case Nothing -> Just value; Just x -> Just $ x + value) to $ ssLedger storage }
 
 applyMint :: Address -> SimpleStorage -> MintParams -> Either ModelError SimpleStorage
 applyMint sender cs mintparams = do
   ensureNotPaused cs
   ma <- ensureMinter sender cs
-  let totalMint = sum $ (arg #amount . snd) <$> mintparams
+  let totalMint = sum $ mpAmount <$> mintparams
   if ma >= totalMint
     then Right $ reduceMintingAllowance sender totalMint $ foldr applySingleMint cs mintparams
     else Left ALLOWANCE_EXCEEDED

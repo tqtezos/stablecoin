@@ -56,8 +56,8 @@ import Util.Named ((:!), (.!))
 
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
-  (MetadataRegistryStorage, MetadataRegistryStorageView, Parameter, pattern RegistryMetadata,
-  Roles(..), StorageView(..), TokenMetadata)
+  (MetadataRegistryStorage, MetadataRegistryStorageView, MintParam(..), Parameter,
+  pattern RegistryMetadata, Roles(..), StorageView(..), TokenMetadata)
 import Stablecoin.Client.Contract
   (InitialStorageData(..), mkInitialStorage, mkRegistryStorage, parseRegistryContract,
   parseStablecoinContract)
@@ -209,7 +209,7 @@ mint
   -> AddressOrAlias -> Natural -> MorleyClientM ()
 mint sender contract to amount = do
   toAddr <- resolveAddress to
-  call sender contract (Call @"Mint") [(#to_ .! toAddr, #amount .! amount)]
+  call sender contract (Call @"Mint") [MintParam toAddr amount]
 
 -- | Decreases balance for sender by the sum of given amounts.
 burn
