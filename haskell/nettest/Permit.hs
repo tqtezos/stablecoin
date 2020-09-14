@@ -19,7 +19,7 @@ import qualified Unsafe as Unsafe
 import Util.Named
 
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
-import Lorentz.Contracts.Stablecoin (Parameter(..), Storage, mkPermitHash)
+import Lorentz.Contracts.Stablecoin (ConfigureMinterParam(..), Parameter(..), Storage, mkPermitHash)
 
 import Lorentz.Contracts.Test.Common
   (OriginationParams(..), addAccount, defaultOriginationParams, mkInitialStorage)
@@ -95,11 +95,7 @@ permitScenario stablecoinContract = uncapsNettest $ do
   callFrom (addressResolved user1) contract (Call @"Update_operators") param
 
   comment "Issue a permit for Configure_minter"
-  let configureMinterParam =
-        ( #minter .! user1
-        , ( #current_minting_allowance .! Nothing
-          , #new_minting_allowance .! 30
-          ))
+  let configureMinterParam = ConfigureMinterParam user1 Nothing 30
   issuePermit masterMinterAlias (Configure_minter configureMinterParam)
   callFrom (addressResolved user1) contract (Call @"Configure_minter") configureMinterParam
 

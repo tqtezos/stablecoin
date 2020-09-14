@@ -576,11 +576,7 @@ permitSpec originate = do
               assertPermitCount stablecoinContract 1
 
     describe "Configure_minter" $ do
-      let param =
-            ( #minter .! wallet1
-            , ( #current_minting_allowance .! Nothing
-              , #new_minting_allowance .! 30
-              ))
+      let param = ConfigureMinterParam wallet1 Nothing 30
 
       it "can be accessed via a permit" $
         integrationalTestExpectation $ do
@@ -613,11 +609,7 @@ permitSpec originate = do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             withSender testMasterMinter $
-              lCallEP stablecoinContract (Call @"Configure_minter") $
-                ( #minter .! minter
-                , ( #current_minting_allowance .! Nothing
-                  , #new_minting_allowance .! 30
-                  ))
+              lCallEP stablecoinContract (Call @"Configure_minter") $ ConfigureMinterParam minter Nothing 30
 
             withSender wallet1 $ do
               lCallEP stablecoinContract (Call @"Remove_minter") minter `catchExpectedError` mgmNotMasterMinter
@@ -636,11 +628,7 @@ permitSpec originate = do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             withSender testMasterMinter $
-              lCallEP stablecoinContract (Call @"Configure_minter") $
-                ( #minter .! minter
-                , ( #current_minting_allowance .! Nothing
-                  , #new_minting_allowance .! 30
-                  ))
+              lCallEP stablecoinContract (Call @"Configure_minter") $ ConfigureMinterParam minter Nothing 30
 
             withSender testMasterMinter $ do
               callPermit stablecoinContract testMasterMinterPK testMasterMinterSK 0 (Remove_minter minter)

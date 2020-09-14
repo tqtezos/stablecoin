@@ -203,27 +203,27 @@ managementSpec originate = do
     it "configures minter properly" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         let
-          configureMinterParam =
-            ( #minter .! wallet1
-            , ( #current_minting_allowance .! Nothing
-              , #new_minting_allowance .! 30
-              ))
+          configureMinterParam = ConfigureMinterParam
+            { cmpMinter = wallet1
+            , cmpCurrentMintingAllowance = Nothing
+            , cmpNewMintingAllowance = 30
+            }
 
-          configureMinterParam1 =
-            ( #minter .! wallet2
-            , ( #current_minting_allowance .! Nothing
-              , #new_minting_allowance .! 20
-              ))
+          configureMinterParam1 = ConfigureMinterParam
+            { cmpMinter = wallet2
+            , cmpCurrentMintingAllowance = Nothing
+            , cmpNewMintingAllowance = 20
+            }
 
         withSender testMasterMinter $ lCallEP stablecoinContract (Call @"Configure_minter") configureMinterParam
         withSender testMasterMinter $ lCallEP stablecoinContract (Call @"Configure_minter") configureMinterParam1
 
         let
-          configureMinterParam2 =
-            ( #minter .! wallet2
-            , ( #current_minting_allowance .! Just 20
-              , #new_minting_allowance .! 10
-              ))
+          configureMinterParam2 = ConfigureMinterParam
+            { cmpMinter = wallet2
+            , cmpCurrentMintingAllowance = Just 20
+            , cmpNewMintingAllowance = 10
+            }
 
         withSender testMasterMinter $ lCallEP stablecoinContract (Call @"Configure_minter") configureMinterParam2
 
@@ -235,20 +235,20 @@ managementSpec originate = do
     it "fails if expected and actual minting allowances do not match" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         let
-          configureMinterParam1 =
-            ( #minter .! wallet2
-            , ( #current_minting_allowance .! Nothing
-              , #new_minting_allowance .! 20
-              ))
+          configureMinterParam1 = ConfigureMinterParam
+            { cmpMinter = wallet2
+            , cmpCurrentMintingAllowance = Nothing
+            , cmpNewMintingAllowance = 20
+            }
 
         withSender testMasterMinter $ lCallEP stablecoinContract (Call @"Configure_minter") configureMinterParam1
 
         let
-          configureMinterParam2 =
-            ( #minter .! wallet2
-            , ( #current_minting_allowance .! Just 2000 -- Mismatched allowance here
-              , #new_minting_allowance .! 10
-              ))
+          configureMinterParam2 = ConfigureMinterParam
+            { cmpMinter = wallet2
+            , cmpCurrentMintingAllowance = Just 2000 -- Mismatched allowance here
+            , cmpNewMintingAllowance = 10
+            }
 
         err <- expectError $ withSender testMasterMinter $ lCallEP stablecoinContract (Call @"Configure_minter") configureMinterParam2
 
@@ -257,20 +257,20 @@ managementSpec originate = do
     it "fails if minter is present in list of minters which was not expected" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         let
-          configureMinterParam1 =
-            ( #minter .! wallet2
-            , ( #current_minting_allowance .! Nothing
-              , #new_minting_allowance .! 20
-              ))
+          configureMinterParam1 = ConfigureMinterParam
+            { cmpMinter = wallet2
+            , cmpCurrentMintingAllowance = Nothing
+            , cmpNewMintingAllowance = 20
+            }
 
         withSender testMasterMinter $ lCallEP stablecoinContract (Call @"Configure_minter") configureMinterParam1
 
         let
-          configureMinterParam2 =
-            ( #minter .! wallet2
-            , ( #current_minting_allowance .! Nothing -- Here we expect for `wallet2` being non-present in minting allowances map
-              , #new_minting_allowance .! 10
-              ))
+          configureMinterParam2 = ConfigureMinterParam
+            { cmpMinter = wallet2
+            , cmpCurrentMintingAllowance = Nothing -- Here we expect for `wallet2` being non-present in minting allowances map
+            , cmpNewMintingAllowance = 10
+            }
 
         err <- expectError $ withSender testMasterMinter $ lCallEP stablecoinContract (Call @"Configure_minter") configureMinterParam2
 
@@ -279,11 +279,11 @@ managementSpec originate = do
     it "fails if sender does not have master minter permissions" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         let
-          configureMinterParam1 =
-            ( #minter .! wallet2
-            , ( #current_minting_allowance .! Nothing
-              , #new_minting_allowance .! 20
-              ))
+          configureMinterParam1 = ConfigureMinterParam
+            { cmpMinter = wallet2
+            , cmpCurrentMintingAllowance = Nothing
+            , cmpNewMintingAllowance = 20
+            }
 
         err <- expectError $ withSender wallet2 $ lCallEP stablecoinContract (Call @"Configure_minter") configureMinterParam1
 
@@ -294,11 +294,11 @@ managementSpec originate = do
         withSender testPauser $ lCallEP stablecoinContract (Call @"Pause") ()
 
         let
-          configureMinterParam1 =
-            ( #minter .! wallet2
-            , ( #current_minting_allowance .! Nothing
-              , #new_minting_allowance .! 20
-              ))
+          configureMinterParam1 = ConfigureMinterParam
+            { cmpMinter = wallet2
+            , cmpCurrentMintingAllowance = Nothing
+            , cmpNewMintingAllowance = 20
+            }
 
         err <- expectError $ lCallEP stablecoinContract (Call @"Configure_minter") configureMinterParam1
 
@@ -307,11 +307,11 @@ managementSpec originate = do
   describe "Minter limit check" $ do
     let
       configureMinterParam :: Int -> ConfigureMinterParam
-      configureMinterParam i =
-        ( #minter .! (detGenKeyAddress $ encodeUtf8 @Text ("a" <> show i))
-        , ( #current_minting_allowance .! Nothing
-          , #new_minting_allowance .! 20
-          ))
+      configureMinterParam i = ConfigureMinterParam
+        { cmpMinter = detGenKeyAddress $ encodeUtf8 @Text ("a" <> show i)
+        , cmpCurrentMintingAllowance = Nothing
+        , cmpNewMintingAllowance = 20
+        }
 
     it "Can add minter until minter limit" $ integrationalTestExpectation $ do
 

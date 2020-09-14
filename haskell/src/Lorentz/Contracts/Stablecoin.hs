@@ -2,7 +2,7 @@
 -- SPDX-License-Identifier: MIT
 
 module Lorentz.Contracts.Stablecoin
-  ( ConfigureMinterParam
+  ( ConfigureMinterParam(..)
   , ChangeMasterMinterParam
   , ChangePauserParam
   , GetCounterParam
@@ -36,7 +36,6 @@ module Lorentz.Contracts.Stablecoin
   , stablecoinTokenMetadata
 
   -- We use these patterns only for validation
-  , pattern ConfigureMinterParams
   , pattern RegistryMetadata
 
   , stablecoinPath
@@ -65,18 +64,16 @@ metadataRegistryContractPath = "./test/resources/metadata.tz"
 ------------------------------------------------------------------
 -- Parameter
 
-type ConfigureMinterParam =
-  ( "minter" :! Address
-  , ( "current_minting_allowance" :! Maybe Natural
-    , "new_minting_allowance" :! Natural
-    )
-  )
+data ConfigureMinterParam = ConfigureMinterParam
+ { cmpMinter :: Address
+ , cmpCurrentMintingAllowance :: Maybe Natural
+ , cmpNewMintingAllowance :: Natural
+ }
+ deriving stock (Generic, Show)
+ deriving anyclass (IsoValue, HasAnnotation)
 
-pattern ConfigureMinterParams :: Address -> Maybe Natural -> Natural -> ConfigureMinterParam
-pattern ConfigureMinterParams addr cma nma <-
-  ( arg #minter -> addr
-  , (arg #current_minting_allowance -> cma, arg #new_minting_allowance -> nma))
-{-# COMPLETE ConfigureMinterParams #-}
+instance Buildable ConfigureMinterParam where
+  build = genericF
 
 type RemoveMinterParam = Address
 
@@ -84,7 +81,7 @@ data MintParam = MintParam
   { mpTo :: Address
   , mpAmount :: Natural
   }
-  deriving stock (Generic)
+  deriving stock (Show, Generic)
   deriving anyclass (IsoValue, HasAnnotation)
 
 instance Buildable MintParam where

@@ -126,9 +126,7 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
         (AddressResolved from)
         sc'
         (Call @"Configure_minter")
-        ( #minter .! for
-        , ( #current_minting_allowance .! expectedAllowance
-          , #new_minting_allowance .! newAllowance))
+        (ConfigureMinterParam for expectedAllowance newAllowance)
 
     removeMinter :: Address -> Address -> capsM ()
     removeMinter from whom =

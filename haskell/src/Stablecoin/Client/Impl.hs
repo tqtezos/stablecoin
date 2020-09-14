@@ -56,8 +56,8 @@ import Util.Named ((:!), (.!))
 
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
-  (MetadataRegistryStorage, MetadataRegistryStorageView, MintParam(..), Parameter,
-  pattern RegistryMetadata, Roles(..), StorageView(..), TokenMetadata)
+  (ConfigureMinterParam(..), MetadataRegistryStorage, MetadataRegistryStorageView, MintParam(..),
+  Parameter, pattern RegistryMetadata, Roles(..), StorageView(..), TokenMetadata)
 import Stablecoin.Client.Contract
   (InitialStorageData(..), mkInitialStorage, mkRegistryStorage, parseRegistryContract,
   parseStablecoinContract)
@@ -186,12 +186,11 @@ configureMinter
   -> AddressOrAlias -> Maybe Natural -> Natural -> MorleyClientM ()
 configureMinter sender contract minter currentMintingAllowance newMintingAllowance = do
   minterAddr <- resolveAddress minter
-  call sender contract (Call @"Configure_minter")
-    ( #minter .! minterAddr
-    , ( #current_minting_allowance .! currentMintingAllowance
-      , #new_minting_allowance .! newMintingAllowance
-      )
-    )
+  call sender contract (Call @"Configure_minter") ConfigureMinterParam
+    { cmpMinter = minterAddr
+    , cmpCurrentMintingAllowance = currentMintingAllowance
+    , cmpNewMintingAllowance = newMintingAllowance
+    }
 
 -- | Removes a minter from the minter list and sets its minting allowance to 0.
 -- Once minter is removed it will no longer be able to mint or burn tokens.

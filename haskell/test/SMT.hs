@@ -383,7 +383,11 @@ generateMasterMinterAction idx = do
               lift $ elements [Just (fromIntegral randomNatural), Nothing] -- supply correct current minting allowances only some of the time
 
         newMintingAllowances <- lift $ choose @Int (0, amountRange)
-        pure $ Configure_minter (#minter .! minter, (#current_minting_allowance .! currentMintingAllowance, #new_minting_allowance .! (fromIntegral newMintingAllowances)))
+        pure $ Configure_minter ConfigureMinterParam
+          { cmpMinter = minter
+          , cmpCurrentMintingAllowance = currentMintingAllowance
+          , cmpNewMintingAllowance = fromIntegral newMintingAllowances
+          }
 
 generatePauserAction :: Int -> GeneratorM (ContractCall Parameter)
 generatePauserAction idx = do
@@ -592,7 +596,7 @@ applyUnpause sender ss = do
   Right ss { ssIsPaused = False }
 
 applyConfigureMinter :: Address -> SimpleStorage -> ConfigureMinterParam -> Either ModelError SimpleStorage
-applyConfigureMinter sender cs (ConfigureMinterParams minter mbCurrent new) = do
+applyConfigureMinter sender cs (ConfigureMinterParam minter mbCurrent new) = do
   -- Check sender is master minter
   -- if yes then see if provided current allowance if Just value
   --  if yes then check if minter allowance exist
