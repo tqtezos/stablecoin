@@ -30,7 +30,7 @@ module Lorentz.Contracts.Stablecoin
   , PermitParam(..)
   , RevokeParam(..)
   , RevokeParams
-  , SetExpiryParam
+  , SetExpiryParam(..)
   , GetDefaultExpiryParam
   , minterLimit
   , stablecoinTokenMetadata
@@ -124,7 +124,17 @@ instance Buildable RevokeParam where
 type RevokeParams = [RevokeParam]
 
 type Expiry = Natural
-type SetExpiryParam = (Expiry, Maybe (PermitHash, Address))
+
+data SetExpiryParam = SetExpiryParam
+  { sepExpiry :: Expiry
+  , sepPermit :: Maybe (PermitHash, Address)
+  }
+  deriving stock (Show, Generic)
+
+deriving anyclass instance IsoValue SetExpiryParam
+deriving anyclass instance HasAnnotation SetExpiryParam
+instance Buildable SetExpiryParam where
+  build = genericF
 
 type GetDefaultExpiryParam = View () Expiry
 
