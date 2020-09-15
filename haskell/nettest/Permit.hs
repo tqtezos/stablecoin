@@ -20,7 +20,8 @@ import Util.Named
 
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
-  (ConfigureMinterParam(..), Parameter(..), PermitParam(..), Storage, mkPermitHash)
+  (ConfigureMinterParam(..), Parameter(..), PermitParam(..), RevokeParam(..), Storage,
+  mkPermitHash)
 
 import Lorentz.Contracts.Test.Common
   (OriginationParams(..), addAccount, defaultOriginationParams, mkInitialStorage)
@@ -79,7 +80,7 @@ permitScenario stablecoinContract = uncapsNettest $ do
 
   comment "Issue a permit for Revoke"
   issuePermit pauserAlias Pause
-  let revokeParam = [(mkPermitHash Pause, pauser)]
+  let revokeParam = [RevokeParam (mkPermitHash Pause) pauser]
   issuePermit pauserAlias (Revoke revokeParam)
   callFrom (addressResolved user1) contract (Call @"Revoke") revokeParam
   callFrom (addressResolved user1) contract (Call @"Pause") ()

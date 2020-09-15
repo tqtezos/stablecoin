@@ -28,7 +28,7 @@ module Lorentz.Contracts.Stablecoin
   , PermitHash(..)
   , mkPermitHash
   , PermitParam(..)
-  , RevokeParam
+  , RevokeParam(..)
   , RevokeParams
   , SetExpiryParam
   , GetDefaultExpiryParam
@@ -110,8 +110,18 @@ data PermitParam = PermitParam
 instance Buildable PermitParam where
   build = genericF
 
-type RevokeParam = (PermitHash, Address)
-type RevokeParams = List RevokeParam
+data RevokeParam = RevokeParam
+  { rpPermitHash :: PermitHash
+  , rpPermitIssuer :: Address
+  }
+  deriving stock (Show, Generic)
+
+deriving anyclass instance IsoValue RevokeParam
+deriving anyclass instance HasAnnotation RevokeParam
+instance Buildable RevokeParam where
+  build = genericF
+
+type RevokeParams = [RevokeParam]
 
 type Expiry = Natural
 type SetExpiryParam = (Expiry, Maybe (PermitHash, Address))

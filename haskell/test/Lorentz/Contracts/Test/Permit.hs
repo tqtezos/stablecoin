@@ -211,7 +211,7 @@ permitSpec originate = do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             withSender testPauser $ do
               hash <- callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
-              lCallEP stablecoinContract (Call @"Revoke") [(hash, testPauser)]
+              lCallEP stablecoinContract (Call @"Revoke") [RevokeParam hash testPauser]
 
             withSender wallet1 $ do
               lCallEP stablecoinContract (Call @"Pause") () `catchExpectedError` mgmNotPauser
@@ -223,18 +223,18 @@ permitSpec originate = do
               callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
 
             withSender wallet1 $
-              lCallEP stablecoinContract (Call @"Revoke") [(hash, testPauser)] `catchExpectedError` errNotPermitIssuer
+              lCallEP stablecoinContract (Call @"Revoke") [RevokeParam hash testPauser] `catchExpectedError` errNotPermitIssuer
 
       specify "a user X can issue a permit allowing others to revoke X's permits" $
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             hash <- withSender testPauser $ do
               hash <- callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
-              callPermit stablecoinContract testPauserPK testPauserSK 1 (Revoke [(hash, testPauser)])
+              callPermit stablecoinContract testPauserPK testPauserSK 1 (Revoke [RevokeParam hash testPauser])
               pure hash
 
             withSender wallet1 $ do
-              lCallEP stablecoinContract (Call @"Revoke") [(hash, testPauser)]
+              lCallEP stablecoinContract (Call @"Revoke") [RevokeParam hash testPauser]
               lCallEP stablecoinContract (Call @"Pause") () `catchExpectedError` mgmNotPauser
 
       specify "a user X cannot issue a permit allowing others to revoke Y's permits" $
@@ -244,10 +244,10 @@ permitSpec originate = do
               callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
 
             withSender wallet1 $
-              callPermit stablecoinContract wallet1PK wallet1SK 1 (Revoke [(hash, testPauser)])
+              callPermit stablecoinContract wallet1PK wallet1SK 1 (Revoke [RevokeParam hash testPauser])
 
             withSender wallet2 $ do
-              lCallEP stablecoinContract (Call @"Revoke") [(hash, testPauser)]
+              lCallEP stablecoinContract (Call @"Revoke") [RevokeParam hash testPauser]
                 `catchExpectedError` errNotPermitIssuer
 
       specify "permits for this entrypoint are consumed upon use" $
@@ -255,12 +255,12 @@ permitSpec originate = do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             hash <- withSender testPauser $ do
               hash <- callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
-              callPermit stablecoinContract testPauserPK testPauserSK 1 (Revoke [(hash, testPauser)])
+              callPermit stablecoinContract testPauserPK testPauserSK 1 (Revoke [RevokeParam hash testPauser])
               pure hash
 
             withSender wallet1 $ do
               assertPermitCount stablecoinContract 2
-              lCallEP stablecoinContract (Call @"Revoke") [(hash, testPauser)]
+              lCallEP stablecoinContract (Call @"Revoke") [RevokeParam hash testPauser]
               assertPermitCount stablecoinContract 0
 
       it "can remove multiple permits at once" $ do
@@ -269,7 +269,10 @@ permitSpec originate = do
             withSender testPauser $ do
               hash1 <- callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
               hash2 <- callPermit stablecoinContract testPauserPK testPauserSK 1 Unpause
-              lCallEP stablecoinContract (Call @"Revoke") [(hash1, testPauser), (hash2, testPauser)]
+              lCallEP stablecoinContract (Call @"Revoke")
+                [ RevokeParam hash1 testPauser
+                , RevokeParam hash2 testPauser
+                ]
 
             -- `wallet1` should now be unable to neither pause nor unpause the contract
             withSender wallet1 $
@@ -291,7 +294,7 @@ permitSpec originate = do
               lCallEP stablecoinContract (Call @"Pause") ()
 
             withSender testPauser $
-              lCallEP stablecoinContract (Call @"Revoke") [(hash, testPauser)]
+              lCallEP stablecoinContract (Call @"Revoke") [RevokeParam hash testPauser]
 
       it "does nothing if the permit never existed" $ do
         integrationalTestExpectation $ do
@@ -299,7 +302,7 @@ permitSpec originate = do
             let hash = PermitHash (Hash.blake2b "abc")
 
             withSender testPauser $ do
-              lCallEP stablecoinContract (Call @"Revoke") [(hash, testPauser)]
+              lCallEP stablecoinContract (Call @"Revoke") [RevokeParam hash testPauser]
 
     describe "Set_expiry" $ do
       it "anyone can set the expiry for a specific permit" $ do
