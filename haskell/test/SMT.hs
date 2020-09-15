@@ -559,6 +559,11 @@ callEntrypoint contract cc st env = case ccParameter cc of
     FA2.Transfer p -> callContract "transfer" p
     FA2.Update_operators p -> callContract "update_operators" p
     _ -> error "Unexpected call"
+  Permit _ -> error "Unexpected call"
+  Revoke _ -> error "Unexpected call"
+  Set_expiry _ -> error "Unexpected call"
+  Get_default_expiry _ -> error "Unexpected call"
+  Get_counter _ -> error "Unexpected call"
   where
     callContract
       :: (NiceParameter p, T.HasNoOp (T.ToT p))

@@ -4,6 +4,7 @@
 module Stablecoin
   ( spec_FA2
   , spec_Management
+  , spec_Permit
   , test_SMT
   ) where
 
@@ -18,6 +19,7 @@ import Lorentz.Contracts.Stablecoin as SC
 import Lorentz.Contracts.Test.Common
 import Lorentz.Contracts.Test.FA2
 import Lorentz.Contracts.Test.Management
+import Lorentz.Contracts.Test.Permit (permitSpec)
 import Michelson.Test.Integrational
 import Michelson.Typed hiding (TAddress)
 import qualified Michelson.Untyped as U
@@ -46,3 +48,7 @@ test_SMT = do
 spec_Management :: Spec
 spec_Management =
   runIO parseStablecoinContract >>= managementSpec . origination @SC.Parameter
+
+spec_Permit :: Spec
+spec_Permit =
+  runIO parseStablecoinContract >>= permitSpec . origination @SC.Parameter

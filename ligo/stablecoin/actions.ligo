@@ -6,6 +6,7 @@
  *)
 
 #include "operator.ligo"
+#include "permit.ligo"
 
 (* ------------------------------------------------------------- *)
 
@@ -28,22 +29,22 @@ function fail_on
  *)
 function authorize_contract_owner
   ( const store : storage
-  ) : unit is
-  fail_on
-    ( Tezos.sender =/= store.roles.owner
-    , "NOT_CONTRACT_OWNER"
-    )
+  ; const full_param : closed_parameter
+  ) : storage is
+  sender_check(store.roles.owner, store, full_param, "NOT_CONTRACT_OWNER")
 
 (*
  * Ensures that sender is current pending contract owner.
  *)
 function authorize_pending_owner
   ( const store : storage
-  ) : address is case store.roles.pending_owner of
-    Some (pending_owner) -> if Tezos.sender =/= pending_owner
-      then (failwith ("NOT_PENDING_OWNER") : address)
-      else pending_owner
-    | None -> (failwith ("NO_PENDING_OWNER_SET") : address)
+  ; const full_param : closed_parameter
+  ) : storage * address is case store.roles.pending_owner of
+    Some (pending_owner) ->
+      ( sender_check(pending_owner, store, full_param, "NOT_PENDING_OWNER")
+      , pending_owner
+      )
+    | None -> (failwith ("NO_PENDING_OWNER_SET") : storage * address)
     end
 
 (*
@@ -51,22 +52,18 @@ function authorize_pending_owner
  *)
 function authorize_pauser
   ( const store : storage
-  ) : unit is
-  fail_on
-    ( Tezos.sender =/= store.roles.pauser
-    , "NOT_PAUSER"
-    )
+  ; const full_param : closed_parameter
+  ) : storage is
+  sender_check(store.roles.pauser, store, full_param, "NOT_PAUSER")
 
 (*
  * Authorizes master_minter and fails otherwise.
  *)
 function authorize_master_minter
   ( const store : storage
-  ) : unit is
-  fail_on
-    ( Tezos.sender =/= store.roles.master_minter
-    , "NOT_MASTER_MINTER"
-    )
+  ; const full_param : closed_parameter
+  ) : storage is
+  sender_check(store.roles.master_minter, store, full_param, "NOT_MASTER_MINTER")
 
 (*
  * Authorizes minter and fails otherwise.
@@ -211,11 +208,91 @@ function call_assert_receivers
       end
   } with operations
 
+
+(*
+ * Returns `True` if all booleans in the list are `True`,
+ * or `False` otherwise.
+ *)
+function all(const xs: list(bool)): bool is
+  List.fold
+    ( function(const acc: bool; const x: bool) is acc and x
+    , xs
+    , True
+    )
+
+(*
+ * Assert that all addresses in a list are equal,
+ * fails with `err_msg` otherwise.
+ *
+ * If the list is empty, returns `None`,
+ * otherwise returns `Some` with the unique address.
+ *)
+function all_equal
+  ( const addrs: list(address)
+  ; const err_msg: string
+  ) : option(address) is
+  case addrs of
+  | nil -> (None : option(address))
+  | first # rest ->
+      block {
+        List.iter
+          ( function (const addr : address): unit is
+              if addr =/= first
+                then failwith (err_msg)
+                else Unit
+          , rest
+          )
+      } with Some(first)
+  end
+
 (* ------------------------------------------------------------- *)
 
 (*
  * FA2-specific entrypoints
  *)
+
+(*
+ * Verify the sender of an `transfer` action.
+ *
+ * The check is successful if either of these is true:
+ * 1) The sender is either the owner or an approved operator for each and every
+ *    account from which funds will be withdrawn.
+ * 2) All transfers withdraw funds from a single account, and the account owner
+ *    has issued a permit allowing this call to go through.
+ *)
+function transfer_sender_check
+  ( const params : transfer_params
+  ; const store : storage
+  ; const full_param : closed_parameter
+  ) : storage is block
+{ // check if the sender is either the owner or an approved operator for all transfers
+  const is_approved_operator_for_all : bool =
+    all(
+      List.map(
+        function(const p : transfer_param) : bool is is_approved_operator(p, store.operators),
+        params
+      )
+    )
+} with
+    if is_approved_operator_for_all then
+      store
+    else
+      case params of
+        nil -> store
+      | first_param # rest -> block {
+          // check whether `from_` has issued a permit
+          const from_: address = first_param.0
+        ; const updated_store : storage = sender_check(from_, store, full_param, "FA2_NOT_OPERATOR")
+          // check that all operations relate to the same owner.
+        ; List.iter
+            ( function (const param : transfer_param): unit is
+                if param.0 =/= from_
+                  then failwith ("FA2_NOT_OPERATOR")
+                  else Unit
+            , rest
+            )
+        } with updated_store
+      end
 
 (*
  * Initiates transfers from a given list of parameters. Fails
@@ -226,8 +303,10 @@ function call_assert_receivers
 function transfer
   ( const params : transfer_params
   ; const store  : storage
+  ; const full_param : closed_parameter
   ) : entrypoint is block
 { ensure_not_paused (store)
+; const store : storage = transfer_sender_check(params, store, full_param)
 
 ; const sender_addr : address = Tezos.sender
 
@@ -235,8 +314,7 @@ function transfer
     ( const acc       : entrypoint
     ; const parameter : transfer_param
     ) : entrypoint is block
-  { validate_operators (parameter, acc.1.operators)
-  ; function transfer_tokens
+  { function transfer_tokens
       ( const accumulator : storage
       ; const destination : transfer_destination
       ) : storage is block
@@ -316,11 +394,23 @@ function token_metadata_registry
  * Add or remove operators for provided owners.
  *)
 function update_operators_action
-  ( const parameter : update_operator_params
-  ; const store     : storage
+  ( const params : update_operator_params
+  ; const store : storage
+  ; const full_param : closed_parameter
   ) : entrypoint is block
-{ const updated_operators : operators =
-    update_operators (parameter, store.operators)
+{ const owners : list(address) = List.map(get_owner, params)
+
+// A user can only modify their own operators.
+// So we check that all operations affect the same `owner`,
+// and that the sender *is* the owner or the owner has issued a permit.
+; const store : storage =
+    case all_equal(owners, "NOT_TOKEN_OWNER") of
+    | None -> store
+    | Some(owner) -> sender_check(owner, store, full_param, "NOT_TOKEN_OWNER")
+    end
+
+; const updated_operators : operators =
+    update_operators (params, store.operators)
 } with
   ( (nil : list (operation))
   , store with record [ operators = updated_operators ]
@@ -346,9 +436,10 @@ function is_operator_action
 function pause
   ( const parameter : pause_params
   ; const store     : storage
+  ; const full_param : closed_parameter
   ) : entrypoint is block
 { ensure_not_paused (store)
-; authorize_pauser (store)
+; const store: storage = sender_check(store.roles.pauser, store, full_param, "NOT_PAUSER")
 } with
   ( (nil : list (operation))
   , store with record [paused = True]
@@ -362,9 +453,10 @@ function pause
 function unpause
   ( const parameter : unpause_params
   ; const store     : storage
+  ; const full_param : closed_parameter
   ) : entrypoint is block
 { ensure_is_paused (store)
-; authorize_pauser (store)
+; const store: storage = sender_check(store.roles.pauser, store, full_param, "NOT_PAUSER")
 } with
   ( (nil : list (operation))
   , store with record [paused = False]
@@ -378,9 +470,10 @@ function unpause
 function configure_minter
   ( const parameter : configure_minter_params
   ; const store     : storage
+  ; const full_param : closed_parameter
   ) : entrypoint is block
 { ensure_not_paused (store)
-; authorize_master_minter (store)
+; const store : storage = authorize_master_minter (store, full_param)
 ; const present_minting_allowance : option (nat) =
     store.minting_allowances[parameter.0]
 ; const minter_limit : nat = 12n
@@ -417,8 +510,9 @@ function configure_minter
 function remove_minter
   ( const parameter : remove_minter_params
   ; const store     : storage
+  ; const full_param : closed_parameter
   ) : entrypoint is block
-{ authorize_master_minter (store)
+{ const store : storage = authorize_master_minter (store, full_param)
 ; case store.minting_allowances[parameter] of
     Some (u) -> skip
   | None -> failwith ("ADDR_NOT_MINTER")
@@ -532,8 +626,9 @@ function burn
 function transfer_ownership
   ( const parameter : transfer_ownership_param
   ; const store     : storage
+  ; const full_param : closed_parameter
   ) : entrypoint is block
-{ authorize_contract_owner (store)
+{ const store : storage = authorize_contract_owner (store, full_param)
 } with
   ( (nil : list (operation))
   , store with record [roles.pending_owner = Some (parameter)]
@@ -546,11 +641,14 @@ function transfer_ownership
 function accept_ownership
   ( const parameter : accept_ownership_param
   ; const store     : storage
-  ) : entrypoint is
+  ; const full_param : closed_parameter
+  ) : entrypoint is block
+{ const auth_result : (storage * address) = authorize_pending_owner (store, full_param)
+} with
   ( (nil : list (operation))
-  , store with record
+  , auth_result.0 with record
       [ roles.pending_owner = (None : option (address))
-      ; roles.owner = authorize_pending_owner (store)
+      ; roles.owner = auth_result.1
       ]
   )
 
@@ -561,8 +659,9 @@ function accept_ownership
 function change_master_minter
   ( const parameter : change_master_minter_param
   ; const store     : storage
+  ; const full_param : closed_parameter
   ) : entrypoint is block
-{ authorize_contract_owner (store)
+{ const store : storage = authorize_contract_owner (store, full_param)
 } with
   ( (nil : list (operation))
   , store with record [ roles.master_minter = parameter ]
@@ -575,8 +674,9 @@ function change_master_minter
 function change_pauser
   ( const parameter : change_pauser_param
   ; const store     : storage
+  ; const full_param : closed_parameter
   ) : entrypoint is block
-{ authorize_contract_owner (store)
+{ const store : storage = authorize_contract_owner (store, full_param)
 } with
   ( (nil : list (operation))
   , store with record [ roles.pauser = parameter ]
@@ -588,8 +688,9 @@ function change_pauser
 function set_transferlist
   ( const parameter : set_transferlist_param
   ; const store     : storage
+  ; const full_param : closed_parameter
   ) : entrypoint is block
-{ authorize_contract_owner (store)
+{ const store : storage = authorize_contract_owner (store, full_param)
 
 ; case parameter of
     Some (sl_address) ->
@@ -607,3 +708,136 @@ function set_transferlist
   ( (nil : list (operation))
   , store with record [ transferlist_contract = parameter ]
   )
+
+(*
+ * Creates a new permit, allowing any user to act on behalf of the user
+ * who signed the permit.
+ *)
+function add_permit
+  ( const parameter: permit_param
+  ; const store    : storage
+  ) : entrypoint is block
+{ const key : key = parameter.0
+; const signature : signature = parameter.1.0
+; const permit : blake2b_hash = parameter.1.1
+; const issuer: address = Tezos.address(Tezos.implicit_account(Crypto.hash_key(key)))
+
+// form the structure that is to be signed by pairing self contract address, chain id, counter
+// and permit hash and pack it to get bytes.
+; const to_sign : bytes = Bytes.pack (((Tezos.self_address, Tezos.chain_id), (store.permit_counter, permit)))
+
+// check the included signature against public_key from parameter and bytes derived from the
+// operation in parameter.
+; const store : storage =
+    if (Crypto.check (key, signature, to_sign)) then
+      store with record
+        [ permit_counter = store.permit_counter + 1n
+        ; permits =
+            delete_expired_permits(store.default_expiry, issuer,
+              insert_permit(issuer, permit, store.permits)
+            )
+        ]
+    else block {
+      // We're using Embedded Michelson here to get around the limitation that,
+      // currently, Ligo's `failwith` only supports strings and numeric types.
+      // https://ligolang.org/docs/advanced/embedded-michelson/
+      //
+      // Once this MR is merged, we should be able to use Ligo's `failwith`:
+      // https://gitlab.com/ligolang/ligo/-/issues/193
+      const failwith_ : (string * bytes -> storage) =
+        [%Michelson ({| { FAILWITH } |} : string * bytes -> storage)];
+    } with failwith_(("MISSIGNED", to_sign))
+} with
+    ( (nil : list(operation))
+    , store
+    )
+
+(*
+ * Deletes the given permits.
+ *
+ * Only the issuer X of a permit can revoke X's permits.
+ * Otherwise, X can issue a separate permit allowing other users to revoke X's permits.
+ *
+ * This operation does not fail if a given permit is not found.
+ *
+ * Fails with 'NOT_PERMIT_ISSUER' if:
+ *   a) the sender is not the issuer of any of the given permits,
+ *   b) and the issuer has not issued a permit allowing others to revoke their permits
+ *)
+function revoke_permits
+  ( const params: revoke_params
+  ; const store : storage
+  ; const full_param : closed_parameter
+  ) : entrypoint is block
+{ const issuers : list(address) =
+    List.map(function(const p: revoke_param): address is p.1, params)
+
+; const store : storage =
+    case all_equal(issuers, "NOT_PERMIT_ISSUER") of
+    | None -> store
+    | Some(issuer) -> sender_check(issuer, store, full_param, "NOT_PERMIT_ISSUER")
+    end
+
+;  const updated_permits : permits =
+    List.fold
+      ( function(const permits: permits; const param: revoke_param) : permits is
+          remove_permit(param.1, param.0, permits)
+      , params
+      , store.permits
+      )
+} with
+    ( (nil : list(operation))
+    , store with record [ permits = updated_permits ]
+    )
+
+(*
+ * Sets the default expiry for the sender (if the param contains a `None`)
+ * or for a specific permit (if the param contains a `Some`).
+ *
+ * When the permit whose expiry should be set does not exist,
+ * nothing happens.
+ *)
+function set_expiry
+  ( const param: set_expiry_param
+  ; const store : storage
+  ) : entrypoint is block
+{ const new_expiry : seconds = param.0
+; const updated_permits : permits =
+    case param.1 of
+    | None ->
+        set_user_default_expiry(Tezos.sender, new_expiry, store.permits)
+    | Some(hash_and_address) ->
+        set_permit_expiry(hash_and_address.1, hash_and_address.0, new_expiry, store.permits)
+    end
+} with
+    ( (nil : list(operation))
+    , store with record [ permits = updated_permits ]
+    )
+
+(*
+ * Retrieves the contract's default permit expiry and leaves the storage untouched.
+ *)
+function get_default_expiry
+  ( const parameter: get_default_expiry_param
+  ; const store : storage
+  ) : entrypoint is block
+{ const transfer_operation : operation =
+    Tezos.transaction (store.default_expiry, 0mutez, parameter.1)
+} with
+    ( list [transfer_operation]
+    , store
+    )
+
+(*
+ * Retrieves the contract's permit counter and leaves the storage untouched.
+ *)
+function get_counter
+  ( const parameter: get_counter_param
+  ; const store : storage
+  ) : entrypoint is block
+{ const transfer_operation : operation =
+    Tezos.transaction (store.permit_counter, 0mutez, parameter.1)
+} with
+    ( list [transfer_operation]
+    , store
+    )

@@ -20,8 +20,7 @@ import Stablecoin.Client
   (AddressAndAlias(..), InitialStorageData(..), UpdateOperatorData(AddOperator, RemoveOperator))
 import Stablecoin.Client.Cleveland.IO
   (OutputParseError(..), addressAndAliasParser, addressParser, callStablecoinClient,
-  encodeMaybeOption, labelled, mutezParser, naturalParser, runParser,
-  textParser)
+  encodeMaybeOption, labelled, mutezParser, naturalParser, runParser, textParser)
 
 data StablecoinTestError where
   STEDiff :: forall a. Show a => a -> a -> StablecoinTestError
@@ -108,6 +107,7 @@ stablecoinImplClient conf env = StablecoinImpl
         , "--token-name", pretty isdTokenName
         , "--token-symbol", pretty isdTokenSymbol
         , "--token-decimals", pretty isdTokenDecimals
+        , "--default-expiry", pretty isdDefaultExpiry
         , "--replace-alias"
         ] <> mkUserOpt sender
       runParser output (labelled "Contract address" addressParser)

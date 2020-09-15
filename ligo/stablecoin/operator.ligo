@@ -6,14 +6,7 @@
  *)
 
 #include "hooks.ligo"
-
-(*
- * Validates whether the given operator parameter is equal to `SENDER`
- *)
-function validate_operator_owner_is_sender
-  ( const param : operator_param
-  ) : unit is if param.0 = Tezos.sender
-  then unit else failwith ("NOT_TOKEN_OWNER")
+#include "permit.ligo"
 
 (*
  * Returns a callback of `Is_operator` entrypoint call
@@ -31,17 +24,17 @@ function is_operator
 } with Tezos.transaction (response, 0mutez, param.1)
 
 (*
- * Validates operators for the given tranfser batch
+ * Validates operators for the given transfer batch
  * and operator storage
  *)
-function validate_operators
+function is_approved_operator
   ( const transfer_param         : transfer_param
   ; const operators              : operators
-  ) : unit is block
+  ) : bool is block
 { const operator : address = Tezos.sender
 ; const owner : address = transfer_param.0
 } with if owner = operator or Big_map.mem ((owner, operator), operators)
-  then unit else failwith ("FA2_NOT_OPERATOR")
+  then True else False
 
 (*
  * Add operator from the given parameter and operator storage
@@ -50,8 +43,7 @@ function add_operator
   ( const param     : operator_param
   ; const operators : operators
   ) : operators is block
-{ validate_operator_owner_is_sender (param)
-; const operator_key : (owner * operator) = (param.0, param.1)
+{ const operator_key : (owner * operator) = (param.0, param.1)
 } with Big_map.update (operator_key, Some (unit), operators)
 
 (*
@@ -61,8 +53,7 @@ function remove_operator
   ( const param     : operator_param
   ; const operators : operators
   ) : operators is block
-{ validate_operator_owner_is_sender (param)
-; const operator_key : (owner * operator) = (param.0, param.1)
+{ const operator_key : (owner * operator) = (param.0, param.1)
 } with Big_map.remove (operator_key, operators)
 
 (*
@@ -83,3 +74,14 @@ function update_operators
     , params
     , operators
     )
+
+(*
+ * Get the address of the user whose operators will be changed.
+ *)
+function get_owner
+  ( const param : update_operator_param
+  ) : address is
+  case param of
+    Add_operator    (param) -> param.0
+  | Remove_operator (param) -> param.0
+  end

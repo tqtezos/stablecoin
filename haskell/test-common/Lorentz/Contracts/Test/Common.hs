@@ -5,10 +5,20 @@
 
 module Lorentz.Contracts.Test.Common
   ( testOwner
+  , testOwnerPK
+  , testOwnerSK
   , testPauser
+  , testPauserSK
+  , testPauserPK
   , testMasterMinter
+  , testMasterMinterSK
+  , testMasterMinterPK
   , wallet1
+  , wallet1SK
+  , wallet1PK
   , wallet2
+  , wallet2SK
+  , wallet2PK
   , wallet3
   , wallet4
   , wallet5
@@ -40,7 +50,9 @@ import Lorentz.Contracts.Stablecoin as SC
 import Lorentz.Test
 import Lorentz.Value
 import Michelson.Runtime (ExecutorError)
+import Michelson.Runtime.GState (genesisSecrets)
 import Tezos.Address (detGenKeyAddress)
+import Tezos.Crypto (SecretKey, toPublic)
 import Util.Named
 
 registryAddress, testOwner, testPauser, testMasterMinter, wallet1, wallet2, wallet3, wallet4, wallet5, commonOperator :: Address
@@ -54,6 +66,20 @@ testOwner = genesisAddresses !! 7
 testPauser = genesisAddresses !! 8
 testMasterMinter = genesisAddresses !! 9
 registryAddress = detGenKeyAddress "metadata-registry"
+
+wallet1SK, wallet2SK, testOwnerSK, testPauserSK, testMasterMinterSK :: SecretKey
+wallet1SK = genesisSecrets !! 1
+wallet2SK = genesisSecrets !! 2
+testOwnerSK = genesisSecrets !! 7
+testPauserSK = genesisSecrets !! 8
+testMasterMinterSK = genesisSecrets !! 9
+
+wallet1PK, wallet2PK, testOwnerPK, testPauserPK, testMasterMinterPK :: PublicKey
+wallet1PK = toPublic wallet1SK
+wallet2PK = toPublic wallet2SK
+testOwnerPK = toPublic testOwnerSK
+testPauserPK = toPublic testPauserSK
+testMasterMinterPK = toPublic testMasterMinterSK
 
 commonOperators :: [Address]
 commonOperators = [commonOperator]
@@ -90,6 +116,8 @@ data OriginationParams = OriginationParams
   , opPendingOwner :: Maybe Address
   , opTokenMetadataRegistry :: Address
   , opTransferlistContract :: Maybe (TAddress Transferlist.Parameter)
+  , opDefaultExpiry :: Natural
+  , opPermits :: Map Address (Maybe Expiry, Map PermitHash (Timestamp, Maybe Expiry))
   }
 
 defaultOriginationParams :: OriginationParams
@@ -104,6 +132,8 @@ defaultOriginationParams = OriginationParams
   , opPendingOwner = Nothing
   , opTokenMetadataRegistry = registryAddress
   , opTransferlistContract = Nothing
+  , opDefaultExpiry = 1000
+  , opPermits = mempty
   }
 
 addMinter
@@ -160,6 +190,7 @@ withOriginated fn op tests = do
     Nothing -> pass
     Just contract -> tests contract
 
+{-# ANN module ("HLint: ignore Use bimap" :: Text) #-}
 mkInitialStorage :: OriginationParams -> Maybe Storage
 mkInitialStorage OriginationParams{..} = let
   ledgerMap = opBalances
@@ -174,8 +205,19 @@ mkInitialStorage OriginationParams{..} = let
   isPaused = #paused .! opPaused
   transferlistContract = #transferlist_contract .! (unTAddress <$> opTransferlistContract)
   tokenMetadata = #token_metadata_registry .! opTokenMetadataRegistry
-  in Just (((ledger, mintingAllowances), (operators, isPaused))
-           , ((roles, tokenMetadata), transferlistContract))
+  permits =
+    #permits .! BigMap (opPermits <&> \(userExpiry, userPermits) ->
+      ( #expiry .! userExpiry
+      , #permits .! (userPermits <&> \(createdAt, expiry) -> (#created_at .! createdAt, #expiry .! expiry))
+      )
+    )
+  permitCounter = #permit_counter .! 0
+  defaultExpiry = #default_expiry .! opDefaultExpiry
+  in Just ((((defaultExpiry, ledger),
+             (mintingAllowances, operators)),
+             ((isPaused, permitCounter),
+             (permits, roles))),
+           (tokenMetadata, transferlistContract))
   where
     foldFn
       :: Address

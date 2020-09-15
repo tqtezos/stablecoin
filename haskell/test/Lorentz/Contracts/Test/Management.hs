@@ -5,6 +5,10 @@
 
 module Lorentz.Contracts.Test.Management
   ( managementSpec
+  , mgmNotContractOwner
+  , mgmNotPendingOwner
+  , mgmNotPauser
+  , mgmNotMasterMinter
   ) where
 
 import Data.Map as M (fromList, lookup)

@@ -19,7 +19,6 @@ module Lorentz.Contracts.Spec.FA2Interface
   , Parameter (..)
   , FA2ParameterC
   , TokenId
-  , TokenMetaDataParam
   , TokenMetadata
   , TransferDestination
   , TransferDescriptor
@@ -77,11 +76,6 @@ type TokenMetadata =
   , "mdr2" :! ("name" :! MText
   , "mdr3" :! ("decimals" :! Natural
   , "extras" :! Map MText MText)))
-  )
-
-type TokenMetaDataParam =
-  ( "token_ids" :! [TokenId]
-  , "handler" :! Lambda [TokenMetadata] ()
   )
 
 type TokenMetadataRegistryParam = ContractRef Address
@@ -167,14 +161,23 @@ type IsOperatorParam = View ("operator" :! OperatorParam) IsOperatorResponse
 -- solve it.
 -- TODO : https://gitlab.com/morley-framework/morley/-/issues/159
 data Parameter
-  = Transfer TransferParams
-  | Balance_of BalanceRequestParams
-  | Token_metadata TokenMetaDataParam
-  | Token_metadata_registry TokenMetadataRegistryParam
-  | Update_operators UpdateOperatorsParam
+  = Balance_of BalanceRequestParams
   | Is_operator IsOperatorParam
-  deriving stock (Generic, Show)
-  deriving anyclass (IsoValue)
+  | Token_metadata_registry TokenMetadataRegistryParam
+  | Transfer TransferParams
+  | Update_operators UpdateOperatorsParam
+  deriving stock (Show)
+
+$(customGeneric "Parameter" $ withDepths
+    [ cstr @3 [fld @0]
+    , cstr @3 [fld @0]
+    , cstr @3 [fld @0]
+    , cstr @3 [fld @0]
+    , cstr @1 [fld @0]
+    ]
+  )
+
+deriving anyclass instance IsoValue Parameter
 
 -- That missing instance for lorentz lambdas
 instance Buildable (inp :-> out) where
@@ -189,7 +192,6 @@ instance ParameterHasEntrypoints Parameter where
 type FA2ParameterMichelsonEntrypoints =
   [ "Transfer" :> TransferParams
   , "Balance_of" :> BalanceRequestParams
-  , "Token_metadata" :> TokenMetaDataParam
   , "Token_metadata_registry" :> TokenMetadataRegistryParam
   , "Update_operators" :> UpdateOperatorsParam
   , "Is_operator" :> IsOperatorParam

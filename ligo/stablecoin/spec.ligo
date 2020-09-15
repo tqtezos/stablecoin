@@ -211,6 +211,51 @@ type transferlist_assert_receivers_param is list(address)
 
 type set_transferlist_param is option(address)
 
+type blake2b_hash is bytes
+
+type seconds is nat
+
+type permit_info is
+  record [
+    created_at: timestamp
+  ; expiry: option(seconds)
+  ]
+
+type user_permits is
+  record [
+    permits: map (blake2b_hash, permit_info)
+  ; expiry: option(seconds)
+  ]
+
+type permits is big_map (address, user_permits)
+
+type permit_param is (key * (signature * blake2b_hash))
+
+type revoke_param is blake2b_hash * address
+type revoke_params is list(revoke_param)
+
+type set_expiry_param is (seconds * option(blake2b_hash * address))
+
+type get_default_expiry_param is michelson_pair_right_comb(record
+  param : unit
+; callback : contract(seconds)
+end)
+
+(*
+ * A counter that's incremented everytime a permit is created.
+ *
+ * When creating a new permit, the `permit` entrypoint verifies that the permit has
+ * been signed with the contract's current counter. It then increments the counter by 1.
+ *
+ * This ensures that a permit's signature is valid for one use only.
+ *)
+type counter is nat
+
+type get_counter_param is michelson_pair_right_comb(record
+  param : unit
+; callback : contract(counter)
+end)
+
 (* ------------------------------------------------------------- *)
 
 (* Stablecoin parameter *)
@@ -227,6 +272,11 @@ type closed_parameter is
 | Change_master_minter  of change_master_minter_param
 | Change_pauser         of change_pauser_param
 | Set_transferlist      of set_transferlist_param
+| Permit                of permit_param
+| Revoke                of revoke_params
+| Set_expiry            of set_expiry_param
+| Get_default_expiry    of get_default_expiry_param
+| Get_counter           of get_counter_param
 
 (* ------------------------------------------------------------- *)
 
@@ -252,13 +302,16 @@ type ledger is big_map (address, nat)
 type minting_allowances is map (address, nat)
 
 type storage is record
-  ledger                      : ledger
-; token_metadata_registry     : address
-; minting_allowances          : minting_allowances
-; paused                      : bool
-; roles                       : roles
-; operators                   : operators
-; transferlist_contract       : option(address)
+  ledger                  : ledger
+; token_metadata_registry : address
+; minting_allowances      : minting_allowances
+; paused                  : bool
+; roles                   : roles
+; operators               : operators
+; transferlist_contract   : option(address)
+; permit_counter          : counter
+; permits                 : permits
+; default_expiry          : seconds
 end
 
 type entrypoint is list (operation) * storage
