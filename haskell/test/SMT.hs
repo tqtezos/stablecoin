@@ -19,8 +19,9 @@ import qualified Text.Show
 
 import Tezos.Core (unsafeMkMutez)
 
-import Lorentz (NiceParameter, arg, def, fromVal, toVal)
-import Lorentz.Address
+import Lorentz
+  (Address, EntrypointRef(Call), GetEntrypointArgCustom, IsoValue(..), TAddress(TAddress), arg,
+  parameterEntrypointCallCustom)
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
 import Lorentz.Contracts.Test.Common
@@ -28,10 +29,7 @@ import Michelson.Interpret
 import Michelson.Test.Dummy
 import Michelson.Test.Integrational
 import Michelson.Text
-import Michelson.TypeCheck
-import Michelson.Typed (untypeValue)
 import qualified Michelson.Typed as T
-import qualified Michelson.Untyped as U
 import Util.Named
 
 -- Some implementation notes:
@@ -94,7 +92,7 @@ generateContractInputs count = do
 -- This is a quickcheck `Testable` because we have an
 -- arbitrary instance for `PropertyTestInput`.
 smtProperty
-  :: U.Contract
+  :: T.Contract (ToT Parameter) (ToT Storage)
   -> PropertyTestInput
   -> Property
 smtProperty contract (PropertyTestInput (inputs, initialState))
@@ -107,7 +105,7 @@ smtProperty contract (PropertyTestInput (inputs, initialState))
 -- parameter and repeat until all contract inputs are applied or until the contract
 -- state diverges.
 applyBothAndCompare
-  :: U.Contract
+  :: T.Contract (ToT Parameter) (ToT Storage)
   -> [ContractCall Parameter]
   -> ContractState
   -> IntegrationalScenario
@@ -493,7 +491,7 @@ contractErrorToModelError m = let
 -- the final @ContractState@ from Haskell model and this model should
 -- match exactly, including the list of errors.
 stablecoinMichelsonModel
-  :: U.Contract
+  :: T.Contract (ToT Parameter) (ToT Storage)
   -> ContractCall Parameter
   -> ContractState
   -> ContractState
@@ -505,59 +503,30 @@ stablecoinMichelsonModel contract cc@(ContractCall {..}) cs = let
     Right iRes -> let
       newStorage = resultToSs iRes
       in cs { csStorage = newStorage }
-    Left (RuntimeFailure (MichelsonFailedWith (T.VString tval), _)) -> cs { csError = (ccIdx, contractErrorToModelError tval):(csError cs) }
+    Left (InterpretError (MichelsonFailedWith (T.VString tval), _)) -> cs { csError = (ccIdx, contractErrorToModelError tval):(csError cs) }
     Left err -> error $ "Unexpected error:" <> show err
 
--- | A version of @interpretUntyped@ that also can make an entrypoint
--- based contract execution.
-interpretUntyped_
-  :: U.Contract
-  -> U.EpName
-  -> U.Value
-  -> Storage
-  -> ContractEnv
-  -> Either InterpretError InterpretResult
-interpretUntyped_ uContract@U.Contract{..} epName paramU initStU env = do
-  SomeContract (T.Contract (instr :: T.ContractCode cp st) cpNotes _ _)
-      <- first IllTypedContract $ typeCheckContract uContract
-  let
-    runTC :: forall t. T.SingI t => U.Value -> Either TCError (T.Value t)
-    runTC value = do
-      paramType <- mkSomeParamType contractParameter
-      runTypeCheck (TypeCheckContract paramType) .
-        usingReaderT def $
-        typeCheckValue @t value
-
-  case T.mkEntrypointCall epName cpNotes of
-      Just (T.MkEntrypointCallRes (_ :: T.Notes arg) epCallT) -> do
-        paramV <- first IllTypedParam $ runTC @arg paramU
-        case cast instr of
-          Just (cInst :: T.ContractCode cp (T.ToT Storage)) ->
-            handleContractReturn $ interpret cInst epCallT paramV (toVal initStU) env
-          Nothing -> error "Error casting contract"
-      Nothing -> error "Entrypoint not found"
-
 callEntrypoint
-  :: U.Contract
+  :: T.Contract (ToT Parameter) (ToT Storage)
   -> ContractCall Parameter
   -> Storage
   -> ContractEnv
   -> Either InterpretError InterpretResult
 callEntrypoint contract cc st env = case ccParameter cc of
-  Pause -> callContract "pause" ()
-  Unpause -> callContract "unpause" ()
-  Configure_minter p -> callContract "configure_minter" p
-  Remove_minter p -> callContract "remove_minter" p
-  Mint p -> callContract "mint" p
-  Burn p -> callContract "burn" p
-  Transfer_ownership p -> callContract "transfer_ownership" p
-  Accept_ownership -> callContract "accept_ownership" ()
-  Change_master_minter p -> callContract "change_master_minter" p
-  Change_pauser p -> callContract "change_pauser" p
-  Set_transferlist p -> callContract "set_transferlist" p
+  Pause -> call (Call @"Pause") ()
+  Unpause -> call (Call @"Unpause") ()
+  Configure_minter p -> call (Call @"Configure_minter") p
+  Remove_minter p -> call (Call @"Remove_minter") p
+  Mint p -> call (Call @"Mint") p
+  Burn p -> call (Call @"Burn") p
+  Transfer_ownership p -> call (Call @"Transfer_ownership") p
+  Accept_ownership -> call (Call @"Accept_ownership") ()
+  Change_master_minter p -> call (Call @"Change_master_minter") p
+  Change_pauser p -> call (Call @"Change_pauser") p
+  Set_transferlist p -> call (Call @"Set_transferlist") p
   Call_FA2 fa2Param -> case fa2Param of
-    FA2.Transfer p -> callContract "transfer" p
-    FA2.Update_operators p -> callContract "update_operators" p
+    FA2.Transfer p -> call (Call @"Transfer") p
+    FA2.Update_operators p -> call (Call @"Update_operators") p
     _ -> error "Unexpected call"
   Permit _ -> error "Unexpected call"
   Revoke _ -> error "Unexpected call"
@@ -565,15 +534,19 @@ callEntrypoint contract cc st env = case ccParameter cc of
   Get_default_expiry _ -> error "Unexpected call"
   Get_counter _ -> error "Unexpected call"
   where
-    callContract
-      :: (NiceParameter p, T.HasNoOp (T.ToT p))
-      => Text
-      -> p
+    call
+      :: IsoValue (GetEntrypointArgCustom Parameter ep)
+      => EntrypointRef ep
+      -> GetEntrypointArgCustom Parameter ep
       -> Either InterpretError InterpretResult
-    callContract epName param = case U.epNameFromParamAnn (U.ann epName) of
-      Just epn ->
-        interpretUntyped_ contract epn (untypeValue $ toVal param) st env
-      Nothing -> error "Bad entrypoint name"
+    call epRef param =
+      handleContractReturn $
+        interpret
+          (T.cCode contract)
+          (parameterEntrypointCallCustom @Parameter epRef)
+          (toVal param)
+          (toVal st)
+          env
 
 ensureOwner :: Address -> SimpleStorage -> Either ModelError ()
 ensureOwner addr SimpleStorage {..} = if addr == ssOwner then Right () else Left NOT_CONTRACT_OWNER

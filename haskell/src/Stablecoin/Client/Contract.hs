@@ -12,23 +12,25 @@ module Stablecoin.Client.Contract
 import Data.FileEmbed (embedStringFile)
 import qualified Data.Map.Strict as Map
 import Michelson.Runtime (parseExpandContract)
+import Michelson.Test.Import (readContract)
 import Michelson.Text (MText)
-import Michelson.Typed (BigMap(BigMap))
+import Michelson.Typed (BigMap(BigMap), ToT)
+import qualified Michelson.Typed as T
 import qualified Michelson.Untyped as U
 import Morley.Client (AddressOrAlias)
 import Tezos.Address (Address)
 import Util.Named ((.!))
 
 import Lorentz.Contracts.Stablecoin
-  (Expiry, MetadataRegistryStorage, pattern RegistryMetadata, Storage,
+  (Expiry, MetadataRegistryStorage, Parameter, pattern RegistryMetadata, Storage,
   metadataRegistryContractPath, mkTokenMetadata, stablecoinPath)
 
 -- | Parse the stablecoin contract.
-parseStablecoinContract :: MonadThrow m => m U.Contract
+parseStablecoinContract :: MonadThrow m => m (T.Contract (ToT Parameter) (ToT Storage))
 parseStablecoinContract =
-  either throwM pure $
-    parseExpandContract
-      (Just stablecoinPath)
+  either throwM (pure . snd) $
+    readContract
+      stablecoinPath
       $(embedStringFile stablecoinPath)
 
 -- | Parse the metadata registry contract.

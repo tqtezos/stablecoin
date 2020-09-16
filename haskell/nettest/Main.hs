@@ -7,6 +7,7 @@ module Main
 import Options.Applicative (execParser)
 import qualified Unsafe (fromJust)
 
+import qualified Data.Text.IO.Utf8 as Utf8
 import qualified Indigo.Contracts.Transferlist.External as External
 import qualified Indigo.Contracts.Transferlist.Internal as Internal
 import Lorentz (ToT, compileLorentzContract, toVal)
@@ -16,10 +17,9 @@ import Michelson.Typed (untypeValue)
 import Michelson.Typed.Convert (convertContract)
 import Morley.Nettest
 import Tezos.Address
-import Util.IO
 import Util.Named
 
-import Nettest (scNettestScenario)
+import Nettest (TransferlistType(External, Internal), scNettestScenario)
 import Stablecoin.Client.Cleveland.Caps (runStablecoinClient)
 import Stablecoin.Client.Contract (parseStablecoinContract)
 import StablecoinClientTest (stablecoinClientScenario)
@@ -30,7 +30,7 @@ externalTransferlistContractPath = "test/resources/transferlist.tz"
 main :: IO ()
 main = do
   let aliasPrefix = "nettest.Stablecoin"
-  let clientParser = clientConfigParser . pure $ Just aliasPrefix
+  let clientParser = nettestConfigParser . pure $ Just aliasPrefix
   parsedConfig <- execParser $
     parserInfo
       (#usage .! mempty)
@@ -38,7 +38,7 @@ main = do
       (#header .! "ManagedLedger nettest")
       (#parser .! clientParser)
   stablecoinContract <- parseStablecoinContract
-  externalTransferlistFile <- readFileUtf8 externalTransferlistContractPath
+  externalTransferlistFile <- Utf8.readFile externalTransferlistContractPath
   externalTransferlistContract <- either (error "cannot parse transferlist contract") pure $
     parseExpandContract (Just externalTransferlistContractPath) externalTransferlistFile
   let
@@ -60,23 +60,34 @@ main = do
               )
         externalTransferlistContract
 
-    scenarioWithInternalTransferlist :: NettestScenario
+    scenarioWithInternalTransferlist :: NettestScenario m
     scenarioWithInternalTransferlist impl = do
-      commentAction impl "Stablecoin contract nettest scenarioWithInternalTransferlist"
+      niComment impl "Stablecoin contract nettest scenarioWithInternalTransferlist"
       scNettestScenario
-        (Unsafe.fromJust . mkInitialStorage) stablecoinContract originateTransferlistInternal impl
+        (Unsafe.fromJust . mkInitialStorage)
+        stablecoinContract
+        originateTransferlistInternal
+        Internal
+        impl
 
     scenarioWithExternalTransferlist :: forall m capsM. (Monad m, capsM ~ NettestT m) => NettestImpl m -> m ()
     scenarioWithExternalTransferlist impl = do
-      commentAction impl "Stablecoin contract nettest scenarioWithExternalTransferlist"
+      niComment impl "Stablecoin contract nettest scenarioWithExternalTransferlist"
       scNettestScenario
-        (Unsafe.fromJust . mkInitialStorage) stablecoinContract (originateTransferlistExternal @m @capsM) impl
+        (Unsafe.fromJust . mkInitialStorage)
+        stablecoinContract
+        (originateTransferlistExternal @m @capsM)
+        External
+        impl
 
-  env <- mkMorleyClientEnv parsedConfig
+  env <- mkNettestEnv parsedConfig
   runNettestViaIntegrational scenarioWithInternalTransferlist
   runNettestViaIntegrational scenarioWithExternalTransferlist
 
   runNettestClient env scenarioWithInternalTransferlist
   runNettestClient env scenarioWithExternalTransferlist
 
-  runStablecoinClient parsedConfig env (stablecoinClientScenario aliasPrefix)
+  runStablecoinClient
+    (ncMorleyClientConfig parsedConfig)
+    (neMorleyClientEnv env)
+    (stablecoinClientScenario aliasPrefix)

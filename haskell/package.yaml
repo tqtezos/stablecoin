@@ -81,7 +81,9 @@ tests:
       - containers
       - lorentz
       - morley
+      - morley-client
       - cleveland
       - morley-prelude
       - optparse-applicative
       - stablecoin
+      - with-utf8
