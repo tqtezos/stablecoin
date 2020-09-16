@@ -93,8 +93,8 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
     expectTransferlistFailed :: NiceUnpackedValue t => t -> capsM a -> capsM ()
     expectTransferlistFailed val = flip expectFailure (NettestFailedWith sfAddress val)
 
-    sc :: AddressOrAlias
-    sc = AddressResolved scAddress
+    sc :: TAddress Parameter
+    sc = TAddress scAddress
 
     tp :: Address -> Address -> Natural -> FA2.TransferParams
     tp from to value = constructSingleTransfer
@@ -103,7 +103,7 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
       (#amount .! value)
 
     callTransferWithOperator op from to value =
-      callFrom' (AddressResolved op) sc (ep "transfer") (tp from to value)
+      callFrom (AddressResolved op) sc (Call @"Transfer") (tp from to value)
 
     callTransfer = join callTransferWithOperator
 
@@ -111,127 +111,127 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
       :: [("from_" :! Address, [("to_" :! Address, "amount" :! Natural)])]
       -> capsM ()
     callTransfers = mapM_ $ \(from@(arg #from_ -> from_), destinations) ->
-      callFrom'
+      callFrom
         (AddressResolved from_)
         sc
-        (ep "transfer")
+        (Call @"Transfer")
         (constructTransfersFromSender from destinations)
 
     configureMinter :: Address -> Address -> Maybe Natural -> Natural -> capsM ()
     configureMinter = configureMinter' sc
 
-    configureMinter' :: AddressOrAlias -> Address -> Address -> Maybe Natural -> Natural -> capsM ()
+    configureMinter' :: TAddress Parameter -> Address -> Address -> Maybe Natural -> Natural -> capsM ()
     configureMinter' sc' from for expectedAllowance newAllowance =
-      callFrom'
+      callFrom
         (AddressResolved from)
         sc'
-        (ep "configure_minter")
+        (Call @"Configure_minter")
         ( #minter .! for
         , ( #current_minting_allowance .! expectedAllowance
           , #new_minting_allowance .! newAllowance))
 
     removeMinter :: Address -> Address -> capsM ()
     removeMinter from whom =
-      callFrom'
+      callFrom
         (AddressResolved from)
         sc
-        (ep "remove_minter")
+        (Call @"Remove_minter")
         whom
 
     addOperatorNettest :: Address -> Address -> capsM ()
     addOperatorNettest from op =
-      callFrom'
+      callFrom
         (AddressResolved from)
         sc
-        (ep "update_operators")
+        (Call @"Update_operators")
         [FA2.Add_operator (#owner .! from, #operator .! op)]
 
     removeOperator :: Address -> Address -> capsM ()
     removeOperator from op =
-      callFrom'
+      callFrom
         (AddressResolved from)
         sc
-        (ep "update_operators")
+        (Call @"Update_operators")
         [FA2.Remove_operator (#owner .! from, #operator .! op)]
 
     mint :: Address -> Natural -> capsM ()
     mint to_ value =
-      callFrom'
+      callFrom
         (AddressResolved to_)
         sc
-        (ep "mint")
+        (Call @"Mint")
         [(#to_ .! to_, #amount .! value)]
 
     burn :: Address -> Natural -> capsM ()
     burn from amount_ =
-      callFrom'
+      callFrom
         (AddressResolved from)
         sc
-        (ep "burn")
+        (Call @"Burn")
         [amount_]
 
     pause :: Address -> capsM ()
     pause from =
-      callFrom'
+      callFrom
         (AddressResolved from)
         sc
-        (ep "pause")
+        (Call @"Pause")
         ()
 
     unpause :: Address -> capsM ()
     unpause from =
-      callFrom'
+      callFrom
         (AddressResolved from)
         sc
-        (ep "unpause")
+        (Call @"Unpause")
         ()
 
     transferOwnership :: Address -> Address -> capsM ()
     transferOwnership from to =
-      callFrom'
+      callFrom
         (AddressResolved from)
         sc
-        (ep "transfer_ownership")
+        (Call @"Transfer_ownership")
         to
 
     acceptOwnership :: Address -> capsM ()
     acceptOwnership from =
-      callFrom'
+      callFrom
         (AddressResolved from)
         sc
-        (ep "accept_ownership")
+        (Call @"Accept_ownership")
         ()
 
     changeMasterMinter :: Address -> Address -> capsM ()
     changeMasterMinter from to =
-      callFrom'
+      callFrom
         (AddressResolved from)
         sc
-        (ep "change_master_minter")
+        (Call @"Change_master_minter")
         to
 
     changePauser :: Address -> Address -> capsM ()
     changePauser from to =
-      callFrom'
+      callFrom
         (AddressResolved from)
         sc
-        (ep "change_pauser")
+        (Call @"Change_pauser")
         to
 
     setTransferlist :: Address -> Address -> capsM ()
     setTransferlist from transferlistAddress =
-      callFrom'
+      callFrom
         (AddressResolved from)
         sc
-        (ep "set_transferlist")
+        (Call @"Set_transferlist")
         (Just transferlistAddress)
 
     unsetTransferlist :: Address -> capsM ()
     unsetTransferlist from =
-      callFrom'
+      callFrom
         (AddressResolved from)
         sc
-        (ep "set_transferlist")
+        (Call @"Set_transferlist")
         (Nothing :: Maybe Address)
 
   let
@@ -369,7 +369,7 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
         originateUntypedSimple "nettest.Stablecoin_for_minter_test" (untypeValue $ toVal str) (T.convertContract stablecoinContract)
 
       let
-        sc' = AddressResolved scAddress'
+        sc' = TAddress @Parameter scAddress'
         addMinter' ma = configureMinter' sc' nettestMasterMinter ma Nothing 100
 
       comment "Send some tez to master minter"
@@ -390,29 +390,3 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
   permissionReassigmentScenario
   transferlistScenario
   configureMinterScenario
-
--- This is a temporary solution.
--- Changes made in cleveland's `callFrom` have caused some issues when calling
--- entrypoints other than the default.
--- So we've temporarily copied the old `callFrom` implementation here and
--- renamed it to `callFrom'`.
--- See discussion here: https://github.com/tqtezos/stablecoin/pull/79#discussion_r464983707
---
--- TODO: delete this after these comments have been addressed:
--- https://gitlab.com/morley-framework/morley/-/merge_requests/499#note_388448660
-callFrom'
-  :: (MonadNettest caps base m, NiceParameter v)
-  => AddressOrAlias
-  -> AddressOrAlias
-  -> EpName
-  -> v
-  -> m ()
-callFrom' from to epName param =
-  transfer $
-    TransferData
-      { tdFrom = from
-      , tdTo = to
-      , tdAmount = zeroMutez
-      , tdEntrypoint = epName
-      , tdParameter = param
-      }
