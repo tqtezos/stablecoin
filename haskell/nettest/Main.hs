@@ -20,6 +20,7 @@ import Tezos.Address
 import Util.Named
 
 import Nettest (TransferlistType(External, Internal), scNettestScenario)
+import Permit (permitScenario)
 import Stablecoin.Client.Cleveland.Caps (runStablecoinClient)
 import Stablecoin.Client.Contract (parseStablecoinContract)
 import StablecoinClientTest (stablecoinClientScenario)
@@ -83,11 +84,13 @@ main = do
   env <- mkNettestEnv parsedConfig
   runNettestViaIntegrational scenarioWithInternalTransferlist
   runNettestViaIntegrational scenarioWithExternalTransferlist
+  runNettestViaIntegrational (permitScenario stablecoinContract)
 
   runNettestClient env scenarioWithInternalTransferlist
   runNettestClient env scenarioWithExternalTransferlist
+  runNettestClient env (permitScenario stablecoinContract)
 
   runStablecoinClient
     (ncMorleyClientConfig parsedConfig)
     (neMorleyClientEnv env)
-    (stablecoinClientScenario aliasPrefix)
+    stablecoinClientScenario

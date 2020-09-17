@@ -47,10 +47,10 @@ sign sk bs =
 
 mkPermit :: TAddress Parameter -> SecretKey -> Natural -> Parameter -> (PermitHash, ByteString, Signature)
 mkPermit contractAddr sk counter param =
-  let permitHash = Hash.blake2b $ lPackValue param
+  let permitHash = mkPermitHash param
       toSign = lPackValue ((contractAddr, gsChainId initGState), (counter, permitHash))
       sig = sign sk toSign
-  in  (PermitHash permitHash, toSign, sig)
+  in  (permitHash, toSign, sig)
 
 callPermit :: TAddress Parameter -> PublicKey -> SecretKey -> Natural -> Parameter -> IntegrationalScenarioM PermitHash
 callPermit contractAddr pk sk counter param = do
