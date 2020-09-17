@@ -238,6 +238,19 @@ permitSpec originate = do
               lCallEP stablecoinContract (Call @"Revoke") [(hash, testPauser)]
               lCallEP stablecoinContract (Call @"Pause") () `catchExpectedError` mgmNotPauser
 
+      specify "a user X cannot issue a permit allowing others to revoke Y's permits" $
+        integrationalTestExpectation $ do
+          withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
+            hash <- withSender testPauser $ do
+              callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
+
+            withSender wallet1 $
+              callPermit stablecoinContract wallet1PK wallet1SK 1 (Revoke [(hash, testPauser)])
+
+            withSender wallet2 $ do
+              lCallEP stablecoinContract (Call @"Revoke") [(hash, testPauser)]
+                `catchExpectedError` errNotPermitIssuer
+
       specify "permits for this entrypoint are consumed upon use" $
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do

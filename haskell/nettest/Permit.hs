@@ -1,6 +1,5 @@
 -- SPDX-FileCopyrightText: 2020 TQ Tezos
 -- SPDX-License-Identifier: MIT
-{-# LANGUAGE PartialTypeSignatures #-}
 
 module Permit
   ( permitScenario
