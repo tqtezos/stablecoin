@@ -410,8 +410,8 @@ generateTokenOwnerAction idx = do
       operator <- getRandomOperator
       owner <- getRandomOwner
       updateOperation <- lift $ elements
-        [ FA2.Add_operator (#owner .! owner, #operator .! operator)
-        , FA2.Remove_operator (#owner .! owner, #operator .! operator)
+        [ FA2.Add_operator FA2.OperatorParam { opOwner = owner, opOperator = operator }
+        , FA2.Remove_operator FA2.OperatorParam { opOwner = owner, opOperator = operator }
         ]
       pure $ Call_FA2 $ FA2.Update_operators [updateOperation]
 
@@ -734,11 +734,11 @@ applyUpdateOperator :: Address -> Either ModelError SimpleStorage -> FA2.UpdateO
 applyUpdateOperator ccSender estorage op = case estorage of
   Left err -> Left err
   Right storage -> case op of
-    FA2.Add_operator (arg #owner -> own, arg #operator -> operator)
+    FA2.Add_operator (FA2.OperatorParam own operator)
       -> if own == ccSender -- enforce that sender is owner
         then Right $ storage { ssOperators = Map.insert (own, operator) () $ ssOperators storage }
         else Left NOT_TOKEN_OWNER
-    FA2.Remove_operator (arg #owner -> own, arg #operator -> operator)
+    FA2.Remove_operator (FA2.OperatorParam own operator)
       -> if own == ccSender
         then Right $ storage { ssOperators = Map.delete (own, operator) $ ssOperators storage }
         else Left NOT_TOKEN_OWNER

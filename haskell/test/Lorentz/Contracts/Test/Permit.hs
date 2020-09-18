@@ -687,7 +687,7 @@ permitSpec originate = do
               callPermit stablecoinContract wallet2PK wallet2SK 0
                 (Call_FA2 $ FA2.Transfer transferParams)
               lCallEP stablecoinContract (Call @"Update_operators")
-                [FA2.Add_operator (#owner .! wallet2, #operator wallet3)]
+                [FA2.Add_operator FA2.OperatorParam { opOwner = wallet2, opOperator = wallet3 }]
             withSender wallet3 $ do
               lCallEP stablecoinContract (Call @"Transfer") transferParams
               assertPermitCount stablecoinContract 1
@@ -697,8 +697,8 @@ permitSpec originate = do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             let params =
-                  [ FA2.Add_operator (#owner .! wallet2, #operator wallet3)
-                  , FA2.Remove_operator (#owner .! wallet2, #operator wallet4)
+                  [ FA2.Add_operator FA2.OperatorParam { opOwner = wallet2, opOperator = wallet3 }
+                  , FA2.Remove_operator FA2.OperatorParam { opOwner = wallet2, opOperator = wallet4 }
                   ]
 
             withSender wallet1 $ do
@@ -712,8 +712,8 @@ permitSpec originate = do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             let params =
-                  [ FA2.Add_operator (#owner .! wallet2, #operator wallet3)
-                  , FA2.Remove_operator (#owner .! wallet3, #operator wallet4)
+                  [ FA2.Add_operator FA2.OperatorParam { opOwner = wallet2, opOperator = wallet3 }
+                  , FA2.Remove_operator FA2.OperatorParam { opOwner = wallet3, opOperator = wallet4 }
                   ]
 
             withSender wallet1 $ do
@@ -725,7 +725,7 @@ permitSpec originate = do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             let params =
-                  [ FA2.Add_operator (#owner .! wallet2, #operator wallet3) ]
+                  [ FA2.Add_operator FA2.OperatorParam { opOwner = wallet2, opOperator = wallet3 } ]
 
             withSender wallet2 $ do
               callPermit stablecoinContract wallet2PK wallet2SK 0

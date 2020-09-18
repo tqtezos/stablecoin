@@ -142,7 +142,7 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
         (AddressResolved from)
         sc
         (Call @"Update_operators")
-        [FA2.Add_operator (#owner .! from, #operator .! op)]
+        [FA2.Add_operator FA2.OperatorParam { opOwner = from, opOperator = op }]
 
     removeOperator :: Address -> Address -> capsM ()
     removeOperator from op =
@@ -150,7 +150,7 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
         (AddressResolved from)
         sc
         (Call @"Update_operators")
-        [FA2.Remove_operator (#owner .! from, #operator .! op)]
+        [FA2.Remove_operator FA2.OperatorParam { opOwner = from, opOperator = op }]
 
     mint :: Address -> Natural -> capsM ()
     mint to_ value =

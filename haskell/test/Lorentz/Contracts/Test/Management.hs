@@ -21,7 +21,7 @@ import Test.Hspec (Spec, describe, it)
 import qualified Indigo.Contracts.Transferlist.Internal as Transferlist
 import Lorentz (mkView, mt, unBigMap)
 import Lorentz.Address
-import "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
+import qualified "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
 import Lorentz.Contracts.Test.Common
 import Lorentz.Test
@@ -181,7 +181,7 @@ managementSpec originate = do
         withSender commonOperator $ lCallEP stablecoinContract (Call @"Transfer") transfer1
         withSender commonOperator $ lCallEP stablecoinContract (Call @"Transfer") transfer2
 
-        consumer <- lOriginateEmpty @[BalanceResponseItem] contractConsumer "consumer"
+        consumer <- lOriginateEmpty @[FA2.BalanceResponseItem] contractConsumer "consumer"
         let
           balanceRequestItems =
             [ (#owner .! wallet1, #token_id .! 0)
@@ -389,7 +389,7 @@ managementSpec originate = do
 
         withSender wallet1 $ lCallEP stablecoinContract (Call @"Mint") mintings
 
-        consumer <- lOriginateEmpty @[BalanceResponseItem] contractConsumer "consumer"
+        consumer <- lOriginateEmpty @[FA2.BalanceResponseItem] contractConsumer "consumer"
         let
           balanceRequestItems =
             [ (#owner .! wallet1, #token_id .! 0)
@@ -456,7 +456,7 @@ managementSpec originate = do
         withSender wallet1 $ lCallEP stablecoinContract (Call @"Burn") [ 10, 20 ]
         withSender wallet2 $ lCallEP stablecoinContract (Call @"Burn") [ 0 ]
 
-        consumer <- lOriginateEmpty @[BalanceResponseItem] contractConsumer "consumer"
+        consumer <- lOriginateEmpty @[FA2.BalanceResponseItem] contractConsumer "consumer"
         let
           balanceRequestItems =
             [ (#owner .! wallet1, #token_id .! 0)

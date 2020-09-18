@@ -92,7 +92,7 @@ permitScenario stablecoinContract = uncapsNettest $ do
   callFrom (addressResolved user1) contract (Call @"Transfer") transferParam
 
   comment "Issue a permit for Update_operators"
-  let param = [ FA2.Add_operator (#owner .! owner1, #operator user1 ) ]
+  let param = [ FA2.Add_operator FA2.OperatorParam { opOwner = owner1, opOperator = user1 } ]
   issuePermit owner1Alias (Call_FA2 $ FA2.Update_operators param)
   callFrom (addressResolved user1) contract (Call @"Update_operators") param
 

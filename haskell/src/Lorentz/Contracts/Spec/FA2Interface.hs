@@ -12,8 +12,8 @@ module Lorentz.Contracts.Spec.FA2Interface
   , CustomPermissionPolicy
   , FA2OwnerHook (..)
   , IsOperatorParam
-  , IsOperatorResponse
-  , OperatorParam
+  , IsOperatorResponse(..)
+  , OperatorParam(..)
   , OperatorTransferPolicy (..)
   , OwnerTransferMode (..)
   , Parameter (..)
@@ -135,8 +135,12 @@ instance TypeHasDoc OwnerTransferMode where
 type CustomPermissionPolicy
   = ("tag" :! MText, "config_api" :! Maybe Address)
 
-type OperatorParam =
-  ("owner" :! Address, "operator" :! Address)
+data OperatorParam = OperatorParam
+  { opOwner :: Address
+  , opOperator :: Address
+  }
+  deriving stock (Generic, Show, Eq)
+  deriving anyclass (IsoValue, HasAnnotation)
 
 data UpdateOperator
   = Add_operator OperatorParam
@@ -150,7 +154,12 @@ instance Buildable UpdateOperator where
 type UpdateOperatorsParam = [UpdateOperator]
 
 -- Is operator query
-type IsOperatorResponse = ("operator" :! OperatorParam, "is_operator" :! Bool)
+data IsOperatorResponse = IsOperatorResponse
+  { iorOperator :: OperatorParam
+  , iorIsOperator :: Bool
+  }
+  deriving stock (Generic, Show, Eq)
+  deriving anyclass (IsoValue, HasAnnotation)
 
 instance Buildable OperatorParam where
   build = genericF
