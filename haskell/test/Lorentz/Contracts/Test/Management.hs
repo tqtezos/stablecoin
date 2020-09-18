@@ -704,7 +704,7 @@ managementSpec originate = do
         withOriginated originate originationParams $ \stablecoinContract -> do
           let
             transfers =
-              [(#from_ .! wallet1, #txs .! [(#to_ .! wallet2, (#token_id .! 0, #amount .! 10))])]
+              [FA2.TransferParam wallet1 [FA2.TransferDestination wallet2 0 10]]
 
           err <- expectError $ withSender commonOperator $
             lCallEP stablecoinContract (Call @"Transfer") transfers
@@ -749,7 +749,11 @@ managementSpec originate = do
         withOriginated originate originationParams $ \stablecoinContract -> do
           let
             transfers =
-              [(#from_ .! wallet1, #txs .! [(#to_ .! wallet2, (#token_id .! 0, #amount .! 10))])]
+              [ FA2.TransferParam
+                  { tpFrom = wallet1
+                  , tpTxs = [FA2.TransferDestination { tdTo = wallet2, tdTokenId = 0, tdAmount = 10 }]
+                  }
+              ]
 
           withSender commonOperator $ lCallEP stablecoinContract (Call @"Transfer") transfers
 

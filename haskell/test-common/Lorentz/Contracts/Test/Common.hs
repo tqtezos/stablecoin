@@ -47,6 +47,7 @@ import Data.List.NonEmpty ((!!))
 import qualified Data.Map as Map
 
 import qualified Indigo.Contracts.Transferlist.Internal as Transferlist
+import Lorentz (arg)
 import "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin as SC
 import Lorentz.Test
@@ -148,30 +149,35 @@ addMinter (minter, mintingAllowance) op@OriginationParams{ opMinters = currentMi
 constructDestination
   :: ("to_" :! Address, "amount" :! Natural)
   -> TransferDestination
-constructDestination (to_, amount) = (to_, (#token_id .! 0, amount))
+constructDestination (arg #to_ -> to, arg #amount -> amount) = TransferDestination
+  { tdTo = to
+  , tdTokenId = 0
+  , tdAmount = amount
+  }
 
 constructTransfers
   :: [("from_" :! Address, [("to_" :! Address, "amount" :! Natural)])]
   -> TransferParams
-constructTransfers = fmap (second constructTransfer)
-  where
-    constructTransfer destinations = #txs .! fmap constructDestination destinations
+constructTransfers pairs = pairs >>= uncurry constructTransfersFromSender
 
 constructTransfersFromSender
   :: "from_" :! Address
   -> [("to_" :! Address, "amount" :! Natural)]
   -> TransferParams
-constructTransfersFromSender from_ txs =
-  [( from_
-   , ( #txs .! (constructDestination <$> txs)))]
+constructTransfersFromSender (arg #from_ -> from) txs =
+  [ TransferParam
+      { tpFrom = from
+      , tpTxs = constructDestination <$> txs
+      }
+  ]
 
 constructSingleTransfer
   :: "from_" :! Address
   -> "to_" :! Address
   -> "amount" :! Natural
   -> TransferParams
-constructSingleTransfer from to amount
-    = [(from, (#txs .! [(to, (#token_id .! 0, amount))]))]
+constructSingleTransfer (arg #from_ -> from) (arg #to_ -> to) (arg #amount -> amount)
+    = [TransferParam from [TransferDestination to 0 amount]]
 
 -- | The return value of this function is a Maybe to handle the case where a contract
 -- having hardcoded permission descriptor, and thus unable to initialize with a custom

@@ -129,7 +129,7 @@ transfer sender contract from to amount = do
   fromAddr <- resolveAddress from
   toAddr <- resolveAddress to
   call sender contract (Call @"Transfer")
-    [(#from_ .! fromAddr, #txs .! [(#to_ .! toAddr, (#token_id .! 0, #amount .! amount))])]
+    [FA2.TransferParam fromAddr [FA2.TransferDestination toAddr 0 amount]]
 
 getBalanceOf
   :: "contract" :! AddressOrAlias

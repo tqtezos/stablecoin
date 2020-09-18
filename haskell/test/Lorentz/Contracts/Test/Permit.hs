@@ -26,7 +26,6 @@ import qualified Tezos.Crypto.Hash as Hash
 import qualified Tezos.Crypto.P256 as P256
 import qualified Tezos.Crypto.Secp256k1 as Secp256k1
 import Tezos.Crypto.Util (deterministic)
-import Util.Named
 
 import qualified "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
@@ -643,8 +642,8 @@ permitSpec originate = do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             let transferParams =
-                  [ (#from_ .! wallet2, #txs .! [])
-                  , (#from_ .! wallet2, #txs .! [])
+                  [ FA2.TransferParam wallet2 []
+                  , FA2.TransferParam wallet2 []
                   ]
 
             withSender wallet1 $ do
@@ -658,8 +657,8 @@ permitSpec originate = do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             let transferParams =
-                  [ (#from_ .! wallet2, #txs .! [])
-                  , (#from_ .! wallet3, #txs .! [])
+                  [ FA2.TransferParam wallet2 []
+                  , FA2.TransferParam wallet3 []
                   ]
 
             withSender wallet1 $ do
@@ -671,7 +670,7 @@ permitSpec originate = do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             let transferParams =
-                  [ (#from_ .! wallet2, #txs .! []) ]
+                  [ FA2.TransferParam wallet2 [] ]
             withSender wallet2 $ do
               callPermit stablecoinContract wallet2PK wallet2SK 0
                 (Call_FA2 $ FA2.Transfer transferParams)
@@ -682,7 +681,7 @@ permitSpec originate = do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             let transferParams =
-                  [ (#from_ .! wallet2, #txs .! []) ]
+                  [ FA2.TransferParam wallet2 [] ]
             withSender wallet2 $ do
               callPermit stablecoinContract wallet2PK wallet2SK 0
                 (Call_FA2 $ FA2.Transfer transferParams)

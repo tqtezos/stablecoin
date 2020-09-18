@@ -20,11 +20,11 @@ module Lorentz.Contracts.Spec.FA2Interface
   , FA2ParameterC
   , TokenId
   , TokenMetadata(..)
-  , TransferDestination
+  , TransferDestination(..)
   , TransferDescriptor
   , TransferDescriptorParam
   , TransferParams
-  , TransferParam
+  , TransferParam(..)
   , UpdateOperator (..)
   , UpdateOperatorsParam
   ) where
@@ -44,11 +44,23 @@ import Util.Named
 -- 4. Transfer operation must apply permission policy logic.
 type TokenId = Natural
 
-type TransferDestination =
-  ("to_" :! Address, ("token_id" :! TokenId, "amount" :! Natural))
+data TransferDestination = TransferDestination
+ { tdTo :: Address
+ , tdTokenId :: TokenId
+ , tdAmount :: Natural
+ }
+ deriving stock (Generic, Show)
+ deriving anyclass (IsoValue, HasAnnotation)
 
-type TransferParam =
-  ("from_" :! Address, "txs" :! [TransferDestination])
+data TransferParam = TransferParam
+ { tpFrom :: Address
+ , tpTxs :: [TransferDestination]
+ }
+ deriving stock (Show, Generic)
+ deriving anyclass (IsoValue, HasAnnotation)
+
+instance Buildable TransferParam where
+  build = genericF
 
 type TransferParams = [TransferParam]
 

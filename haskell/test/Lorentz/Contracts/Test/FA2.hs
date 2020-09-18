@@ -173,7 +173,7 @@ fa2Spec fa2Originate = do
             $ defaultOriginationParams
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
-            transfers = [(#from_ .! wallet1, #txs .! [])]
+            transfers = [ TransferParam wallet1 [] ]
 
           withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
 
@@ -184,12 +184,14 @@ fa2Spec fa2Originate = do
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
             transfers =
-              [ ( #from_ .! wallet1
-              , (#txs .!
-                  [ (#to_ .! wallet2, (#token_id .! 0, #amount .! 5))
-                  , (#to_ .! wallet3, (#token_id .! 1, #amount .! 1))
-                  , (#to_ .! wallet4, (#token_id .! 0, #amount .! 4))
-                  ]))
+              [ TransferParam
+                  { tpFrom = wallet1
+                  , tpTxs =
+                    [ TransferDestination wallet2 0 5
+                    , TransferDestination wallet3 1 1
+                    , TransferDestination wallet4 0 4
+                    ]
+                  }
               ]
 
           err <- expectError $ withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
@@ -296,8 +298,16 @@ fa2Spec fa2Originate = do
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
             transfers =
-              [ (#from_ .! wallet1
-              , (#txs .! [(#to_ .! wallet2, (#token_id .! 1, #amount .! 10))]))
+              [ TransferParam
+                  { tpFrom = wallet1
+                  , tpTxs =
+                    [ TransferDestination
+                        { tdTo = wallet2
+                        , tdTokenId = 1
+                        , tdAmount = 10
+                        }
+                    ]
+                  }
               ]
 
           err <- expectError $ withSender wallet1 $ lCallEP fa2contract (Call @"Transfer") transfers
@@ -354,14 +364,16 @@ fa2Spec fa2Originate = do
       withOriginated fa2Originate originationParams $ \fa2contract -> do
         let
           transfers =
-            [( #from_ .! wallet1
-             , #txs .!
-               [ (#to_ .! wallet2, (#token_id .! 0, #amount .! 1))
-               , (#to_ .! wallet3, (#token_id .! 0, #amount .! 1))
-               , (#to_ .! wallet4, (#token_id .! 1, #amount .! 1)) -- Should fail
-               , (#to_ .! wallet5, (#token_id .! 0, #amount .! 1))
-               ]
-             )]
+            [ TransferParam
+                { tpFrom = wallet1
+                , tpTxs =
+                  [ TransferDestination { tdTo = wallet2, tdTokenId = 0, tdAmount = 1 }
+                  , TransferDestination { tdTo = wallet3, tdTokenId = 0, tdAmount = 1 }
+                  , TransferDestination { tdTo = wallet4, tdTokenId = 1, tdAmount = 1 } -- Should fail
+                  , TransferDestination { tdTo = wallet5, tdTokenId = 0, tdAmount = 1 }
+                  ]
+                }
+            ]
 
         err <- expectError $ withSender wallet1 $ lCallEP fa2contract (Call @"Transfer") transfers
 

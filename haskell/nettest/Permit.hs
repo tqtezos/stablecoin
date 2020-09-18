@@ -16,8 +16,8 @@ import qualified Michelson.Typed as T
 import Morley.Client (Alias)
 import Morley.Nettest
 import qualified Unsafe as Unsafe
-import Util.Named
 
+import Lorentz.Contracts.Spec.FA2Interface (TransferDestination(..), TransferParam(..))
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
   (ConfigureMinterParam(..), Parameter(..), PermitParam(..), RevokeParam(..), Storage,
@@ -87,7 +87,7 @@ permitScenario stablecoinContract = uncapsNettest $ do
     `expectFailure` NettestFailedWith contract [mt|NOT_PAUSER|]
 
   comment "Issue a permit for Transfer"
-  let transferParam = [ (#from_ .! owner1, #txs .! [(#to_ .! user1, (#token_id .! 0, #amount .! 1))]) ]
+  let transferParam = [ TransferParam owner1 [TransferDestination user1 0 1] ]
   issuePermit owner1Alias (Call_FA2 $ FA2.Transfer transferParam)
   callFrom (addressResolved user1) contract (Call @"Transfer") transferParam
 

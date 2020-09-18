@@ -20,7 +20,7 @@ import qualified Text.Show
 import Tezos.Core (unsafeMkMutez)
 
 import Lorentz
-  (Address, EntrypointRef(Call), GetEntrypointArgCustom, IsoValue(..), TAddress(TAddress), arg,
+  (Address, EntrypointRef(Call), GetEntrypointArgCustom, IsoValue(..), TAddress(TAddress),
   parameterEntrypointCallCustom)
 import qualified "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
@@ -30,7 +30,6 @@ import Michelson.Test.Dummy
 import Michelson.Test.Integrational
 import Michelson.Text
 import qualified Michelson.Typed as T
-import Util.Named
 
 -- Some implementation notes:
 --
@@ -421,9 +420,9 @@ generateTransferAction = do
   txs <- replicateM 10 $ do
     to <- getRandomTokenOwner
     amount <- lift $ choose @Int (0, amountRange)
-    pure (#to_ .! to, (#token_id .! 0, #amount .! fromIntegral amount))
+    pure FA2.TransferDestination { tdTo = to, tdTokenId = 0, tdAmount = fromIntegral amount }
   stxs <- lift $ sublistOf txs
-  let transferItem = (#from_ .! from, #txs .! stxs)
+  let transferItem = FA2.TransferParam { tpFrom = from, tpTxs = stxs }
   pure $ Call_FA2 $ FA2.Transfer [transferItem]
 
 generateOperatorAction :: Int -> GeneratorM (ContractCall Parameter)
@@ -710,25 +709,21 @@ applyTransfer ccSender storage tis = do
   foldl' (applySingleTransfer ccSender) (Right storage) tis
 
 applySingleTransfer :: Address -> Either ModelError SimpleStorage -> FA2.TransferParam -> Either ModelError SimpleStorage
-applySingleTransfer ccSender estorage
-  (arg #from_ -> from, arg #txs -> toItems)
-  = case estorage of
-      Left err -> Left err
-      Right storage@(SimpleStorage {..}) ->
-        if ccSender == from || isOperatorOf storage ccSender from
-          then let
-            in foldl' singleTranferTx (Right storage) toItems
-          else Left FA2_NOT_OPERATOR
+applySingleTransfer ccSender estorage (FA2.TransferParam from txs) =
+  case estorage of
+    Left err -> Left err
+    Right storage@(SimpleStorage {..}) ->
+      if ccSender == from || isOperatorOf storage ccSender from
+        then foldl' singleTranferTx (Right storage) txs
+        else Left FA2_NOT_OPERATOR
   where
     singleTranferTx (Left err) _ =  Left err
-    singleTranferTx
-      (Right storage@(SimpleStorage {..}))
-      (arg #to_ -> to, (arg #token_id -> _, arg #amount -> amount)) = let
-        -- consider zero balance if account is not found
-        srcBalance = fromMaybe 0 (Map.lookup from ssLedger)
-        in if srcBalance >= amount
-          then Right $ applyCredit to amount $ applyDebit from amount storage
-          else Left FA2_INSUFFICIENT_BALANCE
+    singleTranferTx (Right storage@(SimpleStorage {..})) (FA2.TransferDestination to _ amount) = let
+      -- consider zero balance if account is not found
+      srcBalance = fromMaybe 0 (Map.lookup from ssLedger)
+      in if srcBalance >= amount
+        then Right $ applyCredit to amount $ applyDebit from amount storage
+        else Left FA2_INSUFFICIENT_BALANCE
 
 applyUpdateOperator :: Address -> Either ModelError SimpleStorage -> FA2.UpdateOperator -> Either ModelError SimpleStorage
 applyUpdateOperator ccSender estorage op = case estorage of
