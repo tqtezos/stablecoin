@@ -9,7 +9,7 @@ module Lorentz.Contracts.Spec.FA2Interface
   ( BalanceRequestItem(..)
   , BalanceRequestParams
   , BalanceResponseItem(..)
-  , CustomPermissionPolicy
+  , CustomPermissionPolicy(..)
   , FA2OwnerHook (..)
   , IsOperatorParam
   , IsOperatorResponse(..)
@@ -155,8 +155,12 @@ instance Arbitrary OwnerTransferMode where
 instance TypeHasDoc OwnerTransferMode where
   typeDocMdDescription = "Describes if owener hooks are required in sender/receiver addresses"
 
-type CustomPermissionPolicy
-  = ("tag" :! MText, "config_api" :! Maybe Address)
+data CustomPermissionPolicy = CustomPermissionPolicy
+  { cppTag :: MText
+  , cppConfigApi :: Maybe Address
+  }
+  deriving stock (Generic, Show, Eq)
+  deriving anyclass (IsoValue, HasAnnotation)
 
 data OperatorParam = OperatorParam
   { opOwner :: Address
