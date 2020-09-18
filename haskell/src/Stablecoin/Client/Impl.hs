@@ -57,7 +57,7 @@ import Util.Named ((:!), (.!))
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
   (ConfigureMinterParam(..), MetadataRegistryStorage, MetadataRegistryStorageView, MintParam(..),
-  Parameter, pattern RegistryMetadata, Roles(..), StorageView(..), TokenMetadata)
+  Parameter, pattern RegistryMetadata, Roles(..), StorageView(..))
 import Stablecoin.Client.Contract
   (InitialStorageData(..), mkInitialStorage, mkRegistryStorage, parseRegistryContract,
   parseStablecoinContract)
@@ -307,7 +307,7 @@ getMintingAllowance contract minter = do
   pure $ fromMaybe 0 allowanceMaybe
 
 -- | Get the token metadata of the contract
-getTokenMetadata :: "contract" :! AddressOrAlias -> MorleyClientM TokenMetadata
+getTokenMetadata :: "contract" :! AddressOrAlias -> MorleyClientM FA2.TokenMetadata
 getTokenMetadata contract = do
   mdRegistry <- svTokenMetadataRegistry <$> getStorage contract
   getRegistryStorage mdRegistry >>= \case

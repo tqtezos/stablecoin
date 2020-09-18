@@ -7,7 +7,6 @@ module Lorentz.Contracts.Stablecoin
   , ChangePauserParam
   , GetCounterParam
   , SetTransferlistParam
-  , TokenMetadata
   , RemoveMinterParam
   , MetadataRegistryStorage
   , MetadataRegistryStorageView
@@ -32,7 +31,6 @@ module Lorentz.Contracts.Stablecoin
   , SetExpiryParam
   , GetDefaultExpiryParam
   , minterLimit
-  , mkTokenMetadata
   , stablecoinTokenMetadata
 
   -- We use these patterns only for validation
@@ -328,24 +326,14 @@ $(customGeneric "StorageView" $ withDepths
   )
 
 -- We will hard code stablecoin token metadata here
-stablecoinTokenMetadata :: TokenMetadata
-stablecoinTokenMetadata = mkTokenMetadata stablecoinTokenMetadataFA2
-  where
-    stablecoinTokenMetadataFA2 :: FA2.TokenMetadata
-    stablecoinTokenMetadataFA2 =
-      (#token_id .! 0, #mdr .! ( #symbol .! [mt|TEST|]
-                               , #mdr2 .! ( #name .! [mt|Test|]
-                                          , #mdr3 .! ( #decimals .! 8, #extras .! mempty))))
-
-mkTokenMetadata :: FA2.TokenMetadata -> TokenMetadata
-mkTokenMetadata
-  ( L.arg #token_id -> token_id
-  , L.arg #mdr -> (L.arg #symbol -> symbol
-  , L.arg #mdr2 -> (L.arg #name -> name
-  , L.arg #mdr3 -> (L.arg #decimals -> decimals
-  , L.arg #extras -> extras)))) = (token_id, (symbol, (name, (decimals, extras))))
-
-type TokenMetadata = (Natural, (L.MText, (L.MText, (Natural, Map L.MText L.MText))))
+stablecoinTokenMetadata :: FA2.TokenMetadata
+stablecoinTokenMetadata = FA2.TokenMetadata
+  { tmTokenId = 0
+  , tmSymbol = [mt|TEST|]
+  , tmName = [mt|Test|]
+  , tmDecimals = 8
+  , tmExtras = mempty
+  }
 
 -- Currently the contract allows to add upto 12 minters.
 minterLimit :: Int
@@ -353,8 +341,8 @@ minterLimit = 12
 
 type MetadataRegistryStorage' bt = ("dummy_field" :! (), "token_metadata" :! bt)
 
-type MetadataRegistryStorageView = MetadataRegistryStorage' (BigMapId FA2.TokenId TokenMetadata)
-type MetadataRegistryStorage = MetadataRegistryStorage' (BigMap FA2.TokenId TokenMetadata)
+type MetadataRegistryStorageView = MetadataRegistryStorage' (BigMapId FA2.TokenId FA2.TokenMetadata)
+type MetadataRegistryStorage = MetadataRegistryStorage' (BigMap FA2.TokenId FA2.TokenMetadata)
 
 pattern RegistryMetadata :: a -> MetadataRegistryStorage' a
 pattern RegistryMetadata metadata <- (_, arg #token_metadata -> metadata)

@@ -19,7 +19,7 @@ module Lorentz.Contracts.Spec.FA2Interface
   , Parameter (..)
   , FA2ParameterC
   , TokenId
-  , TokenMetadata
+  , TokenMetadata(..)
   , TransferDestination
   , TransferDescriptor
   , TransferDescriptorParam
@@ -29,7 +29,7 @@ module Lorentz.Contracts.Spec.FA2Interface
   , UpdateOperatorsParam
   ) where
 
-import Fmt (Buildable(..), genericF, (+|), (|+))
+import Fmt (Buildable(..), genericF)
 import Test.Tasty.QuickCheck (Arbitrary(..), elements)
 
 import Lorentz
@@ -69,26 +69,32 @@ instance Buildable BalanceResponseItem where
   build = genericF
 
 -- Token MetaData query
+data TokenMetadata = TokenMetadata
+ { tmTokenId :: TokenId
+ , tmSymbol :: MText
+ , tmName :: MText
+ , tmDecimals :: Natural
+ , tmExtras :: Map MText MText
+ }
+ deriving stock Show
 
-type TokenMetadata =
-  ( "token_id" :! TokenId
-  , "mdr" :! ("symbol" :! MText
-  , "mdr2" :! ("name" :! MText
-  , "mdr3" :! ("decimals" :! Natural
-  , "extras" :! Map MText MText)))
+instance Buildable TokenMetadata where
+  build = genericF
+
+deriving anyclass instance IsoValue TokenMetadata
+deriving anyclass instance HasAnnotation TokenMetadata
+$(customGeneric "TokenMetadata" $ withDepths
+    [ cstr @0
+      [ fld @1
+      , fld @2
+      , fld @3
+      , fld @4
+      , fld @4
+      ]
+    ]
   )
 
 type TokenMetadataRegistryParam = ContractRef Address
-
-instance Buildable TokenMetadata where
-  build
-    ( arg #token_id -> token_id
-    , arg #mdr -> (arg #symbol -> symbol
-    , arg #mdr2 -> (arg #name -> name
-    , arg #mdr3 -> (arg #decimals -> decimals
-    , _)))) =
-    "token_id:" +| token_id |+ ", symbol:" +| symbol |+ ", name:" +|
-    name |+ ", decimals:" +| decimals |+ "."
 
 data OperatorTransferPolicy
   = OwnerTransfer ("owner_transfer" :! ())

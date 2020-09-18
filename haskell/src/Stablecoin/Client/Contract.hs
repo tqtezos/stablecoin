@@ -19,11 +19,11 @@ import qualified Michelson.Typed as T
 import qualified Michelson.Untyped as U
 import Morley.Client (AddressOrAlias)
 import Tezos.Address (Address)
-import Util.Named ((.!))
 
+import Lorentz.Contracts.Spec.FA2Interface (TokenMetadata(..))
 import Lorentz.Contracts.Stablecoin
   (Expiry, MetadataRegistryStorage, Parameter, pattern RegistryMetadata, Roles(..), Storage(..),
-  metadataRegistryContractPath, mkTokenMetadata, stablecoinPath)
+  metadataRegistryContractPath, stablecoinPath)
 
 -- | Parse the stablecoin contract.
 parseStablecoinContract :: MonadThrow m => m (T.Contract (ToT Parameter) (ToT Storage))
@@ -82,16 +82,10 @@ mkInitialStorage (InitialStorageData {..}) =
 -- | Constuct the stablecoin metadata
 mkRegistryStorage :: MText -> MText -> Natural -> MetadataRegistryStorage
 mkRegistryStorage symbol name decimals = RegistryMetadata $ BigMap $ Map.singleton 0 $
-  mkTokenMetadata $
-    ( #token_id .! 0
-    , #mdr .!
-      ( #symbol .! symbol
-      , #mdr2 .!
-        ( #name .! name
-        , #mdr3 .!
-          ( #decimals .! decimals
-          , #extras .! mempty
-          )
-        )
-      )
-    )
+  TokenMetadata
+    { tmTokenId = 0
+    , tmSymbol = symbol
+    , tmName = name
+    , tmDecimals = decimals
+    , tmExtras = mempty
+    }
