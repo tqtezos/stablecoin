@@ -26,7 +26,7 @@ module Lorentz.Contracts.Stablecoin
   , Expiry
   , PermitHash(..)
   , mkPermitHash
-  , PermitParam
+  , PermitParam(..)
   , RevokeParam
   , RevokeParams
   , SetExpiryParam
@@ -103,13 +103,16 @@ newtype PermitHash = PermitHash ByteString
 instance Buildable PermitHash where
   build (PermitHash bs) = base64F bs
 
-mkPermitHash :: Parameter -> PermitHash
-mkPermitHash = PermitHash . Hash.blake2b . lPackValue
+data PermitParam = PermitParam
+  { ppKey :: PublicKey
+  , ppSignature :: Signature
+  , ppPermitHash :: PermitHash
+  }
+ deriving stock (Generic, Show)
+ deriving anyclass (IsoValue, HasAnnotation)
 
-type PermitParam =
-  ( PublicKey
-  , (Signature, PermitHash)
-  )
+instance Buildable PermitParam where
+  build = genericF
 
 type RevokeParam = (PermitHash, Address)
 type RevokeParams = List RevokeParam
@@ -211,6 +214,11 @@ type ParameterC param =
   , ParameterContainsEntrypoints param ManagementMichelsonEntrypoints
   , ParameterContainsEntrypoints param PermitEntrypoints
   )
+
+-- | Crates a permit that can be issued via the @Permit@ entrypoint, allowing other users
+-- to call the contract with the given 'Parameter' value.
+mkPermitHash :: Parameter -> PermitHash
+mkPermitHash = PermitHash . Hash.blake2b . lPackValue
 
 ------------------------------------------------------------------
 --- Storage

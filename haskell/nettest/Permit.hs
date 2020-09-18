@@ -19,7 +19,8 @@ import qualified Unsafe as Unsafe
 import Util.Named
 
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
-import Lorentz.Contracts.Stablecoin (ConfigureMinterParam(..), Parameter(..), Storage, mkPermitHash)
+import Lorentz.Contracts.Stablecoin
+  (ConfigureMinterParam(..), Parameter(..), PermitParam(..), Storage, mkPermitHash)
 
 import Lorentz.Contracts.Test.Common
   (OriginationParams(..), addAccount, defaultOriginationParams, mkInitialStorage)
@@ -66,7 +67,7 @@ permitScenario stablecoinContract = uncapsNettest $ do
       let bytes = lPackValue ((contract, chainId), (counter, permitHash))
       sig <- signBytes bytes alias
       pk <- getPublicKey (AddressAlias alias)
-      call contract (Call @"Permit") (pk, (sig, permitHash))
+      call contract (Call @"Permit") (PermitParam pk sig permitHash)
 
   comment "Issue a permit for Pause"
   issuePermit pauserAlias Pause

@@ -55,7 +55,7 @@ mkPermit contractAddr sk counter param =
 callPermit :: TAddress Parameter -> PublicKey -> SecretKey -> Natural -> Parameter -> IntegrationalScenarioM PermitHash
 callPermit contractAddr pk sk counter param = do
   let (permitHash, _, sig) = mkPermit contractAddr sk counter param
-  lCallEP contractAddr (Call @"Permit") (pk, (sig, permitHash))
+  lCallEP contractAddr (Call @"Permit") $ PermitParam pk sig permitHash
   pure permitHash
 
 errExpiredPermit, errNotPermitIssuer :: ExecutorError -> IntegrationalScenario
@@ -94,8 +94,8 @@ permitSpec originate = do
               (permitHash, _signedBytes, sig) = mkPermit stablecoinContract testPauserSK 999 Pause
               expectedSignedBytes = lPackValue ((stablecoinContract, gsChainId initGState), (0 :: Natural, permitHash))
             in
-              lCallEP stablecoinContract (Call @"Permit") (testPauserPK, (sig, permitHash)) `catchExpectedError`
-                errMissignedPermit expectedSignedBytes
+              lCallEP stablecoinContract (Call @"Permit") (PermitParam testPauserPK sig permitHash)
+                `catchExpectedError` errMissignedPermit expectedSignedBytes
 
     specify "The public key must match the private key used to sign the permit" $
       integrationalTestExpectation $ do
@@ -104,8 +104,8 @@ permitSpec originate = do
             let
               (permitHash, signedBytes, sig) = mkPermit stablecoinContract testPauserSK 0 Pause
             in
-              lCallEP stablecoinContract (Call @"Permit") (wallet1PK, (sig, permitHash)) `catchExpectedError`
-                errMissignedPermit signedBytes
+              lCallEP stablecoinContract (Call @"Permit") (PermitParam wallet1PK sig permitHash)
+                `catchExpectedError` errMissignedPermit signedBytes
 
     specify "The permit can be sent to the contract by a user other than the signer" $
       integrationalTestExpectation $ do
