@@ -22,7 +22,7 @@ import Tezos.Address (Address)
 
 import Lorentz.Contracts.Spec.FA2Interface (TokenMetadata(..))
 import Lorentz.Contracts.Stablecoin
-  (Expiry, MetadataRegistryStorage, Parameter, Roles(..), Storage(..),
+  (Expiry, MetadataRegistryStorage, Parameter, Roles(..), Storage, Storage'(..),
   metadataRegistryContractPath, mkMetadataRegistryStorage, stablecoinPath)
 
 -- | Parse the stablecoin contract.

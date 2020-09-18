@@ -17,8 +17,9 @@ module Lorentz.Contracts.Stablecoin
   , BurnParams
   , ParameterC
   , Parameter (..)
-  , Storage(..)
-  , StorageView(..)
+  , Storage'(..)
+  , Storage
+  , StorageView
   , UserPermits(..)
   , PermitInfo(..)
   , Roles(..)
@@ -274,23 +275,20 @@ $(customGeneric "Roles" $ withDepths
     ]
   )
 
-data Storage = Storage
+data Storage' big_map = Storage
   { sDefaultExpiry :: Expiry
-  , sLedger :: BigMap Address Natural
+  , sLedger :: big_map Address Natural
   , sMintingAllowances :: Map Address Natural
-  , sOperators :: BigMap (Address, Address) ()
+  , sOperators :: big_map (Address, Address) ()
   , sIsPaused :: Bool
   , sPermitCounter :: Natural
-  , sPermits :: BigMap Address UserPermits
+  , sPermits :: big_map Address UserPermits
   , sRoles :: Roles
   , sTokenMetadataRegistry :: Address
   , sTransferlistContract :: Maybe Address
   }
-  deriving stock (Show)
 
-deriving anyclass instance IsoValue Storage
-deriving anyclass instance HasAnnotation Storage
-$(customGeneric "Storage" $ withDepths
+$(customGeneric "Storage'" $ withDepths
     [ cstr @0
       [ fld @4 -- sDefaultExpiry
       , fld @4 -- sLedger
@@ -306,42 +304,20 @@ $(customGeneric "Storage" $ withDepths
     ]
   )
 
+type Storage = Storage' BigMap
+deriving stock instance Show Storage
+deriving anyclass instance IsoValue Storage
+deriving anyclass instance HasAnnotation Storage
+
 -- | Represents a storage value retrieved using the Tezos RPC.
 --
 -- 'StorageView' is very similar to 'Storage',
 -- except 'BigMap's have been replaced by 'BigMapId'.
 -- This is because, when a contract's storage is queried, the Tezos RPC returns
 -- big_maps' IDs instead of their contents.
-data StorageView = StorageView
-  { svDefaultExpiry :: Expiry
-  , svLedger :: BigMapId Address Natural
-  , svMintingAllowances :: Map Address Natural
-  , svOperators :: BigMapId (Address, Address) ()
-  , svIsPaused :: Bool
-  , svPermitCounter :: Natural
-  , svPermits :: BigMapId Address UserPermits
-  , svRoles :: Roles
-  , svTokenMetadataRegistry :: Address
-  , svTransferlistContract :: Maybe Address
-  }
-  deriving stock (Show)
-
+type StorageView = Storage' BigMapId
+deriving stock instance Show StorageView
 deriving anyclass instance IsoValue StorageView
-$(customGeneric "StorageView" $ withDepths
-    [ cstr @0
-      [ fld @4 -- svDefaultExpiry
-      , fld @4 -- svLedger
-      , fld @4 -- svMintingAllowances
-      , fld @4 -- svOperators
-      , fld @4 -- svIsPaused
-      , fld @4 -- svPermitCounter
-      , fld @4 -- svPermits
-      , fld @4 -- svRoles
-      , fld @2 -- svTokenMetadataRegistry
-      , fld @2 -- svTransferlistContract
-      ]
-    ]
-  )
 
 -- We will hard code stablecoin token metadata here
 stablecoinTokenMetadata :: FA2.TokenMetadata

@@ -101,7 +101,7 @@ managementSpec originate = do
 
     it "token metadata registry is present in storage" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
-        lExpectStorage stablecoinContract $ \storage ->
+        lExpectStorage @Storage stablecoinContract $ \storage ->
           unless (sTokenMetadataRegistry storage == registryAddress) $
             Left $ CustomTestError "Malformed token metadata registry address in contract storage"
 
@@ -109,7 +109,7 @@ managementSpec originate = do
     it "pauses contract as expected" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         withSender testPauser $ lCallEP stablecoinContract (Call @"Pause") ()
-        lExpectStorage stablecoinContract $ \storage ->
+        lExpectStorage @Storage stablecoinContract $ \storage ->
           unless (sIsPaused storage) $
             Left $ CustomTestError "Contract is not paused as was expected"
 
@@ -129,7 +129,7 @@ managementSpec originate = do
       let originationParams = defaultOriginationParams { opPaused = True }
       withOriginated originate originationParams $ \stablecoinContract -> do
         withSender testPauser $ lCallEP stablecoinContract (Call @"Unpause") ()
-        lExpectStorage stablecoinContract $ \storage ->
+        lExpectStorage @Storage stablecoinContract $ \storage ->
           when (sIsPaused storage) $
             Left $ CustomTestError "Contract is paused which wasn't expected"
 
@@ -227,7 +227,7 @@ managementSpec originate = do
 
         withSender testMasterMinter $ lCallEP stablecoinContract (Call @"Configure_minter") configureMinterParam2
 
-        lExpectStorage stablecoinContract $ \storage ->
+        lExpectStorage @Storage stablecoinContract $ \storage ->
           let expectedMinters = fromList [(wallet1, 30), (wallet2, 10)]
           in  when (sMintingAllowances storage /= expectedMinters) $
                 Left $ CustomTestError "Configure_minter call produced a malformed minter list"
@@ -319,7 +319,7 @@ managementSpec originate = do
         withSender testMasterMinter $ do
           mapM_ (lCallEP stablecoinContract (Call @"Configure_minter")) (configureMinterParam <$> [1..minterLimit])
 
-          lExpectStorage stablecoinContract $ \storage ->
+          lExpectStorage @Storage stablecoinContract $ \storage ->
             unless (M.size (sMintingAllowances storage) == minterLimit) $
                 Left $ CustomTestError "Configure_minter call produced a malformed minter list"
 
@@ -342,7 +342,7 @@ managementSpec originate = do
       withOriginated originate originationParams $ \stablecoinContract -> do
         withSender testMasterMinter $ lCallEP stablecoinContract (Call @"Remove_minter") wallet1
         withSender testMasterMinter $ lCallEP stablecoinContract (Call @"Remove_minter") wallet2
-        lExpectStorage stablecoinContract $ \storage ->
+        lExpectStorage @Storage stablecoinContract $ \storage ->
           let expectedMinters = fromList [(wallet3, 100)]
           in  when (sMintingAllowances storage /= expectedMinters) $
                 Left $ CustomTestError "Remove minter does not change minter list"
@@ -483,7 +483,7 @@ managementSpec originate = do
 
         withSender wallet1 $ lCallEP stablecoinContract (Call @"Burn") [ 35 ]
 
-        lExpectStorage stablecoinContract $ \storage ->
+        lExpectStorage @Storage stablecoinContract $ \storage ->
           unless (M.lookup wallet1 (unBigMap $ sLedger storage) == Nothing) $
             Left $ CustomTestError "Zero balance account was not removed after burning"
 
@@ -535,14 +535,14 @@ managementSpec originate = do
         withSender wallet1 $ lCallEP stablecoinContract (Call @"Accept_ownership") ()
         withSender wallet1 $ lCallEP stablecoinContract (Call @"Transfer_ownership") wallet2
         withSender wallet2 $ lCallEP stablecoinContract (Call @"Accept_ownership") ()
-        lExpectStorage stablecoinContract $ \storage ->
+        lExpectStorage @Storage stablecoinContract $ \storage ->
           when ((rOwner $ sRoles storage) /= wallet2) $
             Left $ CustomTestError "Owner was not changed"
 
     it "current contract owner retains its privileges if ownership weren't accepted yet" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         withSender testOwner $ lCallEP stablecoinContract (Call @"Transfer_ownership") wallet1
-        lExpectStorage stablecoinContract $ \storage ->
+        lExpectStorage @Storage stablecoinContract $ \storage ->
           when ((rOwner $ sRoles storage) /= testOwner) $
             Left $ CustomTestError "Owner was changed"
 
@@ -576,7 +576,7 @@ managementSpec originate = do
         withSender testOwner $ lCallEP stablecoinContract (Call @"Transfer_ownership") wallet2
         withSender testOwner $ lCallEP stablecoinContract (Call @"Transfer_ownership") wallet3
         withSender wallet3 $ lCallEP stablecoinContract (Call @"Accept_ownership") ()
-        lExpectStorage stablecoinContract $ \storage ->
+        lExpectStorage @Storage stablecoinContract $ \storage ->
           when (rOwner (sRoles storage) /= wallet3) $
             Left $ CustomTestError "Owner was not changed"
 
@@ -590,14 +590,14 @@ managementSpec originate = do
     it "contract owner changes master minter properly" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         withSender testOwner $ lCallEP stablecoinContract (Call @"Change_master_minter") wallet1
-        lExpectStorage stablecoinContract $ \storage ->
+        lExpectStorage @Storage stablecoinContract $ \storage ->
           when (rMasterMinter (sRoles storage) /= wallet1) $
             Left $ CustomTestError "Master minter was not changed"
 
     it "contract owner changes contract pauser properly" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         withSender testOwner $ lCallEP stablecoinContract (Call @"Change_pauser") wallet1
-        lExpectStorage stablecoinContract $ \storage ->
+        lExpectStorage @Storage stablecoinContract $ \storage ->
           when (rPauser (sRoles storage) /= wallet1) $
             Left $ CustomTestError "Pauser was not changed"
 
@@ -662,7 +662,7 @@ managementSpec originate = do
           withSender (opOwner originationParams) $
             lCallEP stablecoinContract (Call @"Set_transferlist") (Just transferlistContract)
 
-          lExpectStorage stablecoinContract $ \storage ->
+          lExpectStorage @Storage stablecoinContract $ \storage ->
             case sTransferlistContract storage of
               Just addr
                 | addr == transferlistContract -> Right ()
@@ -679,7 +679,7 @@ managementSpec originate = do
           withSender (opOwner originationParams) $
             lCallEP stablecoinContract (Call @"Set_transferlist") Nothing
 
-          lExpectStorage stablecoinContract $ \storage ->
+          lExpectStorage @Storage stablecoinContract $ \storage ->
             case sTransferlistContract storage of
               Just _ -> Left $ CustomTestError "Transferlist contract address was not unset"
               Nothing -> Right ()

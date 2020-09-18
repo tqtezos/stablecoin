@@ -57,7 +57,7 @@ import Util.Named ((:!), (.!))
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
   (ConfigureMinterParam(..), MetadataRegistryStorage, MetadataRegistryStorageView, MintParam(..),
-  Parameter, Roles(..), StorageView(..), mrsTokenMetadata)
+  Parameter, Roles(..), Storage'(..), StorageView, mrsTokenMetadata)
 import Stablecoin.Client.Contract
   (InitialStorageData(..), mkInitialStorage, mkRegistryStorage, parseRegistryContract,
   parseStablecoinContract)
@@ -136,7 +136,7 @@ getBalanceOf
   -> AddressOrAlias -> MorleyClientM Natural
 getBalanceOf contract owner = do
   ownerAddr <- resolveAddress owner
-  ledgerId <- svLedger <$> getStorage contract
+  ledgerId <- sLedger <$> getStorage contract
   balanceMaybe <- readBigMapValueMaybe ledgerId ownerAddr
   pure $ fromMaybe 0 balanceMaybe
 
@@ -166,7 +166,7 @@ isOperator
 isOperator contract owner operator = do
   ownerAddr <- resolveAddress owner
   operatorAddr <- resolveAddress operator
-  operatorsId <- svOperators <$> getStorage contract
+  operatorsId <- sOperators <$> getStorage contract
   isJust @() <$> readBigMapValueMaybe operatorsId (ownerAddr, operatorAddr)
 
 -- | Pauses transferring, burning and minting operations so that they
@@ -265,51 +265,51 @@ getBalance (arg #contract -> contract) = do
 -- | Check whether the contract has been paused.
 getPaused :: "contract" :! AddressOrAlias -> MorleyClientM Bool
 getPaused contract =
-  svIsPaused <$> getStorage contract
+  sIsPaused <$> getStorage contract
 
 -- | Get the address and optional alias of the current contract owner.
 getContractOwner :: "contract" :! AddressOrAlias -> MorleyClientM AddressAndAlias
 getContractOwner contract = do
-  owner <- rOwner . svRoles <$> getStorage contract
+  owner <- rOwner . sRoles <$> getStorage contract
   pairWithAlias owner
 
 -- | Check if there's an ownership transfer pending acceptance and, if so,
 -- get its pending owner's address and optional alias.
 getPendingContractOwner :: "contract" :! AddressOrAlias -> MorleyClientM (Maybe AddressAndAlias)
 getPendingContractOwner contract = do
-  pendingOwnerMb <- rPendingOwner . svRoles <$> getStorage contract
+  pendingOwnerMb <- rPendingOwner . sRoles <$> getStorage contract
   traverse pairWithAlias pendingOwnerMb
 
 -- | Get the address and optional alias of the master minter.
 getMasterMinter :: "contract" :! AddressOrAlias -> MorleyClientM AddressAndAlias
 getMasterMinter contract = do
-  masterMinter <- rMasterMinter . svRoles <$> getStorage contract
+  masterMinter <- rMasterMinter . sRoles <$> getStorage contract
   pairWithAlias masterMinter
 
 -- | Get the address and optional alias of the pauser.
 getPauser :: "contract" :! AddressOrAlias -> MorleyClientM AddressAndAlias
 getPauser contract = do
-  pauser <- rPauser . svRoles <$> getStorage contract
+  pauser <- rPauser . sRoles <$> getStorage contract
   pairWithAlias pauser
 
 -- | Check if a transferlist is set and, if so, get its address and optional alias.
 getTransferlist :: "contract" :! AddressOrAlias -> MorleyClientM (Maybe AddressAndAlias)
 getTransferlist contract = do
-  transferlistMb <- svTransferlistContract <$> getStorage contract
+  transferlistMb <- sTransferlistContract <$> getStorage contract
   traverse pairWithAlias transferlistMb
 
 -- | Get the minting allowance for the given minter.
 getMintingAllowance :: "contract" :! AddressOrAlias -> AddressOrAlias -> MorleyClientM Natural
 getMintingAllowance contract minter = do
   minterAddr <- resolveAddress minter
-  mintingAllowances <- svMintingAllowances <$> getStorage contract
+  mintingAllowances <- sMintingAllowances <$> getStorage contract
   let allowanceMaybe = M.lookup minterAddr mintingAllowances
   pure $ fromMaybe 0 allowanceMaybe
 
 -- | Get the token metadata of the contract
 getTokenMetadata :: "contract" :! AddressOrAlias -> MorleyClientM FA2.TokenMetadata
 getTokenMetadata contract = do
-  mdRegistry <- svTokenMetadataRegistry <$> getStorage contract
+  mdRegistry <- sTokenMetadataRegistry <$> getStorage contract
   bigMapId <- mrsTokenMetadata <$> getRegistryStorage mdRegistry
   readBigMapValue bigMapId (0 :: FA2.TokenId)
 
