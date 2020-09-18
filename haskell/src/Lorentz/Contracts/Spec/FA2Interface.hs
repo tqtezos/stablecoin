@@ -21,8 +21,9 @@ module Lorentz.Contracts.Spec.FA2Interface
   , TokenId
   , TokenMetadata(..)
   , TransferDestination(..)
-  , TransferDescriptor
-  , TransferDescriptorParam
+  , TransferDestinationDescriptor(..)
+  , TransferDescriptor(..)
+  , TransferDescriptorParam(..)
   , TransferParams
   , TransferParam(..)
   , UpdateOperator (..)
@@ -230,22 +231,37 @@ type FA2ParameterC param =
 -- | Owner hook interface
 --
 
-type TransferDestinationDescriptor =
-  ("to_" :! Maybe Address
-  , ("token_id" :! TokenId, "amount" :! Natural))
+data TransferDestinationDescriptor = TransferDestinationDescriptor
+  { tddTo :: Maybe Address
+  , tddTokenId :: TokenId
+  , tddAmount :: Natural
+  }
+ deriving stock (Generic, Show, Eq)
+ deriving anyclass (IsoValue, HasAnnotation)
 
-type TransferDescriptor =
-  ( "from_" :! Maybe Address
-  , ("txs" :! [TransferDestinationDescriptor]))
+data TransferDescriptor = TransferDescriptor
+  { tdFrom :: Maybe Address
+  , tdTxs :: [TransferDestinationDescriptor]
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass (IsoValue, HasAnnotation)
 
-type TransferDescriptorParam =
-  ("fa2" :! Address, ("batch" :! [TransferDescriptor], "operator" :! Address))
+data TransferDescriptorParam = TransferDescriptorParam
+  { tdpFa2 :: Address
+  , tdpBatch :: [TransferDescriptor]
+  , tdpOperator :: Address
+  }
+ deriving stock (Generic, Show, Eq)
+ deriving anyclass (IsoValue, HasAnnotation)
 
 data FA2OwnerHook
   = Tokens_sent TransferDescriptorParam
   | Tokens_received TransferDescriptorParam
   deriving stock (Generic, Eq, Show)
   deriving anyclass (IsoValue, HasAnnotation)
+
+instance Buildable TransferDescriptorParam where
+  build = genericF
 
 instance Buildable TransferDestinationDescriptor where
   build = genericF
