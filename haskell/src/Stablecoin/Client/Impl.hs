@@ -57,7 +57,7 @@ import Util.Named ((:!), (.!))
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
   (ConfigureMinterParam(..), MetadataRegistryStorage, MetadataRegistryStorageView, MintParam(..),
-  Parameter, pattern RegistryMetadata, Roles(..), StorageView(..))
+  Parameter, Roles(..), StorageView(..), mrsTokenMetadata)
 import Stablecoin.Client.Contract
   (InitialStorageData(..), mkInitialStorage, mkRegistryStorage, parseRegistryContract,
   parseStablecoinContract)
@@ -310,9 +310,8 @@ getMintingAllowance contract minter = do
 getTokenMetadata :: "contract" :! AddressOrAlias -> MorleyClientM FA2.TokenMetadata
 getTokenMetadata contract = do
   mdRegistry <- svTokenMetadataRegistry <$> getStorage contract
-  getRegistryStorage mdRegistry >>= \case
-    -- failable pattern triggers here for some reason, hence the case stm
-    RegistryMetadata bigmapId -> readBigMapValue bigmapId (0 :: FA2.TokenId)
+  bigMapId <- mrsTokenMetadata <$> getRegistryStorage mdRegistry
+  readBigMapValue bigMapId (0 :: FA2.TokenId)
 
 -- | Check if there's an alias associated with this address and, if so, return both.
 pairWithAlias :: Address -> MorleyClientM AddressAndAlias

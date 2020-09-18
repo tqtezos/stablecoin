@@ -22,8 +22,8 @@ import Tezos.Address (Address)
 
 import Lorentz.Contracts.Spec.FA2Interface (TokenMetadata(..))
 import Lorentz.Contracts.Stablecoin
-  (Expiry, MetadataRegistryStorage, Parameter, pattern RegistryMetadata, Roles(..), Storage(..),
-  metadataRegistryContractPath, stablecoinPath)
+  (Expiry, MetadataRegistryStorage, Parameter, Roles(..), Storage(..),
+  metadataRegistryContractPath, mkMetadataRegistryStorage, stablecoinPath)
 
 -- | Parse the stablecoin contract.
 parseStablecoinContract :: MonadThrow m => m (T.Contract (ToT Parameter) (ToT Storage))
@@ -81,7 +81,7 @@ mkInitialStorage (InitialStorageData {..}) =
 
 -- | Constuct the stablecoin metadata
 mkRegistryStorage :: MText -> MText -> Natural -> MetadataRegistryStorage
-mkRegistryStorage symbol name decimals = RegistryMetadata $ BigMap $ Map.singleton 0 $
+mkRegistryStorage symbol name decimals = mkMetadataRegistryStorage $ BigMap $ Map.singleton 0 $
   TokenMetadata
     { tmTokenId = 0
     , tmSymbol = symbol

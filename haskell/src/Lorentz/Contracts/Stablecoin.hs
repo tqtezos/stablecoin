@@ -8,8 +8,10 @@ module Lorentz.Contracts.Stablecoin
   , GetCounterParam
   , SetTransferlistParam
   , RemoveMinterParam
+  , MetadataRegistryStorage'(..)
   , MetadataRegistryStorage
   , MetadataRegistryStorageView
+  , mkMetadataRegistryStorage
   , MintParams
   , MintParam(..)
   , BurnParams
@@ -33,9 +35,6 @@ module Lorentz.Contracts.Stablecoin
   , minterLimit
   , stablecoinTokenMetadata
 
-  -- We use these patterns only for validation
-  , pattern RegistryMetadata
-
   , stablecoinPath
   , metadataRegistryContractPath
   ) where
@@ -47,7 +46,6 @@ import Lorentz
 import qualified Lorentz as L
 import Morley.Client (BigMapId(..))
 import qualified Tezos.Crypto as Hash
-import Util.Named
 
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 
@@ -339,13 +337,20 @@ stablecoinTokenMetadata = FA2.TokenMetadata
 minterLimit :: Int
 minterLimit = 12
 
-type MetadataRegistryStorage' bt = ("dummy_field" :! (), "token_metadata" :! bt)
+data MetadataRegistryStorage' big_map = MetadataRegistryStorage
+  { mrsDummyField :: ()
+  , mrsTokenMetadata :: big_map FA2.TokenId FA2.TokenMetadata
+  }
+  deriving stock Generic
 
-type MetadataRegistryStorageView = MetadataRegistryStorage' (BigMapId FA2.TokenId FA2.TokenMetadata)
-type MetadataRegistryStorage = MetadataRegistryStorage' (BigMap FA2.TokenId FA2.TokenMetadata)
+type MetadataRegistryStorage = MetadataRegistryStorage' BigMap
+type MetadataRegistryStorageView = MetadataRegistryStorage' BigMapId
 
-pattern RegistryMetadata :: a -> MetadataRegistryStorage' a
-pattern RegistryMetadata metadata <- (_, arg #token_metadata -> metadata)
-  where
-    RegistryMetadata metadata = (#dummy_field .! (), #token_metadata .! metadata)
-{-# COMPLETE RegistryMetadata #-}
+deriving stock instance Show (MetadataRegistryStorage)
+deriving stock instance Show (MetadataRegistryStorageView)
+
+deriving anyclass instance IsoValue (MetadataRegistryStorage)
+deriving anyclass instance IsoValue (MetadataRegistryStorageView)
+
+mkMetadataRegistryStorage :: big_map FA2.TokenId FA2.TokenMetadata -> MetadataRegistryStorage' big_map
+mkMetadataRegistryStorage bm = MetadataRegistryStorage () bm
