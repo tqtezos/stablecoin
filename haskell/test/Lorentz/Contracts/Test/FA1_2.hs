@@ -16,8 +16,8 @@ import Lorentz (Address, BigMap(..), TAddress(..), toMutez, toVal)
 import Lorentz.Contracts.Test.ApprovableLedger (AlSettings(..), approvableLedgerSpec)
 import Michelson.Test.Integrational
 import Michelson.Typed (untypeValue)
-import Util.Named ((.!))
 
+import Lorentz.Contracts.Stablecoin (Roles(..))
 import Lorentz.Contracts.StablecoinFA1_2 (Parameter, Storage(..), parseStablecoinContract)
 
 alOriginationFunction :: Address -> AlSettings -> IntegrationalScenarioM (TAddress Parameter)
@@ -35,14 +35,12 @@ alOriginationFunction adminAddr (AlInitAddresses addrBalances) = do
         , sIsPaused = False
         , sPermitCounter = 0
         , sPermits = mempty
-        , sRoles = #roles .!
-            ( ( #master_minter .! adminAddr
-              , #owner .! adminAddr
-              )
-            , ( #pauser .! adminAddr
-              , #pending_owner_address .! Nothing
-              )
-            )
+        , sRoles = Roles
+            { rMasterMinter = adminAddr
+            , rOwner = adminAddr
+            , rPauser = adminAddr
+            , rPendingOwner = Nothing
+            }
         , sTransferlistContract = Nothing
         , sTotalSupply = sum $ snd <$> addrBalances
         }

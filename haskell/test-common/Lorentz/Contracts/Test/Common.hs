@@ -119,7 +119,7 @@ data OriginationParams = OriginationParams
   , opTokenMetadataRegistry :: Address
   , opTransferlistContract :: Maybe (TAddress Transferlist.Parameter)
   , opDefaultExpiry :: Natural
-  , opPermits :: Map Address (Maybe Expiry, Map PermitHash (Timestamp, Maybe Expiry))
+  , opPermits :: Map Address UserPermits
   }
 
 defaultOriginationParams :: OriginationParams
@@ -189,34 +189,25 @@ withOriginated
   -> IntegrationalScenario
 withOriginated fn op tests = fn op >>= tests
 
-{-# ANN module ("HLint: ignore Use bimap" :: Text) #-}
 mkInitialStorage :: OriginationParams -> Storage
-mkInitialStorage OriginationParams{..} = let
-  ledgerMap = opBalances
-  mintingAllowances = #minting_allowances .! opMinters
-  operatorMap = Map.foldrWithKey foldFn mempty opOwnerToOperators
-  ledger = #ledger .! (BigMap ledgerMap)
-  owner_ = #owner .! opOwner
-  pauser_ = #pauser .! opPauser
-  masterMinter_ = #master_minter .! opMasterMinter
-  roles = #roles .! ((masterMinter_, owner_), (pauser_, (#pending_owner_address .! opPendingOwner)))
-  operators = #operators .! (BigMap operatorMap)
-  isPaused = #paused .! opPaused
-  transferlistContract = #transferlist_contract .! (unTAddress <$> opTransferlistContract)
-  tokenMetadata = #token_metadata_registry .! opTokenMetadataRegistry
-  permits =
-    #permits .! BigMap (opPermits <&> \(userExpiry, userPermits) ->
-      ( #expiry .! userExpiry
-      , #permits .! (userPermits <&> \(createdAt, expiry) -> (#created_at .! createdAt, #expiry .! expiry))
-      )
-    )
-  permitCounter = #permit_counter .! 0
-  defaultExpiry = #default_expiry .! opDefaultExpiry
-  in ((((defaultExpiry, ledger),
-             (mintingAllowances, operators)),
-             ((isPaused, permitCounter),
-             (permits, roles))),
-           (tokenMetadata, transferlistContract))
+mkInitialStorage OriginationParams{..} =
+  Storage
+    { sDefaultExpiry = opDefaultExpiry
+    , sLedger = BigMap opBalances
+    , sMintingAllowances = opMinters
+    , sOperators = BigMap (Map.foldrWithKey foldFn mempty opOwnerToOperators)
+    , sIsPaused = opPaused
+    , sPermitCounter = 0
+    , sPermits = BigMap opPermits
+    , sRoles = Roles
+        { rMasterMinter = opMasterMinter
+        , rOwner = opOwner
+        , rPauser = opPauser
+        , rPendingOwner = opPendingOwner
+        }
+    , sTokenMetadataRegistry = opTokenMetadataRegistry
+    , sTransferlistContract = unTAddress <$> opTransferlistContract
+    }
   where
     foldFn
       :: Address

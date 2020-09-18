@@ -8,7 +8,6 @@ module Lorentz.Contracts.Stablecoin
   , GetCounterParam
   , SetTransferlistParam
   , TokenMetadata
-  , TokenMetadataRegistryAddress
   , RemoveMinterParam
   , MetadataRegistryStorage
   , MetadataRegistryStorageView
@@ -17,17 +16,16 @@ module Lorentz.Contracts.Stablecoin
   , BurnParams
   , ParameterC
   , Parameter (..)
-  , Roles
-  , Storage
+  , Storage(..)
+  , StorageView(..)
+  , UserPermits(..)
+  , PermitInfo(..)
+  , Roles(..)
+
   , TransferOwnershipParam
-  , OwHook(..)
-  , OwHookOptReq(..)
   , Expiry
   , PermitHash(..)
   , mkPermitHash
-  , UserPermits
-  , PermitCounter
-  , DefaultExpiry
   , PermitParam
   , RevokeParam
   , RevokeParams
@@ -38,20 +36,8 @@ module Lorentz.Contracts.Stablecoin
   , stablecoinTokenMetadata
 
   -- We use these patterns only for validation
-  , pattern StorageLedger
-  , pattern StorageRoles
-  , pattern StorageMinters
-  , pattern StorageOperators
-  , pattern StoragePaused
-  , pattern StorageTransferlistContract
-  , pattern StorageMetadataRegistery
-  , pattern MasterMinterRole
-  , pattern OwnerRole
-  , pattern PauserRole
-  , pattern PendingOwnerRole
   , pattern ConfigureMinterParams
   , pattern RegistryMetadata
-  , pattern StoragePermits
 
   , stablecoinPath
   , metadataRegistryContractPath
@@ -229,103 +215,108 @@ type ParameterC param =
 --- Storage
 ------------------------------------------------------------------
 
-type OperatorsInner = BigMap (Address, Address) ()
+data UserPermits = UserPermits
+  { upExpiry :: Maybe Expiry
+  , upPermits :: Map PermitHash PermitInfo
+  }
+  deriving stock (Show, Generic)
+  deriving anyclass (IsoValue, HasAnnotation)
 
-type LedgerInner = Map Address Natural
-type Ledger = "ledger" :! (BigMap Address Natural)
+data PermitInfo = PermitInfo
+  { piCreatedAt :: Timestamp
+  , piExpiry :: Maybe Expiry
+  }
+  deriving stock (Show, Generic)
+  deriving anyclass (IsoValue, HasAnnotation)
 
-type Operators = "operators" :! OperatorsInner
-type IsPaused = "paused" :! Bool
+data Roles = Roles
+  { rMasterMinter :: Address
+  , rOwner :: Address
+  , rPauser :: Address
+  , rPendingOwner :: Maybe Address
+  }
+  deriving stock (Show)
 
-type MasterMinter = Address
-type Owner = Address
-type PendingOwner = Maybe Address
-type Pauser = Address
+deriving anyclass instance IsoValue Roles
+deriving anyclass instance HasAnnotation Roles
+$(customGeneric "Roles" $ withDepths
+    [ cstr @0
+      [ fld @2
+      , fld @2
+      , fld @2
+      , fld @2
+      ]
+    ]
+  )
 
-type MintingAllowancesInner = Map Address Natural
-type MintingAllowances = "minting_allowances" :! MintingAllowancesInner
+data Storage = Storage
+  { sDefaultExpiry :: Expiry
+  , sLedger :: BigMap Address Natural
+  , sMintingAllowances :: Map Address Natural
+  , sOperators :: BigMap (Address, Address) ()
+  , sIsPaused :: Bool
+  , sPermitCounter :: Natural
+  , sPermits :: BigMap Address UserPermits
+  , sRoles :: Roles
+  , sTokenMetadataRegistry :: Address
+  , sTransferlistContract :: Maybe Address
+  }
+  deriving stock (Show)
 
-type RolesInner = (("master_minter" :! MasterMinter, "owner" :! Owner)
-             , ("pauser" :! Pauser, "pending_owner_address" :! PendingOwner))
+deriving anyclass instance IsoValue Storage
+deriving anyclass instance HasAnnotation Storage
+$(customGeneric "Storage" $ withDepths
+    [ cstr @0
+      [ fld @4 -- sDefaultExpiry
+      , fld @4 -- sLedger
+      , fld @4 -- sMintingAllowances
+      , fld @4 -- sOperators
+      , fld @4 -- sIsPaused
+      , fld @4 -- sPermitCounter
+      , fld @4 -- sPermits
+      , fld @4 -- sRoles
+      , fld @2 -- sTokenMetadataRegistry
+      , fld @2 -- sTransferlistContract
+      ]
+    ]
+  )
 
-type Roles = "roles" :! RolesInner
+-- | Represents a storage value retrieved using the Tezos RPC.
+--
+-- 'StorageView' is very similar to 'Storage',
+-- except 'BigMap's have been replaced by 'BigMapId'.
+-- This is because, when a contract's storage is queried, the Tezos RPC returns
+-- big_maps' IDs instead of their contents.
+data StorageView = StorageView
+  { svDefaultExpiry :: Expiry
+  , svLedger :: BigMapId Address Natural
+  , svMintingAllowances :: Map Address Natural
+  , svOperators :: BigMapId (Address, Address) ()
+  , svIsPaused :: Bool
+  , svPermitCounter :: Natural
+  , svPermits :: BigMapId Address UserPermits
+  , svRoles :: Roles
+  , svTokenMetadataRegistry :: Address
+  , svTransferlistContract :: Maybe Address
+  }
+  deriving stock (Show)
 
-type TransferlistContract = "transferlist_contract" :! (Maybe Address)
-
-type TokenMetadataRegistryAddress = "token_metadata_registry" :! Address
-
-type PermitCounter = "permit_counter" :! Natural
-type DefaultExpiry = "default_expiry" :! Expiry
-type Permits = "permits" :! BigMap Address UserPermits
-
-type UserPermits = ("expiry" :! Maybe Expiry, "permits" :! Map PermitHash PermitInfo)
-type PermitExpiry = "expiry" :! Maybe Expiry
-type PermitCreatedAt = "created_at" :! Timestamp
-type PermitInfo = (PermitCreatedAt, PermitExpiry)
-
-type Storage =
-  ((((DefaultExpiry, Ledger),
-     (MintingAllowances, Operators)),
-    ((IsPaused, PermitCounter),
-     (Permits, Roles))),
-   (TokenMetadataRegistryAddress, TransferlistContract))
-
-pattern StorageLedger :: LedgerInner -> Storage
-pattern StorageLedger ledger <- ((((_, arg #ledger -> BigMap ledger), _), _), _)
-{-# COMPLETE StorageLedger #-}
-
-pattern StorageMinters :: MintingAllowancesInner -> Storage
-pattern StorageMinters minters <- (((_, (arg #minting_allowances -> minters, _)), _), _)
-{-# COMPLETE StorageMinters #-}
-
-pattern StorageOperators :: OperatorsInner -> Storage
-pattern StorageOperators operators <- (((_, (_, arg #operators -> operators)), _), _)
-{-# COMPLETE StorageOperators #-}
-
-pattern StoragePaused :: Bool -> Storage
-pattern StoragePaused paused <- ((_, ((arg #paused -> paused, _), _)), _)
-{-# COMPLETE StoragePaused #-}
-
-pattern StorageMetadataRegistery :: Address -> Storage
-pattern StorageMetadataRegistery registry <- (_, (arg #token_metadata_registry -> registry, _))
-{-# COMPLETE StorageMetadataRegistery #-}
-
-pattern StorageRoles :: RolesInner -> Storage
-pattern StorageRoles roles <- ((_, (_, (_, arg #roles -> roles))), _)
-{-# COMPLETE StorageRoles #-}
-
-pattern StorageTransferlistContract :: Maybe Address -> Storage
-pattern StorageTransferlistContract transferlistContract <- (_, (_, arg #transferlist_contract -> transferlistContract))
-{-# COMPLETE StorageTransferlistContract #-}
-
-pattern MasterMinterRole :: MasterMinter -> RolesInner
-pattern MasterMinterRole masterMinter <- ((arg #master_minter -> masterMinter, _), _)
-{-# COMPLETE MasterMinterRole #-}
-
-pattern OwnerRole :: Owner -> RolesInner
-pattern OwnerRole owner <- ((_, arg #owner -> owner), _)
-{-# COMPLETE OwnerRole #-}
-
-pattern PauserRole :: Pauser -> RolesInner
-pattern PauserRole pauser <- (_, (arg #pauser -> pauser, _))
-{-# COMPLETE PauserRole #-}
-
-pattern PendingOwnerRole :: PendingOwner -> RolesInner
-pattern PendingOwnerRole pendingOwner <- (_, (_, arg #pending_owner_address -> pendingOwner))
-{-# COMPLETE PendingOwnerRole #-}
-
-pattern StoragePermits :: Map Address UserPermits -> Storage
-pattern StoragePermits permits <- ((_, (_, (arg #permits -> BigMap permits, _))), _)
-{-# COMPLETE StoragePermits #-}
-
--- Permissions descriptor
-data OwHookOptReq = OptOH | ReqOp
-  deriving stock (Eq, Generic, Show)
-  deriving anyclass (IsoValue, L.HasAnnotation)
-
-data OwHook =  OwNoOp | OwOptReq OwHookOptReq
-  deriving stock (Eq, Generic, Show)
-  deriving anyclass (IsoValue, L.HasAnnotation)
+deriving anyclass instance IsoValue StorageView
+$(customGeneric "StorageView" $ withDepths
+    [ cstr @0
+      [ fld @4 -- svDefaultExpiry
+      , fld @4 -- svLedger
+      , fld @4 -- svMintingAllowances
+      , fld @4 -- svOperators
+      , fld @4 -- svIsPaused
+      , fld @4 -- svPermitCounter
+      , fld @4 -- svPermits
+      , fld @4 -- svRoles
+      , fld @2 -- svTokenMetadataRegistry
+      , fld @2 -- svTransferlistContract
+      ]
+    ]
+  )
 
 -- We will hard code stablecoin token metadata here
 stablecoinTokenMetadata :: TokenMetadata

@@ -15,8 +15,7 @@ module Lorentz.Contracts.Test.Permit
 
 import Test.Hspec (Spec, describe, it, specify)
 
-import Lorentz (arg, lPackValue, mkView, mt)
-import Lorentz.Address (TAddress)
+import Lorentz (BigMap(..), TAddress, lPackValue, mkView, mt)
 import Lorentz.Test
 import Michelson.Runtime (ExecutorError)
 import Michelson.Runtime.GState (GState(gsChainId), initGState)
@@ -69,21 +68,20 @@ errMissignedPermit signedBytes = lExpectFailWith (== ([mt|MISSIGNED|], signedByt
 -- | Assert that there are n permits left in the storage
 assertPermitCount :: TAddress Parameter -> Int -> IntegrationalScenario
 assertPermitCount contractAddr expectedCount =
-  lExpectStorage contractAddr $ \case
-    StoragePermits permits ->
-      let count = permitCount permits
-      in  if count == expectedCount
-            then Right ()
-            else Left $ CustomTestError $
-                  "Expected there to be "
-                  <> show expectedCount
-                  <> " permits left in the storage, but there were "
-                  <> show count
+  lExpectStorage contractAddr $ \storage ->
+    let count = permitCount (sPermits storage)
+    in  if count == expectedCount
+          then Right ()
+          else Left $ CustomTestError $
+                "Expected there to be "
+                <> show expectedCount
+                <> " permits left in the storage, but there were "
+                <> show count
   where
-    permitCount :: Map Address UserPermits -> Int
-    permitCount permits =
+    permitCount :: BigMap Address UserPermits -> Int
+    permitCount (BigMap permits) =
       sum $
-        permits <&> \(_, arg #permits -> permits') -> length permits'
+        permits <&> \userPermits -> length (upPermits userPermits)
 
 permitSpec :: OriginationFn Parameter -> Spec
 permitSpec originate = do

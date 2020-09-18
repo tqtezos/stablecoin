@@ -14,6 +14,7 @@ import qualified Michelson.Untyped as U
 import Morley.Nettest
 import Util.Named ((.!))
 
+import Lorentz.Contracts.Stablecoin (Roles(..))
 import Lorentz.Contracts.StablecoinFA1_2 (Parameter, Storage(..))
 
 -- | This test runs each FA1.2 operation once.
@@ -44,14 +45,12 @@ fa1_2Scenario contract = uncapsNettest $ do
         , sIsPaused = False
         , sPermitCounter = 0
         , sPermits = mempty
-        , sRoles = #roles .!
-            ( ( #master_minter .! nettest
-              , #owner .! nettest
-              )
-            , ( #pauser .! nettest
-              , #pending_owner_address .! Nothing
-              )
-            )
+        , sRoles = Roles
+            { rMasterMinter = nettest
+            , rOwner = nettest
+            , rPauser = nettest
+            , rPendingOwner = Nothing
+            }
         , sTransferlistContract = Nothing
         , sTotalSupply = sum balances
         }

@@ -20,7 +20,7 @@ import Test.Hspec (Spec, describe, it)
 
 import Lorentz (mkView)
 import "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
-import Lorentz.Contracts.Stablecoin (pattern StorageLedger)
+import Lorentz.Contracts.Stablecoin
 import Lorentz.Contracts.Test.Common
 import Lorentz.Test
 import Lorentz.Value
@@ -248,11 +248,9 @@ fa2Spec fa2Originate = do
 
         withSender commonOperator $ lCallEP stablecoinContract (Call @"Transfer") transfer1
 
-        lExpectStorage stablecoinContract $ \case
-          (StorageLedger ledger)
-            | M.lookup wallet1 ledger == Nothing -> Right ()
-            | otherwise ->
-                Left $ CustomTestError "Zero balance account was not removed"
+        lExpectStorage stablecoinContract $ \storage ->
+          unless (M.lookup wallet1 (unBigMap $ sLedger storage) == Nothing) $
+            Left $ CustomTestError "Zero balance account was not removed"
 
   describe "Self transfer" $ do
 

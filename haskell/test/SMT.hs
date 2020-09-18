@@ -174,17 +174,17 @@ resultToSs InterpretResult {..} = case cast iurNewStorage of
   Nothing -> error "Impossible"
 
 storageToSs :: Storage -> SimpleStorage
-storageToSs storage = let
-  StorageMinters ssMintingAllowances = storage
-  StorageLedger ssLedger = storage
-  StorageOperators (T.BigMap ssOperators) = storage
-  StorageRoles (MasterMinterRole ssMasterMinter) = storage
-  StorageRoles (PauserRole ssPauser) = storage
-  StorageRoles (OwnerRole ssOwner) = storage
-  StorageRoles (PendingOwnerRole ssPendingOwner) = storage
-  StorageTransferlistContract ssTransferlistContract = storage
-  StoragePaused ssIsPaused = storage
-  in SimpleStorage {..}
+storageToSs storage = SimpleStorage
+  { ssMintingAllowances = sMintingAllowances storage
+  , ssLedger = T.unBigMap $ sLedger storage
+  , ssOwner = rOwner $ sRoles storage
+  , ssMasterMinter = rMasterMinter $ sRoles storage
+  , ssPauser = rPauser $ sRoles storage
+  , ssPendingOwner = rPendingOwner $ sRoles storage
+  , ssTransferlistContract = sTransferlistContract storage
+  , ssOperators = T.unBigMap $ sOperators storage
+  , ssIsPaused = sIsPaused storage
+  }
 
 ssToOriginationParams
   :: SimpleStorage
