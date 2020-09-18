@@ -60,19 +60,19 @@ fa2Spec fa2Originate = do
           consumer <- lOriginateEmpty @[BalanceResponseItem] contractConsumer "consumer"
           let
             balanceRequestItems =
-              [ (#owner .! wallet1, #token_id .! 0)
-              , (#owner .! wallet2, #token_id .! 0)
-              , (#owner .! wallet3, #token_id .! 0)
-              , (#owner .! wallet4, #token_id .! 0)
-              , (#owner .! wallet5, #token_id .! 0)
+              [ BalanceRequestItem { briOwner = wallet1, briTokenId = 0 }
+              , BalanceRequestItem { briOwner = wallet2, briTokenId = 0 }
+              , BalanceRequestItem { briOwner = wallet3, briTokenId = 0 }
+              , BalanceRequestItem { briOwner = wallet4, briTokenId = 0 }
+              , BalanceRequestItem { briOwner = wallet5, briTokenId = 0 }
               ]
             balanceRequest = mkView (#requests .! balanceRequestItems) consumer
             balanceExpected =
-              [ (#request .! (#owner .! wallet1, #token_id .! 0), #balance .! 0)
-              , (#request .! (#owner .! wallet2, #token_id .! 0), #balance .! 0)
-              , (#request .! (#owner .! wallet3, #token_id .! 0), #balance .! 0)
-              , (#request .! (#owner .! wallet4, #token_id .! 0), #balance .! 0)
-              , (#request .! (#owner .! wallet5, #token_id .! 0), #balance .! 10)
+              [ BalanceResponseItem { briRequest = BalanceRequestItem { briOwner = wallet1, briTokenId = 0 }, briBalance = 0 }
+              , BalanceResponseItem { briRequest = BalanceRequestItem { briOwner = wallet2, briTokenId = 0 }, briBalance = 0 }
+              , BalanceResponseItem { briRequest = BalanceRequestItem { briOwner = wallet3, briTokenId = 0 }, briBalance = 0 }
+              , BalanceResponseItem { briRequest = BalanceRequestItem { briOwner = wallet4, briTokenId = 0 }, briBalance = 0 }
+              , BalanceResponseItem { briRequest = BalanceRequestItem { briOwner = wallet5, briTokenId = 0 }, briBalance = 10 }
               ]
 
           lCallEP fa2contract (Call @"Balance_of") balanceRequest
@@ -224,13 +224,9 @@ fa2Spec fa2Originate = do
         consumer <- lOriginateEmpty @[BalanceResponseItem] contractConsumer "consumer"
 
         let
-          balanceRequestItems =
-            [ (#owner .! wallet2, #token_id .! 0)
-            ]
-          balanceRequest = mkView (#requests .! balanceRequestItems) consumer
-          balanceExpected =
-            [ (#request .! (#owner .! wallet2, #token_id .! 0), #balance .! 5)
-            ]
+          balanceRequestItem = BalanceRequestItem { briOwner = wallet2, briTokenId = 0 }
+          balanceRequest = mkView (#requests .! [balanceRequestItem]) consumer
+          balanceExpected = [ BalanceResponseItem { briRequest = balanceRequestItem, briBalance = 5 } ]
 
         lCallEP fa2contract (Call @"Balance_of") balanceRequest
         lExpectViewConsumerStorage consumer [balanceExpected]
@@ -281,13 +277,9 @@ fa2Spec fa2Originate = do
 
         withSender wallet1 $ lCallEP fa2contract (Call @"Transfer") transfers
         let
-          balanceRequestItems =
-            [ (#owner .! wallet2, #token_id .! 0)
-            ]
-          balanceRequest = mkView (#requests .! balanceRequestItems) consumer
-          balanceExpected =
-            [ (#request .! (#owner .! wallet2, #token_id .! 0), #balance .! 5)
-            ]
+          balanceRequestItem = BalanceRequestItem { briOwner = wallet2, briTokenId = 0 }
+          balanceRequest = mkView (#requests .! [balanceRequestItem]) consumer
+          balanceExpected = [ BalanceResponseItem { briRequest = balanceRequestItem, briBalance = 5 } ]
         lCallEP fa2contract (Call @"Balance_of") balanceRequest
         lExpectViewConsumerStorage consumer [balanceExpected]
 
@@ -393,13 +385,9 @@ fa2Spec fa2Originate = do
         consumer <- lOriginateEmpty @[BalanceResponseItem] contractConsumer "consumer"
 
         let
-          balanceRequestItems =
-            [ (#owner .! wallet2, #token_id .! 0)
-            ]
-          balanceRequest = mkView (#requests .! balanceRequestItems) consumer
-          balanceExpected =
-            [ (#request .! (#owner .! wallet2, #token_id .! 0), #balance .! 5)
-            ]
+          balanceRequestItem = BalanceRequestItem { briOwner = wallet2, briTokenId = 0 }
+          balanceRequest = mkView (#requests .! [balanceRequestItem]) consumer
+          balanceExpected = [ BalanceResponseItem { briRequest = balanceRequestItem, briBalance = 5 } ]
 
         lCallEP fa2contract (Call @"Balance_of") balanceRequest
         lExpectViewConsumerStorage consumer [balanceExpected]
@@ -416,21 +404,21 @@ fa2Spec fa2Originate = do
         consumer <- lOriginateEmpty @[BalanceResponseItem] contractConsumer "consumer"
         let
           balanceRequestItems =
-            [ (#owner .! wallet1, #token_id .! 0)
-            , (#owner .! wallet4, #token_id .! 0)
-            , (#owner .! wallet3, #token_id .! 0)
-            , (#owner .! wallet5, #token_id .! 0)
-            , (#owner .! wallet2, #token_id .! 0)
-            , (#owner .! wallet3, #token_id .! 0)
+            [ BalanceRequestItem { briOwner = wallet1, briTokenId = 0 }
+            , BalanceRequestItem { briOwner = wallet4, briTokenId = 0 }
+            , BalanceRequestItem { briOwner = wallet3, briTokenId = 0 }
+            , BalanceRequestItem { briOwner = wallet5, briTokenId = 0 }
+            , BalanceRequestItem { briOwner = wallet2, briTokenId = 0 }
+            , BalanceRequestItem { briOwner = wallet3, briTokenId = 0 }
             ]
           balanceRequest = mkView (#requests .! balanceRequestItems) consumer
           balanceExpected =
-            [ (#request .! (#owner .! wallet1, #token_id .! 0), #balance .! 10)
-            , (#request .! (#owner .! wallet4, #token_id .! 0), #balance .! 40)
-            , (#request .! (#owner .! wallet3, #token_id .! 0), #balance .! 30)
-            , (#request .! (#owner .! wallet5, #token_id .! 0), #balance .! 50)
-            , (#request .! (#owner .! wallet2, #token_id .! 0), #balance .! 20)
-            , (#request .! (#owner .! wallet3, #token_id .! 0), #balance .! 30)
+            [ BalanceResponseItem { briRequest = BalanceRequestItem wallet1 0, briBalance = 10 }
+            , BalanceResponseItem { briRequest = BalanceRequestItem wallet4 0, briBalance = 40 }
+            , BalanceResponseItem { briRequest = BalanceRequestItem wallet3 0, briBalance = 30 }
+            , BalanceResponseItem { briRequest = BalanceRequestItem wallet5 0, briBalance = 50 }
+            , BalanceResponseItem { briRequest = BalanceRequestItem wallet2 0, briBalance = 20 }
+            , BalanceResponseItem { briRequest = BalanceRequestItem wallet3 0, briBalance = 30 }
             ]
 
         lCallEP fa2contract (Call @"Balance_of") balanceRequest
@@ -443,10 +431,8 @@ fa2Spec fa2Originate = do
       withOriginated fa2Originate originationParams $ \fa2contract -> do
         consumer <- lOriginateEmpty @[BalanceResponseItem] contractConsumer "consumer"
         let
-          balanceRequestItems =
-            [ (#owner .! wallet1, #token_id .! 1)
-            ]
-          balanceRequest = mkView (#requests .! balanceRequestItems) consumer
+          balanceRequestItem = BalanceRequestItem { briOwner = wallet1, briTokenId = 1 }
+          balanceRequest = mkView (#requests .! [balanceRequestItem]) consumer
 
         err <- expectError $ lCallEP fa2contract (Call @"Balance_of") balanceRequest
         fa2TokenUndefined err
@@ -458,12 +444,10 @@ fa2Spec fa2Originate = do
 
         consumer <- lOriginateEmpty @[BalanceResponseItem] contractConsumer "consumer"
         let
-          balanceRequestItems =
-            [ (#owner .! wallet1, #token_id .! 0)
-            ]
-          balanceRequest = mkView (#requests .! balanceRequestItems) consumer
+          balanceRequestItem = BalanceRequestItem { briOwner = wallet1, briTokenId = 0 }
+          balanceRequest = mkView (#requests .! [balanceRequestItem]) consumer
           balanceExpected =
-            [ (#request .! (#owner .! wallet1, #token_id .! 0), #balance .! 0)
+            [ BalanceResponseItem { briRequest = balanceRequestItem, briBalance = 0 }
             ]
 
         lCallEP fa2contract (Call @"Balance_of") balanceRequest

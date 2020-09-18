@@ -6,9 +6,9 @@
 -- https://gitlab.com/tzip/tzip/-/blob/131b46dd89675bf030489ded9b0b3f5834b70eb6/proposals/tzip-12/tzip-12.md
 
 module Lorentz.Contracts.Spec.FA2Interface
-  ( BalanceRequestItem
+  ( BalanceRequestItem(..)
   , BalanceRequestParams
-  , BalanceResponseItem
+  , BalanceResponseItem(..)
   , CustomPermissionPolicy
   , FA2OwnerHook (..)
   , IsOperatorParam
@@ -69,12 +69,22 @@ type TransferParams = [TransferParam]
 -- ---------
 -- Queries balance of one or more addresses. Callback contract should accept a list of BalanceResponse
 -- Duplicates in the request should not be de-duplicated or reordered in the response.
-type BalanceRequestItem = ("owner" :! Address, "token_id" :! TokenId)
+data BalanceRequestItem = BalanceRequestItem
+  { briOwner :: Address
+  , briTokenId :: TokenId
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass (IsoValue, HasAnnotation)
 
 instance Buildable BalanceRequestItem where
   build = genericF
 
-type BalanceResponseItem = ("request" :! BalanceRequestItem, "balance" :! Natural)
+data BalanceResponseItem = BalanceResponseItem
+  { briRequest :: BalanceRequestItem
+  , briBalance :: Natural
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass (IsoValue, HasAnnotation)
 
 type BalanceRequestParams = View ("requests" :! [BalanceRequestItem]) [BalanceResponseItem]
 

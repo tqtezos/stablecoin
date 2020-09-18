@@ -184,15 +184,15 @@ managementSpec originate = do
         consumer <- lOriginateEmpty @[FA2.BalanceResponseItem] contractConsumer "consumer"
         let
           balanceRequestItems =
-            [ (#owner .! wallet1, #token_id .! 0)
-            , (#owner .! wallet2, #token_id .! 0)
-            , (#owner .! wallet3, #token_id .! 0)
+            [ FA2.BalanceRequestItem wallet1 0
+            , FA2.BalanceRequestItem wallet2 0
+            , FA2.BalanceRequestItem wallet3 0
             ]
           balanceRequest = mkView (#requests .! balanceRequestItems) consumer
           balanceExpected =
-            [ (#request .! (#owner .! wallet1, #token_id .! 0), #balance .! 0)
-            , (#request .! (#owner .! wallet2, #token_id .! 0), #balance .! 0)
-            , (#request .! (#owner .! wallet3, #token_id .! 0), #balance .! 10)
+            [ FA2.BalanceResponseItem { briRequest = FA2.BalanceRequestItem wallet1 0, briBalance = 0 }
+            , FA2.BalanceResponseItem { briRequest = FA2.BalanceRequestItem wallet2 0, briBalance = 0 }
+            , FA2.BalanceResponseItem { briRequest = FA2.BalanceRequestItem wallet3 0, briBalance = 10 }
             ]
 
         lCallEP stablecoinContract (Call @"Balance_of") balanceRequest
@@ -392,15 +392,15 @@ managementSpec originate = do
         consumer <- lOriginateEmpty @[FA2.BalanceResponseItem] contractConsumer "consumer"
         let
           balanceRequestItems =
-            [ (#owner .! wallet1, #token_id .! 0)
-            , (#owner .! wallet2, #token_id .! 0)
-            , (#owner .! wallet3, #token_id .! 0)
+            [ FA2.BalanceRequestItem wallet1 0
+            , FA2.BalanceRequestItem wallet2 0
+            , FA2.BalanceRequestItem wallet3 0
             ]
           balanceRequest = mkView (#requests .! balanceRequestItems) consumer
           balanceExpected =
-            [ (#request .! (#owner .! wallet1, #token_id .! 0), #balance .! 10)
-            , (#request .! (#owner .! wallet2, #token_id .! 0), #balance .! 5)
-            , (#request .! (#owner .! wallet3, #token_id .! 0), #balance .! 15)
+            [ FA2.BalanceResponseItem { briRequest = FA2.BalanceRequestItem wallet1 0, briBalance = 10 }
+            , FA2.BalanceResponseItem { briRequest = FA2.BalanceRequestItem wallet2 0, briBalance = 5 }
+            , FA2.BalanceResponseItem { briRequest = FA2.BalanceRequestItem wallet3 0, briBalance = 15 }
             ]
 
         lCallEP stablecoinContract (Call @"Balance_of") balanceRequest
@@ -459,13 +459,13 @@ managementSpec originate = do
         consumer <- lOriginateEmpty @[FA2.BalanceResponseItem] contractConsumer "consumer"
         let
           balanceRequestItems =
-            [ (#owner .! wallet1, #token_id .! 0)
-            , (#owner .! wallet2, #token_id .! 0)
+            [ FA2.BalanceRequestItem wallet1 0
+            , FA2.BalanceRequestItem wallet2 0
             ]
           balanceRequest = mkView (#requests .! balanceRequestItems) consumer
           balanceExpected =
-            [ (#request .! (#owner .! wallet1, #token_id .! 0), #balance .! 5)
-            , (#request .! (#owner .! wallet2, #token_id .! 0), #balance .! 0)
+            [ FA2.BalanceResponseItem { briRequest = FA2.BalanceRequestItem wallet1 0, briBalance = 5 }
+            , FA2.BalanceResponseItem { briRequest = FA2.BalanceRequestItem wallet2 0, briBalance = 0 }
             ]
 
         lCallEP stablecoinContract (Call @"Balance_of") balanceRequest
