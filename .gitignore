@@ -15,4 +15,5 @@ TAGS
 
 # We also ignore them in `haskell/test/resources/` because they are symlinked for tests.
 /haskell/test/resources/stablecoin.tz
+/haskell/test/resources/stablecoin.fa1.2.tz
 /haskell/test/resources/metadata.tz
