@@ -37,3 +37,14 @@ extra-deps:
 - named-0.3.0.1@sha256:69b9722301201f8ed8abc89c4595e22c746e944bf4cdfafa8b21b14d336b26d1,2233
 - vinyl-0.12.1@sha256:43456d4b3009646eee63953cbe539f1f4d0caf8bc3c25e841117e712836508f3,3790
 - cryptonite-0.27
+
+- git:
+    https://gitlab.com/morley-framework/morley-ledgers.git
+    # ^ CI cannot use ssh, so we use http clone here
+  commit:
+    # TODO: update this to master
+    099082d778b8d2c25b6c9db9145f9745d0d77afe # sras/#5-sample-fa2-indigo
+  # nix-sha256: 1yy7fm5fj6m2mlrmj6c6lr5xb5l0pqq2y71ch3np7ml196iipz0i
+  subdirs:
+    - code/morley-ledgers
+    - code/morley-ledgers-test

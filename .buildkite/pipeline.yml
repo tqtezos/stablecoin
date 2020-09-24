@@ -3,7 +3,7 @@
 
 env:
   FETCH_CONTRACT:
-    "mkdir -p haskell/test/resources/ && buildkite-agent artifact download stablecoin.tz haskell/test/resources/ && buildkite-agent artifact download metadata.tz haskell/test/resources/ --step \"LIGO-contract\""
+    "mkdir -p haskell/test/resources/ && buildkite-agent artifact download stablecoin.tz haskell/test/resources/ && buildkite-agent artifact download stablecoin.fa1.2.tz haskell/test/resources/ && buildkite-agent artifact download metadata.tz haskell/test/resources/ --step \"LIGO-contract\""
   TEZOS_CLIENT_UNSAFE_DISABLE_DISCLAIMER: "Y"
 
 steps:
@@ -26,9 +26,12 @@ steps:
    commands:
      - nix-build -A tezos-contract -o stablecoin_raw.tz
      - nix run -f. morley -c morley optimize --contract stablecoin_raw.tz --output stablecoin.tz
+     - nix-build -A tezos-contract-fa1-2 -o stablecoin.fa1.2_raw.tz
+     - nix run -f. morley -c morley optimize --contract stablecoin.fa1.2_raw.tz --output stablecoin.fa1.2.tz
      - nix-build -A tezos-metadata-contract -o metadata.tz
    artifact_paths:
      - stablecoin.tz
+     - stablecoin.fa1.2.tz
      - metadata.tz
  - label: build library
    if: *not_scheduled

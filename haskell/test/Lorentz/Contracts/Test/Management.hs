@@ -1,6 +1,8 @@
 -- SPDX-FileCopyrightText: 2020 TQ Tezos
 -- SPDX-License-Identifier: MIT
 
+{-# LANGUAGE PackageImports #-}
+
 -- | Tests for management entrypoints of stablecoin smart-contract
 
 module Lorentz.Contracts.Test.Management
@@ -19,7 +21,7 @@ import Test.Hspec (Spec, describe, it)
 import qualified Indigo.Contracts.Transferlist.Internal as Transferlist
 import Lorentz (mkView, mt)
 import Lorentz.Address
-import Lorentz.Contracts.Spec.FA2Interface as FA2
+import "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
 import Lorentz.Contracts.Test.Common
 import Lorentz.Test

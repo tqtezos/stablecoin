@@ -157,6 +157,32 @@ packages:
       sha256: 1a63bb79748aeb2c0312d6a166fe8436a139929b017bf208f002e79073d21966
   original:
     hackage: cryptonite-0.27
+- completed:
+    subdir: code/morley-ledgers
+    name: morley-ledgers
+    version: 0.2.0.1
+    git: https://gitlab.com/morley-framework/morley-ledgers.git
+    pantry-tree:
+      size: 1415
+      sha256: c99f1b81bcf6ccf2563fc212157f2d3a807a3cb3caabb1686392482273c9b9d1
+    commit: 099082d778b8d2c25b6c9db9145f9745d0d77afe
+  original:
+    subdir: code/morley-ledgers
+    git: https://gitlab.com/morley-framework/morley-ledgers.git
+    commit: 099082d778b8d2c25b6c9db9145f9745d0d77afe
+- completed:
+    subdir: code/morley-ledgers-test
+    name: morley-ledgers-test
+    version: 0.2.0.1
+    git: https://gitlab.com/morley-framework/morley-ledgers.git
+    pantry-tree:
+      size: 1518
+      sha256: 9d5e2b8f0828e5699c845b0bcf436a45a73778d3fa42e96903f4b8225bb96a45
+    commit: 099082d778b8d2c25b6c9db9145f9745d0d77afe
+  original:
+    subdir: code/morley-ledgers-test
+    git: https://gitlab.com/morley-framework/morley-ledgers.git
+    commit: 099082d778b8d2c25b6c9db9145f9745d0d77afe
 snapshots:
 - completed:
     size: 531707
