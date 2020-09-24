@@ -55,14 +55,14 @@ transferlistIndigo
   => Var Parameter -> IndigoProcedure
 transferlistIndigo param = contractName "Dummy transferlist" $ do
   entryCase (Proxy @PlainEntrypointsKind) param
-    ( #cAssertTransfers //-> \transfers -> forEach transfers $ \transfer -> do
+    ( #cAssertTransfers #= \transfers -> forEach transfers $ \transfer -> do
         let fromAddr = transfer #! #from
         res <- new False
         forEach (transfer #! #tos) $ \toAddr ->
           forEach (storage #! #sTransfers) $ \it ->
             Indigo.when ((Indigo.fst it == fromAddr) && (Indigo.snd it == toAddr)) $ setVar res True
         assertCustom_ #assertionFailure res
-    , #cAssertReceivers //-> \receivers -> do
+    , #cAssertReceivers #= \receivers -> do
         forEach receivers $ \receiver -> do
           assertCustom_ #assertionFailure $ (storage #! #sReceivers) ?: receiver
     )

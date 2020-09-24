@@ -7,42 +7,42 @@ packages:
 - completed:
     subdir: code/morley
     name: morley
-    version: 1.5.0
+    version: 1.7.0
     git: https://gitlab.com/morley-framework/morley.git
     pantry-tree:
-      size: 8348
-      sha256: b10d93c1b5dfe876241fcceba82326e416b937ea76e9e8fe9f0b307bba1e99d2
-    commit: f2719c0d6a5b4ad3ea7580b2d56d0b8e76fabb31
+      size: 8311
+      sha256: 82d41f19c887767c4c062a878ad1e45433da062141a66c5cccaaac6498413b5f
+    commit: d8bf45279141f60e1bf317abbbd210a4182451a8
   original:
     subdir: code/morley
     git: https://gitlab.com/morley-framework/morley.git
-    commit: f2719c0d6a5b4ad3ea7580b2d56d0b8e76fabb31
+    commit: d8bf45279141f60e1bf317abbbd210a4182451a8
 - completed:
     subdir: code/lorentz
     name: lorentz
-    version: 0.5.0
+    version: 0.6.1
     git: https://gitlab.com/morley-framework/morley.git
     pantry-tree:
-      size: 4366
-      sha256: f6bdc50a371de6859f202df14ee1334445e9db9844f9cc2e201b13d9fb0347b3
-    commit: f2719c0d6a5b4ad3ea7580b2d56d0b8e76fabb31
+      size: 4429
+      sha256: a25871d1488b1e8e006a2275a12fa49c58ee8954c2158cddc84d6d689a61e0fc
+    commit: d8bf45279141f60e1bf317abbbd210a4182451a8
   original:
     subdir: code/lorentz
     git: https://gitlab.com/morley-framework/morley.git
-    commit: f2719c0d6a5b4ad3ea7580b2d56d0b8e76fabb31
+    commit: d8bf45279141f60e1bf317abbbd210a4182451a8
 - completed:
     subdir: code/cleveland
     name: cleveland
     version: 0.1.0
     git: https://gitlab.com/morley-framework/morley.git
     pantry-tree:
-      size: 9233
-      sha256: 1e58cb68da739b837b8896fb3a03cac842577b774302e9e868680491cf4c0c5b
-    commit: f2719c0d6a5b4ad3ea7580b2d56d0b8e76fabb31
+      size: 9609
+      sha256: 5d032b6310008391cba1ecf16e1f21a1821f344da639eb50cf4aa33565eb9c56
+    commit: d8bf45279141f60e1bf317abbbd210a4182451a8
   original:
     subdir: code/cleveland
     git: https://gitlab.com/morley-framework/morley.git
-    commit: f2719c0d6a5b4ad3ea7580b2d56d0b8e76fabb31
+    commit: d8bf45279141f60e1bf317abbbd210a4182451a8
 - completed:
     subdir: code/morley-client
     name: morley-client
@@ -50,25 +50,25 @@ packages:
     git: https://gitlab.com/morley-framework/morley.git
     pantry-tree:
       size: 2816
-      sha256: 232627ac5c7429f96be0dc327bbbfaca6d4b41b6619e5cc62aeb8244fe94c3c6
-    commit: f2719c0d6a5b4ad3ea7580b2d56d0b8e76fabb31
+      sha256: f8740d15f35dd1f4a840f1ccb92e9baafa7783d00873ceed43505de4f50491b1
+    commit: d8bf45279141f60e1bf317abbbd210a4182451a8
   original:
     subdir: code/morley-client
     git: https://gitlab.com/morley-framework/morley.git
-    commit: f2719c0d6a5b4ad3ea7580b2d56d0b8e76fabb31
+    commit: d8bf45279141f60e1bf317abbbd210a4182451a8
 - completed:
     subdir: code/indigo
     name: indigo
-    version: 0.1.0.0
+    version: 0.2.1
     git: https://gitlab.com/morley-framework/morley.git
     pantry-tree:
-      size: 7695
-      sha256: fbeccfe4d52144cca026fecf0e4331b9f91d29d8956014bd5e4ff7dafce82cc1
-    commit: f2719c0d6a5b4ad3ea7580b2d56d0b8e76fabb31
+      size: 7989
+      sha256: eb7a84d0a36951851bcdc5cbf4ccbeb2e761c2c01d40169ee51a36b594261032
+    commit: d8bf45279141f60e1bf317abbbd210a4182451a8
   original:
     subdir: code/indigo
     git: https://gitlab.com/morley-framework/morley.git
-    commit: f2719c0d6a5b4ad3ea7580b2d56d0b8e76fabb31
+    commit: d8bf45279141f60e1bf317abbbd210a4182451a8
 - completed:
     hackage: morley-prelude-0.3.0@sha256:9e9473ac14cfa206adf0a3700764c0251de05042f1fe45daf9cb8556079ae663,2085
     pantry-tree:

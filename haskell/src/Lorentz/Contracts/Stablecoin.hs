@@ -20,6 +20,7 @@ module Lorentz.Contracts.Stablecoin
   , OwHookOptReq(..)
   , Expiry
   , PermitHash(..)
+  , mkPermitHash
   , UserPermits
   , PermitCounter
   , DefaultExpiry
@@ -58,6 +59,7 @@ import qualified Text.Show
 import Lorentz
 import qualified Lorentz as L
 import Morley.Client (BigMapId(..))
+import qualified Tezos.Crypto as Hash
 import Util.Named
 
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
@@ -108,6 +110,9 @@ newtype PermitHash = PermitHash ByteString
 
 instance Buildable PermitHash where
   build (PermitHash bs) = base64F bs
+
+mkPermitHash :: Parameter -> PermitHash
+mkPermitHash = PermitHash . Hash.blake2b . lPackValue
 
 type PermitParam =
   ( PublicKey

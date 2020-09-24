@@ -42,7 +42,7 @@ import qualified Monad.Capabilities as Caps
 import Morley.Client (Alias, disableAlphanetWarning)
 import Morley.Nettest
   (AddressOrAlias, MorleyClientConfig, MorleyClientEnv, NettestImpl(..), nettestImplClient)
-import Morley.Nettest.Caps (nettestCapImpl)
+import Morley.Nettest.Caps (actionToCaps, nettestCapImpl)
 import Tezos.Address (Address)
 import Tezos.Core (Mutez)
 import Util.Exception (displayUncaughtException)
@@ -227,22 +227,3 @@ assertEq = actionToCaps siAssertEq
 
 revealKeyUnlessRevealed :: MonadStablecoin caps base m => Alias -> m ()
 revealKeyUnlessRevealed = actionToCaps siRevealKeyUnlessRevealed
-
-----------------------------------------------------------------------------
--- Internal helpers
-----------------------------------------------------------------------------
-
--- TODO: this already exists in Cleveland, but it's not exported.
--- We should export it.
-class ActionToCaps impl m x where
-  actionToCaps :: (impl m -> x) -> x
-
-instance (Monad base, m ~ Caps.CapsT caps base, Caps.HasCap impl caps, Typeable impl) => ActionToCaps impl m (m a) where
-  actionToCaps :: (impl m -> m a) -> m a
-  actionToCaps action = do
-    impl <- asks Caps.getCap
-    action impl
-
-instance ActionToCaps impl m r => ActionToCaps impl m (x -> r) where
-  actionToCaps :: (impl m -> (x -> r)) -> (x -> r)
-  actionToCaps action x = actionToCaps (flip action x)

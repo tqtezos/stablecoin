@@ -24,8 +24,8 @@ import Stablecoin.Client.Cleveland
 import qualified Stablecoin.Client.Cleveland as SC
 
 -- | Check that all the `stablecoin-client` commands work.
-stablecoinClientScenario :: Text -> StablecoinScenario m ()
-stablecoinClientScenario aliasPrefix = do
+stablecoinClientScenario :: StablecoinScenario m ()
+stablecoinClientScenario = do
   let originator = nettestAddress
 
   comment "Creating roles"
@@ -124,9 +124,10 @@ stablecoinClientScenario aliasPrefix = do
       addr <- newAddress alias
 
       -- Note: `newAddress` prepends the alias with the prefix from the
-      -- `MorleyClientConfig`, so from this point forward we have to refer
-      -- to this address using its prefix.
-      let actualAlias = aliasPrefix <> "." <> alias
+      -- `MorleyClientConfig`.
+      -- So we use `getAlias` to get the actual alias (prefix included)
+      -- associated with this address.
+      actualAlias <- getAlias (AddressResolved addr)
 
       revealKeyUnlessRevealed actualAlias
       pure (actualAlias, addr, AddressResolved addr)

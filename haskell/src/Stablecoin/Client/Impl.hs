@@ -44,10 +44,11 @@ import Michelson.Typed (Dict(..), IsoValue, fromVal, toVal)
 import qualified Michelson.Typed as T
 import Morley.Client
   (AddressOrAlias(..), Alias, BigMapId(..), MorleyClientM, TezosClientError(UnknownAddress),
-  getAlias, getContractScript, lTransfer, originateUntypedContract, readBigMapValue,
-  readBigMapValueMaybe, resolveAddress)
+  getAlias, getContractScript, lTransfer, originateContract, originateUntypedContract,
+  readBigMapValue, readBigMapValueMaybe)
 import qualified Morley.Client as Client
 import Morley.Client.RPC (OriginationScript(OriginationScript))
+import Morley.Client.TezosClient (resolveAddress)
 import Morley.Micheline (Expression, FromExpressionError, fromExpression)
 import Tezos.Address (Address)
 import Tezos.Core (Mutez, unsafeMkMutez)
@@ -113,13 +114,13 @@ deploy (arg #sender -> sender) alias initialStorageData = do
 
   let initialStorage = mkInitialStorage initialStorageData'
 
-  (cName, cAddr) <- originateUntypedContract
+  (cName, cAddr) <- originateContract
     False
     alias
     sender
     (unsafeMkMutez 0)
     stablecoinContract
-    (T.untypeValue $ toVal initialStorage)
+    (toVal initialStorage)
   pure (cName, cAddr, metadataRegistry)
 
 transfer

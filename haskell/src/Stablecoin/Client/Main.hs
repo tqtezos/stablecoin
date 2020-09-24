@@ -9,7 +9,8 @@ module Stablecoin.Client.Main
 import Fmt (pretty)
 import Morley.Client
   (AddressOrAlias(AddressAlias), Alias, MorleyClientM, TezosClientError(UnknownAddressAlias),
-  mkMorleyClientEnv, rememberContract, resolveAddress, runMorleyClientM)
+  mkMorleyClientEnv, rememberContract, runMorleyClientM)
+import Morley.Client.TezosClient (resolveAddress)
 import qualified Options.Applicative as Opt
 import Util.Exception (displayUncaughtException)
 import Util.Named ((.!))

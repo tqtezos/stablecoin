@@ -47,10 +47,10 @@ sign sk bs =
 
 mkPermit :: TAddress Parameter -> SecretKey -> Natural -> Parameter -> (PermitHash, ByteString, Signature)
 mkPermit contractAddr sk counter param =
-  let permitHash = Hash.blake2b $ lPackValue param
+  let permitHash = mkPermitHash param
       toSign = lPackValue ((contractAddr, gsChainId initGState), (counter, permitHash))
       sig = sign sk toSign
-  in  (PermitHash permitHash, toSign, sig)
+  in  (permitHash, toSign, sig)
 
 callPermit :: TAddress Parameter -> PublicKey -> SecretKey -> Natural -> Parameter -> IntegrationalScenarioM PermitHash
 callPermit contractAddr pk sk counter param = do
@@ -237,6 +237,19 @@ permitSpec originate = do
             withSender wallet1 $ do
               lCallEP stablecoinContract (Call @"Revoke") [(hash, testPauser)]
               lCallEP stablecoinContract (Call @"Pause") () `catchExpectedError` mgmNotPauser
+
+      specify "a user X cannot issue a permit allowing others to revoke Y's permits" $
+        integrationalTestExpectation $ do
+          withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
+            hash <- withSender testPauser $ do
+              callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
+
+            withSender wallet1 $
+              callPermit stablecoinContract wallet1PK wallet1SK 1 (Revoke [(hash, testPauser)])
+
+            withSender wallet2 $ do
+              lCallEP stablecoinContract (Call @"Revoke") [(hash, testPauser)]
+                `catchExpectedError` errNotPermitIssuer
 
       specify "permits for this entrypoint are consumed upon use" $
         integrationalTestExpectation $ do
