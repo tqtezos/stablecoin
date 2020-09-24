@@ -4,6 +4,7 @@
 env:
   FETCH_CONTRACT:
     "mkdir -p haskell/test/resources/ && buildkite-agent artifact download stablecoin.tz haskell/test/resources/ && buildkite-agent artifact download metadata.tz haskell/test/resources/ --step \"LIGO-contract\""
+  TEZOS_CLIENT_UNSAFE_DISABLE_DISCLAIMER: "Y"
 
 steps:
  - label: hlint
@@ -44,7 +45,6 @@ steps:
  - label: nettest-local-chain
    if: *not_scheduled
    env:
-     TEZOS_CLIENT_UNSAFE_DISABLE_DISCLAIMER: "Y"
      NETTEST_NODE_ADDR: "localhost"
      NETTEST_NODE_PORT: "8734"
      MONEYBAG: "unencrypted:edsk3GjD83F7oj2LrnRGYQer99Fj69U2QLyjWGiJ4UoBZNQwS38J4v"
@@ -56,14 +56,23 @@ steps:
    retry: &retry-nettest
       automatic:
         limit: 1
- - label: nettest-scheduled
+ - label: nettest-scheduled-carthagenet
    if: build.source == "schedule"
    env:
-     TEZOS_CLIENT_UNSAFE_DISABLE_DISCLAIMER: "Y"
      NETTEST_NODE_ADDR: "carthage.testnet.tezos.serokell.team"
      NETTEST_NODE_PORT: "8732"
      # Note that testnet moneybag can run out of tz. If this happened, someone should transfer it some
      # more tz, its address: tz1ij8gUYbMRUXa4xX3mNvKguhaWG9GGbURn
+     MONEYBAG: "unencrypted:edsk4EYgVvKVKppJXAyeoqxJrNeyoktNqmcx5op1CFht9P1p8pPxp7"
+   commands: *run-nettest
+   retry: *retry-nettest
+   timeout_in_minutes: 120
+ - label: nettest-scheduled-delphinet
+   if: build.source == "schedule"
+   env:
+     NETTEST_NODE_ADDR: "delphi.testnet.tezos.serokell.team"
+     NETTEST_NODE_PORT: "8732"
+     # same address as in carthagenet
      MONEYBAG: "unencrypted:edsk4EYgVvKVKppJXAyeoqxJrNeyoktNqmcx5op1CFht9P1p8pPxp7"
    commands: *run-nettest
    retry: *retry-nettest
