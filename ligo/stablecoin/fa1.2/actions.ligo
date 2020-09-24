@@ -5,9 +5,6 @@
  * Root entrypoints for stablecoin smart-contract
  *)
 
-#include "../operator.ligo"
-#include "../permit.ligo"
-
 (* ------------------------------------------------------------- *)
 
 (*
@@ -134,12 +131,22 @@ function debit_from
 
 ; const curr_balance : nat = case store.ledger[parameter.from_] of
     Some (ledger_balance) -> ledger_balance
-  | None -> 0n // Interpret non existant account as zero balance as per FA2
+  | None -> 0n // Interpret non existant account as zero balance as per FA1.2
   end
+
+ // We're using Embedded Michelson here to get around the limitation that,
+ // currently, Ligo's `failwith` only supports strings and numeric types,
+ // but not, for example, pairs.
+ // https://ligolang.org/docs/advanced/embedded-michelson/
+ //
+ // Once this MR is merged, we should be able to use Ligo's `failwith`:
+ // https://gitlab.com/ligolang/ligo/-/issues/193
+ ; const failwith_ : (string * (nat * nat) -> option(nat)) =
+    [%Michelson ({| { FAILWITH } |} : string * (nat * nat) -> option(nat))]
 
  ; const updated_balance: option(nat) = case is_nat(curr_balance - parameter.amount) of
        Some (ub) -> if ub = 0n then (None : option(nat)) else Some(ub) // If balance is 0 set None to remove it from ledger
-     | None -> (failwith ("FA2_INSUFFICIENT_BALANCE") : option(nat))
+     | None -> (failwith_ ("NotEnoughBalance", (parameter.amount, curr_balance)) : option(nat))
      end
  ; updated_ledger := Big_map.update(parameter.from_, updated_balance, updated_ledger)
 
@@ -152,21 +159,16 @@ function convert_to_transferlist_transfer
   ( const tp : transfer_param
   ) : transferlist_transfer_item is
     ( tp.0
-    , List.map
-          ( function
-              ( const dst: transfer_destination
-              ) : address is dst.0
-          , tp.1
-          )
+    , list [ tp.1.0 ]
     )
 
 (*
  * Calls `assert_transfer` of the provided transferlist contract using
- * the provided transfer_descriptors.
+ * the provided transfer_param.
  *)
-function call_assert_transfers
+function call_assert_transfer
   ( const opt_sl_address : option(address)
-  ; const transfer_params : transfer_params
+  ; const transfer_param : transfer_param
   ) : list(operation) is block
   { const operations: list(operation) =
       case opt_sl_address of
@@ -174,7 +176,7 @@ function call_assert_transfers
           case (Tezos.get_entrypoint_opt ("%assertTransfers", sl_address) : option(contract(transferlist_assert_transfers_param))) of
             Some (sl_caddress) ->
               Tezos.transaction
-                ( List.map(convert_to_transferlist_transfer, transfer_params)
+                ( list [ convert_to_transferlist_transfer(transfer_param) ]
                 , 0mutez
                 , sl_caddress) # (nil : list(operation))
             | None -> (failwith ("BAD_TRANSFERLIST_CONTRACT") : list(operation))
@@ -210,17 +212,6 @@ function call_assert_receivers
 
 
 (*
- * Returns `True` if all booleans in the list are `True`,
- * or `False` otherwise.
- *)
-function all(const xs: list(bool)): bool is
-  List.fold
-    ( function(const acc: bool; const x: bool) is acc and x
-    , xs
-    , True
-    )
-
-(*
  * Assert that all addresses in a list are equal,
  * fails with `err_msg` otherwise.
  *
@@ -248,183 +239,134 @@ function all_equal
 (* ------------------------------------------------------------- *)
 
 (*
- * FA2-specific entrypoints
+ * FA1.2-specific entrypoints
  *)
 
 (*
- * Verify the sender of an `transfer` action.
- *
- * The check is successful if either of these is true:
- * 1) The sender is either the owner or an approved operator for each and every
- *    account from which funds will be withdrawn.
- * 2) All transfers withdraw funds from a single account, and the account owner
- *    has issued a permit allowing this call to go through.
- *)
-function transfer_sender_check
-  ( const params : transfer_params
-  ; const store : storage
-  ; const full_param : closed_parameter
-  ) : storage is block
-{ // check if the sender is either the owner or an approved operator for all transfers
-  const is_approved_operator_for_all : bool =
-    all(
-      List.map(
-        function(const p : transfer_param) : bool is is_approved_operator(p, store.operators),
-        params
-      )
-    )
-} with
-    if is_approved_operator_for_all then
-      store
-    else
-      case params of
-        nil -> store
-      | first_param # rest -> block {
-          // check whether `from_` has issued a permit
-          const from_: address = first_param.0
-        ; const updated_store : storage = sender_check(from_, store, full_param, "FA2_NOT_OPERATOR")
-          // check that all operations relate to the same owner.
-        ; List.iter
-            ( function (const param : transfer_param): unit is
-                if param.0 =/= from_
-                  then failwith ("FA2_NOT_OPERATOR")
-                  else Unit
-            , rest
-            )
-        } with updated_store
-      end
-
-(*
- * Initiates transfers from a given list of parameters. Fails
- * if one of the transfer does. Otherwise this function returns
+ * Initiates a transfer. This function returns
  * updated storage and a list of transactions that call transfer
  * hooks if such provided for associated addresses.
+ *
+ * Fails with "NotEnoughAllowance" if none of these 3 conditions hold:
+ *   - The sender is the owner of the account being debited.
+     - The owner has granted the sender enough allowance for this
+       transaction to go through by using the `approve` entrypoint.
+     - The owner has issued a permit allowing other users to make
+       transfers from the owner's account.
+ *
+ * Fails with "NotEnoughBalance" if the account being debited does
+ * not have enough tokens.
+ *
+ * Fails with "CONTRACT_PAUSED" if the contract is paused.
  *)
 function transfer
-  ( const params : transfer_params
-  ; const store  : storage
-  ; const full_param : closed_parameter
+  ( const param: transfer_param
+  ; const store: storage
+  ; const full_param: closed_parameter
   ) : entrypoint is block
-{ ensure_not_paused (store)
-; const store : storage = transfer_sender_check(params, store, full_param)
+{ ensure_not_paused(store)
 
-; const sender_addr : address = Tezos.sender
+; const store: storage =
+    case deduct_from_allowance(param.0, Tezos.sender, param.1.1, store.spender_allowances) of
+    | Deducted(updated_spender_allowances) ->
+        store with record [spender_allowances = updated_spender_allowances]
+    | NotEnoughAllowance(err) -> block {
+          // We're using Embedded Michelson here to get around the limitation that,
+          // currently, Ligo's `failwith` only supports strings and numeric types,
+          // but not, for example, pairs.
+          // https://ligolang.org/docs/advanced/embedded-michelson/
+          //
+          // Once this MR is merged, we should be able to use Ligo's `failwith`:
+          // https://gitlab.com/ligolang/ligo/-/issues/193
+          const failwith_ : (string * (nat * nat) -> storage) =
+            [%Michelson ({| { FAILWITH } |} : string * (nat * nat) -> storage)]
 
-; function make_transfer
-    ( const acc       : entrypoint
-    ; const parameter : transfer_param
-    ) : entrypoint is block
-  { function transfer_tokens
-      ( const accumulator : storage
-      ; const destination : transfer_destination
-      ) : storage is block
-    { validate_token_type (destination.1.0)
-    ; const debit_param_ : debit_param_ = record
-      [ from_  = parameter.0
-      ; amount = destination.1.1
-      ]
-    ; const credit_param_ : mint_param_ = record
-      [ to_    = destination.0
-      ; amount = destination.1.1
-      ]
-    ; const debited_storage : storage =
-        debit_from (debit_param_, accumulator)
-    ; const credited_storage : storage =
-        credit_to (credit_param_, debited_storage)
-    } with credited_storage
+        ; function on_err(const u: unit): storage is
+            failwith_(("NotEnoughAllowance", (err.required, err.present)))
 
-  ; const operator : address = parameter.0
-  ; const txs : list (transfer_destination) = parameter.1
-
-  ; const upd : list (operation) =
-      call_assert_transfers
-        ( store.transferlist_contract
-        , params
-        )
-  ; const ups : storage =
-      List.fold (transfer_tokens, txs, acc.1)
-  } with (merge_operations (upd, acc.0), ups)
-} with List.fold (make_transfer, params, ((nil : list (operation)), store))
-
-(*
- * Retrieves a list of `balance_of` items that is specified for multiple
- * token types in FA2 spec and leaves the storage untouched. In reality
- * we restrict all of them to be of `default_token_id`. Fails if one of
- * the parameters address to non-default token id.
- *)
-function balance_of
-  ( const parameter : balance_of_params
-  ; const store     : storage
-  ) : entrypoint is block
-{ function retreive_balance
-    ( const request : balance_of_request
-    ) : balance_of_response is block
-  { validate_token_type (request.token_id)
-  ; var retreived_balance : nat := 0n
-  ; case Big_map.find_opt (request.owner, store.ledger) of
-      Some (ledger_balance) -> retreived_balance := ledger_balance
-    | None -> skip
+      } with
+        sender_check_(param.0, store, full_param, on_err)
     end
-  } with (request, retreived_balance)
-; const responses : list (balance_of_response) =
-    List.map (retreive_balance, parameter.0)
-; const transfer_operation : operation =
-    Tezos.transaction (responses, 0mutez, parameter.1)
-} with (list [transfer_operation], store)
+; const debit_param_ : debit_param_ = record
+  [ from_  = param.0
+  ; amount = param.1.1
+  ]
+; const credit_param_ : mint_param_ = record
+  [ to_    = param.1.0
+  ; amount = param.1.1
+  ]
+} with
+    ( call_assert_transfer(store.transferlist_contract, param)
+    , credit_to(credit_param_, debit_from(debit_param_, store))
+    )
 
 (*
- * Returns address of the contract that holds tokens metadata.
- * Since our contract holds its own metadata, then it always
- * returns `SELF` address.
+ * Authorizes the given `spender` to transfer the given amount of tokens
+ * on the sender's behalf.
+ *
+ * Fails with "UnsafeAllowanceChange" if the spender's old allowance and new allowance
+ * are both non-zero.
  *)
-function token_metadata_registry
-  ( const parameter : token_metadata_registry_params
-  ; const store     : storage
+function approve
+  ( const param: approve_param
+  ; const store: storage
+  ; const full_param: closed_parameter
   ) : entrypoint is
-  ( list [Tezos.transaction
-    ( store.token_metadata_registry
-    , 0mutez
-    , parameter
-    )
-  ]
+  ( (nil : list (operation))
+  , store with record
+      [ spender_allowances =
+          approve_allowance(Tezos.sender, param.0, param.1, store.spender_allowances)
+      ]
+  )
+
+(*
+ * Retrieves an account's balance and leaves the storage untouched.
+ *)
+function get_balance
+  ( const param: get_balance_param
+  ; const store: storage
+  ): entrypoint is block
+{ const account_balance: nat =
+    case Big_map.find_opt(param.0, store.ledger) of
+    | Some(account_balance) -> account_balance
+    | None -> 0n
+    end
+} with
+  ( list [ Tezos.transaction (account_balance, 0mutez, param.1) ]
   , store
   )
 
 (*
- * Add or remove operators for provided owners.
+ * Retrieves an account's spending allowance and leaves the storage untouched.
  *)
-function update_operators_action
-  ( const params : update_operator_params
-  ; const store : storage
-  ; const full_param : closed_parameter
-  ) : entrypoint is block
-{ const owners : list(address) = List.map(get_owner, params)
-
-// A user can only modify their own operators.
-// So we check that all operations affect the same `owner`,
-// and that the sender *is* the owner or the owner has issued a permit.
-; const store : storage =
-    case all_equal(owners, "NOT_TOKEN_OWNER") of
-    | None -> store
-    | Some(owner) -> sender_check(owner, store, full_param, "NOT_TOKEN_OWNER")
-    end
-
-; const updated_operators : operators =
-    update_operators (params, store.operators)
-} with
-  ( (nil : list (operation))
-  , store with record [ operators = updated_operators ]
+function get_allowance
+  ( const param: get_allowance_param
+  ; const store: storage
+  ): entrypoint is
+  ( list
+      [ Tezos.transaction(
+          get_allowance(param.0.0, param.0.1, store.spender_allowances),
+          0mutez,
+          param.1
+        )
+      ]
+  , store
   )
 
 (*
- * Retrieves a boolean of whether the given address is an operator
- * for `owner` address and remains the store untouched
+ * Retrieves the total number of tokens in circulation.
  *)
-function is_operator_action
-  ( const parameter : is_operator_params
-  ; const store     : storage
-  ) : entrypoint is
-  ( list [is_operator (parameter, store.operators)]
+function get_total_supply
+  ( const param: get_total_supply_param
+  ; const store: storage
+  ): entrypoint is
+  ( list
+      [ Tezos.transaction(
+          store.total_supply,
+          0mutez,
+          param.1
+        )
+      ]
   , store
   )
 
@@ -555,6 +497,7 @@ function mint
       Big_map.update (Tezos.sender, Some (updated_allowance), accumulator.minting_allowances)
   ; const updated_store : storage = accumulator with record
       [ minting_allowances = updated_allowances
+      ; total_supply = accumulator.total_supply + unwrapped_parameter.amount
       ]
   } with credit_to (unwrapped_parameter, updated_store)
 
@@ -588,7 +531,7 @@ function mint
   )
 
 (*
- * Decreases balance of tokens by the given amount
+ * Decreases balance and total supply of tokens by the given amount
  *)
 function burn
   ( const parameters : burn_params
@@ -608,7 +551,12 @@ function burn
           ]
       , accumulator
       )
-  } with debited_storage
+  } with debited_storage with record
+      [ total_supply = case is_nat (debited_storage.total_supply - burn_amount) of
+          Some (nat) -> nat
+        | None -> (failwith ("NEGATIVE_TOTAL_SUPPLY") : nat)
+        end
+      ]
 
 ; const upds : list(operation) = call_assert_receivers
     ( store.transferlist_contract

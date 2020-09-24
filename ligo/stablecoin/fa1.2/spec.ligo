@@ -12,119 +12,50 @@
  * Parameter types
  *)
 
-type token_id is nat
+type transfer_param is michelson_pair_right_comb(
+  record
+    from_: address;
+    to_: address;
+    value: nat;
+  end
+)
 
-const default_token_id : token_id = 0n;
+type get_balance_param is michelson_pair_right_comb(
+  record
+    request: address;
+    callback: contract(nat);
+  end
+)
 
-(*
- * This function fails if provided token_id is not equal to
- * default one, restricting all operations to be one-token
- * (that are allowed for `default_token_id`)
- *)
-function validate_token_type
-  ( const token_id : token_id
-  ) : unit is
-    if token_id =/= default_token_id
-    then failwith ("FA2_TOKEN_UNDEFINED")
-    else unit
+type get_allowance_request is michelson_pair_right_comb(
+  record
+    owner: address;
+    spender: address;
+  end
+)
 
-(*
- * Same as above but for a list of token ids
- *)
-function validate_token_types
-  ( const token_ids : list (token_id)
-  ) : unit is List.fold
-    ( function
-        ( const u        : unit
-        ; const token_id : token_id
-        ) : unit is validate_token_type (token_id)
-    , token_ids
-    , unit
-    )
+type get_allowance_param is michelson_pair_right_comb(
+  record
+    request: get_allowance_request;
+    callback: contract(nat);
+  end
+)
 
-type transfer_destination_ is record
-  to_      : address
-; token_id : token_id
-; amount   : nat
-end
+type approve_param is michelson_pair_right_comb(
+  record
+    spender: address;
+    value: nat;
+  end
+)
 
-type transfer_destination is michelson_pair_right_comb(transfer_destination_)
-
-type transfer_param_ is record
-  from_ : address
-; txs : list (transfer_destination)
-end
-
-type transfer_param is michelson_pair_right_comb(transfer_param_)
-
-type transfer_params is list (transfer_param)
-
-type balance_of_request is record
-   owner    :  address
-;  token_id : token_id
-end
-
-type balance_of_response_ is record
-  request : balance_of_request
-; balance : nat
-end
-
-type balance_of_response is michelson_pair_right_comb(balance_of_response_)
-
-type balance_of_params_ is record
-  requests : list (balance_of_request)
-; callback : contract (list (balance_of_response))
-end
-
-type balance_of_params is michelson_pair_right_comb(balance_of_params_)
-
-type token_metadata_ is record
-  token_id  : token_id
-; symbol    : string
-; name      : string
-; decimals  : nat
-; extras    : map (string, string)
-end
-
-type token_metadata is michelson_pair_right_comb(token_metadata_)
-
-type token_metadata_registry_params is contract (address)
-
-type operator_param_ is record
-  owner    : address
-; operator : address
-end
-
-type operator_param is michelson_pair_right_comb(operator_param_)
-
-type update_operator_param is
-| Add_operator    of operator_param
-| Remove_operator of operator_param
-
-type update_operator_params is list (update_operator_param)
-
-type is_operator_response_ is record
-  operator    : operator_param
-; is_operator : bool
-end
-
-type is_operator_response is michelson_pair_right_comb(is_operator_response_)
-
-type is_operator_params_ is record
-  operator : operator_param
-; callback : contract (is_operator_response)
-end
-
-type is_operator_params is michelson_pair_right_comb(is_operator_params_)
+type get_total_supply_param is michelson_pair_right_comb(
+  record
+    request: unit;
+    callback: contract(nat);
+  end
+)
 
 (* ------------------------------------------------------------- *)
-
-type operator_transfer_policy_ is
-| No_transfer
-| Owner_transfer
-| Owner_or_operator_transfer
-
-type operator_transfer_policy is michelson_or_right_comb(operator_transfer_policy_)
 
 type pause_params is unit
 
@@ -160,42 +91,13 @@ type change_master_minter_param is address
 type change_pauser_param is address
 
 type parameter is
-  Transfer                of transfer_params
-| Balance_of              of balance_of_params
-| Token_metadata_registry of token_metadata_registry_params
-| Update_operators        of update_operator_params
-| Is_operator             of is_operator_params
+| Transfer       of transfer_param
+| Approve        of approve_param
+| GetBalance     of get_balance_param
+| GetAllowance   of get_allowance_param
+| GetTotalSupply of get_total_supply_param
 
 (* ------------------------------------------------------------- *)
-
-(*
- * Hooks
- *)
-
-// Currently it has the same structure as `transfer_param` but
-// with optional participants
-type transfer_destination_descriptor_ is record
-  to_      : option (address)
-; token_id : token_id
-; amount   : nat
-end
-
-type transfer_destination_descriptor is michelson_pair_right_comb(transfer_destination_descriptor_)
-
-type transfer_descriptor_ is record
-  from_ : option (address)
-; txs   : list (transfer_destination_descriptor)
-end
-
-type transfer_descriptor is michelson_pair_right_comb(transfer_descriptor_)
-
-type transfer_descriptor_param_ is record
-   fa2      : address
-;  batch    : list(transfer_descriptor)
-;  operator : address
-end
-
-type transfer_descriptor_param is michelson_pair_right_comb(transfer_descriptor_param_)
 
 (*
  * Transferlist
@@ -260,7 +162,7 @@ end)
 
 (* Stablecoin parameter *)
 type closed_parameter is
-| Call_FA2              of parameter
+| Call_FA1_2            of parameter
 | Pause                 of pause_params
 | Unpause               of unpause_params
 | Configure_minter      of configure_minter_params
@@ -285,10 +187,10 @@ type closed_parameter is
  *)
 
 type owner is address
-type operator is address
+type spender is address
 
-type operators is
-  big_map ((owner * operator), unit)
+type spender_allowances is
+  big_map ((owner * spender), nat)
 
 type roles is record
   owner         : address
@@ -303,11 +205,11 @@ type minting_allowances is map (address, nat)
 
 type storage is record
   ledger                  : ledger
-; token_metadata_registry : address
 ; minting_allowances      : minting_allowances
+; total_supply            : nat
 ; paused                  : bool
 ; roles                   : roles
-; operators               : operators
+; spender_allowances      : spender_allowances
 ; transferlist_contract   : option(address)
 ; permit_counter          : counter
 ; permits                 : permits

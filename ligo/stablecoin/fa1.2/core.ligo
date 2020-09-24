@@ -1,22 +1,26 @@
 // SPDX-FileCopyrightText: 2020 TQ Tezos
 // SPDX-License-Identifier: MIT
 
+#include "spec.ligo"
+#include "../permit.ligo"
+#include "permit.ligo"
+#include "spender_allowances.ligo"
 #include "actions.ligo"
 
 (*
- * FA2 entrypoints that are specified in [tzip-12](https://gitlab.com/tzip/tzip/-/blob/827c6c5f9e504e9c4a63e265f86dce24f5c5cef9/proposals/tzip-12/tzip-12.md)
+ * FA1.2 entrypoints that are specified in [tzip-12](https://gitlab.com/tzip/tzip/-/blob/827c6c5f9e504e9c4a63e265f86dce24f5c5cef9/proposals/tzip-12/tzip-12.md)
  *)
-function fa2_main
+function fa1_2_main
   ( const action : parameter
   ; const store  : storage
   ; const full_param : closed_parameter
   ) : entrypoint
 is case action of
-    Transfer                (params) -> transfer                (params, store, full_param)
-  | Balance_of              (params) -> balance_of              (params, store)
-  | Token_metadata_registry (params) -> token_metadata_registry (params, store)
-  | Update_operators        (params) -> update_operators_action (params, store, full_param)
-  | Is_operator             (params) -> is_operator_action      (params, store)
+  | Transfer       (params) -> transfer         (params, store, full_param)
+  | Approve        (params) -> approve          (params, store, full_param)
+  | GetBalance     (params) -> get_balance      (params, store)
+  | GetAllowance   (params) -> get_allowance    (params, store)
+  | GetTotalSupply (params) -> get_total_supply (params, store)
 end
 
 
@@ -29,7 +33,7 @@ function stablecoin_main
   ) : entrypoint is block
 { fail_on (Tezos.amount =/= 0tz, "XTZ_RECEIVED") // Validate whether the contract receives non-zero amount of tokens
 } with case full_param of
-    Call_FA2              (params) -> fa2_main              (params, store, full_param)
+    Call_FA1_2            (params) -> fa1_2_main            (params, store, full_param)
   | Pause                 (params) -> pause                 (params, store, full_param)
   | Unpause               (params) -> unpause               (params, store, full_param)
   | Configure_minter      (params) -> configure_minter      (params, store, full_param)
