@@ -4,6 +4,7 @@ module Main
   ( main
   ) where
 
+import Fmt (pretty)
 import Options.Applicative (execParser)
 import qualified Unsafe (fromJust)
 
@@ -19,6 +20,8 @@ import Morley.Nettest
 import Tezos.Address
 import Util.Named
 
+import FA1_2 (fa1_2Scenario)
+import qualified Lorentz.Contracts.StablecoinFA1_2 as FA1_2
 import Nettest (TransferlistType(External, Internal), scNettestScenario)
 import Permit (permitScenario)
 import Stablecoin.Client.Cleveland.Caps (runStablecoinClient)
@@ -94,3 +97,10 @@ main = do
     (ncMorleyClientConfig parsedConfig)
     (neMorleyClientEnv env)
     stablecoinClientScenario
+
+  -- Test the FA1.2 version of the stablecoin contract
+  stablecoinContractFA1_2 <-
+    case FA1_2.parseStablecoinContract of
+      Right c -> pure c
+      Left err -> fail $ pretty err
+  runNettestClient env (fa1_2Scenario stablecoinContractFA1_2)
