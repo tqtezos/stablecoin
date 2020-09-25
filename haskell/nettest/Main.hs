@@ -20,11 +20,11 @@ import Tezos.Address
 import Util.Named
 
 import FA1_2 (fa1_2Scenario)
+import Lorentz.Contracts.Stablecoin (parseStablecoinContract)
 import qualified Lorentz.Contracts.StablecoinFA1_2 as FA1_2
 import Nettest (TransferlistType(External, Internal), scNettestScenario)
 import Permit (permitScenario)
 import Stablecoin.Client.Cleveland.Caps (runStablecoinClient)
-import Stablecoin.Client.Contract (parseStablecoinContract)
 import StablecoinClientTest (stablecoinClientScenario)
 
 externalTransferlistContractPath :: FilePath

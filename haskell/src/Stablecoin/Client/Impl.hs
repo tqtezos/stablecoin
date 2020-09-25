@@ -57,10 +57,9 @@ import Util.Named ((:!), (.!))
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
   (ConfigureMinterParam(..), MetadataRegistryStorage, MetadataRegistryStorageView, MintParam(..),
-  Parameter, Roles(..), Storage'(..), StorageView, mrsTokenMetadata)
-import Stablecoin.Client.Contract
-  (InitialStorageData(..), mkInitialStorage, mkRegistryStorage, parseRegistryContract,
+  Parameter, Roles(..), Storage'(..), StorageView, mrsTokenMetadata, parseRegistryContract,
   parseStablecoinContract)
+import Stablecoin.Client.Contract (InitialStorageData(..), mkInitialStorage, mkRegistryStorage)
 
 -- | An address and an optional alias, if one is found.
 data AddressAndAlias = AddressAndAlias Address (Maybe Alias)

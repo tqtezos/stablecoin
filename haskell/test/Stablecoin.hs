@@ -25,7 +25,6 @@ import SMT
 import Tezos.Core
 
 import qualified Michelson.Typed as T
-import Stablecoin.Client.Contract (parseStablecoinContract)
 
 origination :: T.Contract (ToT SC.Parameter) (ToT Storage) -> OriginationFn SC.Parameter
 origination contract (mkInitialStorage -> storageVal) = TAddress @SC.Parameter <$>
