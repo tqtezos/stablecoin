@@ -218,6 +218,6 @@ mkInitialStorage OriginationParams{..} =
     foldFn
       :: Address
       -> [Address]
-      -> Map (Address, Address) ()
-      -> Map (Address, Address) ()
-    foldFn ow ops m = foldr (\a b -> Map.insert (ow, a) () b) m ops
+      -> Map (Address, (Address, Natural)) ()
+      -> Map (Address, (Address, Natural)) ()
+    foldFn ow ops m = foldr (\a b -> Map.insert (ow, (a, 0)) () b) m ops

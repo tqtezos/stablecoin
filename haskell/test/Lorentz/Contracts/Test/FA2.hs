@@ -479,7 +479,7 @@ fa2Spec fa2Originate = do
 
           consumer <- lOriginateEmpty @IsOperatorResponse contractConsumer "consumer"
           withSender wallet1 $ do
-            let operatorParam = OperatorParam { opOwner = wallet1, opOperator = wallet2 }
+            let operatorParam = OperatorParam { opOwner = wallet1, opOperator = wallet2, opTokenId = 0 }
 
             let addOperatorParam = Add_operator operatorParam
             lCallEP fa2contract (Call @"Update_operators") [addOperatorParam]
@@ -498,7 +498,7 @@ fa2Spec fa2Originate = do
 
           consumer <- lOriginateEmpty @IsOperatorResponse contractConsumer "consumer"
           withSender wallet1 $ do
-            let operatorParam = OperatorParam { opOwner = wallet1, opOperator = commonOperator }
+            let operatorParam = OperatorParam { opOwner = wallet1, opOperator = commonOperator, opTokenId = 0 }
 
             let removeOperatorParam = Remove_operator operatorParam
             lCallEP fa2contract (Call @"Update_operators") [removeOperatorParam]
@@ -517,7 +517,7 @@ fa2Spec fa2Originate = do
 
           consumer <- lOriginateEmpty @IsOperatorResponse contractConsumer "consumer"
           withSender wallet1 $ do
-            let operatorParam = OperatorParam { opOwner = wallet1, opOperator = wallet2 }
+            let operatorParam = OperatorParam { opOwner = wallet1, opOperator = wallet2, opTokenId = 0 }
 
             lCallEP fa2contract (Call @"Update_operators") [Add_operator operatorParam, Remove_operator operatorParam]
 
@@ -534,7 +534,7 @@ fa2Spec fa2Originate = do
 
           consumer <- lOriginateEmpty @IsOperatorResponse contractConsumer "consumer"
           withSender wallet1 $ do
-            let operatorParam = OperatorParam { opOwner = wallet1, opOperator = wallet2 }
+            let operatorParam = OperatorParam { opOwner = wallet1, opOperator = wallet2, opTokenId = 0 }
 
             lCallEP fa2contract (Call @"Update_operators") [Remove_operator operatorParam, Add_operator operatorParam]
 
@@ -544,6 +544,32 @@ fa2Spec fa2Originate = do
             lExpectViewConsumerStorage consumer
                 [IsOperatorResponse operatorParam True]
 
+    it "add operator call validates token id" $
+      integrationalTestExpectation $ do
+        let originationParams = addAccount (wallet1, ([], 10)) defaultOriginationParams
+        withOriginated fa2Originate originationParams $ \fa2contract -> do
+
+          withSender wallet1 $ do
+            let operatorParam =
+                  (#owner .! wallet1, (#operator .! commonOperator, #token_id .! 1))
+
+            err <- expectError $  lCallEP fa2contract (Call @"Update_operators")
+                    [Add_operator operatorParam]
+            fa2TokenUndefined err
+
+    it "remove operator call validates token id" $
+      integrationalTestExpectation $ do
+        let originationParams = addAccount (wallet1, (commonOperators, 10)) defaultOriginationParams
+        withOriginated fa2Originate originationParams $ \fa2contract -> do
+
+          withSender wallet1 $ do
+            let operatorParam =
+                  (#owner .! wallet1, (#operator .! commonOperator, #token_id .! 1))
+
+            err <- expectError $ lCallEP fa2contract (Call @"Update_operators")
+                    [Remove_operator operatorParam]
+            fa2TokenUndefined err
+
   -- Check whether "update operator", "remove operator" operations are executed only by contract owner.
   describe "Configure operators entrypoint" $
     it "denies addOperator call for non-owners" $ integrationalTestExpectation $ do
@@ -551,7 +577,7 @@ fa2Spec fa2Originate = do
       withOriginated fa2Originate originationParams $ \stablecoinContract -> do
 
         withSender wallet2 $ do
-          let operatorParam = OperatorParam { opOwner = wallet1, opOperator = wallet2 }
+          let operatorParam = OperatorParam { opOwner = wallet1, opOperator = wallet2, opTokenId = 0 }
 
           let addOperatorParam = Add_operator operatorParam
           err <- expectError $ lCallEP stablecoinContract (Call @"Update_operators") [addOperatorParam]
@@ -562,7 +588,7 @@ fa2Spec fa2Originate = do
     withOriginated fa2Originate originationParams $ \stablecoinContract -> do
 
       withSender wallet2 $ do
-        let operatorParam = OperatorParam { opOwner = wallet1, opOperator = commonOperator }
+        let operatorParam = OperatorParam { opOwner = wallet1, opOperator = commonOperator, opTokenId = 0 }
 
         let removeOperatorParam = Remove_operator operatorParam
         err <- expectError $ lCallEP stablecoinContract (Call @"Update_operators") [removeOperatorParam]
@@ -573,7 +599,7 @@ fa2Spec fa2Originate = do
     withOriginated fa2Originate originationParams $ \stablecoinContract -> do
 
       withSender commonOperator $ do
-        let operatorParam = OperatorParam { opOwner = wallet1, opOperator = wallet2 }
+        let operatorParam = OperatorParam { opOwner = wallet1, opOperator = wallet2, opTokenId = 0 }
 
         let addOperatorParam = Add_operator operatorParam
         err <- expectError $ lCallEP stablecoinContract (Call @"Update_operators") [addOperatorParam]
@@ -585,7 +611,7 @@ fa2Spec fa2Originate = do
     withOriginated fa2Originate originationParams $ \stablecoinContract -> do
 
       withSender commonOperator $ do
-        let operatorParam = OperatorParam { opOwner = wallet1, opOperator = commonOperator }
+        let operatorParam = OperatorParam { opOwner = wallet1, opOperator = commonOperator, opTokenId = 0 }
 
         let removeOperatorParam = Remove_operator operatorParam
         err <- expectError $ lCallEP stablecoinContract (Call @"Update_operators") [removeOperatorParam]

@@ -155,7 +155,7 @@ updateOperators (arg #sender -> sender) contract ops = do
 
     mkOperatorParam :: Address -> AddressOrAlias -> MorleyClientM FA2.OperatorParam
     mkOperatorParam ownerAddr operator =
-      resolveAddress operator <&> \operatorAddr -> FA2.OperatorParam ownerAddr operatorAddr
+      resolveAddress operator <&> \operatorAddr -> FA2.OperatorParam ownerAddr operatorAddr 0
 
 isOperator
   :: "contract" :! AddressOrAlias

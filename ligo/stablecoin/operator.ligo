@@ -17,8 +17,8 @@ function is_operator
   ) : operation is block
 { const operator_param : operator_param_ =
     Layout.convert_from_right_comb ((param.0 : operator_param))
-; const operator_key : (owner * operator) =
-    (operator_param.owner, operator_param.operator)
+; const operator_key : (owner * (operator * token_id)) =
+    (operator_param.owner, (operator_param.operator, 0n))
 ; const is_present : bool = Big_map.mem (operator_key, operators)
 ; const response : is_operator_response = (param.0, is_present)
 } with Tezos.transaction (response, 0mutez, param.1)
@@ -33,7 +33,7 @@ function is_approved_operator
   ) : bool is block
 { const operator : address = Tezos.sender
 ; const owner : address = transfer_param.0
-} with if owner = operator or Big_map.mem ((owner, operator), operators)
+} with if owner = operator or Big_map.mem ((owner, (operator, 0n)), operators)
   then True else False
 
 (*
@@ -43,8 +43,8 @@ function add_operator
   ( const param     : operator_param
   ; const operators : operators
   ) : operators is block
-{ const operator_key : (owner * operator) = (param.0, param.1)
-} with Big_map.update (operator_key, Some (unit), operators)
+{ validate_token_type(param.1.1)
+} with Big_map.update (param, Some (unit), operators)
 
 (*
  * Remove operator from the given storage
@@ -53,8 +53,8 @@ function remove_operator
   ( const param     : operator_param
   ; const operators : operators
   ) : operators is block
-{ const operator_key : (owner * operator) = (param.0, param.1)
-} with Big_map.remove (operator_key, operators)
+{ validate_token_type(param.1.1)
+} with Big_map.remove (param, operators)
 
 (*
  * Adds or removes operators from a provided list of instructions

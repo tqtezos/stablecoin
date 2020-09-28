@@ -141,7 +141,13 @@ scNettestScenario constructInitialStorage originateTransferlist transferlistType
         (AddressResolved from)
         sc
         (Call @"Update_operators")
-        [FA2.Add_operator FA2.OperatorParam { opOwner = from, opOperator = op }]
+<<<<<<< HEAD
+        [FA2.Add_operator FA2.OperatorParam { opOwner = from, opOperator = op, opTokenId = 0 }]
+||||||| constructed merge base
+        [FA2.Add_operator (#owner .! from, #operator .! op)]
+=======
+        [FA2.Add_operator (#owner .! from, (#operator .! op, #token_id .! 0))]
+>>>>>>> [#110] Update Haskell infra and add/update tests
 
     removeOperator :: Address -> Address -> capsM ()
     removeOperator from op =
@@ -149,7 +155,13 @@ scNettestScenario constructInitialStorage originateTransferlist transferlistType
         (AddressResolved from)
         sc
         (Call @"Update_operators")
+<<<<<<< HEAD
         [FA2.Remove_operator FA2.OperatorParam { opOwner = from, opOperator = op }]
+||||||| constructed merge base
+        [FA2.Remove_operator (#owner .! from, #operator .! op)]
+=======
+        [FA2.Remove_operator (#owner .! from, (#operator .! op, #token_id .! 0))]
+>>>>>>> [#110] Update Haskell infra and add/update tests
 
     mint :: Address -> Natural -> capsM ()
     mint to_ value =

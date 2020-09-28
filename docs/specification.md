@@ -360,11 +360,15 @@ Parameter (in Michelson)
   (or
     (pair %add_operator
       (address %owner)
-      (address %operator)
+      (pair
+        (address %operator)
+        (nat %token_id))
     )
     (pair %remove_operator
       (address %owner)
-      (address %operator)
+      (pair
+        (address %operator)
+        (nat %token_id))
     )
   )
 )

@@ -93,6 +93,7 @@ type token_metadata_registry_params is contract (address)
 type operator_param_ is record
   owner    : address
 ; operator : address
+; token_id : token_id
 end
 
 type operator_param is michelson_pair_right_comb(operator_param_)
@@ -288,7 +289,7 @@ type owner is address
 type operator is address
 
 type operators is
-  big_map ((owner * operator), unit)
+  big_map ((owner * (operator * token_id)), unit)
 
 type roles is record
   owner         : address
