@@ -42,9 +42,8 @@ extra-deps:
     https://gitlab.com/morley-framework/morley-ledgers.git
     # ^ CI cannot use ssh, so we use http clone here
   commit:
-    # TODO: update this to master
-    099082d778b8d2c25b6c9db9145f9745d0d77afe # sras/#5-sample-fa2-indigo
-  # nix-sha256: 1yy7fm5fj6m2mlrmj6c6lr5xb5l0pqq2y71ch3np7ml196iipz0i
+    47a94df200451d78d81cf0515f9328645a03bd22 # master
+  # nix-sha256: 0cx2an4kdgg9awd0y008afa6abihsy6rqldq2xxmyb2m20vdzgms
   subdirs:
     - code/morley-ledgers
     - code/morley-ledgers-test

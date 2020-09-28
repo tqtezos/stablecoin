@@ -163,26 +163,26 @@ packages:
     version: 0.2.0.1
     git: https://gitlab.com/morley-framework/morley-ledgers.git
     pantry-tree:
-      size: 1415
-      sha256: c99f1b81bcf6ccf2563fc212157f2d3a807a3cb3caabb1686392482273c9b9d1
-    commit: 099082d778b8d2c25b6c9db9145f9745d0d77afe
+      size: 1421
+      sha256: 4cb0661fe0a19b6c0d1c8c2eb8aa1a1127a3062312270ac9bdb9c97620e02c38
+    commit: 47a94df200451d78d81cf0515f9328645a03bd22
   original:
     subdir: code/morley-ledgers
     git: https://gitlab.com/morley-framework/morley-ledgers.git
-    commit: 099082d778b8d2c25b6c9db9145f9745d0d77afe
+    commit: 47a94df200451d78d81cf0515f9328645a03bd22
 - completed:
     subdir: code/morley-ledgers-test
     name: morley-ledgers-test
     version: 0.2.0.1
     git: https://gitlab.com/morley-framework/morley-ledgers.git
     pantry-tree:
-      size: 1518
-      sha256: 9d5e2b8f0828e5699c845b0bcf436a45a73778d3fa42e96903f4b8225bb96a45
-    commit: 099082d778b8d2c25b6c9db9145f9745d0d77afe
+      size: 1751
+      sha256: 3fd9977d9bc1f41e46fe5c55e7909b66003f124b031c3dafc532a44803981338
+    commit: 47a94df200451d78d81cf0515f9328645a03bd22
   original:
     subdir: code/morley-ledgers-test
     git: https://gitlab.com/morley-framework/morley-ledgers.git
-    commit: 099082d778b8d2c25b6c9db9145f9745d0d77afe
+    commit: 47a94df200451d78d81cf0515f9328645a03bd22
 snapshots:
 - completed:
     size: 531707

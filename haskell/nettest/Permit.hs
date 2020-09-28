@@ -38,7 +38,7 @@ permitScenario stablecoinContract = uncapsNettest $ do
   (_, user1) <- createUser "Steve"
 
   comment "Originating contracts"
-  let storage = Unsafe.fromJust $ mkInitialStorage $
+  let storage = mkInitialStorage $
         addAccount (owner1 , ([], 1000)) $
           defaultOriginationParams
             { opOwner = owner1

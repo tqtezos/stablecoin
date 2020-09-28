@@ -11,7 +11,6 @@ module SMT
 import qualified Data.Map as Map
 import Data.Typeable (cast)
 import Fmt
-import qualified Unsafe (fromJust)
 
 import Test.Tasty.QuickCheck
   (Arbitrary, Gen, Property, arbitrary, arbitraryBoundedEnum, choose, elements, shuffle, sublistOf,
@@ -498,7 +497,7 @@ stablecoinMichelsonModel
   -> ContractState
 stablecoinMichelsonModel contract cc@(ContractCall {..}) cs = let
   contractEnv = dummyContractEnv { ceSender = ccSender, ceAmount = unsafeMkMutez 0 }
-  initSt = Unsafe.fromJust $ mkInitialStorage $ ssToOriginationParams $ csStorage cs
+  initSt = mkInitialStorage $ ssToOriginationParams $ csStorage cs
   iResult = callEntrypoint contract cc initSt contractEnv
   in case iResult of
     Right iRes -> let

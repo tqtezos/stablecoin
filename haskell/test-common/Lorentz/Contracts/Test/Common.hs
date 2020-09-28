@@ -180,20 +180,17 @@ constructSingleTransfer from to amount
 -- In such cases, where the value is hard coded and is incompatible with what is required
 -- for the test, this function should return a Nothing value, and the tests that depend
 -- on such custom configuration will be skipped.
-type OriginationFn param = (OriginationParams -> IntegrationalScenarioM (Maybe (TAddress param)))
+type OriginationFn param = (OriginationParams -> IntegrationalScenarioM (TAddress param))
 
 withOriginated
   :: forall param. OriginationFn param
   -> OriginationParams
   -> (TAddress param -> IntegrationalScenario)
   -> IntegrationalScenario
-withOriginated fn op tests = do
-  (fn op) >>= \case
-    Nothing -> pass
-    Just contract -> tests contract
+withOriginated fn op tests = fn op >>= tests
 
 {-# ANN module ("HLint: ignore Use bimap" :: Text) #-}
-mkInitialStorage :: OriginationParams -> Maybe Storage
+mkInitialStorage :: OriginationParams -> Storage
 mkInitialStorage OriginationParams{..} = let
   ledgerMap = opBalances
   mintingAllowances = #minting_allowances .! opMinters
@@ -215,7 +212,7 @@ mkInitialStorage OriginationParams{..} = let
     )
   permitCounter = #permit_counter .! 0
   defaultExpiry = #default_expiry .! opDefaultExpiry
-  in Just ((((defaultExpiry, ledger),
+  in ((((defaultExpiry, ledger),
              (mintingAllowances, operators)),
              ((isPaused, permitCounter),
              (permits, roles))),

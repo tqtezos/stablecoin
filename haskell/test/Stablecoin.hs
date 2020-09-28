@@ -28,9 +28,8 @@ import qualified Michelson.Typed as T
 import Stablecoin.Client.Contract (parseStablecoinContract)
 
 origination :: T.Contract (ToT SC.Parameter) (ToT Storage) -> OriginationFn SC.Parameter
-origination contract (mkInitialStorage -> Just storageVal) = pure . TAddress @SC.Parameter <$>
+origination contract (mkInitialStorage -> storageVal) = TAddress @SC.Parameter <$>
     tOriginate contract "Stablecoin contract" (toVal storageVal) (unsafeMkMutez 0)
-origination _ _ = pure Nothing
 
 spec_FA2 :: Spec
 spec_FA2 =
