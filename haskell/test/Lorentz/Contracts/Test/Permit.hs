@@ -28,7 +28,7 @@ import qualified Tezos.Crypto.Secp256k1 as Secp256k1
 import Tezos.Crypto.Util (deterministic)
 
 import qualified "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
-import Lorentz.Contracts.Stablecoin
+import Lorentz.Contracts.Stablecoin hiding (stablecoinContract)
 
 import Lorentz.Contracts.Test.Common
 import Lorentz.Contracts.Test.FA2 (fa2NotOperator, fa2NotOwner)

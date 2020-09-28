@@ -12,7 +12,6 @@ import Lorentz
 import qualified Lorentz as L
 import Lorentz.Test.Consumer (contractConsumer)
 import Michelson.Typed (convertContract, untypeValue)
-import qualified Michelson.Typed as T
 import Morley.Client (Alias)
 import Morley.Nettest
 import qualified Unsafe as Unsafe
@@ -20,15 +19,15 @@ import qualified Unsafe as Unsafe
 import Lorentz.Contracts.Spec.FA2Interface (TransferDestination(..), TransferParam(..))
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
-  (ConfigureMinterParam(..), Parameter(..), PermitParam(..), RevokeParam(..), Storage,
-  mkPermitHash)
+  (ConfigureMinterParam(..), Parameter(..), PermitParam(..), RevokeParam(..), mkPermitHash,
+  stablecoinContract)
 
 import Lorentz.Contracts.Test.Common
   (OriginationParams(..), addAccount, defaultOriginationParams, mkInitialStorage)
 
 
-permitScenario :: T.Contract (ToT Parameter) (ToT Storage) -> NettestScenario m
-permitScenario stablecoinContract = uncapsNettest $ do
+permitScenario :: NettestScenario m
+permitScenario = uncapsNettest $ do
   comment "-- Permits tests --"
   comment "Creating accounts"
   (owner1Alias, owner1) <- createUser "nettestOwner1"

@@ -20,7 +20,7 @@ import Test.Hspec (Spec, describe, it)
 
 import Lorentz (mkView)
 import "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
-import Lorentz.Contracts.Stablecoin
+import Lorentz.Contracts.Stablecoin (sLedger)
 import Lorentz.Contracts.Test.Common
 import Lorentz.Test
 import Lorentz.Value

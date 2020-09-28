@@ -10,7 +10,6 @@ module Stablecoin
 
 import Test.Hspec (Spec)
 import Test.Tasty (TestTree)
-import Test.Tasty.Hspec (runIO)
 import Test.Tasty.QuickCheck (testProperty, withMaxSuccess)
 
 import Lorentz (TAddress(..))
@@ -24,28 +23,25 @@ import Michelson.Typed hiding (TAddress)
 import SMT
 import Tezos.Core
 
-import qualified Michelson.Typed as T
-
-origination :: T.Contract (ToT SC.Parameter) (ToT Storage) -> OriginationFn SC.Parameter
-origination contract (mkInitialStorage -> storageVal) = TAddress @SC.Parameter <$>
-    tOriginate contract "Stablecoin contract" (toVal storageVal) (unsafeMkMutez 0)
+origination :: OriginationFn SC.Parameter
+origination (mkInitialStorage -> storageVal) = TAddress @SC.Parameter <$>
+    tOriginate stablecoinContract "Stablecoin contract" (toVal storageVal) (unsafeMkMutez 0)
 
 spec_FA2 :: Spec
 spec_FA2 =
-  runIO parseStablecoinContract >>= fa2Spec . origination
+  fa2Spec origination
 
 test_SMT :: IO [TestTree]
-test_SMT = do
-  contract <- parseStablecoinContract
+test_SMT =
   pure
     [ testProperty "have the same state as the model after running the inputs"
-      (withMaxSuccess 20 $ smtProperty contract)
+      (withMaxSuccess 20 $ smtProperty)
     ]
 
 spec_Management :: Spec
 spec_Management =
-  runIO parseStablecoinContract >>= managementSpec . origination
+  managementSpec origination
 
 spec_Permit :: Spec
 spec_Permit =
-  runIO parseStablecoinContract >>= permitSpec . origination
+  permitSpec origination

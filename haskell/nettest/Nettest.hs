@@ -29,12 +29,11 @@ scNettestScenario
   :: forall m capsM.
      (Monad m, capsM ~ NettestT m)
   => (OriginationParams -> Storage)
-  -> T.Contract (ToT Parameter) (ToT Storage)
   -> (Set (Address, Address) -> Set Address -> capsM Address)
   -> TransferlistType
   -> NettestImpl m
   -> m ()
-scNettestScenario constructInitialStorage stablecoinContract originateTransferlist transferlistType = uncapsNettest $ do
+scNettestScenario constructInitialStorage originateTransferlist transferlistType = uncapsNettest $ do
   comment "Resolving contract managers"
 
   superuser <- resolveNettestAddress

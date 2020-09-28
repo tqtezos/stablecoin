@@ -22,7 +22,7 @@ import qualified Indigo.Contracts.Transferlist.Internal as Transferlist
 import Lorentz (mkView, mt, unBigMap)
 import Lorentz.Address
 import qualified "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
-import Lorentz.Contracts.Stablecoin
+import Lorentz.Contracts.Stablecoin hiding (stablecoinContract)
 import Lorentz.Contracts.Test.Common
 import Lorentz.Test
 import Michelson.Runtime (ExecutorError)

@@ -91,11 +91,10 @@ generateContractInputs count = do
 -- This is a quickcheck `Testable` because we have an
 -- arbitrary instance for `PropertyTestInput`.
 smtProperty
-  :: T.Contract (ToT Parameter) (ToT Storage)
-  -> PropertyTestInput
+  :: PropertyTestInput
   -> Property
-smtProperty contract (PropertyTestInput (inputs, initialState))
-  = integrationalTestProperty $ applyBothAndCompare contract inputs initialState
+smtProperty (PropertyTestInput (inputs, initialState))
+  = integrationalTestProperty $ applyBothAndCompare inputs initialState
 
 -- | Accept a contract, a list of contract inputs and an initial state.  Then
 -- apply each contract input to each model (haskell and michelson), check if
@@ -104,17 +103,16 @@ smtProperty contract (PropertyTestInput (inputs, initialState))
 -- parameter and repeat until all contract inputs are applied or until the contract
 -- state diverges.
 applyBothAndCompare
-  :: T.Contract (ToT Parameter) (ToT Storage)
-  -> [ContractCall Parameter]
+  :: [ContractCall Parameter]
   -> ContractState
   -> IntegrationalScenario
-applyBothAndCompare _ [] _ = pass
-applyBothAndCompare contract (cc:ccs) cs = let
+applyBothAndCompare [] _ = pass
+applyBothAndCompare (cc:ccs) cs = let
   haskellResult = stablecoinHaskellModel cc cs
-  michelsonResult = stablecoinMichelsonModel contract cc cs
+  michelsonResult = stablecoinMichelsonModel cc cs
   in if haskellResult /= michelsonResult
     then integrationalFail $ CustomTestError ("Models differ : " <> (show (cc, cs, haskellResult, michelsonResult)))
-    else applyBothAndCompare contract ccs haskellResult
+    else applyBothAndCompare ccs haskellResult
 
 -- Size of the random address pool
 poolSize :: Int
@@ -494,14 +492,13 @@ contractErrorToModelError m = let
 -- the final @ContractState@ from Haskell model and this model should
 -- match exactly, including the list of errors.
 stablecoinMichelsonModel
-  :: T.Contract (ToT Parameter) (ToT Storage)
-  -> ContractCall Parameter
+  :: ContractCall Parameter
   -> ContractState
   -> ContractState
-stablecoinMichelsonModel contract cc@(ContractCall {..}) cs = let
+stablecoinMichelsonModel cc@(ContractCall {..}) cs = let
   contractEnv = dummyContractEnv { ceSender = ccSender, ceAmount = unsafeMkMutez 0 }
   initSt = mkInitialStorage $ ssToOriginationParams $ csStorage cs
-  iResult = callEntrypoint contract cc initSt contractEnv
+  iResult = callEntrypoint cc initSt contractEnv
   in case iResult of
     Right iRes -> let
       newStorage = resultToSs iRes
@@ -510,12 +507,11 @@ stablecoinMichelsonModel contract cc@(ContractCall {..}) cs = let
     Left err -> error $ "Unexpected error:" <> show err
 
 callEntrypoint
-  :: T.Contract (ToT Parameter) (ToT Storage)
-  -> ContractCall Parameter
+  :: ContractCall Parameter
   -> Storage
   -> ContractEnv
   -> Either InterpretError InterpretResult
-callEntrypoint contract cc st env = case ccParameter cc of
+callEntrypoint cc st env = case ccParameter cc of
   Pause -> call (Call @"Pause") ()
   Unpause -> call (Call @"Unpause") ()
   Configure_minter p -> call (Call @"Configure_minter") p
@@ -545,7 +541,7 @@ callEntrypoint contract cc st env = case ccParameter cc of
     call epRef param =
       handleContractReturn $
         interpret
-          (T.cCode contract)
+          (T.cCode stablecoinContract)
           (parameterEntrypointCallCustom @Parameter epRef)
           (toVal param)
           (toVal st)

@@ -57,8 +57,8 @@ import Util.Named ((:!), (.!))
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
   (ConfigureMinterParam(..), MetadataRegistryStorage, MetadataRegistryStorageView, MintParam(..),
-  Parameter, Roles(..), Storage'(..), StorageView, mrsTokenMetadata, parseRegistryContract,
-  parseStablecoinContract)
+  Parameter, Roles(..), Storage'(..), StorageView, mrsTokenMetadata, registryContract,
+  stablecoinContract)
 import Stablecoin.Client.Contract (InitialStorageData(..), mkInitialStorage, mkRegistryStorage)
 
 -- | An address and an optional alias, if one is found.
@@ -78,7 +78,6 @@ data UpdateOperatorData
 -- If the given alias already exists, nothing happens.
 deploy :: "sender" :! AddressOrAlias -> Text -> InitialStorageData AddressOrAlias -> MorleyClientM (Text, Address, Address)
 deploy (arg #sender -> sender) alias initialStorageData = do
-  stablecoinContract <- parseStablecoinContract
   masterMinter <- resolveAddress (isdMasterMinter initialStorageData)
   contractOwner <- resolveAddress (isdContractOwner initialStorageData)
   pauser <- resolveAddress (isdPauser initialStorageData)
@@ -88,7 +87,6 @@ deploy (arg #sender -> sender) alias initialStorageData = do
   metadataRegistry <- case isdTokenMetadataRegistry initialStorageData of
     Just mdr -> resolveAddress mdr
     Nothing -> do
-      mdContract <- parseRegistryContract
       let registryStorage :: MetadataRegistryStorage = mkRegistryStorage
             (isdTokenSymbol initialStorageData)
             (isdTokenName initialStorageData)
@@ -99,7 +97,7 @@ deploy (arg #sender -> sender) alias initialStorageData = do
         "stablecoin-metadata"
         sender
         (unsafeMkMutez 0)
-        mdContract
+        registryContract
         (T.untypeValue registryStorageVal)
 
   let initialStorageData' = initialStorageData
