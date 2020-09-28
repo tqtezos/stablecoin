@@ -1,6 +1,8 @@
 -- SPDX-FileCopyrightText: 2020 TQ Tezos
 -- SPDX-License-Identifier: MIT
 
+{-# LANGUAGE PackageImports #-}
+
 -- | Tests for FA2 interface.
 -- https://gitlab.com/tzip/tzip/-/blob/131b46dd89675bf030489ded9b0b3f5834b70eb6/proposals/tzip-12/tzip-12.md
 
@@ -17,7 +19,7 @@ import Data.Map as M (lookup)
 import Test.Hspec (Spec, describe, it)
 
 import Lorentz (mkView)
-import Lorentz.Contracts.Spec.FA2Interface as FA2
+import "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin (pattern StorageLedger)
 import Lorentz.Contracts.Test.Common
 import Lorentz.Test

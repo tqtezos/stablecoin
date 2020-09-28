@@ -2,6 +2,7 @@
 -- SPDX-License-Identifier: MIT
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
+{-# LANGUAGE PackageImports #-}
 
 module SMT
   ( smtProperty
@@ -22,7 +23,7 @@ import Tezos.Core (unsafeMkMutez)
 import Lorentz
   (Address, EntrypointRef(Call), GetEntrypointArgCustom, IsoValue(..), TAddress(TAddress), arg,
   parameterEntrypointCallCustom)
-import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
+import qualified "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
 import Lorentz.Contracts.Test.Common
 import Michelson.Interpret

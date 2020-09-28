@@ -4,6 +4,9 @@
 module Lorentz.Contracts.Stablecoin
   ( ConfigureMinterParam
   , ChangeMasterMinterParam
+  , ChangePauserParam
+  , GetCounterParam
+  , SetTransferlistParam
   , TokenMetadata
   , TokenMetadataRegistryAddress
   , RemoveMinterParam
@@ -14,6 +17,7 @@ module Lorentz.Contracts.Stablecoin
   , BurnParams
   , ParameterC
   , Parameter (..)
+  , Roles
   , Storage
   , TransferOwnershipParam
   , OwHook(..)

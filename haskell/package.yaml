@@ -26,6 +26,7 @@ library:
   dependencies:
     - morley-prelude
     - morley-client
+    - morley-ledgers
     - lorentz
     - morley
     - containers
@@ -59,6 +60,7 @@ tests:
     dependencies:
       - morley
       - morley-prelude
+      - morley-ledgers-test
       - lorentz
       - cleveland
       - tasty

@@ -28,9 +28,11 @@ endef
 
 define build_stablecoin_contract
 	$(MAKE_LIGO) stablecoin.tz
+	$(MAKE_LIGO) stablecoin.fa1.2.tz
 	$(MAKE_LIGO) metadata.tz
 	mkdir -p test/resources
 	$(MORLEY) optimize --contract "$(LIGO_DIR)/stablecoin.tz" --output "test/resources/stablecoin.tz"
+	$(MORLEY) optimize --contract "$(LIGO_DIR)/stablecoin.fa1.2.tz" --output "test/resources/stablecoin.fa1.2.tz"
 	cp "$(LIGO_DIR)/metadata.tz" "test/resources/metadata.tz"
 endef
 
@@ -79,4 +81,5 @@ lint:
 clean:
 	stack clean $(PACKAGE)
 	rm -f stablecoin.tz
+	rm -f stablecoin.fa1.2.tz
 	rm -f metadata.tz

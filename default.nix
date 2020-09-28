@@ -45,6 +45,13 @@ let
     buildPhase = "make stablecoin.tz";
     installPhase = "cp stablecoin.tz $out";
   };
+  tezos-contract-fa1-2 = pkgs.stdenv.mkDerivation {
+    name = "stablecoin.tz";
+    src = ./ligo;
+    nativeBuildInputs = [ ligo ];
+    buildPhase = "make stablecoin.fa1.2.tz";
+    installPhase = "cp stablecoin.fa1.2.tz $out";
+  };
   tezos-metadata-contract = pkgs.stdenv.mkDerivation {
     name = "stablecoin.tz";
     src = ./ligo;
@@ -77,5 +84,5 @@ in
   test = project.stablecoin.components.tests.stablecoin-test;
   nettest = project.stablecoin.components.tests.stablecoin-nettest;
   stablecoin-client = project.stablecoin.components.exes.stablecoin-client;
-  inherit tezos-contract tezos-metadata-contract tezos-client pkgs weeder-script morley;
+  inherit tezos-contract tezos-contract-fa1-2 tezos-metadata-contract tezos-client pkgs weeder-script morley;
 }

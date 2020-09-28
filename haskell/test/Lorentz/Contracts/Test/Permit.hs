@@ -5,6 +5,7 @@
 -- https://gitlab.com/morley-framework/morley/-/issues/350
 {-# OPTIONS_GHC -Wno-deprecations #-}
 {-# OPTIONS_GHC -Wno-unused-do-bind #-}
+{-# LANGUAGE PackageImports #-}
 
 -- | Tests for permit functionality of stablecoin smart-contract
 
@@ -28,7 +29,7 @@ import qualified Tezos.Crypto.Secp256k1 as Secp256k1
 import Tezos.Crypto.Util (deterministic)
 import Util.Named
 
-import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
+import qualified "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
 
 import Lorentz.Contracts.Test.Common

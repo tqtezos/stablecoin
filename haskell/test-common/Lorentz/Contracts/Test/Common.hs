@@ -1,6 +1,8 @@
 -- SPDX-FileCopyrightText: 2020 TQ Tezos
 -- SPDX-License-Identifier: MIT
 
+{-# LANGUAGE PackageImports #-}
+
 -- | Test commons for stablecoin test suite
 
 module Lorentz.Contracts.Test.Common
@@ -45,7 +47,7 @@ import Data.List.NonEmpty ((!!))
 import qualified Data.Map as Map
 
 import qualified Indigo.Contracts.Transferlist.Internal as Transferlist
-import Lorentz.Contracts.Spec.FA2Interface as FA2
+import "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin as SC
 import Lorentz.Test
 import Lorentz.Value
