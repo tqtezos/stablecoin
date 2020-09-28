@@ -345,6 +345,7 @@ token_id = nat
 operator_param =
   ( address         :owner
   , address         :operator
+  , token_id        :token_id
   )
 
 update_operator_param =
@@ -392,6 +393,7 @@ token_id = nat
 operator_param =
   ( address         :owner
   , address         :operator
+  , token_id        :token_id
   )
 
 is_operator_response =
@@ -410,13 +412,17 @@ Parameter (in Michelson):
 (pair %is_operator
   (pair %operator
     (address %owner)
-    (address %operator)
+    (pair
+      (address %operator)
+      (nat %token_id))
   )
   (contract %callback
     (pair
       (pair %operator
         (address %owner)
-        (address %operator)
+        (pair
+          (address %operator)
+          (nat %token_id))
       )
       (bool %is_operator)
     )

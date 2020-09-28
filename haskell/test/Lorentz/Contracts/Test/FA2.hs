@@ -20,7 +20,7 @@ import Test.Hspec (Spec, describe, it)
 
 import Lorentz (mkView)
 import "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
-import Lorentz.Contracts.Stablecoin (sLedger)
+import Lorentz.Contracts.Stablecoin (ParameterC, sLedger)
 import Lorentz.Contracts.Test.Common
 import Lorentz.Test
 import Lorentz.Value
@@ -32,7 +32,7 @@ import Util.Named
 -- 1. Supports a single token type.
 -- 2. Does not have an external permission checking transfer hook.
 fa2Spec
-  :: forall param. FA2ParameterC param
+  :: forall param. ParameterC param
   => OriginationFn param
   -> Spec
 fa2Spec fa2Originate = do
@@ -474,7 +474,7 @@ fa2Spec fa2Originate = do
   describe "Configure operators entrypoint's add operator call" $ do
     it "adds operator as expected" $
       integrationalTestExpectation $ do
-        let originationParams = addAccount (wallet1, (commonOperators, 10)) defaultOriginationParams
+        let originationParams = addAccount (wallet1, ([], 10)) defaultOriginationParams
         withOriginated fa2Originate originationParams $ \fa2contract -> do
 
           consumer <- lOriginateEmpty @IsOperatorResponse contractConsumer "consumer"
@@ -512,7 +512,7 @@ fa2Spec fa2Originate = do
   describe "Configure operators entrypoint" $ do
     it "retains the last operation in case of conflicting operations - Expect removal" $
       integrationalTestExpectation $ do
-        let originationParams = addAccount (wallet1, (commonOperators, 10)) defaultOriginationParams
+        let originationParams = addAccount (wallet1, ([], 10)) defaultOriginationParams
         withOriginated fa2Originate originationParams $ \fa2contract -> do
 
           consumer <- lOriginateEmpty @IsOperatorResponse contractConsumer "consumer"
@@ -551,7 +551,7 @@ fa2Spec fa2Originate = do
 
           withSender wallet1 $ do
             let operatorParam =
-                  (#owner .! wallet1, (#operator .! commonOperator, #token_id .! 1))
+                  OperatorParam { opOwner = wallet1, opOperator = commonOperator, opTokenId = 1 }
 
             err <- expectError $  lCallEP fa2contract (Call @"Update_operators")
                     [Add_operator operatorParam]
@@ -564,11 +564,39 @@ fa2Spec fa2Originate = do
 
           withSender wallet1 $ do
             let operatorParam =
-                  (#owner .! wallet1, (#operator .! commonOperator, #token_id .! 1))
+                  OperatorParam { opOwner = wallet1, opOperator = commonOperator, opTokenId = 1 }
 
             err <- expectError $ lCallEP fa2contract (Call @"Update_operators")
                     [Remove_operator operatorParam]
             fa2TokenUndefined err
+
+    it "add operator call can be paused" $
+      integrationalTestExpectation $ do
+        let originationParams = addAccount (wallet1, ([], 10)) defaultOriginationParams
+        withOriginated fa2Originate originationParams $ \fa2contract -> do
+          withSender testPauser $ lCallEP fa2contract (Call @"Pause") ()
+
+          withSender wallet1 $ do
+            let operatorParam =
+                  OperatorParam { opOwner = wallet1, opOperator = commonOperator, opTokenId = 0 }
+
+            err <- expectError $  lCallEP fa2contract (Call @"Update_operators")
+                    [Add_operator operatorParam]
+            mgmContractPaused err
+
+    it "remove operator call can be paused" $
+      integrationalTestExpectation $ do
+        let originationParams = addAccount (wallet1, (commonOperators, 10)) defaultOriginationParams
+        withOriginated fa2Originate originationParams $ \fa2contract -> do
+          withSender testPauser $ lCallEP fa2contract (Call @"Pause") ()
+
+          withSender wallet1 $ do
+            let operatorParam =
+                  OperatorParam { opOwner = wallet1, opOperator = commonOperator, opTokenId = 0 }
+
+            err <- expectError $ lCallEP fa2contract (Call @"Update_operators")
+                    [Remove_operator operatorParam]
+            mgmContractPaused err
 
   -- Check whether "update operator", "remove operator" operations are executed only by contract owner.
   describe "Configure operators entrypoint" $

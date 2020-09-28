@@ -289,7 +289,7 @@ type owner is address
 type operator is address
 
 type operators is
-  big_map ((owner * (operator * token_id)), unit)
+  big_map ((owner * operator), unit)
 
 type roles is record
   owner         : address

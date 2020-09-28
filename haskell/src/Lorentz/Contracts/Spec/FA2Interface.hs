@@ -165,7 +165,7 @@ data CustomPermissionPolicy = CustomPermissionPolicy
 data OperatorParam = OperatorParam
   { opOwner :: Address
   , opOperator :: Address
-  , opTokenId :: Address
+  , opTokenId :: Natural
   }
   deriving stock (Generic, Show, Eq)
   deriving anyclass (IsoValue, HasAnnotation)

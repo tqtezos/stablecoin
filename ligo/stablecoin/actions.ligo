@@ -398,7 +398,8 @@ function update_operators_action
   ; const store : storage
   ; const full_param : closed_parameter
   ) : entrypoint is block
-{ const owners : list(address) = List.map(get_owner, params)
+{ ensure_not_paused (store)
+; const owners : list(address) = List.map(get_owner, params)
 
 // A user can only modify their own operators.
 // So we check that all operations affect the same `owner`,
