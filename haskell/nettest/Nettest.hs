@@ -29,12 +29,11 @@ scNettestScenario
   :: forall m capsM.
      (Monad m, capsM ~ NettestT m)
   => (OriginationParams -> Storage)
-  -> T.Contract (ToT Parameter) (ToT Storage)
   -> (Set (Address, Address) -> Set Address -> capsM Address)
   -> TransferlistType
   -> NettestImpl m
   -> m ()
-scNettestScenario constructInitialStorage stablecoinContract originateTransferlist transferlistType = uncapsNettest $ do
+scNettestScenario constructInitialStorage originateTransferlist transferlistType = uncapsNettest $ do
   comment "Resolving contract managers"
 
   superuser <- resolveNettestAddress
@@ -126,9 +125,7 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
         (AddressResolved from)
         sc'
         (Call @"Configure_minter")
-        ( #minter .! for
-        , ( #current_minting_allowance .! expectedAllowance
-          , #new_minting_allowance .! newAllowance))
+        (ConfigureMinterParam for expectedAllowance newAllowance)
 
     removeMinter :: Address -> Address -> capsM ()
     removeMinter from whom =
@@ -144,7 +141,7 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
         (AddressResolved from)
         sc
         (Call @"Update_operators")
-        [FA2.Add_operator (#owner .! from, #operator .! op)]
+        [FA2.Add_operator FA2.OperatorParam { opOwner = from, opOperator = op }]
 
     removeOperator :: Address -> Address -> capsM ()
     removeOperator from op =
@@ -152,7 +149,7 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
         (AddressResolved from)
         sc
         (Call @"Update_operators")
-        [FA2.Remove_operator (#owner .! from, #operator .! op)]
+        [FA2.Remove_operator FA2.OperatorParam { opOwner = from, opOperator = op }]
 
     mint :: Address -> Natural -> capsM ()
     mint to_ value =
@@ -160,7 +157,7 @@ scNettestScenario constructInitialStorage stablecoinContract originateTransferli
         (AddressResolved to_)
         sc
         (Call @"Mint")
-        [(#to_ .! to_, #amount .! value)]
+        [MintParam to_ value]
 
     burn :: Address -> Natural -> capsM ()
     burn from amount_ =

@@ -4,6 +4,17 @@ SPDX-License-Identifier: MIT
 -->
 # Changelog for stablecoin
 
+## Unreleased changes
+
+* [#112](https://github.com/tqtezos/stablecoin/pull/112)
+  Haskell bindings for `Storage` and related types now use
+  Haskell data constructors instead of nested tuples.
+* [#104](https://github.com/tqtezos/stablecoin/pull/104)
+  Changed default token name from `USDC` to `Test` and token symbol
+  from `USDC` to `TEST`
+* [#93](https://github.com/tqtezos/stablecoin/pull/93)
+  Implemented TZIP-17
+
 ## 1.2.0
 
 Operations on the contract got cheaper in this release:

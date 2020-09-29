@@ -12,21 +12,22 @@ import Lorentz
 import qualified Lorentz as L
 import Lorentz.Test.Consumer (contractConsumer)
 import Michelson.Typed (convertContract, untypeValue)
-import qualified Michelson.Typed as T
 import Morley.Client (Alias)
 import Morley.Nettest
 import qualified Unsafe as Unsafe
-import Util.Named
 
+import Lorentz.Contracts.Spec.FA2Interface (TransferDestination(..), TransferParam(..))
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
-import Lorentz.Contracts.Stablecoin (Parameter(..), Storage, mkPermitHash)
+import Lorentz.Contracts.Stablecoin
+  (ConfigureMinterParam(..), Parameter(..), PermitParam(..), RevokeParam(..), mkPermitHash,
+  stablecoinContract)
 
 import Lorentz.Contracts.Test.Common
   (OriginationParams(..), addAccount, defaultOriginationParams, mkInitialStorage)
 
 
-permitScenario :: T.Contract (ToT Parameter) (ToT Storage) -> NettestScenario m
-permitScenario stablecoinContract = uncapsNettest $ do
+permitScenario :: NettestScenario m
+permitScenario = uncapsNettest $ do
   comment "-- Permits tests --"
   comment "Creating accounts"
   (owner1Alias, owner1) <- createUser "nettestOwner1"
@@ -66,7 +67,7 @@ permitScenario stablecoinContract = uncapsNettest $ do
       let bytes = lPackValue ((contract, chainId), (counter, permitHash))
       sig <- signBytes bytes alias
       pk <- getPublicKey (AddressAlias alias)
-      call contract (Call @"Permit") (pk, (sig, permitHash))
+      call contract (Call @"Permit") (PermitParam pk sig permitHash)
 
   comment "Issue a permit for Pause"
   issuePermit pauserAlias Pause
@@ -78,28 +79,24 @@ permitScenario stablecoinContract = uncapsNettest $ do
 
   comment "Issue a permit for Revoke"
   issuePermit pauserAlias Pause
-  let revokeParam = [(mkPermitHash Pause, pauser)]
+  let revokeParam = [RevokeParam (mkPermitHash Pause) pauser]
   issuePermit pauserAlias (Revoke revokeParam)
   callFrom (addressResolved user1) contract (Call @"Revoke") revokeParam
   callFrom (addressResolved user1) contract (Call @"Pause") ()
     `expectFailure` NettestFailedWith contract [mt|NOT_PAUSER|]
 
   comment "Issue a permit for Transfer"
-  let transferParam = [ (#from_ .! owner1, #txs .! [(#to_ .! user1, (#token_id .! 0, #amount .! 1))]) ]
+  let transferParam = [ TransferParam owner1 [TransferDestination user1 0 1] ]
   issuePermit owner1Alias (Call_FA2 $ FA2.Transfer transferParam)
   callFrom (addressResolved user1) contract (Call @"Transfer") transferParam
 
   comment "Issue a permit for Update_operators"
-  let param = [ FA2.Add_operator (#owner .! owner1, #operator user1 ) ]
+  let param = [ FA2.Add_operator FA2.OperatorParam { opOwner = owner1, opOperator = user1 } ]
   issuePermit owner1Alias (Call_FA2 $ FA2.Update_operators param)
   callFrom (addressResolved user1) contract (Call @"Update_operators") param
 
   comment "Issue a permit for Configure_minter"
-  let configureMinterParam =
-        ( #minter .! user1
-        , ( #current_minting_allowance .! Nothing
-          , #new_minting_allowance .! 30
-          ))
+  let configureMinterParam = ConfigureMinterParam user1 Nothing 30
   issuePermit masterMinterAlias (Configure_minter configureMinterParam)
   callFrom (addressResolved user1) contract (Call @"Configure_minter") configureMinterParam
 

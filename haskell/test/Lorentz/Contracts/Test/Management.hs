@@ -19,10 +19,10 @@ import qualified Data.Set as Set
 import Test.Hspec (Spec, describe, it)
 
 import qualified Indigo.Contracts.Transferlist.Internal as Transferlist
-import Lorentz (mkView, mt)
+import Lorentz (mkView, mt, unBigMap)
 import Lorentz.Address
-import "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
-import Lorentz.Contracts.Stablecoin
+import qualified "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
+import Lorentz.Contracts.Stablecoin hiding (stablecoinContract)
 import Lorentz.Contracts.Test.Common
 import Lorentz.Test
 import Michelson.Runtime (ExecutorError)
@@ -101,20 +101,17 @@ managementSpec originate = do
 
     it "token metadata registry is present in storage" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
-        lExpectStorage stablecoinContract $ \case
-          StorageMetadataRegistery regAddr
-            | regAddr == registryAddress -> Right ()
-            | otherwise -> Left $ CustomTestError "Malformed token metadata registry address in contract storage"
+        lExpectStorage @Storage stablecoinContract $ \storage ->
+          unless (sTokenMetadataRegistry storage == registryAddress) $
+            Left $ CustomTestError "Malformed token metadata registry address in contract storage"
 
   describe "Contract pausing" $ do
     it "pauses contract as expected" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         withSender testPauser $ lCallEP stablecoinContract (Call @"Pause") ()
-        lExpectStorage stablecoinContract $ \case
-          StoragePaused isPaused
-            | not isPaused ->
-                Left $ CustomTestError "Contract is not paused as was expected"
-            | otherwise -> Right ()
+        lExpectStorage @Storage stablecoinContract $ \storage ->
+          unless (sIsPaused storage) $
+            Left $ CustomTestError "Contract is not paused as was expected"
 
     it "cannot pause if sender does not have corresponding permissions" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
@@ -132,11 +129,9 @@ managementSpec originate = do
       let originationParams = defaultOriginationParams { opPaused = True }
       withOriginated originate originationParams $ \stablecoinContract -> do
         withSender testPauser $ lCallEP stablecoinContract (Call @"Unpause") ()
-        lExpectStorage stablecoinContract $ \case
-          (StoragePaused isPaused)
-            | isPaused ->
-                Left $ CustomTestError "Contract is paused which wasn't expected"
-            | otherwise -> Right ()
+        lExpectStorage @Storage stablecoinContract $ \storage ->
+          when (sIsPaused storage) $
+            Left $ CustomTestError "Contract is paused which wasn't expected"
 
     it "cannot unpause if sender does not have corresponding permissions" $ integrationalTestExpectation $ do
       let originationParams = defaultOriginationParams { opPaused = True }
@@ -186,18 +181,18 @@ managementSpec originate = do
         withSender commonOperator $ lCallEP stablecoinContract (Call @"Transfer") transfer1
         withSender commonOperator $ lCallEP stablecoinContract (Call @"Transfer") transfer2
 
-        consumer <- lOriginateEmpty @[BalanceResponseItem] contractConsumer "consumer"
+        consumer <- lOriginateEmpty @[FA2.BalanceResponseItem] contractConsumer "consumer"
         let
           balanceRequestItems =
-            [ (#owner .! wallet1, #token_id .! 0)
-            , (#owner .! wallet2, #token_id .! 0)
-            , (#owner .! wallet3, #token_id .! 0)
+            [ FA2.BalanceRequestItem wallet1 0
+            , FA2.BalanceRequestItem wallet2 0
+            , FA2.BalanceRequestItem wallet3 0
             ]
           balanceRequest = mkView (#requests .! balanceRequestItems) consumer
           balanceExpected =
-            [ (#request .! (#owner .! wallet1, #token_id .! 0), #balance .! 0)
-            , (#request .! (#owner .! wallet2, #token_id .! 0), #balance .! 0)
-            , (#request .! (#owner .! wallet3, #token_id .! 0), #balance .! 10)
+            [ FA2.BalanceResponseItem { briRequest = FA2.BalanceRequestItem wallet1 0, briBalance = 0 }
+            , FA2.BalanceResponseItem { briRequest = FA2.BalanceRequestItem wallet2 0, briBalance = 0 }
+            , FA2.BalanceResponseItem { briRequest = FA2.BalanceRequestItem wallet3 0, briBalance = 10 }
             ]
 
         lCallEP stablecoinContract (Call @"Balance_of") balanceRequest
@@ -208,55 +203,52 @@ managementSpec originate = do
     it "configures minter properly" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         let
-          configureMinterParam =
-            ( #minter .! wallet1
-            , ( #current_minting_allowance .! Nothing
-              , #new_minting_allowance .! 30
-              ))
+          configureMinterParam = ConfigureMinterParam
+            { cmpMinter = wallet1
+            , cmpCurrentMintingAllowance = Nothing
+            , cmpNewMintingAllowance = 30
+            }
 
-          configureMinterParam1 =
-            ( #minter .! wallet2
-            , ( #current_minting_allowance .! Nothing
-              , #new_minting_allowance .! 20
-              ))
+          configureMinterParam1 = ConfigureMinterParam
+            { cmpMinter = wallet2
+            , cmpCurrentMintingAllowance = Nothing
+            , cmpNewMintingAllowance = 20
+            }
 
         withSender testMasterMinter $ lCallEP stablecoinContract (Call @"Configure_minter") configureMinterParam
         withSender testMasterMinter $ lCallEP stablecoinContract (Call @"Configure_minter") configureMinterParam1
 
         let
-          configureMinterParam2 =
-            ( #minter .! wallet2
-            , ( #current_minting_allowance .! Just 20
-              , #new_minting_allowance .! 10
-              ))
+          configureMinterParam2 = ConfigureMinterParam
+            { cmpMinter = wallet2
+            , cmpCurrentMintingAllowance = Just 20
+            , cmpNewMintingAllowance = 10
+            }
 
         withSender testMasterMinter $ lCallEP stablecoinContract (Call @"Configure_minter") configureMinterParam2
 
-        lExpectStorage stablecoinContract $ \case
-          (StorageMinters minters)
-            | minters /= expectedMinters  ->
+        lExpectStorage @Storage stablecoinContract $ \storage ->
+          let expectedMinters = fromList [(wallet1, 30), (wallet2, 10)]
+          in  when (sMintingAllowances storage /= expectedMinters) $
                 Left $ CustomTestError "Configure_minter call produced a malformed minter list"
-            | otherwise -> Right ()
-            where
-              expectedMinters = fromList [(wallet1, 30), (wallet2, 10)]
 
     it "fails if expected and actual minting allowances do not match" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         let
-          configureMinterParam1 =
-            ( #minter .! wallet2
-            , ( #current_minting_allowance .! Nothing
-              , #new_minting_allowance .! 20
-              ))
+          configureMinterParam1 = ConfigureMinterParam
+            { cmpMinter = wallet2
+            , cmpCurrentMintingAllowance = Nothing
+            , cmpNewMintingAllowance = 20
+            }
 
         withSender testMasterMinter $ lCallEP stablecoinContract (Call @"Configure_minter") configureMinterParam1
 
         let
-          configureMinterParam2 =
-            ( #minter .! wallet2
-            , ( #current_minting_allowance .! Just 2000 -- Mismatched allowance here
-              , #new_minting_allowance .! 10
-              ))
+          configureMinterParam2 = ConfigureMinterParam
+            { cmpMinter = wallet2
+            , cmpCurrentMintingAllowance = Just 2000 -- Mismatched allowance here
+            , cmpNewMintingAllowance = 10
+            }
 
         err <- expectError $ withSender testMasterMinter $ lCallEP stablecoinContract (Call @"Configure_minter") configureMinterParam2
 
@@ -265,20 +257,20 @@ managementSpec originate = do
     it "fails if minter is present in list of minters which was not expected" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         let
-          configureMinterParam1 =
-            ( #minter .! wallet2
-            , ( #current_minting_allowance .! Nothing
-              , #new_minting_allowance .! 20
-              ))
+          configureMinterParam1 = ConfigureMinterParam
+            { cmpMinter = wallet2
+            , cmpCurrentMintingAllowance = Nothing
+            , cmpNewMintingAllowance = 20
+            }
 
         withSender testMasterMinter $ lCallEP stablecoinContract (Call @"Configure_minter") configureMinterParam1
 
         let
-          configureMinterParam2 =
-            ( #minter .! wallet2
-            , ( #current_minting_allowance .! Nothing -- Here we expect for `wallet2` being non-present in minting allowances map
-              , #new_minting_allowance .! 10
-              ))
+          configureMinterParam2 = ConfigureMinterParam
+            { cmpMinter = wallet2
+            , cmpCurrentMintingAllowance = Nothing -- Here we expect for `wallet2` being non-present in minting allowances map
+            , cmpNewMintingAllowance = 10
+            }
 
         err <- expectError $ withSender testMasterMinter $ lCallEP stablecoinContract (Call @"Configure_minter") configureMinterParam2
 
@@ -287,11 +279,11 @@ managementSpec originate = do
     it "fails if sender does not have master minter permissions" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         let
-          configureMinterParam1 =
-            ( #minter .! wallet2
-            , ( #current_minting_allowance .! Nothing
-              , #new_minting_allowance .! 20
-              ))
+          configureMinterParam1 = ConfigureMinterParam
+            { cmpMinter = wallet2
+            , cmpCurrentMintingAllowance = Nothing
+            , cmpNewMintingAllowance = 20
+            }
 
         err <- expectError $ withSender wallet2 $ lCallEP stablecoinContract (Call @"Configure_minter") configureMinterParam1
 
@@ -302,11 +294,11 @@ managementSpec originate = do
         withSender testPauser $ lCallEP stablecoinContract (Call @"Pause") ()
 
         let
-          configureMinterParam1 =
-            ( #minter .! wallet2
-            , ( #current_minting_allowance .! Nothing
-              , #new_minting_allowance .! 20
-              ))
+          configureMinterParam1 = ConfigureMinterParam
+            { cmpMinter = wallet2
+            , cmpCurrentMintingAllowance = Nothing
+            , cmpNewMintingAllowance = 20
+            }
 
         err <- expectError $ lCallEP stablecoinContract (Call @"Configure_minter") configureMinterParam1
 
@@ -315,11 +307,11 @@ managementSpec originate = do
   describe "Minter limit check" $ do
     let
       configureMinterParam :: Int -> ConfigureMinterParam
-      configureMinterParam i =
-        ( #minter .! (detGenKeyAddress $ encodeUtf8 @Text ("a" <> show i))
-        , ( #current_minting_allowance .! Nothing
-          , #new_minting_allowance .! 20
-          ))
+      configureMinterParam i = ConfigureMinterParam
+        { cmpMinter = detGenKeyAddress $ encodeUtf8 @Text ("a" <> show i)
+        , cmpCurrentMintingAllowance = Nothing
+        , cmpNewMintingAllowance = 20
+        }
 
     it "Can add minter until minter limit" $ integrationalTestExpectation $ do
 
@@ -327,10 +319,9 @@ managementSpec originate = do
         withSender testMasterMinter $ do
           mapM_ (lCallEP stablecoinContract (Call @"Configure_minter")) (configureMinterParam <$> [1..minterLimit])
 
-          lExpectStorage stablecoinContract $ \case
-            (StorageMinters minters) ->
-              unless (M.size minters == minterLimit) $
-                  Left $ CustomTestError "Configure_minter call produced a malformed minter list"
+          lExpectStorage @Storage stablecoinContract $ \storage ->
+            unless (M.size (sMintingAllowances storage) == minterLimit) $
+                Left $ CustomTestError "Configure_minter call produced a malformed minter list"
 
     it "Throws error when minter limit is exceeded" $ integrationalTestExpectation $ do
 
@@ -351,13 +342,10 @@ managementSpec originate = do
       withOriginated originate originationParams $ \stablecoinContract -> do
         withSender testMasterMinter $ lCallEP stablecoinContract (Call @"Remove_minter") wallet1
         withSender testMasterMinter $ lCallEP stablecoinContract (Call @"Remove_minter") wallet2
-        lExpectStorage stablecoinContract $ \case
-          (StorageMinters minters)
-            | minters /= expectedMinters  ->
+        lExpectStorage @Storage stablecoinContract $ \storage ->
+          let expectedMinters = fromList [(wallet3, 100)]
+          in  when (sMintingAllowances storage /= expectedMinters) $
                 Left $ CustomTestError "Remove minter does not change minter list"
-            | otherwise -> Right ()
-            where
-              expectedMinters = fromList [(wallet3, 100)]
 
     it "fails if sender is not master minter" $ integrationalTestExpectation $ do
       let
@@ -394,25 +382,25 @@ managementSpec originate = do
       withOriginated originate originationParams $ \stablecoinContract -> do
         let
           mintings =
-            [ (#to_ .! wallet1, #amount .! 10)
-            , (#to_ .! wallet2, #amount .! 5)
-            , (#to_ .! wallet3, #amount .! 15)
+            [ MintParam wallet1 10
+            , MintParam wallet2 5
+            , MintParam wallet3 15
             ]
 
         withSender wallet1 $ lCallEP stablecoinContract (Call @"Mint") mintings
 
-        consumer <- lOriginateEmpty @[BalanceResponseItem] contractConsumer "consumer"
+        consumer <- lOriginateEmpty @[FA2.BalanceResponseItem] contractConsumer "consumer"
         let
           balanceRequestItems =
-            [ (#owner .! wallet1, #token_id .! 0)
-            , (#owner .! wallet2, #token_id .! 0)
-            , (#owner .! wallet3, #token_id .! 0)
+            [ FA2.BalanceRequestItem wallet1 0
+            , FA2.BalanceRequestItem wallet2 0
+            , FA2.BalanceRequestItem wallet3 0
             ]
           balanceRequest = mkView (#requests .! balanceRequestItems) consumer
           balanceExpected =
-            [ (#request .! (#owner .! wallet1, #token_id .! 0), #balance .! 10)
-            , (#request .! (#owner .! wallet2, #token_id .! 0), #balance .! 5)
-            , (#request .! (#owner .! wallet3, #token_id .! 0), #balance .! 15)
+            [ FA2.BalanceResponseItem { briRequest = FA2.BalanceRequestItem wallet1 0, briBalance = 10 }
+            , FA2.BalanceResponseItem { briRequest = FA2.BalanceRequestItem wallet2 0, briBalance = 5 }
+            , FA2.BalanceResponseItem { briRequest = FA2.BalanceRequestItem wallet3 0, briBalance = 15 }
             ]
 
         lCallEP stablecoinContract (Call @"Balance_of") balanceRequest
@@ -427,9 +415,9 @@ managementSpec originate = do
       withOriginated originate originationParams $ \stablecoinContract -> do
         let
           mintings =
-            [ (#to_ .! wallet1, #amount .! 5)
-            , (#to_ .! wallet2, #amount .! 10) -- Error here
-            , (#to_ .! wallet3, #amount .! 5)
+            [ MintParam wallet1 5
+            , MintParam wallet2 10 -- Error here
+            , MintParam wallet3 5
             ]
 
         err <- expectError $ withSender wallet1 $ lCallEP stablecoinContract (Call @"Mint") mintings
@@ -438,7 +426,7 @@ managementSpec originate = do
 
     it "fails if sender is not minter" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
-        let mintings = [(#to_ .! wallet1, #amount .! 5)]
+        let mintings = [MintParam wallet1 5]
         err <- expectError $ withSender wallet1 $ lCallEP stablecoinContract (Call @"Mint") mintings
         lExpectAnyMichelsonFailed stablecoinContract err
 
@@ -448,7 +436,7 @@ managementSpec originate = do
             addMinter (wallet1, 10)
           $ defaultOriginationParams { opPaused = True }
       withOriginated originate originationParams $ \stablecoinContract -> do
-        let mintings = [(#to_ .! wallet1, #amount .! 5)]
+        let mintings = [MintParam wallet1 5]
         err <- expectError $ withSender wallet1 $ lCallEP stablecoinContract (Call @"Mint") mintings
         mgmContractPaused err
 
@@ -468,16 +456,16 @@ managementSpec originate = do
         withSender wallet1 $ lCallEP stablecoinContract (Call @"Burn") [ 10, 20 ]
         withSender wallet2 $ lCallEP stablecoinContract (Call @"Burn") [ 0 ]
 
-        consumer <- lOriginateEmpty @[BalanceResponseItem] contractConsumer "consumer"
+        consumer <- lOriginateEmpty @[FA2.BalanceResponseItem] contractConsumer "consumer"
         let
           balanceRequestItems =
-            [ (#owner .! wallet1, #token_id .! 0)
-            , (#owner .! wallet2, #token_id .! 0)
+            [ FA2.BalanceRequestItem wallet1 0
+            , FA2.BalanceRequestItem wallet2 0
             ]
           balanceRequest = mkView (#requests .! balanceRequestItems) consumer
           balanceExpected =
-            [ (#request .! (#owner .! wallet1, #token_id .! 0), #balance .! 5)
-            , (#request .! (#owner .! wallet2, #token_id .! 0), #balance .! 0)
+            [ FA2.BalanceResponseItem { briRequest = FA2.BalanceRequestItem wallet1 0, briBalance = 5 }
+            , FA2.BalanceResponseItem { briRequest = FA2.BalanceRequestItem wallet2 0, briBalance = 0 }
             ]
 
         lCallEP stablecoinContract (Call @"Balance_of") balanceRequest
@@ -495,11 +483,9 @@ managementSpec originate = do
 
         withSender wallet1 $ lCallEP stablecoinContract (Call @"Burn") [ 35 ]
 
-        lExpectStorage stablecoinContract $ \case
-          (StorageLedger ledger)
-            | M.lookup wallet1 ledger == Nothing -> Right ()
-            | otherwise ->
-                Left $ CustomTestError "Zero balance account was not removed after burning"
+        lExpectStorage @Storage stablecoinContract $ \storage ->
+          unless (M.lookup wallet1 (unBigMap $ sLedger storage) == Nothing) $
+            Left $ CustomTestError "Zero balance account was not removed after burning"
 
     it "fails to burn tokens if sender is not minter" $ integrationalTestExpectation $ do
       let
@@ -528,7 +514,7 @@ managementSpec originate = do
           $ defaultOriginationParams
       withOriginated originate originationParams $ \stablecoinContract -> do
         withSender wallet1 $ lCallEP stablecoinContract (Call @"Burn") [ 10 ]
-        let mintings = [(#to_ .! wallet1, #amount .! 10)]
+        let mintings = [MintParam wallet1 10]
         err <- expectError $ withSender wallet1 $ lCallEP stablecoinContract (Call @"Mint") mintings
         mgmAllowanceExceeded err
 
@@ -549,20 +535,16 @@ managementSpec originate = do
         withSender wallet1 $ lCallEP stablecoinContract (Call @"Accept_ownership") ()
         withSender wallet1 $ lCallEP stablecoinContract (Call @"Transfer_ownership") wallet2
         withSender wallet2 $ lCallEP stablecoinContract (Call @"Accept_ownership") ()
-        lExpectStorage stablecoinContract $ \case
-          (StorageRoles (OwnerRole currentOwner))
-            | currentOwner /= wallet2 -> Left $
-                CustomTestError "Owner was not changed"
-            | otherwise -> Right ()
+        lExpectStorage @Storage stablecoinContract $ \storage ->
+          when ((rOwner $ sRoles storage) /= wallet2) $
+            Left $ CustomTestError "Owner was not changed"
 
     it "current contract owner retains its privileges if ownership weren't accepted yet" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         withSender testOwner $ lCallEP stablecoinContract (Call @"Transfer_ownership") wallet1
-        lExpectStorage stablecoinContract $ \case
-          (StorageRoles (OwnerRole currentOwner))
-            | currentOwner /= testOwner -> Left $
-                CustomTestError "Owner was changed"
-            | otherwise -> Right ()
+        lExpectStorage @Storage stablecoinContract $ \storage ->
+          when ((rOwner $ sRoles storage) /= testOwner) $
+            Left $ CustomTestError "Owner was changed"
 
     it "transferring ownership fails if sender is not contract owner" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
@@ -594,11 +576,9 @@ managementSpec originate = do
         withSender testOwner $ lCallEP stablecoinContract (Call @"Transfer_ownership") wallet2
         withSender testOwner $ lCallEP stablecoinContract (Call @"Transfer_ownership") wallet3
         withSender wallet3 $ lCallEP stablecoinContract (Call @"Accept_ownership") ()
-        lExpectStorage stablecoinContract $ \case
-          (StorageRoles (OwnerRole currentOwner))
-            | currentOwner /= wallet3 -> Left $
-                CustomTestError "Owner was not changed"
-            | otherwise -> Right ()
+        lExpectStorage @Storage stablecoinContract $ \storage ->
+          when (rOwner (sRoles storage) /= wallet3) $
+            Left $ CustomTestError "Owner was not changed"
 
     it "contract cannot retain ownership privileges if pending owner was changed by subsequent transfer ownership call" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
@@ -610,20 +590,16 @@ managementSpec originate = do
     it "contract owner changes master minter properly" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         withSender testOwner $ lCallEP stablecoinContract (Call @"Change_master_minter") wallet1
-        lExpectStorage stablecoinContract $ \case
-          (StorageRoles (MasterMinterRole currentMasterMinter))
-            | currentMasterMinter /= wallet1 -> Left $
-                CustomTestError "Master minter was not changed"
-            | otherwise -> Right ()
+        lExpectStorage @Storage stablecoinContract $ \storage ->
+          when (rMasterMinter (sRoles storage) /= wallet1) $
+            Left $ CustomTestError "Master minter was not changed"
 
     it "contract owner changes contract pauser properly" $ integrationalTestExpectation $ do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         withSender testOwner $ lCallEP stablecoinContract (Call @"Change_pauser") wallet1
-        lExpectStorage stablecoinContract $ \case
-          (StorageRoles (PauserRole currentPauser))
-            | currentPauser /= wallet1 -> Left $
-                CustomTestError "Pauser was not changed"
-            | otherwise -> Right ()
+        lExpectStorage @Storage stablecoinContract $ \storage ->
+          when (rPauser (sRoles storage) /= wallet1) $
+            Left $ CustomTestError "Pauser was not changed"
 
 
   -- All successfull master minter capabilities are already tested
@@ -686,12 +662,13 @@ managementSpec originate = do
           withSender (opOwner originationParams) $
             lCallEP stablecoinContract (Call @"Set_transferlist") (Just transferlistContract)
 
-          lExpectStorage stablecoinContract $ \case
-            StorageTransferlistContract (Just addr)
-              | addr == transferlistContract -> Right ()
-              | otherwise -> Left $ CustomTestError "Transferlist contract address was not set correctly"
-            StorageTransferlistContract Nothing ->
-              Left $ CustomTestError "Transferlist contract address was not set"
+          lExpectStorage @Storage stablecoinContract $ \storage ->
+            case sTransferlistContract storage of
+              Just addr
+                | addr == transferlistContract -> Right ()
+                | otherwise -> Left $ CustomTestError "Transferlist contract address was not set correctly"
+              Nothing ->
+                Left $ CustomTestError "Transferlist contract address was not set"
 
       it "can unset transferlist contract address in storage" $ integrationalTestExpectation $ do
         transferlistContract <- lOriginate Transferlist.transferlistContract "Transferlist test dummy" transferlistStorage (unsafeMkMutez 0)
@@ -702,9 +679,10 @@ managementSpec originate = do
           withSender (opOwner originationParams) $
             lCallEP stablecoinContract (Call @"Set_transferlist") Nothing
 
-          lExpectStorage stablecoinContract $ \case
-            StorageTransferlistContract (Just _) -> Left $ CustomTestError "Transferlist contract address was not unset"
-            StorageTransferlistContract Nothing -> Right ()
+          lExpectStorage @Storage stablecoinContract $ \storage ->
+            case sTransferlistContract storage of
+              Just _ -> Left $ CustomTestError "Transferlist contract address was not unset"
+              Nothing -> Right ()
 
       it "should fail if parameter of transferlist contract does not have the required entrypoints" $ integrationalTestExpectation $ do
         let originationParams = defaultOriginationParams
@@ -726,7 +704,7 @@ managementSpec originate = do
         withOriginated originate originationParams $ \stablecoinContract -> do
           let
             transfers =
-              [(#from_ .! wallet1, #txs .! [(#to_ .! wallet2, (#token_id .! 0, #amount .! 10))])]
+              [FA2.TransferParam wallet1 [FA2.TransferDestination wallet2 0 10]]
 
           err <- expectError $ withSender commonOperator $
             lCallEP stablecoinContract (Call @"Transfer") transfers
@@ -740,11 +718,7 @@ managementSpec originate = do
               $ addMinter (wallet1, 30)
               $ defaultOriginationParams { opTransferlistContract = Just transferlistContract }
         withOriginated originate originationParams $ \stablecoinContract -> do
-          let
-            mintings =
-              [ (#to_ .! wallet1, #amount .! 10)
-              ]
-
+          let mintings = [MintParam wallet1 10]
           err <- expectError $ withSender wallet1 $
             lCallEP stablecoinContract (Call @"Mint") mintings
 
@@ -775,7 +749,11 @@ managementSpec originate = do
         withOriginated originate originationParams $ \stablecoinContract -> do
           let
             transfers =
-              [(#from_ .! wallet1, #txs .! [(#to_ .! wallet2, (#token_id .! 0, #amount .! 10))])]
+              [ FA2.TransferParam
+                  { tpFrom = wallet1
+                  , tpTxs = [FA2.TransferDestination { tdTo = wallet2, tdTokenId = 0, tdAmount = 10 }]
+                  }
+              ]
 
           withSender commonOperator $ lCallEP stablecoinContract (Call @"Transfer") transfers
 
@@ -787,11 +765,7 @@ managementSpec originate = do
               $ defaultOriginationParams { opTransferlistContract = Just transferlistContract }
         withOriginated originate originationParams $ \stablecoinContract -> do
 
-          let
-            mintings =
-              [ (#to_ .! wallet1, #amount .! 10)
-              ]
-
+          let mintings = [MintParam wallet1 10]
           withSender wallet1 $ lCallEP stablecoinContract (Call @"Mint") mintings
 
       it "can approve burn operation" $ integrationalTestExpectation $ do

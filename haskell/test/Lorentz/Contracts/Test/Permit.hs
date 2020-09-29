@@ -15,8 +15,7 @@ module Lorentz.Contracts.Test.Permit
 
 import Test.Hspec (Spec, describe, it, specify)
 
-import Lorentz (arg, lPackValue, mkView, mt)
-import Lorentz.Address (TAddress)
+import Lorentz (BigMap(..), TAddress, lPackValue, mkView, mt)
 import Lorentz.Test
 import Michelson.Runtime (ExecutorError)
 import Michelson.Runtime.GState (GState(gsChainId), initGState)
@@ -27,10 +26,9 @@ import qualified Tezos.Crypto.Hash as Hash
 import qualified Tezos.Crypto.P256 as P256
 import qualified Tezos.Crypto.Secp256k1 as Secp256k1
 import Tezos.Crypto.Util (deterministic)
-import Util.Named
 
 import qualified "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
-import Lorentz.Contracts.Stablecoin
+import Lorentz.Contracts.Stablecoin hiding (stablecoinContract)
 
 import Lorentz.Contracts.Test.Common
 import Lorentz.Contracts.Test.FA2 (fa2NotOperator, fa2NotOwner)
@@ -56,7 +54,7 @@ mkPermit contractAddr sk counter param =
 callPermit :: TAddress Parameter -> PublicKey -> SecretKey -> Natural -> Parameter -> IntegrationalScenarioM PermitHash
 callPermit contractAddr pk sk counter param = do
   let (permitHash, _, sig) = mkPermit contractAddr sk counter param
-  lCallEP contractAddr (Call @"Permit") (pk, (sig, permitHash))
+  lCallEP contractAddr (Call @"Permit") $ PermitParam pk sig permitHash
   pure permitHash
 
 errExpiredPermit, errNotPermitIssuer :: ExecutorError -> IntegrationalScenario
@@ -69,21 +67,20 @@ errMissignedPermit signedBytes = lExpectFailWith (== ([mt|MISSIGNED|], signedByt
 -- | Assert that there are n permits left in the storage
 assertPermitCount :: TAddress Parameter -> Int -> IntegrationalScenario
 assertPermitCount contractAddr expectedCount =
-  lExpectStorage contractAddr $ \case
-    StoragePermits permits ->
-      let count = permitCount permits
-      in  if count == expectedCount
-            then Right ()
-            else Left $ CustomTestError $
-                  "Expected there to be "
-                  <> show expectedCount
-                  <> " permits left in the storage, but there were "
-                  <> show count
+  lExpectStorage contractAddr $ \storage ->
+    let count = permitCount (sPermits storage)
+    in  if count == expectedCount
+          then Right ()
+          else Left $ CustomTestError $
+                "Expected there to be "
+                <> show expectedCount
+                <> " permits left in the storage, but there were "
+                <> show count
   where
-    permitCount :: Map Address UserPermits -> Int
-    permitCount permits =
+    permitCount :: BigMap Address UserPermits -> Int
+    permitCount (BigMap permits) =
       sum $
-        permits <&> \(_, arg #permits -> permits') -> length permits'
+        permits <&> \userPermits -> length (upPermits userPermits)
 
 permitSpec :: OriginationFn Parameter -> Spec
 permitSpec originate = do
@@ -96,8 +93,8 @@ permitSpec originate = do
               (permitHash, _signedBytes, sig) = mkPermit stablecoinContract testPauserSK 999 Pause
               expectedSignedBytes = lPackValue ((stablecoinContract, gsChainId initGState), (0 :: Natural, permitHash))
             in
-              lCallEP stablecoinContract (Call @"Permit") (testPauserPK, (sig, permitHash)) `catchExpectedError`
-                errMissignedPermit expectedSignedBytes
+              lCallEP stablecoinContract (Call @"Permit") (PermitParam testPauserPK sig permitHash)
+                `catchExpectedError` errMissignedPermit expectedSignedBytes
 
     specify "The public key must match the private key used to sign the permit" $
       integrationalTestExpectation $ do
@@ -106,8 +103,8 @@ permitSpec originate = do
             let
               (permitHash, signedBytes, sig) = mkPermit stablecoinContract testPauserSK 0 Pause
             in
-              lCallEP stablecoinContract (Call @"Permit") (wallet1PK, (sig, permitHash)) `catchExpectedError`
-                errMissignedPermit signedBytes
+              lCallEP stablecoinContract (Call @"Permit") (PermitParam wallet1PK sig permitHash)
+                `catchExpectedError` errMissignedPermit signedBytes
 
     specify "The permit can be sent to the contract by a user other than the signer" $
       integrationalTestExpectation $ do
@@ -188,7 +185,7 @@ permitSpec originate = do
           withSender wallet1 $ do
             hash <- callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
             -- Set the permit's expiry to 3
-            lCallEP stablecoinContract (Call @"Set_expiry") (3, Just (hash, testPauser))
+            lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam 3 (Just (hash, testPauser))
             -- Re-upload permit hash
             callPermit stablecoinContract testPauserPK testPauserSK 1 Pause
             assertPermitCount stablecoinContract 1
@@ -213,7 +210,7 @@ permitSpec originate = do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             withSender testPauser $ do
               hash <- callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
-              lCallEP stablecoinContract (Call @"Revoke") [(hash, testPauser)]
+              lCallEP stablecoinContract (Call @"Revoke") [RevokeParam hash testPauser]
 
             withSender wallet1 $ do
               lCallEP stablecoinContract (Call @"Pause") () `catchExpectedError` mgmNotPauser
@@ -225,18 +222,18 @@ permitSpec originate = do
               callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
 
             withSender wallet1 $
-              lCallEP stablecoinContract (Call @"Revoke") [(hash, testPauser)] `catchExpectedError` errNotPermitIssuer
+              lCallEP stablecoinContract (Call @"Revoke") [RevokeParam hash testPauser] `catchExpectedError` errNotPermitIssuer
 
       specify "a user X can issue a permit allowing others to revoke X's permits" $
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             hash <- withSender testPauser $ do
               hash <- callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
-              callPermit stablecoinContract testPauserPK testPauserSK 1 (Revoke [(hash, testPauser)])
+              callPermit stablecoinContract testPauserPK testPauserSK 1 (Revoke [RevokeParam hash testPauser])
               pure hash
 
             withSender wallet1 $ do
-              lCallEP stablecoinContract (Call @"Revoke") [(hash, testPauser)]
+              lCallEP stablecoinContract (Call @"Revoke") [RevokeParam hash testPauser]
               lCallEP stablecoinContract (Call @"Pause") () `catchExpectedError` mgmNotPauser
 
       specify "a user X cannot issue a permit allowing others to revoke Y's permits" $
@@ -246,10 +243,10 @@ permitSpec originate = do
               callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
 
             withSender wallet1 $
-              callPermit stablecoinContract wallet1PK wallet1SK 1 (Revoke [(hash, testPauser)])
+              callPermit stablecoinContract wallet1PK wallet1SK 1 (Revoke [RevokeParam hash testPauser])
 
             withSender wallet2 $ do
-              lCallEP stablecoinContract (Call @"Revoke") [(hash, testPauser)]
+              lCallEP stablecoinContract (Call @"Revoke") [RevokeParam hash testPauser]
                 `catchExpectedError` errNotPermitIssuer
 
       specify "permits for this entrypoint are consumed upon use" $
@@ -257,12 +254,12 @@ permitSpec originate = do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             hash <- withSender testPauser $ do
               hash <- callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
-              callPermit stablecoinContract testPauserPK testPauserSK 1 (Revoke [(hash, testPauser)])
+              callPermit stablecoinContract testPauserPK testPauserSK 1 (Revoke [RevokeParam hash testPauser])
               pure hash
 
             withSender wallet1 $ do
               assertPermitCount stablecoinContract 2
-              lCallEP stablecoinContract (Call @"Revoke") [(hash, testPauser)]
+              lCallEP stablecoinContract (Call @"Revoke") [RevokeParam hash testPauser]
               assertPermitCount stablecoinContract 0
 
       it "can remove multiple permits at once" $ do
@@ -271,7 +268,10 @@ permitSpec originate = do
             withSender testPauser $ do
               hash1 <- callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
               hash2 <- callPermit stablecoinContract testPauserPK testPauserSK 1 Unpause
-              lCallEP stablecoinContract (Call @"Revoke") [(hash1, testPauser), (hash2, testPauser)]
+              lCallEP stablecoinContract (Call @"Revoke")
+                [ RevokeParam hash1 testPauser
+                , RevokeParam hash2 testPauser
+                ]
 
             -- `wallet1` should now be unable to neither pause nor unpause the contract
             withSender wallet1 $
@@ -293,7 +293,7 @@ permitSpec originate = do
               lCallEP stablecoinContract (Call @"Pause") ()
 
             withSender testPauser $
-              lCallEP stablecoinContract (Call @"Revoke") [(hash, testPauser)]
+              lCallEP stablecoinContract (Call @"Revoke") [RevokeParam hash testPauser]
 
       it "does nothing if the permit never existed" $ do
         integrationalTestExpectation $ do
@@ -301,7 +301,7 @@ permitSpec originate = do
             let hash = PermitHash (Hash.blake2b "abc")
 
             withSender testPauser $ do
-              lCallEP stablecoinContract (Call @"Revoke") [(hash, testPauser)]
+              lCallEP stablecoinContract (Call @"Revoke") [RevokeParam hash testPauser]
 
     describe "Set_expiry" $ do
       it "anyone can set the expiry for a specific permit" $ do
@@ -311,7 +311,7 @@ permitSpec originate = do
               callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
 
             withSender wallet1 $ do
-              lCallEP stablecoinContract (Call @"Set_expiry") (1, Just (hash, testPauser))
+              lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam 1 (Just (hash, testPauser))
               rewindTime 2
               lCallEP stablecoinContract (Call @"Pause") () `catchExpectedError` errExpiredPermit
 
@@ -319,13 +319,13 @@ permitSpec originate = do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             let hash = PermitHash (Hash.blake2b "abc")
-            lCallEP stablecoinContract (Call @"Set_expiry") (1, Just (hash, testPauser))
+            lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam 1 (Just (hash, testPauser))
 
       it "a user can set a default expiry for all permits signed with their secret key" $ do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             withSender testPauser $
-              lCallEP stablecoinContract (Call @"Set_expiry") (1, Nothing)
+              lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam 1 Nothing
             withSender wallet1 $ do
               callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
               rewindTime 2
@@ -336,8 +336,8 @@ permitSpec originate = do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             withSender testPauser $ do
               hash <- callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
-              lCallEP stablecoinContract (Call @"Set_expiry") (5, Just (hash, testPauser))
-              lCallEP stablecoinContract (Call @"Set_expiry") (10, Nothing)
+              lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam 5 (Just (hash, testPauser))
+              lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam 10 Nothing
             withSender wallet1 $ do
               rewindTime 6
               lCallEP stablecoinContract (Call @"Pause") () `catchExpectedError` errExpiredPermit
@@ -347,8 +347,8 @@ permitSpec originate = do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             withSender testPauser $ do
               hash <- callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
-              lCallEP stablecoinContract (Call @"Set_expiry") (5, Just (hash, testPauser))
-              lCallEP stablecoinContract (Call @"Set_expiry") (3, Just (hash, testPauser))
+              lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam 5 (Just (hash, testPauser))
+              lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam 3 (Just (hash, testPauser))
             withSender wallet1 $ do
               rewindTime 4
               lCallEP stablecoinContract (Call @"Pause") () `catchExpectedError` errExpiredPermit
@@ -357,8 +357,8 @@ permitSpec originate = do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             withSender testPauser $ do
-              lCallEP stablecoinContract (Call @"Set_expiry") (5, Nothing)
-              lCallEP stablecoinContract (Call @"Set_expiry") (3, Nothing)
+              lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam 5 Nothing
+              lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam 3 Nothing
               callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
             withSender wallet1 $ do
               rewindTime 4
@@ -578,11 +578,7 @@ permitSpec originate = do
               assertPermitCount stablecoinContract 1
 
     describe "Configure_minter" $ do
-      let param =
-            ( #minter .! wallet1
-            , ( #current_minting_allowance .! Nothing
-              , #new_minting_allowance .! 30
-              ))
+      let param = ConfigureMinterParam wallet1 Nothing 30
 
       it "can be accessed via a permit" $
         integrationalTestExpectation $ do
@@ -615,11 +611,7 @@ permitSpec originate = do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             withSender testMasterMinter $
-              lCallEP stablecoinContract (Call @"Configure_minter") $
-                ( #minter .! minter
-                , ( #current_minting_allowance .! Nothing
-                  , #new_minting_allowance .! 30
-                  ))
+              lCallEP stablecoinContract (Call @"Configure_minter") $ ConfigureMinterParam minter Nothing 30
 
             withSender wallet1 $ do
               lCallEP stablecoinContract (Call @"Remove_minter") minter `catchExpectedError` mgmNotMasterMinter
@@ -638,11 +630,7 @@ permitSpec originate = do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             withSender testMasterMinter $
-              lCallEP stablecoinContract (Call @"Configure_minter") $
-                ( #minter .! minter
-                , ( #current_minting_allowance .! Nothing
-                  , #new_minting_allowance .! 30
-                  ))
+              lCallEP stablecoinContract (Call @"Configure_minter") $ ConfigureMinterParam minter Nothing 30
 
             withSender testMasterMinter $ do
               callPermit stablecoinContract testMasterMinterPK testMasterMinterSK 0 (Remove_minter minter)
@@ -654,8 +642,8 @@ permitSpec originate = do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             let transferParams =
-                  [ (#from_ .! wallet2, #txs .! [])
-                  , (#from_ .! wallet2, #txs .! [])
+                  [ FA2.TransferParam wallet2 []
+                  , FA2.TransferParam wallet2 []
                   ]
 
             withSender wallet1 $ do
@@ -669,8 +657,8 @@ permitSpec originate = do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             let transferParams =
-                  [ (#from_ .! wallet2, #txs .! [])
-                  , (#from_ .! wallet3, #txs .! [])
+                  [ FA2.TransferParam wallet2 []
+                  , FA2.TransferParam wallet3 []
                   ]
 
             withSender wallet1 $ do
@@ -682,7 +670,7 @@ permitSpec originate = do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             let transferParams =
-                  [ (#from_ .! wallet2, #txs .! []) ]
+                  [ FA2.TransferParam wallet2 [] ]
             withSender wallet2 $ do
               callPermit stablecoinContract wallet2PK wallet2SK 0
                 (Call_FA2 $ FA2.Transfer transferParams)
@@ -693,12 +681,12 @@ permitSpec originate = do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             let transferParams =
-                  [ (#from_ .! wallet2, #txs .! []) ]
+                  [ FA2.TransferParam wallet2 [] ]
             withSender wallet2 $ do
               callPermit stablecoinContract wallet2PK wallet2SK 0
                 (Call_FA2 $ FA2.Transfer transferParams)
               lCallEP stablecoinContract (Call @"Update_operators")
-                [FA2.Add_operator (#owner .! wallet2, #operator wallet3)]
+                [FA2.Add_operator FA2.OperatorParam { opOwner = wallet2, opOperator = wallet3 }]
             withSender wallet3 $ do
               lCallEP stablecoinContract (Call @"Transfer") transferParams
               assertPermitCount stablecoinContract 1
@@ -708,8 +696,8 @@ permitSpec originate = do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             let params =
-                  [ FA2.Add_operator (#owner .! wallet2, #operator wallet3)
-                  , FA2.Remove_operator (#owner .! wallet2, #operator wallet4)
+                  [ FA2.Add_operator FA2.OperatorParam { opOwner = wallet2, opOperator = wallet3 }
+                  , FA2.Remove_operator FA2.OperatorParam { opOwner = wallet2, opOperator = wallet4 }
                   ]
 
             withSender wallet1 $ do
@@ -723,8 +711,8 @@ permitSpec originate = do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             let params =
-                  [ FA2.Add_operator (#owner .! wallet2, #operator wallet3)
-                  , FA2.Remove_operator (#owner .! wallet3, #operator wallet4)
+                  [ FA2.Add_operator FA2.OperatorParam { opOwner = wallet2, opOperator = wallet3 }
+                  , FA2.Remove_operator FA2.OperatorParam { opOwner = wallet3, opOperator = wallet4 }
                   ]
 
             withSender wallet1 $ do
@@ -736,7 +724,7 @@ permitSpec originate = do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             let params =
-                  [ FA2.Add_operator (#owner .! wallet2, #operator wallet3) ]
+                  [ FA2.Add_operator FA2.OperatorParam { opOwner = wallet2, opOperator = wallet3 } ]
 
             withSender wallet2 $ do
               callPermit stablecoinContract wallet2PK wallet2SK 0

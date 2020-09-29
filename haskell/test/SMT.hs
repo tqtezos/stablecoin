@@ -20,7 +20,7 @@ import qualified Text.Show
 import Tezos.Core (unsafeMkMutez)
 
 import Lorentz
-  (Address, EntrypointRef(Call), GetEntrypointArgCustom, IsoValue(..), TAddress(TAddress), arg,
+  (Address, EntrypointRef(Call), GetEntrypointArgCustom, IsoValue(..), TAddress(TAddress),
   parameterEntrypointCallCustom)
 import qualified "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
@@ -30,7 +30,6 @@ import Michelson.Test.Dummy
 import Michelson.Test.Integrational
 import Michelson.Text
 import qualified Michelson.Typed as T
-import Util.Named
 
 -- Some implementation notes:
 --
@@ -92,11 +91,10 @@ generateContractInputs count = do
 -- This is a quickcheck `Testable` because we have an
 -- arbitrary instance for `PropertyTestInput`.
 smtProperty
-  :: T.Contract (ToT Parameter) (ToT Storage)
-  -> PropertyTestInput
+  :: PropertyTestInput
   -> Property
-smtProperty contract (PropertyTestInput (inputs, initialState))
-  = integrationalTestProperty $ applyBothAndCompare contract inputs initialState
+smtProperty (PropertyTestInput (inputs, initialState))
+  = integrationalTestProperty $ applyBothAndCompare inputs initialState
 
 -- | Accept a contract, a list of contract inputs and an initial state.  Then
 -- apply each contract input to each model (haskell and michelson), check if
@@ -105,17 +103,16 @@ smtProperty contract (PropertyTestInput (inputs, initialState))
 -- parameter and repeat until all contract inputs are applied or until the contract
 -- state diverges.
 applyBothAndCompare
-  :: T.Contract (ToT Parameter) (ToT Storage)
-  -> [ContractCall Parameter]
+  :: [ContractCall Parameter]
   -> ContractState
   -> IntegrationalScenario
-applyBothAndCompare _ [] _ = pass
-applyBothAndCompare contract (cc:ccs) cs = let
+applyBothAndCompare [] _ = pass
+applyBothAndCompare (cc:ccs) cs = let
   haskellResult = stablecoinHaskellModel cc cs
-  michelsonResult = stablecoinMichelsonModel contract cc cs
+  michelsonResult = stablecoinMichelsonModel cc cs
   in if haskellResult /= michelsonResult
     then integrationalFail $ CustomTestError ("Models differ : " <> (show (cc, cs, haskellResult, michelsonResult)))
-    else applyBothAndCompare contract ccs haskellResult
+    else applyBothAndCompare ccs haskellResult
 
 -- Size of the random address pool
 poolSize :: Int
@@ -174,17 +171,17 @@ resultToSs InterpretResult {..} = case cast iurNewStorage of
   Nothing -> error "Impossible"
 
 storageToSs :: Storage -> SimpleStorage
-storageToSs storage = let
-  StorageMinters ssMintingAllowances = storage
-  StorageLedger ssLedger = storage
-  StorageOperators (T.BigMap ssOperators) = storage
-  StorageRoles (MasterMinterRole ssMasterMinter) = storage
-  StorageRoles (PauserRole ssPauser) = storage
-  StorageRoles (OwnerRole ssOwner) = storage
-  StorageRoles (PendingOwnerRole ssPendingOwner) = storage
-  StorageTransferlistContract ssTransferlistContract = storage
-  StoragePaused ssIsPaused = storage
-  in SimpleStorage {..}
+storageToSs storage = SimpleStorage
+  { ssMintingAllowances = sMintingAllowances storage
+  , ssLedger = T.unBigMap $ sLedger storage
+  , ssOwner = rOwner $ sRoles storage
+  , ssMasterMinter = rMasterMinter $ sRoles storage
+  , ssPauser = rPauser $ sRoles storage
+  , ssPendingOwner = rPendingOwner $ sRoles storage
+  , ssTransferlistContract = sTransferlistContract storage
+  , ssOperators = T.unBigMap $ sOperators storage
+  , ssIsPaused = sIsPaused storage
+  }
 
 ssToOriginationParams
   :: SimpleStorage
@@ -383,7 +380,11 @@ generateMasterMinterAction idx = do
               lift $ elements [Just (fromIntegral randomNatural), Nothing] -- supply correct current minting allowances only some of the time
 
         newMintingAllowances <- lift $ choose @Int (0, amountRange)
-        pure $ Configure_minter (#minter .! minter, (#current_minting_allowance .! currentMintingAllowance, #new_minting_allowance .! (fromIntegral newMintingAllowances)))
+        pure $ Configure_minter ConfigureMinterParam
+          { cmpMinter = minter
+          , cmpCurrentMintingAllowance = currentMintingAllowance
+          , cmpNewMintingAllowance = fromIntegral newMintingAllowances
+          }
 
 generatePauserAction :: Int -> GeneratorM (ContractCall Parameter)
 generatePauserAction idx = do
@@ -406,8 +407,8 @@ generateTokenOwnerAction idx = do
       operator <- getRandomOperator
       owner <- getRandomOwner
       updateOperation <- lift $ elements
-        [ FA2.Add_operator (#owner .! owner, #operator .! operator)
-        , FA2.Remove_operator (#owner .! owner, #operator .! operator)
+        [ FA2.Add_operator FA2.OperatorParam { opOwner = owner, opOperator = operator }
+        , FA2.Remove_operator FA2.OperatorParam { opOwner = owner, opOperator = operator }
         ]
       pure $ Call_FA2 $ FA2.Update_operators [updateOperation]
 
@@ -417,9 +418,9 @@ generateTransferAction = do
   txs <- replicateM 10 $ do
     to <- getRandomTokenOwner
     amount <- lift $ choose @Int (0, amountRange)
-    pure (#to_ .! to, (#token_id .! 0, #amount .! fromIntegral amount))
+    pure FA2.TransferDestination { tdTo = to, tdTokenId = 0, tdAmount = fromIntegral amount }
   stxs <- lift $ sublistOf txs
-  let transferItem = (#from_ .! from, #txs .! stxs)
+  let transferItem = FA2.TransferParam { tpFrom = from, tpTxs = stxs }
   pure $ Call_FA2 $ FA2.Transfer [transferItem]
 
 generateOperatorAction :: Int -> GeneratorM (ContractCall Parameter)
@@ -442,7 +443,7 @@ generateMintAction idx = do
     targetTokenOwner <- getRandomTokenOwner
     target <- lift $ elements [targetMinter, targetTokenOwner]
     mintValue <- lift $ choose @Int (0, amountRange)
-    pure (#to_ .! target, #amount .! fromIntegral mintValue)
+    pure (MintParam target (fromIntegral mintValue))
   parameter <- lift $ sublistOf mints
   pure $ ContractCall sender (Mint parameter) idx
 
@@ -491,14 +492,13 @@ contractErrorToModelError m = let
 -- the final @ContractState@ from Haskell model and this model should
 -- match exactly, including the list of errors.
 stablecoinMichelsonModel
-  :: T.Contract (ToT Parameter) (ToT Storage)
-  -> ContractCall Parameter
+  :: ContractCall Parameter
   -> ContractState
   -> ContractState
-stablecoinMichelsonModel contract cc@(ContractCall {..}) cs = let
+stablecoinMichelsonModel cc@(ContractCall {..}) cs = let
   contractEnv = dummyContractEnv { ceSender = ccSender, ceAmount = unsafeMkMutez 0 }
   initSt = mkInitialStorage $ ssToOriginationParams $ csStorage cs
-  iResult = callEntrypoint contract cc initSt contractEnv
+  iResult = callEntrypoint cc initSt contractEnv
   in case iResult of
     Right iRes -> let
       newStorage = resultToSs iRes
@@ -507,12 +507,11 @@ stablecoinMichelsonModel contract cc@(ContractCall {..}) cs = let
     Left err -> error $ "Unexpected error:" <> show err
 
 callEntrypoint
-  :: T.Contract (ToT Parameter) (ToT Storage)
-  -> ContractCall Parameter
+  :: ContractCall Parameter
   -> Storage
   -> ContractEnv
   -> Either InterpretError InterpretResult
-callEntrypoint contract cc st env = case ccParameter cc of
+callEntrypoint cc st env = case ccParameter cc of
   Pause -> call (Call @"Pause") ()
   Unpause -> call (Call @"Unpause") ()
   Configure_minter p -> call (Call @"Configure_minter") p
@@ -542,7 +541,7 @@ callEntrypoint contract cc st env = case ccParameter cc of
     call epRef param =
       handleContractReturn $
         interpret
-          (T.cCode contract)
+          (T.cCode stablecoinContract)
           (parameterEntrypointCallCustom @Parameter epRef)
           (toVal param)
           (toVal st)
@@ -592,7 +591,7 @@ applyUnpause sender ss = do
   Right ss { ssIsPaused = False }
 
 applyConfigureMinter :: Address -> SimpleStorage -> ConfigureMinterParam -> Either ModelError SimpleStorage
-applyConfigureMinter sender cs (ConfigureMinterParams minter mbCurrent new) = do
+applyConfigureMinter sender cs (ConfigureMinterParam minter mbCurrent new) = do
   -- Check sender is master minter
   -- if yes then see if provided current allowance if Just value
   --  if yes then check if minter allowance exist
@@ -630,14 +629,14 @@ reduceMintingAllowance minter amount ss@SimpleStorage {..} =
   ss { ssMintingAllowances = Map.update (\m -> Just $ m - amount) minter ssMintingAllowances }
 
 applySingleMint :: MintParam -> SimpleStorage -> SimpleStorage
-applySingleMint (arg #to_ -> to, arg #amount -> value) storage =
+applySingleMint (MintParam to value) storage =
   storage { ssLedger = Map.alter (\case Nothing -> Just value; Just x -> Just $ x + value) to $ ssLedger storage }
 
 applyMint :: Address -> SimpleStorage -> MintParams -> Either ModelError SimpleStorage
 applyMint sender cs mintparams = do
   ensureNotPaused cs
   ma <- ensureMinter sender cs
-  let totalMint = sum $ (arg #amount . snd) <$> mintparams
+  let totalMint = sum $ mpAmount <$> mintparams
   if ma >= totalMint
     then Right $ reduceMintingAllowance sender totalMint $ foldr applySingleMint cs mintparams
     else Left ALLOWANCE_EXCEEDED
@@ -706,35 +705,31 @@ applyTransfer ccSender storage tis = do
   foldl' (applySingleTransfer ccSender) (Right storage) tis
 
 applySingleTransfer :: Address -> Either ModelError SimpleStorage -> FA2.TransferParam -> Either ModelError SimpleStorage
-applySingleTransfer ccSender estorage
-  (arg #from_ -> from, arg #txs -> toItems)
-  = case estorage of
-      Left err -> Left err
-      Right storage@(SimpleStorage {..}) ->
-        if ccSender == from || isOperatorOf storage ccSender from
-          then let
-            in foldl' singleTranferTx (Right storage) toItems
-          else Left FA2_NOT_OPERATOR
+applySingleTransfer ccSender estorage (FA2.TransferParam from txs) =
+  case estorage of
+    Left err -> Left err
+    Right storage@(SimpleStorage {..}) ->
+      if ccSender == from || isOperatorOf storage ccSender from
+        then foldl' singleTranferTx (Right storage) txs
+        else Left FA2_NOT_OPERATOR
   where
     singleTranferTx (Left err) _ =  Left err
-    singleTranferTx
-      (Right storage@(SimpleStorage {..}))
-      (arg #to_ -> to, (arg #token_id -> _, arg #amount -> amount)) = let
-        -- consider zero balance if account is not found
-        srcBalance = fromMaybe 0 (Map.lookup from ssLedger)
-        in if srcBalance >= amount
-          then Right $ applyCredit to amount $ applyDebit from amount storage
-          else Left FA2_INSUFFICIENT_BALANCE
+    singleTranferTx (Right storage@(SimpleStorage {..})) (FA2.TransferDestination to _ amount) = let
+      -- consider zero balance if account is not found
+      srcBalance = fromMaybe 0 (Map.lookup from ssLedger)
+      in if srcBalance >= amount
+        then Right $ applyCredit to amount $ applyDebit from amount storage
+        else Left FA2_INSUFFICIENT_BALANCE
 
 applyUpdateOperator :: Address -> Either ModelError SimpleStorage -> FA2.UpdateOperator -> Either ModelError SimpleStorage
 applyUpdateOperator ccSender estorage op = case estorage of
   Left err -> Left err
   Right storage -> case op of
-    FA2.Add_operator (arg #owner -> own, arg #operator -> operator)
+    FA2.Add_operator (FA2.OperatorParam own operator)
       -> if own == ccSender -- enforce that sender is owner
         then Right $ storage { ssOperators = Map.insert (own, operator) () $ ssOperators storage }
         else Left NOT_TOKEN_OWNER
-    FA2.Remove_operator (arg #owner -> own, arg #operator -> operator)
+    FA2.Remove_operator (FA2.OperatorParam own operator)
       -> if own == ccSender
         then Right $ storage { ssOperators = Map.delete (own, operator) $ ssOperators storage }
         else Left NOT_TOKEN_OWNER

@@ -20,7 +20,7 @@ import Test.Hspec (Spec, describe, it)
 
 import Lorentz (mkView)
 import "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
-import Lorentz.Contracts.Stablecoin (pattern StorageLedger)
+import Lorentz.Contracts.Stablecoin (sLedger)
 import Lorentz.Contracts.Test.Common
 import Lorentz.Test
 import Lorentz.Value
@@ -60,19 +60,19 @@ fa2Spec fa2Originate = do
           consumer <- lOriginateEmpty @[BalanceResponseItem] contractConsumer "consumer"
           let
             balanceRequestItems =
-              [ (#owner .! wallet1, #token_id .! 0)
-              , (#owner .! wallet2, #token_id .! 0)
-              , (#owner .! wallet3, #token_id .! 0)
-              , (#owner .! wallet4, #token_id .! 0)
-              , (#owner .! wallet5, #token_id .! 0)
+              [ BalanceRequestItem { briOwner = wallet1, briTokenId = 0 }
+              , BalanceRequestItem { briOwner = wallet2, briTokenId = 0 }
+              , BalanceRequestItem { briOwner = wallet3, briTokenId = 0 }
+              , BalanceRequestItem { briOwner = wallet4, briTokenId = 0 }
+              , BalanceRequestItem { briOwner = wallet5, briTokenId = 0 }
               ]
             balanceRequest = mkView (#requests .! balanceRequestItems) consumer
             balanceExpected =
-              [ (#request .! (#owner .! wallet1, #token_id .! 0), #balance .! 0)
-              , (#request .! (#owner .! wallet2, #token_id .! 0), #balance .! 0)
-              , (#request .! (#owner .! wallet3, #token_id .! 0), #balance .! 0)
-              , (#request .! (#owner .! wallet4, #token_id .! 0), #balance .! 0)
-              , (#request .! (#owner .! wallet5, #token_id .! 0), #balance .! 10)
+              [ BalanceResponseItem { briRequest = BalanceRequestItem { briOwner = wallet1, briTokenId = 0 }, briBalance = 0 }
+              , BalanceResponseItem { briRequest = BalanceRequestItem { briOwner = wallet2, briTokenId = 0 }, briBalance = 0 }
+              , BalanceResponseItem { briRequest = BalanceRequestItem { briOwner = wallet3, briTokenId = 0 }, briBalance = 0 }
+              , BalanceResponseItem { briRequest = BalanceRequestItem { briOwner = wallet4, briTokenId = 0 }, briBalance = 0 }
+              , BalanceResponseItem { briRequest = BalanceRequestItem { briOwner = wallet5, briTokenId = 0 }, briBalance = 10 }
               ]
 
           lCallEP fa2contract (Call @"Balance_of") balanceRequest
@@ -173,7 +173,7 @@ fa2Spec fa2Originate = do
             $ defaultOriginationParams
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
-            transfers = [(#from_ .! wallet1, #txs .! [])]
+            transfers = [ TransferParam wallet1 [] ]
 
           withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
 
@@ -184,12 +184,14 @@ fa2Spec fa2Originate = do
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
             transfers =
-              [ ( #from_ .! wallet1
-              , (#txs .!
-                  [ (#to_ .! wallet2, (#token_id .! 0, #amount .! 5))
-                  , (#to_ .! wallet3, (#token_id .! 1, #amount .! 1))
-                  , (#to_ .! wallet4, (#token_id .! 0, #amount .! 4))
-                  ]))
+              [ TransferParam
+                  { tpFrom = wallet1
+                  , tpTxs =
+                    [ TransferDestination wallet2 0 5
+                    , TransferDestination wallet3 1 1
+                    , TransferDestination wallet4 0 4
+                    ]
+                  }
               ]
 
           err <- expectError $ withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
@@ -222,13 +224,9 @@ fa2Spec fa2Originate = do
         consumer <- lOriginateEmpty @[BalanceResponseItem] contractConsumer "consumer"
 
         let
-          balanceRequestItems =
-            [ (#owner .! wallet2, #token_id .! 0)
-            ]
-          balanceRequest = mkView (#requests .! balanceRequestItems) consumer
-          balanceExpected =
-            [ (#request .! (#owner .! wallet2, #token_id .! 0), #balance .! 5)
-            ]
+          balanceRequestItem = BalanceRequestItem { briOwner = wallet2, briTokenId = 0 }
+          balanceRequest = mkView (#requests .! [balanceRequestItem]) consumer
+          balanceExpected = [ BalanceResponseItem { briRequest = balanceRequestItem, briBalance = 5 } ]
 
         lCallEP fa2contract (Call @"Balance_of") balanceRequest
         lExpectViewConsumerStorage consumer [balanceExpected]
@@ -248,11 +246,9 @@ fa2Spec fa2Originate = do
 
         withSender commonOperator $ lCallEP stablecoinContract (Call @"Transfer") transfer1
 
-        lExpectStorage stablecoinContract $ \case
-          (StorageLedger ledger)
-            | M.lookup wallet1 ledger == Nothing -> Right ()
-            | otherwise ->
-                Left $ CustomTestError "Zero balance account was not removed"
+        lExpectStorage stablecoinContract $ \storage ->
+          unless (M.lookup wallet1 (unBigMap $ sLedger storage) == Nothing) $
+            Left $ CustomTestError "Zero balance account was not removed"
 
   describe "Self transfer" $ do
 
@@ -281,13 +277,9 @@ fa2Spec fa2Originate = do
 
         withSender wallet1 $ lCallEP fa2contract (Call @"Transfer") transfers
         let
-          balanceRequestItems =
-            [ (#owner .! wallet2, #token_id .! 0)
-            ]
-          balanceRequest = mkView (#requests .! balanceRequestItems) consumer
-          balanceExpected =
-            [ (#request .! (#owner .! wallet2, #token_id .! 0), #balance .! 5)
-            ]
+          balanceRequestItem = BalanceRequestItem { briOwner = wallet2, briTokenId = 0 }
+          balanceRequest = mkView (#requests .! [balanceRequestItem]) consumer
+          balanceExpected = [ BalanceResponseItem { briRequest = balanceRequestItem, briBalance = 5 } ]
         lCallEP fa2contract (Call @"Balance_of") balanceRequest
         lExpectViewConsumerStorage consumer [balanceExpected]
 
@@ -298,8 +290,16 @@ fa2Spec fa2Originate = do
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
             transfers =
-              [ (#from_ .! wallet1
-              , (#txs .! [(#to_ .! wallet2, (#token_id .! 1, #amount .! 10))]))
+              [ TransferParam
+                  { tpFrom = wallet1
+                  , tpTxs =
+                    [ TransferDestination
+                        { tdTo = wallet2
+                        , tdTokenId = 1
+                        , tdAmount = 10
+                        }
+                    ]
+                  }
               ]
 
           err <- expectError $ withSender wallet1 $ lCallEP fa2contract (Call @"Transfer") transfers
@@ -356,14 +356,16 @@ fa2Spec fa2Originate = do
       withOriginated fa2Originate originationParams $ \fa2contract -> do
         let
           transfers =
-            [( #from_ .! wallet1
-             , #txs .!
-               [ (#to_ .! wallet2, (#token_id .! 0, #amount .! 1))
-               , (#to_ .! wallet3, (#token_id .! 0, #amount .! 1))
-               , (#to_ .! wallet4, (#token_id .! 1, #amount .! 1)) -- Should fail
-               , (#to_ .! wallet5, (#token_id .! 0, #amount .! 1))
-               ]
-             )]
+            [ TransferParam
+                { tpFrom = wallet1
+                , tpTxs =
+                  [ TransferDestination { tdTo = wallet2, tdTokenId = 0, tdAmount = 1 }
+                  , TransferDestination { tdTo = wallet3, tdTokenId = 0, tdAmount = 1 }
+                  , TransferDestination { tdTo = wallet4, tdTokenId = 1, tdAmount = 1 } -- Should fail
+                  , TransferDestination { tdTo = wallet5, tdTokenId = 0, tdAmount = 1 }
+                  ]
+                }
+            ]
 
         err <- expectError $ withSender wallet1 $ lCallEP fa2contract (Call @"Transfer") transfers
 
@@ -383,13 +385,9 @@ fa2Spec fa2Originate = do
         consumer <- lOriginateEmpty @[BalanceResponseItem] contractConsumer "consumer"
 
         let
-          balanceRequestItems =
-            [ (#owner .! wallet2, #token_id .! 0)
-            ]
-          balanceRequest = mkView (#requests .! balanceRequestItems) consumer
-          balanceExpected =
-            [ (#request .! (#owner .! wallet2, #token_id .! 0), #balance .! 5)
-            ]
+          balanceRequestItem = BalanceRequestItem { briOwner = wallet2, briTokenId = 0 }
+          balanceRequest = mkView (#requests .! [balanceRequestItem]) consumer
+          balanceExpected = [ BalanceResponseItem { briRequest = balanceRequestItem, briBalance = 5 } ]
 
         lCallEP fa2contract (Call @"Balance_of") balanceRequest
         lExpectViewConsumerStorage consumer [balanceExpected]
@@ -406,21 +404,21 @@ fa2Spec fa2Originate = do
         consumer <- lOriginateEmpty @[BalanceResponseItem] contractConsumer "consumer"
         let
           balanceRequestItems =
-            [ (#owner .! wallet1, #token_id .! 0)
-            , (#owner .! wallet4, #token_id .! 0)
-            , (#owner .! wallet3, #token_id .! 0)
-            , (#owner .! wallet5, #token_id .! 0)
-            , (#owner .! wallet2, #token_id .! 0)
-            , (#owner .! wallet3, #token_id .! 0)
+            [ BalanceRequestItem { briOwner = wallet1, briTokenId = 0 }
+            , BalanceRequestItem { briOwner = wallet4, briTokenId = 0 }
+            , BalanceRequestItem { briOwner = wallet3, briTokenId = 0 }
+            , BalanceRequestItem { briOwner = wallet5, briTokenId = 0 }
+            , BalanceRequestItem { briOwner = wallet2, briTokenId = 0 }
+            , BalanceRequestItem { briOwner = wallet3, briTokenId = 0 }
             ]
           balanceRequest = mkView (#requests .! balanceRequestItems) consumer
           balanceExpected =
-            [ (#request .! (#owner .! wallet1, #token_id .! 0), #balance .! 10)
-            , (#request .! (#owner .! wallet4, #token_id .! 0), #balance .! 40)
-            , (#request .! (#owner .! wallet3, #token_id .! 0), #balance .! 30)
-            , (#request .! (#owner .! wallet5, #token_id .! 0), #balance .! 50)
-            , (#request .! (#owner .! wallet2, #token_id .! 0), #balance .! 20)
-            , (#request .! (#owner .! wallet3, #token_id .! 0), #balance .! 30)
+            [ BalanceResponseItem { briRequest = BalanceRequestItem wallet1 0, briBalance = 10 }
+            , BalanceResponseItem { briRequest = BalanceRequestItem wallet4 0, briBalance = 40 }
+            , BalanceResponseItem { briRequest = BalanceRequestItem wallet3 0, briBalance = 30 }
+            , BalanceResponseItem { briRequest = BalanceRequestItem wallet5 0, briBalance = 50 }
+            , BalanceResponseItem { briRequest = BalanceRequestItem wallet2 0, briBalance = 20 }
+            , BalanceResponseItem { briRequest = BalanceRequestItem wallet3 0, briBalance = 30 }
             ]
 
         lCallEP fa2contract (Call @"Balance_of") balanceRequest
@@ -433,10 +431,8 @@ fa2Spec fa2Originate = do
       withOriginated fa2Originate originationParams $ \fa2contract -> do
         consumer <- lOriginateEmpty @[BalanceResponseItem] contractConsumer "consumer"
         let
-          balanceRequestItems =
-            [ (#owner .! wallet1, #token_id .! 1)
-            ]
-          balanceRequest = mkView (#requests .! balanceRequestItems) consumer
+          balanceRequestItem = BalanceRequestItem { briOwner = wallet1, briTokenId = 1 }
+          balanceRequest = mkView (#requests .! [balanceRequestItem]) consumer
 
         err <- expectError $ lCallEP fa2contract (Call @"Balance_of") balanceRequest
         fa2TokenUndefined err
@@ -448,12 +444,10 @@ fa2Spec fa2Originate = do
 
         consumer <- lOriginateEmpty @[BalanceResponseItem] contractConsumer "consumer"
         let
-          balanceRequestItems =
-            [ (#owner .! wallet1, #token_id .! 0)
-            ]
-          balanceRequest = mkView (#requests .! balanceRequestItems) consumer
+          balanceRequestItem = BalanceRequestItem { briOwner = wallet1, briTokenId = 0 }
+          balanceRequest = mkView (#requests .! [balanceRequestItem]) consumer
           balanceExpected =
-            [ (#request .! (#owner .! wallet1, #token_id .! 0), #balance .! 0)
+            [ BalanceResponseItem { briRequest = balanceRequestItem, briBalance = 0 }
             ]
 
         lCallEP fa2contract (Call @"Balance_of") balanceRequest
@@ -485,7 +479,7 @@ fa2Spec fa2Originate = do
 
           consumer <- lOriginateEmpty @IsOperatorResponse contractConsumer "consumer"
           withSender wallet1 $ do
-            let operatorParam = (#owner .! wallet1, #operator .! wallet2)
+            let operatorParam = OperatorParam { opOwner = wallet1, opOperator = wallet2 }
 
             let addOperatorParam = Add_operator operatorParam
             lCallEP fa2contract (Call @"Update_operators") [addOperatorParam]
@@ -494,7 +488,7 @@ fa2Spec fa2Originate = do
             lCallEP fa2contract (Call @"Is_operator") isOperatorQuery
 
             lExpectViewConsumerStorage consumer
-                [(#operator .! operatorParam, #is_operator .! True)]
+                [IsOperatorResponse operatorParam True]
 
   describe "Configure operators entrypoint's remove operator call" $ do
     it "removes operator as expected" $
@@ -504,8 +498,7 @@ fa2Spec fa2Originate = do
 
           consumer <- lOriginateEmpty @IsOperatorResponse contractConsumer "consumer"
           withSender wallet1 $ do
-            let operatorParam =
-                  (#owner .! wallet1, #operator .! commonOperator)
+            let operatorParam = OperatorParam { opOwner = wallet1, opOperator = commonOperator }
 
             let removeOperatorParam = Remove_operator operatorParam
             lCallEP fa2contract (Call @"Update_operators") [removeOperatorParam]
@@ -514,7 +507,7 @@ fa2Spec fa2Originate = do
             lCallEP fa2contract (Call @"Is_operator") isOperatorQuery
 
             lExpectViewConsumerStorage consumer
-                [(#operator .! operatorParam, #is_operator .! False)]
+                [IsOperatorResponse operatorParam False]
 
   describe "Configure operators entrypoint" $ do
     it "retains the last operation in case of conflicting operations - Expect removal" $
@@ -524,8 +517,7 @@ fa2Spec fa2Originate = do
 
           consumer <- lOriginateEmpty @IsOperatorResponse contractConsumer "consumer"
           withSender wallet1 $ do
-            let operatorParam =
-                  (#owner .! wallet1, #operator .! wallet2)
+            let operatorParam = OperatorParam { opOwner = wallet1, opOperator = wallet2 }
 
             lCallEP fa2contract (Call @"Update_operators") [Add_operator operatorParam, Remove_operator operatorParam]
 
@@ -533,7 +525,7 @@ fa2Spec fa2Originate = do
             lCallEP fa2contract (Call @"Is_operator") isOperatorQuery
 
             lExpectViewConsumerStorage consumer
-                [(#operator .! operatorParam, #is_operator .! False)]
+                [IsOperatorResponse operatorParam False]
 
     it "retains the last operation in case of conflicting operations - Expect addition" $
       integrationalTestExpectation $ do
@@ -542,8 +534,7 @@ fa2Spec fa2Originate = do
 
           consumer <- lOriginateEmpty @IsOperatorResponse contractConsumer "consumer"
           withSender wallet1 $ do
-            let operatorParam =
-                  (#owner .! wallet1, #operator .! wallet2)
+            let operatorParam = OperatorParam { opOwner = wallet1, opOperator = wallet2 }
 
             lCallEP fa2contract (Call @"Update_operators") [Remove_operator operatorParam, Add_operator operatorParam]
 
@@ -551,7 +542,7 @@ fa2Spec fa2Originate = do
             lCallEP fa2contract (Call @"Is_operator") isOperatorQuery
 
             lExpectViewConsumerStorage consumer
-                [(#operator .! operatorParam, #is_operator .! True)]
+                [IsOperatorResponse operatorParam True]
 
   -- Check whether "update operator", "remove operator" operations are executed only by contract owner.
   describe "Configure operators entrypoint" $
@@ -560,7 +551,7 @@ fa2Spec fa2Originate = do
       withOriginated fa2Originate originationParams $ \stablecoinContract -> do
 
         withSender wallet2 $ do
-          let operatorParam = (#owner .! wallet1, #operator .! wallet2)
+          let operatorParam = OperatorParam { opOwner = wallet1, opOperator = wallet2 }
 
           let addOperatorParam = Add_operator operatorParam
           err <- expectError $ lCallEP stablecoinContract (Call @"Update_operators") [addOperatorParam]
@@ -571,8 +562,7 @@ fa2Spec fa2Originate = do
     withOriginated fa2Originate originationParams $ \stablecoinContract -> do
 
       withSender wallet2 $ do
-        let operatorParam =
-              (#owner .! wallet1, #operator .! commonOperator)
+        let operatorParam = OperatorParam { opOwner = wallet1, opOperator = commonOperator }
 
         let removeOperatorParam = Remove_operator operatorParam
         err <- expectError $ lCallEP stablecoinContract (Call @"Update_operators") [removeOperatorParam]
@@ -583,8 +573,7 @@ fa2Spec fa2Originate = do
     withOriginated fa2Originate originationParams $ \stablecoinContract -> do
 
       withSender commonOperator $ do
-        let operatorParam =
-              (#owner .! wallet1, #operator .! wallet2)
+        let operatorParam = OperatorParam { opOwner = wallet1, opOperator = wallet2 }
 
         let addOperatorParam = Add_operator operatorParam
         err <- expectError $ lCallEP stablecoinContract (Call @"Update_operators") [addOperatorParam]
@@ -596,8 +585,7 @@ fa2Spec fa2Originate = do
     withOriginated fa2Originate originationParams $ \stablecoinContract -> do
 
       withSender commonOperator $ do
-        let operatorParam =
-              (#owner .! wallet1, #operator .! commonOperator)
+        let operatorParam = OperatorParam { opOwner = wallet1, opOperator = commonOperator }
 
         let removeOperatorParam = Remove_operator operatorParam
         err <- expectError $ lCallEP stablecoinContract (Call @"Update_operators") [removeOperatorParam]

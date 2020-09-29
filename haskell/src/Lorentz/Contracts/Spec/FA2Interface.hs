@@ -6,30 +6,31 @@
 -- https://gitlab.com/tzip/tzip/-/blob/131b46dd89675bf030489ded9b0b3f5834b70eb6/proposals/tzip-12/tzip-12.md
 
 module Lorentz.Contracts.Spec.FA2Interface
-  ( BalanceRequestItem
+  ( BalanceRequestItem(..)
   , BalanceRequestParams
-  , BalanceResponseItem
-  , CustomPermissionPolicy
+  , BalanceResponseItem(..)
+  , CustomPermissionPolicy(..)
   , FA2OwnerHook (..)
   , IsOperatorParam
-  , IsOperatorResponse
-  , OperatorParam
+  , IsOperatorResponse(..)
+  , OperatorParam(..)
   , OperatorTransferPolicy (..)
   , OwnerTransferMode (..)
   , Parameter (..)
   , FA2ParameterC
   , TokenId
-  , TokenMetadata
-  , TransferDestination
-  , TransferDescriptor
-  , TransferDescriptorParam
+  , TokenMetadata(..)
+  , TransferDestination(..)
+  , TransferDestinationDescriptor(..)
+  , TransferDescriptor(..)
+  , TransferDescriptorParam(..)
   , TransferParams
-  , TransferParam
+  , TransferParam(..)
   , UpdateOperator (..)
   , UpdateOperatorsParam
   ) where
 
-import Fmt (Buildable(..), genericF, (+|), (|+))
+import Fmt (Buildable(..), genericF)
 import Test.Tasty.QuickCheck (Arbitrary(..), elements)
 
 import Lorentz
@@ -44,11 +45,23 @@ import Util.Named
 -- 4. Transfer operation must apply permission policy logic.
 type TokenId = Natural
 
-type TransferDestination =
-  ("to_" :! Address, ("token_id" :! TokenId, "amount" :! Natural))
+data TransferDestination = TransferDestination
+ { tdTo :: Address
+ , tdTokenId :: TokenId
+ , tdAmount :: Natural
+ }
+ deriving stock (Generic, Show)
+ deriving anyclass (IsoValue, HasAnnotation)
 
-type TransferParam =
-  ("from_" :! Address, "txs" :! [TransferDestination])
+data TransferParam = TransferParam
+ { tpFrom :: Address
+ , tpTxs :: [TransferDestination]
+ }
+ deriving stock (Show, Generic)
+ deriving anyclass (IsoValue, HasAnnotation)
+
+instance Buildable TransferParam where
+  build = genericF
 
 type TransferParams = [TransferParam]
 
@@ -56,12 +69,22 @@ type TransferParams = [TransferParam]
 -- ---------
 -- Queries balance of one or more addresses. Callback contract should accept a list of BalanceResponse
 -- Duplicates in the request should not be de-duplicated or reordered in the response.
-type BalanceRequestItem = ("owner" :! Address, "token_id" :! TokenId)
+data BalanceRequestItem = BalanceRequestItem
+  { briOwner :: Address
+  , briTokenId :: TokenId
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass (IsoValue, HasAnnotation)
 
 instance Buildable BalanceRequestItem where
   build = genericF
 
-type BalanceResponseItem = ("request" :! BalanceRequestItem, "balance" :! Natural)
+data BalanceResponseItem = BalanceResponseItem
+  { briRequest :: BalanceRequestItem
+  , briBalance :: Natural
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass (IsoValue, HasAnnotation)
 
 type BalanceRequestParams = View ("requests" :! [BalanceRequestItem]) [BalanceResponseItem]
 
@@ -69,26 +92,32 @@ instance Buildable BalanceResponseItem where
   build = genericF
 
 -- Token MetaData query
+data TokenMetadata = TokenMetadata
+ { tmTokenId :: TokenId
+ , tmSymbol :: MText
+ , tmName :: MText
+ , tmDecimals :: Natural
+ , tmExtras :: Map MText MText
+ }
+ deriving stock Show
 
-type TokenMetadata =
-  ( "token_id" :! TokenId
-  , "mdr" :! ("symbol" :! MText
-  , "mdr2" :! ("name" :! MText
-  , "mdr3" :! ("decimals" :! Natural
-  , "extras" :! Map MText MText)))
+instance Buildable TokenMetadata where
+  build = genericF
+
+deriving anyclass instance IsoValue TokenMetadata
+deriving anyclass instance HasAnnotation TokenMetadata
+$(customGeneric "TokenMetadata" $ withDepths
+    [ cstr @0
+      [ fld @1
+      , fld @2
+      , fld @3
+      , fld @4
+      , fld @4
+      ]
+    ]
   )
 
 type TokenMetadataRegistryParam = ContractRef Address
-
-instance Buildable TokenMetadata where
-  build
-    ( arg #token_id -> token_id
-    , arg #mdr -> (arg #symbol -> symbol
-    , arg #mdr2 -> (arg #name -> name
-    , arg #mdr3 -> (arg #decimals -> decimals
-    , _)))) =
-    "token_id:" +| token_id |+ ", symbol:" +| symbol |+ ", name:" +|
-    name |+ ", decimals:" +| decimals |+ "."
 
 data OperatorTransferPolicy
   = OwnerTransfer ("owner_transfer" :! ())
@@ -126,11 +155,19 @@ instance Arbitrary OwnerTransferMode where
 instance TypeHasDoc OwnerTransferMode where
   typeDocMdDescription = "Describes if owener hooks are required in sender/receiver addresses"
 
-type CustomPermissionPolicy
-  = ("tag" :! MText, "config_api" :! Maybe Address)
+data CustomPermissionPolicy = CustomPermissionPolicy
+  { cppTag :: MText
+  , cppConfigApi :: Maybe Address
+  }
+  deriving stock (Generic, Show, Eq)
+  deriving anyclass (IsoValue, HasAnnotation)
 
-type OperatorParam =
-  ("owner" :! Address, "operator" :! Address)
+data OperatorParam = OperatorParam
+  { opOwner :: Address
+  , opOperator :: Address
+  }
+  deriving stock (Generic, Show, Eq)
+  deriving anyclass (IsoValue, HasAnnotation)
 
 data UpdateOperator
   = Add_operator OperatorParam
@@ -144,7 +181,12 @@ instance Buildable UpdateOperator where
 type UpdateOperatorsParam = [UpdateOperator]
 
 -- Is operator query
-type IsOperatorResponse = ("operator" :! OperatorParam, "is_operator" :! Bool)
+data IsOperatorResponse = IsOperatorResponse
+  { iorOperator :: OperatorParam
+  , iorIsOperator :: Bool
+  }
+  deriving stock (Generic, Show, Eq)
+  deriving anyclass (IsoValue, HasAnnotation)
 
 instance Buildable OperatorParam where
   build = genericF
@@ -203,22 +245,37 @@ type FA2ParameterC param =
 -- | Owner hook interface
 --
 
-type TransferDestinationDescriptor =
-  ("to_" :! Maybe Address
-  , ("token_id" :! TokenId, "amount" :! Natural))
+data TransferDestinationDescriptor = TransferDestinationDescriptor
+  { tddTo :: Maybe Address
+  , tddTokenId :: TokenId
+  , tddAmount :: Natural
+  }
+ deriving stock (Generic, Show, Eq)
+ deriving anyclass (IsoValue, HasAnnotation)
 
-type TransferDescriptor =
-  ( "from_" :! Maybe Address
-  , ("txs" :! [TransferDestinationDescriptor]))
+data TransferDescriptor = TransferDescriptor
+  { tdFrom :: Maybe Address
+  , tdTxs :: [TransferDestinationDescriptor]
+  }
+  deriving stock (Show, Eq, Generic)
+  deriving anyclass (IsoValue, HasAnnotation)
 
-type TransferDescriptorParam =
-  ("fa2" :! Address, ("batch" :! [TransferDescriptor], "operator" :! Address))
+data TransferDescriptorParam = TransferDescriptorParam
+  { tdpFa2 :: Address
+  , tdpBatch :: [TransferDescriptor]
+  , tdpOperator :: Address
+  }
+ deriving stock (Generic, Show, Eq)
+ deriving anyclass (IsoValue, HasAnnotation)
 
 data FA2OwnerHook
   = Tokens_sent TransferDescriptorParam
   | Tokens_received TransferDescriptorParam
   deriving stock (Generic, Eq, Show)
   deriving anyclass (IsoValue, HasAnnotation)
+
+instance Buildable TransferDescriptorParam where
+  build = genericF
 
 instance Buildable TransferDestinationDescriptor where
   build = genericF

@@ -43,9 +43,9 @@ import Lorentz (EntrypointRef(Call), HasEntrypointArg, arg, useHasEntrypointArg)
 import Michelson.Typed (Dict(..), IsoValue, fromVal, toVal)
 import qualified Michelson.Typed as T
 import Morley.Client
-  (AddressOrAlias(..), Alias, BigMapId(..), MorleyClientM, TezosClientError(UnknownAddress),
-  getAlias, getContractScript, lTransfer, originateContract, originateUntypedContract,
-  readBigMapValue, readBigMapValueMaybe)
+  (AddressOrAlias(..), Alias, MorleyClientM, TezosClientError(UnknownAddress), getAlias,
+  getContractScript, lTransfer, originateContract, originateUntypedContract, readBigMapValue,
+  readBigMapValueMaybe)
 import qualified Morley.Client as Client
 import Morley.Client.RPC (OriginationScript(OriginationScript))
 import Morley.Client.TezosClient (resolveAddress)
@@ -56,12 +56,10 @@ import Util.Named ((:!), (.!))
 
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
-  (DefaultExpiry, pattern MasterMinterRole, MetadataRegistryStorage, MetadataRegistryStorageView,
-  pattern OwnerRole, Parameter, pattern PauserRole, pattern PendingOwnerRole, PermitCounter,
-  pattern RegistryMetadata, TokenMetadata, UserPermits)
-import Stablecoin.Client.Contract
-  (InitialStorageData(..), mkInitialStorage, mkRegistryStorage, parseRegistryContract,
-  parseStablecoinContract)
+  (ConfigureMinterParam(..), MetadataRegistryStorage, MetadataRegistryStorageView, MintParam(..),
+  Parameter, Roles(..), Storage'(..), StorageView, mrsTokenMetadata, registryContract,
+  stablecoinContract)
+import Stablecoin.Client.Contract (InitialStorageData(..), mkInitialStorage, mkRegistryStorage)
 
 -- | An address and an optional alias, if one is found.
 data AddressAndAlias = AddressAndAlias Address (Maybe Alias)
@@ -80,7 +78,6 @@ data UpdateOperatorData
 -- If the given alias already exists, nothing happens.
 deploy :: "sender" :! AddressOrAlias -> Text -> InitialStorageData AddressOrAlias -> MorleyClientM (Text, Address, Address)
 deploy (arg #sender -> sender) alias initialStorageData = do
-  stablecoinContract <- parseStablecoinContract
   masterMinter <- resolveAddress (isdMasterMinter initialStorageData)
   contractOwner <- resolveAddress (isdContractOwner initialStorageData)
   pauser <- resolveAddress (isdPauser initialStorageData)
@@ -90,7 +87,6 @@ deploy (arg #sender -> sender) alias initialStorageData = do
   metadataRegistry <- case isdTokenMetadataRegistry initialStorageData of
     Just mdr -> resolveAddress mdr
     Nothing -> do
-      mdContract <- parseRegistryContract
       let registryStorage :: MetadataRegistryStorage = mkRegistryStorage
             (isdTokenSymbol initialStorageData)
             (isdTokenName initialStorageData)
@@ -101,7 +97,7 @@ deploy (arg #sender -> sender) alias initialStorageData = do
         "stablecoin-metadata"
         sender
         (unsafeMkMutez 0)
-        mdContract
+        registryContract
         (T.untypeValue registryStorageVal)
 
   let initialStorageData' = initialStorageData
@@ -130,15 +126,15 @@ transfer sender contract from to amount = do
   fromAddr <- resolveAddress from
   toAddr <- resolveAddress to
   call sender contract (Call @"Transfer")
-    [(#from_ .! fromAddr, #txs .! [(#to_ .! toAddr, (#token_id .! 0, #amount .! amount))])]
+    [FA2.TransferParam fromAddr [FA2.TransferDestination toAddr 0 amount]]
 
 getBalanceOf
   :: "contract" :! AddressOrAlias
   -> AddressOrAlias -> MorleyClientM Natural
 getBalanceOf contract owner = do
   ownerAddr <- resolveAddress owner
-  ((((_, arg #ledger -> bigMapId), _), _), _) <- getStorage contract
-  balanceMaybe <- readBigMapValueMaybe bigMapId ownerAddr
+  ledgerId <- sLedger <$> getStorage contract
+  balanceMaybe <- readBigMapValueMaybe ledgerId ownerAddr
   pure $ fromMaybe 0 balanceMaybe
 
 updateOperators
@@ -159,7 +155,7 @@ updateOperators (arg #sender -> sender) contract ops = do
 
     mkOperatorParam :: Address -> AddressOrAlias -> MorleyClientM FA2.OperatorParam
     mkOperatorParam ownerAddr operator =
-      resolveAddress operator <&> \operatorAddr -> (#owner .! ownerAddr, #operator .! operatorAddr)
+      resolveAddress operator <&> \operatorAddr -> FA2.OperatorParam ownerAddr operatorAddr
 
 isOperator
   :: "contract" :! AddressOrAlias
@@ -167,7 +163,7 @@ isOperator
 isOperator contract owner operator = do
   ownerAddr <- resolveAddress owner
   operatorAddr <- resolveAddress operator
-  (((_, (_, arg #operators -> operatorsId)), ((_, _), _)), _) <- getStorage contract
+  operatorsId <- sOperators <$> getStorage contract
   isJust @() <$> readBigMapValueMaybe operatorsId (ownerAddr, operatorAddr)
 
 -- | Pauses transferring, burning and minting operations so that they
@@ -187,12 +183,11 @@ configureMinter
   -> AddressOrAlias -> Maybe Natural -> Natural -> MorleyClientM ()
 configureMinter sender contract minter currentMintingAllowance newMintingAllowance = do
   minterAddr <- resolveAddress minter
-  call sender contract (Call @"Configure_minter")
-    ( #minter .! minterAddr
-    , ( #current_minting_allowance .! currentMintingAllowance
-      , #new_minting_allowance .! newMintingAllowance
-      )
-    )
+  call sender contract (Call @"Configure_minter") ConfigureMinterParam
+    { cmpMinter = minterAddr
+    , cmpCurrentMintingAllowance = currentMintingAllowance
+    , cmpNewMintingAllowance = newMintingAllowance
+    }
 
 -- | Removes a minter from the minter list and sets its minting allowance to 0.
 -- Once minter is removed it will no longer be able to mint or burn tokens.
@@ -210,7 +205,7 @@ mint
   -> AddressOrAlias -> Natural -> MorleyClientM ()
 mint sender contract to amount = do
   toAddr <- resolveAddress to
-  call sender contract (Call @"Mint") [(#to_ .! toAddr, #amount .! amount)]
+  call sender contract (Call @"Mint") [MintParam toAddr amount]
 
 -- | Decreases balance for sender by the sum of given amounts.
 burn
@@ -267,55 +262,53 @@ getBalance (arg #contract -> contract) = do
 -- | Check whether the contract has been paused.
 getPaused :: "contract" :! AddressOrAlias -> MorleyClientM Bool
 getPaused contract =
-  getStorage contract <&> \case
-    ((_, ((arg #paused -> paused, _), _)), _) -> paused
+  sIsPaused <$> getStorage contract
 
 -- | Get the address and optional alias of the current contract owner.
 getContractOwner :: "contract" :! AddressOrAlias -> MorleyClientM AddressAndAlias
-getContractOwner contract =
-  getStorage contract >>= \case
-    StorageViewRoles (OwnerRole ownerAddr) -> pairWithAlias ownerAddr
+getContractOwner contract = do
+  owner <- rOwner . sRoles <$> getStorage contract
+  pairWithAlias owner
 
 -- | Check if there's an ownership transfer pending acceptance and, if so,
 -- get its pending owner's address and optional alias.
 getPendingContractOwner :: "contract" :! AddressOrAlias -> MorleyClientM (Maybe AddressAndAlias)
-getPendingContractOwner contract =
-  getStorage contract >>= \case
-    StorageViewRoles (PendingOwnerRole ownerAddr) -> traverse pairWithAlias ownerAddr
+getPendingContractOwner contract = do
+  pendingOwnerMb <- rPendingOwner . sRoles <$> getStorage contract
+  traverse pairWithAlias pendingOwnerMb
 
 -- | Get the address and optional alias of the master minter.
 getMasterMinter :: "contract" :! AddressOrAlias -> MorleyClientM AddressAndAlias
-getMasterMinter contract =
-  getStorage contract >>= \case
-    StorageViewRoles (MasterMinterRole masterMinterAddr) -> pairWithAlias masterMinterAddr
+getMasterMinter contract = do
+  masterMinter <- rMasterMinter . sRoles <$> getStorage contract
+  pairWithAlias masterMinter
 
 -- | Get the address and optional alias of the pauser.
 getPauser :: "contract" :! AddressOrAlias -> MorleyClientM AddressAndAlias
-getPauser contract =
-  getStorage contract >>= \case
-    StorageViewRoles (PauserRole pauserAddr) -> pairWithAlias pauserAddr
+getPauser contract = do
+  pauser <- rPauser . sRoles <$> getStorage contract
+  pairWithAlias pauser
 
 -- | Check if a transferlist is set and, if so, get its address and optional alias.
 getTransferlist :: "contract" :! AddressOrAlias -> MorleyClientM (Maybe AddressAndAlias)
-getTransferlist contract =
-  getStorage contract >>= \case
-    (_, (_, arg #transferlist_contract -> transferlistMb)) -> traverse pairWithAlias transferlistMb
+getTransferlist contract = do
+  transferlistMb <- sTransferlistContract <$> getStorage contract
+  traverse pairWithAlias transferlistMb
 
 -- | Get the minting allowance for the given minter.
 getMintingAllowance :: "contract" :! AddressOrAlias -> AddressOrAlias -> MorleyClientM Natural
 getMintingAllowance contract minter = do
   minterAddr <- resolveAddress minter
-  (((_, (arg #minting_allowances -> mintingAllowances, _)), _), _) <- getStorage contract
+  mintingAllowances <- sMintingAllowances <$> getStorage contract
   let allowanceMaybe = M.lookup minterAddr mintingAllowances
   pure $ fromMaybe 0 allowanceMaybe
 
 -- | Get the token metadata of the contract
-getTokenMetadata :: "contract" :! AddressOrAlias -> MorleyClientM TokenMetadata
+getTokenMetadata :: "contract" :! AddressOrAlias -> MorleyClientM FA2.TokenMetadata
 getTokenMetadata contract = do
-  (_, (arg #token_metadata_registry -> mdRegistry, _)) <- getStorage contract
-  getRegistryStorage mdRegistry >>= \case
-    -- failable pattern triggers here for some reason, hence the case stm
-    RegistryMetadata bigmapId -> readBigMapValue bigmapId (0 :: FA2.TokenId)
+  mdRegistry <- sTokenMetadataRegistry <$> getStorage contract
+  bigMapId <- mrsTokenMetadata <$> getRegistryStorage mdRegistry
+  readBigMapValue bigMapId (0 :: FA2.TokenId)
 
 -- | Check if there's an alias associated with this address and, if so, return both.
 pairWithAlias :: Address -> MorleyClientM AddressAndAlias
@@ -380,45 +373,3 @@ instance Buildable StablecoinClientError where
 
 instance Exception StablecoinClientError where
   displayException = pretty
-
-------------------------------------------------------------------
---- Storage
-------------------------------------------------------------------
-
--- | 'StorageView' is very similar to 'Lorentz.Contracts.Stablecoin.Storage',
--- except 'BigMap's have been replaced by 'BigMapId'.
--- This is because, when a contract's storage is queried, the tezos RPC returns
--- big_maps' IDs instead of their contents.
-type StorageView =
-  ((((DefaultExpiry, Ledger),
-     (MintingAllowances, Operators)),
-    ((IsPaused, PermitCounter),
-     (Permits, Roles))),
-   (TokenMetadataRegistryAddress, TransferlistContract))
-
-type Permits = "permits" :! BigMapId Address UserPermits
-
-type Ledger = "ledger" :! BigMapId Address Natural
-
-type Operators = "operators" :! BigMapId (Address, Address) ()
-type IsPaused = "paused" :! Bool
-
-type MasterMinter = Address
-type Owner = Address
-type PendingOwner = Maybe Address
-type Pauser = Address
-
-type MintingAllowances = "minting_allowances" :! Map Address Natural
-
-type RolesInner = (("master_minter" :! MasterMinter, "owner" :! Owner)
-             , ("pauser" :! Pauser, "pending_owner_address" :! PendingOwner))
-
-type Roles = "roles" :! RolesInner
-
-type TransferlistContract = "transferlist_contract" :! (Maybe Address)
-
-type TokenMetadataRegistryAddress = "token_metadata_registry" :! Address
-
-pattern StorageViewRoles :: RolesInner -> StorageView
-pattern StorageViewRoles roles <- ((_, (_, (_, arg #roles -> roles))), _)
-{-# COMPLETE StorageViewRoles #-}

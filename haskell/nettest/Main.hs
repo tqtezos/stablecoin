@@ -24,7 +24,6 @@ import qualified Lorentz.Contracts.StablecoinFA1_2 as FA1_2
 import Nettest (TransferlistType(External, Internal), scNettestScenario)
 import Permit (permitScenario)
 import Stablecoin.Client.Cleveland.Caps (runStablecoinClient)
-import Stablecoin.Client.Contract (parseStablecoinContract)
 import StablecoinClientTest (stablecoinClientScenario)
 
 externalTransferlistContractPath :: FilePath
@@ -40,7 +39,6 @@ main = do
       (#description .! "Stablecoin nettest scenarioWithInternalTransferlist")
       (#header .! "ManagedLedger nettest")
       (#parser .! clientParser)
-  stablecoinContract <- parseStablecoinContract
   externalTransferlistFile <- Utf8.readFile externalTransferlistContractPath
   externalTransferlistContract <- either (error "cannot parse transferlist contract") pure $
     parseExpandContract (Just externalTransferlistContractPath) externalTransferlistFile
@@ -68,7 +66,6 @@ main = do
       niComment impl "Stablecoin contract nettest scenarioWithInternalTransferlist"
       scNettestScenario
         mkInitialStorage
-        stablecoinContract
         originateTransferlistInternal
         Internal
         impl
@@ -78,7 +75,6 @@ main = do
       niComment impl "Stablecoin contract nettest scenarioWithExternalTransferlist"
       scNettestScenario
         mkInitialStorage
-        stablecoinContract
         (originateTransferlistExternal @m @capsM)
         External
         impl
@@ -86,11 +82,11 @@ main = do
   env <- mkNettestEnv parsedConfig
   runNettestViaIntegrational scenarioWithInternalTransferlist
   runNettestViaIntegrational scenarioWithExternalTransferlist
-  runNettestViaIntegrational (permitScenario stablecoinContract)
+  runNettestViaIntegrational permitScenario
 
   runNettestClient env scenarioWithInternalTransferlist
   runNettestClient env scenarioWithExternalTransferlist
-  runNettestClient env (permitScenario stablecoinContract)
+  runNettestClient env permitScenario
 
   runStablecoinClient
     (ncMorleyClientConfig parsedConfig)

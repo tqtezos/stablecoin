@@ -15,6 +15,7 @@ import qualified Options.Applicative as Opt
 import Util.Exception (displayUncaughtException)
 import Util.Named ((.!))
 
+import Lorentz.Contracts.Spec.FA2Interface (TokenMetadata(..))
 import Stablecoin.Client.Contract (InitialStorageData(..))
 import Stablecoin.Client.Impl
   (AddressAndAlias(..), acceptOwnership, burn, changeMasterMinter, changePauser, configureMinter,
@@ -159,10 +160,10 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
       putTextLn $ "Minting allowance: " <> pretty allowance
 
     CmdGetTokenMetadata -> do
-      (_, (symbol, (name, (decimals, _)))) <- getTokenMetadata contract
-      putTextLn $ "Token symbol: " <> pretty symbol
-      putTextLn $ "Token name: " <> pretty name
-      putTextLn $ "Token decimals: " <> pretty decimals
+      tm <- getTokenMetadata contract
+      putTextLn $ "Token symbol: " <> pretty (tmSymbol tm)
+      putTextLn $ "Token name: " <> pretty (tmName tm)
+      putTextLn $ "Token decimals: " <> pretty (tmDecimals tm)
 
   where
     user = #sender .! goUser globalOptions

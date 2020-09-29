@@ -2,104 +2,88 @@
 -- SPDX-License-Identifier: MIT
 
 module Lorentz.Contracts.Stablecoin
-  ( ConfigureMinterParam
+  ( ConfigureMinterParam(..)
   , ChangeMasterMinterParam
   , ChangePauserParam
   , GetCounterParam
   , SetTransferlistParam
-  , TokenMetadata
-  , TokenMetadataRegistryAddress
   , RemoveMinterParam
+  , MetadataRegistryStorage'(..)
   , MetadataRegistryStorage
   , MetadataRegistryStorageView
+  , mkMetadataRegistryStorage
   , MintParams
-  , MintParam
+  , MintParam(..)
   , BurnParams
   , ParameterC
   , Parameter (..)
-  , Roles
+  , Storage'(..)
   , Storage
+  , StorageView
+  , UserPermits(..)
+  , PermitInfo(..)
+  , Roles(..)
+
   , TransferOwnershipParam
-  , OwHook(..)
-  , OwHookOptReq(..)
   , Expiry
   , PermitHash(..)
   , mkPermitHash
-  , UserPermits
-  , PermitCounter
-  , DefaultExpiry
-  , PermitParam
-  , RevokeParam
+  , PermitParam(..)
+  , RevokeParam(..)
   , RevokeParams
-  , SetExpiryParam
+  , SetExpiryParam(..)
   , GetDefaultExpiryParam
   , minterLimit
-  , mkTokenMetadata
   , stablecoinTokenMetadata
 
-  -- We use these patterns only for validation
-  , pattern StorageLedger
-  , pattern StorageRoles
-  , pattern StorageMinters
-  , pattern StorageOperators
-  , pattern StoragePaused
-  , pattern StorageTransferlistContract
-  , pattern StorageMetadataRegistery
-  , pattern MasterMinterRole
-  , pattern OwnerRole
-  , pattern PauserRole
-  , pattern PendingOwnerRole
-  , pattern ConfigureMinterParams
-  , pattern RegistryMetadata
-  , pattern StoragePermits
-
-  , stablecoinPath
-  , metadataRegistryContractPath
+  -- Embedded LIGO contracts
+  , stablecoinContract
+  , registryContract
   ) where
 
+import Data.FileEmbed (embedStringFile)
 import Fmt
 import qualified Text.Show
 
 import Lorentz
 import qualified Lorentz as L
+import Michelson.Runtime (parseExpandContract)
+import Michelson.Test.Import (readContract)
 import Morley.Client (BigMapId(..))
 import qualified Tezos.Crypto as Hash
-import Util.Named
 
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
-
--- | The path to the compiled stablecoin contract.
-stablecoinPath :: FilePath
-stablecoinPath = "./test/resources/stablecoin.tz"
-
--- | The path to the compiled metadata registry.
-metadataRegistryContractPath :: FilePath
-metadataRegistryContractPath = "./test/resources/metadata.tz"
+import Lorentz.Contracts.StablecoinPath (metadataRegistryContractPath, stablecoinPath)
+import qualified Michelson.Typed as T
+import qualified Michelson.Untyped as U
 
 ------------------------------------------------------------------
 -- Parameter
 
-type ConfigureMinterParam =
-  ( "minter" :! Address
-  , ( "current_minting_allowance" :! Maybe Natural
-    , "new_minting_allowance" :! Natural
-    )
-  )
+data ConfigureMinterParam = ConfigureMinterParam
+ { cmpMinter :: Address
+ , cmpCurrentMintingAllowance :: Maybe Natural
+ , cmpNewMintingAllowance :: Natural
+ }
+ deriving stock (Generic, Show)
+ deriving anyclass (IsoValue, HasAnnotation)
 
-pattern ConfigureMinterParams :: Address -> Maybe Natural -> Natural -> ConfigureMinterParam
-pattern ConfigureMinterParams addr cma nma <-
-  ( arg #minter -> addr
-  , (arg #current_minting_allowance -> cma, arg #new_minting_allowance -> nma))
-{-# COMPLETE ConfigureMinterParams #-}
+instance Buildable ConfigureMinterParam where
+  build = genericF
 
 type RemoveMinterParam = Address
 
-type MintParam =
-  ( "to_" :! Address
-  , "amount" :! Natural
-  )
+data MintParam = MintParam
+  { mpTo :: Address
+  , mpAmount :: Natural
+  }
+  deriving stock (Show, Generic)
+  deriving anyclass (IsoValue, HasAnnotation)
 
-type MintParams = List MintParam
+instance Buildable MintParam where
+  build = genericF
+
+type MintParams = [MintParam]
 
 type BurnParams = List Natural
 
@@ -115,19 +99,42 @@ newtype PermitHash = PermitHash ByteString
 instance Buildable PermitHash where
   build (PermitHash bs) = base64F bs
 
-mkPermitHash :: Parameter -> PermitHash
-mkPermitHash = PermitHash . Hash.blake2b . lPackValue
+data PermitParam = PermitParam
+  { ppKey :: PublicKey
+  , ppSignature :: Signature
+  , ppPermitHash :: PermitHash
+  }
+ deriving stock (Generic, Show)
+ deriving anyclass (IsoValue, HasAnnotation)
 
-type PermitParam =
-  ( PublicKey
-  , (Signature, PermitHash)
-  )
+instance Buildable PermitParam where
+  build = genericF
 
-type RevokeParam = (PermitHash, Address)
-type RevokeParams = List RevokeParam
+data RevokeParam = RevokeParam
+  { rpPermitHash :: PermitHash
+  , rpPermitIssuer :: Address
+  }
+  deriving stock (Show, Generic)
+
+deriving anyclass instance IsoValue RevokeParam
+deriving anyclass instance HasAnnotation RevokeParam
+instance Buildable RevokeParam where
+  build = genericF
+
+type RevokeParams = [RevokeParam]
 
 type Expiry = Natural
-type SetExpiryParam = (Expiry, Maybe (PermitHash, Address))
+
+data SetExpiryParam = SetExpiryParam
+  { sepExpiry :: Expiry
+  , sepPermit :: Maybe (PermitHash, Address)
+  }
+  deriving stock (Show, Generic)
+
+deriving anyclass instance IsoValue SetExpiryParam
+deriving anyclass instance HasAnnotation SetExpiryParam
+instance Buildable SetExpiryParam where
+  build = genericF
 
 type GetDefaultExpiryParam = View () Expiry
 
@@ -152,7 +159,6 @@ data Parameter
   | Set_transferlist SetTransferlistParam
   | Transfer_ownership TransferOwnershipParam
   | Unpause
-
 
 -- | In order to be able to construct valid permits,
 -- the shape of the @or@ tree generated
@@ -225,139 +231,180 @@ type ParameterC param =
   , ParameterContainsEntrypoints param PermitEntrypoints
   )
 
+-- | Crates a permit that can be issued via the @Permit@ entrypoint, allowing other users
+-- to call the contract with the given 'Parameter' value.
+mkPermitHash :: Parameter -> PermitHash
+mkPermitHash = PermitHash . Hash.blake2b . lPackValue
+
 ------------------------------------------------------------------
 --- Storage
 ------------------------------------------------------------------
 
-type OperatorsInner = BigMap (Address, Address) ()
+data UserPermits = UserPermits
+  { upExpiry :: Maybe Expiry
+  , upPermits :: Map PermitHash PermitInfo
+  }
+  deriving stock (Show, Generic)
+  deriving anyclass (IsoValue, HasAnnotation)
 
-type LedgerInner = Map Address Natural
-type Ledger = "ledger" :! (BigMap Address Natural)
+data PermitInfo = PermitInfo
+  { piCreatedAt :: Timestamp
+  , piExpiry :: Maybe Expiry
+  }
+  deriving stock (Show, Generic)
+  deriving anyclass (IsoValue, HasAnnotation)
 
-type Operators = "operators" :! OperatorsInner
-type IsPaused = "paused" :! Bool
+data Roles = Roles
+  { rMasterMinter :: Address
+  , rOwner :: Address
+  , rPauser :: Address
+  , rPendingOwner :: Maybe Address
+  }
+  deriving stock (Show)
 
-type MasterMinter = Address
-type Owner = Address
-type PendingOwner = Maybe Address
-type Pauser = Address
+deriving anyclass instance IsoValue Roles
+deriving anyclass instance HasAnnotation Roles
+$(customGeneric "Roles" $ withDepths
+    [ cstr @0
+      [ fld @2
+      , fld @2
+      , fld @2
+      , fld @2
+      ]
+    ]
+  )
 
-type MintingAllowancesInner = Map Address Natural
-type MintingAllowances = "minting_allowances" :! MintingAllowancesInner
+data Storage' big_map = Storage
+  { sDefaultExpiry :: Expiry
+  , sLedger :: big_map Address Natural
+  , sMintingAllowances :: Map Address Natural
+  , sOperators :: big_map (Address, Address) ()
+  , sIsPaused :: Bool
+  , sPermitCounter :: Natural
+  , sPermits :: big_map Address UserPermits
+  , sRoles :: Roles
+  , sTokenMetadataRegistry :: Address
+  , sTransferlistContract :: Maybe Address
+  }
 
-type RolesInner = (("master_minter" :! MasterMinter, "owner" :! Owner)
-             , ("pauser" :! Pauser, "pending_owner_address" :! PendingOwner))
+$(customGeneric "Storage'" $ withDepths
+    [ cstr @0
+      [ fld @4 -- sDefaultExpiry
+      , fld @4 -- sLedger
+      , fld @4 -- sMintingAllowances
+      , fld @4 -- sOperators
+      , fld @4 -- sIsPaused
+      , fld @4 -- sPermitCounter
+      , fld @4 -- sPermits
+      , fld @4 -- sRoles
+      , fld @2 -- sTokenMetadataRegistry
+      , fld @2 -- sTransferlistContract
+      ]
+    ]
+  )
 
-type Roles = "roles" :! RolesInner
+type Storage = Storage' BigMap
+deriving stock instance Show Storage
+deriving anyclass instance IsoValue Storage
+deriving anyclass instance HasAnnotation Storage
 
-type TransferlistContract = "transferlist_contract" :! (Maybe Address)
-
-type TokenMetadataRegistryAddress = "token_metadata_registry" :! Address
-
-type PermitCounter = "permit_counter" :! Natural
-type DefaultExpiry = "default_expiry" :! Expiry
-type Permits = "permits" :! BigMap Address UserPermits
-
-type UserPermits = ("expiry" :! Maybe Expiry, "permits" :! Map PermitHash PermitInfo)
-type PermitExpiry = "expiry" :! Maybe Expiry
-type PermitCreatedAt = "created_at" :! Timestamp
-type PermitInfo = (PermitCreatedAt, PermitExpiry)
-
-type Storage =
-  ((((DefaultExpiry, Ledger),
-     (MintingAllowances, Operators)),
-    ((IsPaused, PermitCounter),
-     (Permits, Roles))),
-   (TokenMetadataRegistryAddress, TransferlistContract))
-
-pattern StorageLedger :: LedgerInner -> Storage
-pattern StorageLedger ledger <- ((((_, arg #ledger -> BigMap ledger), _), _), _)
-{-# COMPLETE StorageLedger #-}
-
-pattern StorageMinters :: MintingAllowancesInner -> Storage
-pattern StorageMinters minters <- (((_, (arg #minting_allowances -> minters, _)), _), _)
-{-# COMPLETE StorageMinters #-}
-
-pattern StorageOperators :: OperatorsInner -> Storage
-pattern StorageOperators operators <- (((_, (_, arg #operators -> operators)), _), _)
-{-# COMPLETE StorageOperators #-}
-
-pattern StoragePaused :: Bool -> Storage
-pattern StoragePaused paused <- ((_, ((arg #paused -> paused, _), _)), _)
-{-# COMPLETE StoragePaused #-}
-
-pattern StorageMetadataRegistery :: Address -> Storage
-pattern StorageMetadataRegistery registry <- (_, (arg #token_metadata_registry -> registry, _))
-{-# COMPLETE StorageMetadataRegistery #-}
-
-pattern StorageRoles :: RolesInner -> Storage
-pattern StorageRoles roles <- ((_, (_, (_, arg #roles -> roles))), _)
-{-# COMPLETE StorageRoles #-}
-
-pattern StorageTransferlistContract :: Maybe Address -> Storage
-pattern StorageTransferlistContract transferlistContract <- (_, (_, arg #transferlist_contract -> transferlistContract))
-{-# COMPLETE StorageTransferlistContract #-}
-
-pattern MasterMinterRole :: MasterMinter -> RolesInner
-pattern MasterMinterRole masterMinter <- ((arg #master_minter -> masterMinter, _), _)
-{-# COMPLETE MasterMinterRole #-}
-
-pattern OwnerRole :: Owner -> RolesInner
-pattern OwnerRole owner <- ((_, arg #owner -> owner), _)
-{-# COMPLETE OwnerRole #-}
-
-pattern PauserRole :: Pauser -> RolesInner
-pattern PauserRole pauser <- (_, (arg #pauser -> pauser, _))
-{-# COMPLETE PauserRole #-}
-
-pattern PendingOwnerRole :: PendingOwner -> RolesInner
-pattern PendingOwnerRole pendingOwner <- (_, (_, arg #pending_owner_address -> pendingOwner))
-{-# COMPLETE PendingOwnerRole #-}
-
-pattern StoragePermits :: Map Address UserPermits -> Storage
-pattern StoragePermits permits <- ((_, (_, (arg #permits -> BigMap permits, _))), _)
-{-# COMPLETE StoragePermits #-}
-
--- Permissions descriptor
-data OwHookOptReq = OptOH | ReqOp
-  deriving stock (Eq, Generic, Show)
-  deriving anyclass (IsoValue, L.HasAnnotation)
-
-data OwHook =  OwNoOp | OwOptReq OwHookOptReq
-  deriving stock (Eq, Generic, Show)
-  deriving anyclass (IsoValue, L.HasAnnotation)
+-- | Represents a storage value retrieved using the Tezos RPC.
+--
+-- 'StorageView' is very similar to 'Storage',
+-- except 'BigMap's have been replaced by 'BigMapId'.
+-- This is because, when a contract's storage is queried, the Tezos RPC returns
+-- big_maps' IDs instead of their contents.
+type StorageView = Storage' BigMapId
+deriving stock instance Show StorageView
+deriving anyclass instance IsoValue StorageView
 
 -- We will hard code stablecoin token metadata here
-stablecoinTokenMetadata :: TokenMetadata
-stablecoinTokenMetadata = mkTokenMetadata stablecoinTokenMetadataFA2
-  where
-    stablecoinTokenMetadataFA2 :: FA2.TokenMetadata
-    stablecoinTokenMetadataFA2 =
-      (#token_id .! 0, #mdr .! ( #symbol .! [mt|TEST|]
-                               , #mdr2 .! ( #name .! [mt|Test|]
-                                          , #mdr3 .! ( #decimals .! 8, #extras .! mempty))))
-
-mkTokenMetadata :: FA2.TokenMetadata -> TokenMetadata
-mkTokenMetadata
-  ( L.arg #token_id -> token_id
-  , L.arg #mdr -> (L.arg #symbol -> symbol
-  , L.arg #mdr2 -> (L.arg #name -> name
-  , L.arg #mdr3 -> (L.arg #decimals -> decimals
-  , L.arg #extras -> extras)))) = (token_id, (symbol, (name, (decimals, extras))))
-
-type TokenMetadata = (Natural, (L.MText, (L.MText, (Natural, Map L.MText L.MText))))
+stablecoinTokenMetadata :: FA2.TokenMetadata
+stablecoinTokenMetadata = FA2.TokenMetadata
+  { tmTokenId = 0
+  , tmSymbol = [mt|TEST|]
+  , tmName = [mt|Test|]
+  , tmDecimals = 8
+  , tmExtras = mempty
+  }
 
 -- Currently the contract allows to add upto 12 minters.
 minterLimit :: Int
 minterLimit = 12
 
-type MetadataRegistryStorage' bt = ("dummy_field" :! (), "token_metadata" :! bt)
+data MetadataRegistryStorage' big_map = MetadataRegistryStorage
+  { mrsDummyField :: ()
+  , mrsTokenMetadata :: big_map FA2.TokenId FA2.TokenMetadata
+  }
+  deriving stock Generic
 
-type MetadataRegistryStorageView = MetadataRegistryStorage' (BigMapId FA2.TokenId TokenMetadata)
-type MetadataRegistryStorage = MetadataRegistryStorage' (BigMap FA2.TokenId TokenMetadata)
+type MetadataRegistryStorage = MetadataRegistryStorage' BigMap
+type MetadataRegistryStorageView = MetadataRegistryStorage' BigMapId
 
-pattern RegistryMetadata :: a -> MetadataRegistryStorage' a
-pattern RegistryMetadata metadata <- (_, arg #token_metadata -> metadata)
-  where
-    RegistryMetadata metadata = (#dummy_field .! (), #token_metadata .! metadata)
-{-# COMPLETE RegistryMetadata #-}
+deriving stock instance Show (MetadataRegistryStorage)
+deriving stock instance Show (MetadataRegistryStorageView)
+
+deriving anyclass instance IsoValue (MetadataRegistryStorage)
+deriving anyclass instance IsoValue (MetadataRegistryStorageView)
+
+mkMetadataRegistryStorage :: big_map FA2.TokenId FA2.TokenMetadata -> MetadataRegistryStorage' big_map
+mkMetadataRegistryStorage bm = MetadataRegistryStorage () bm
+
+-- This empty splice lets us workaround the GHC stage restriction, and refer to `Storage`
+-- in the TH splices below.
+$(pure [])
+
+stablecoinContract :: T.Contract (ToT Parameter) (ToT Storage)
+stablecoinContract =
+  -- This TemplateHaskell splice is here to ensure the Michelson representation
+  -- (i.e., the generated tree of `or` and `pair`) of these Haskell data
+  -- types matches exactly the Michelson representation of the Ligo data types.
+  --
+  -- For example, if a Ligo data type generates a Michelson balanced tuple like
+  -- ((a, b), (c, d)), but the corresponding Haskell data type generates a Michelson
+  -- tuple like (a, (b, (c, d))), compilation should fail.
+  --
+  -- The reason they need to match is because of the way permits work.
+  -- If we issue a permit for an entrypoint and the tree of `or`s is incorrect,
+  -- then the permit will be unusable.
+  -- See TZIP-17 for more info.
+  --
+  -- The splice attempts to parse the stablecoin.tz contract at compile-time.
+  -- If, for example, the Michelson representation of Haskell's
+  -- `Lorentz.Contracts.Stablecoin.Parameter` is different from Ligo's `parameter`,
+  -- then this splice will raise a compilation error.
+  --
+  -- This can usually be fixed by writing a custom instance of Generic using `customGeneric`,
+  -- and making sure the data type's layout matches the layout in stablecoin.tz.
+  -- See examples in this module.
+  $(case readContract @(ToT Parameter) @(ToT Storage) stablecoinPath $(embedStringFile stablecoinPath) of
+      Left e ->
+        -- Emit a compiler error if the contract cannot be read.
+        fail (pretty e)
+      Right _ ->
+        -- Emit a haskell expression that reads the contract.
+        [|
+          -- Note: it's ok to use `error` here, because we just proved that the contract
+          -- can be parsed+typechecked.
+          either (error . pretty) snd $
+            readContract
+              stablecoinPath
+              $(embedStringFile stablecoinPath)
+        |]
+  )
+
+-- | Parse the metadata registry contract.
+registryContract :: U.Contract
+registryContract =
+  $(case parseExpandContract (Just metadataRegistryContractPath) $(embedStringFile metadataRegistryContractPath) of
+    Left e -> fail (pretty e)
+    Right _ ->
+      [|
+        -- Note: it's ok to use `error` here, because we just proved that the contract
+        -- can be parsed+typechecked.
+        either (error . pretty) id $
+          parseExpandContract
+            (Just metadataRegistryContractPath)
+            $(embedStringFile metadataRegistryContractPath)
+      |]
+    )
