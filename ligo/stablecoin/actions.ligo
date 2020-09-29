@@ -418,18 +418,6 @@ function update_operators_action
   )
 
 (*
- * Retrieves a boolean of whether the given address is an operator
- * for `owner` address and remains the store untouched
- *)
-function is_operator_action
-  ( const parameter : is_operator_params
-  ; const store     : storage
-  ) : entrypoint is
-  ( list [is_operator (parameter, store.operators)]
-  , store
-  )
-
-(*
  * Pauses whole contract in order to prevent all transferring, burning,
  * minting and allowance operations. All other operations remain
  * unaffected. Fails if the contract is already paused.

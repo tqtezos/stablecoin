@@ -104,20 +104,6 @@ type update_operator_param is
 
 type update_operator_params is list (update_operator_param)
 
-type is_operator_response_ is record
-  operator    : operator_param
-; is_operator : bool
-end
-
-type is_operator_response is michelson_pair_right_comb(is_operator_response_)
-
-type is_operator_params_ is record
-  operator : operator_param
-; callback : contract (is_operator_response)
-end
-
-type is_operator_params is michelson_pair_right_comb(is_operator_params_)
-
 (* ------------------------------------------------------------- *)
 
 type operator_transfer_policy_ is
@@ -165,7 +151,6 @@ type parameter is
 | Balance_of              of balance_of_params
 | Token_metadata_registry of token_metadata_registry_params
 | Update_operators        of update_operator_params
-| Is_operator             of is_operator_params
 
 (* ------------------------------------------------------------- *)
 

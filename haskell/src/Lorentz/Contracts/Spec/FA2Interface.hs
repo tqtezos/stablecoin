@@ -198,25 +198,18 @@ instance Buildable IsOperatorResponse where
 type IsOperatorParam = View ("operator" :! OperatorParam) IsOperatorResponse
 
 -- | Parameter of an FA2 contract
--- Note that right now this is generated with type annotations where
--- FA2 require field annotations, because current infra is unable to
--- generate such kind of annotations. Here is an issue that aims to
--- solve it.
--- TODO : https://gitlab.com/morley-framework/morley/-/issues/159
 data Parameter
   = Balance_of BalanceRequestParams
-  | Is_operator IsOperatorParam
   | Token_metadata_registry TokenMetadataRegistryParam
   | Transfer TransferParams
   | Update_operators UpdateOperatorsParam
   deriving stock (Show)
 
 $(customGeneric "Parameter" $ withDepths
-    [ cstr @3 [fld @0]
-    , cstr @3 [fld @0]
-    , cstr @3 [fld @0]
-    , cstr @3 [fld @0]
-    , cstr @1 [fld @0]
+    [ cstr @2 [fld @0]
+    , cstr @2 [fld @0]
+    , cstr @2 [fld @0]
+    , cstr @2 [fld @0]
     ]
   )
 
@@ -237,7 +230,6 @@ type FA2ParameterMichelsonEntrypoints =
   , "Balance_of" :> BalanceRequestParams
   , "Token_metadata_registry" :> TokenMetadataRegistryParam
   , "Update_operators" :> UpdateOperatorsParam
-  , "Is_operator" :> IsOperatorParam
   ]
 
 type FA2ParameterC param =
