@@ -10,20 +10,19 @@ import qualified Data.Map as Map
 import Lorentz (BigMap(..), EntrypointRef(Call), TAddress(..), mkView, toVal)
 import Lorentz.Test.Consumer (contractConsumer)
 import Michelson.Typed (untypeValue)
-import qualified Michelson.Untyped as U
 import Morley.Nettest
 import Util.Named ((.!))
 
 import Lorentz.Contracts.Stablecoin (Roles(..))
-import Lorentz.Contracts.StablecoinFA1_2 (Parameter, Storage(..))
+import Lorentz.Contracts.StablecoinFA1_2 (Parameter, Storage(..), stablecoinFA1_2Contract)
 
 -- | This test runs each FA1.2 operation once.
 --
 -- It does not actually make any assertions (other than that the contract doesn't fail).
 -- Rather, its main purpose is to automate these operations so we can easily
 -- the gas/transaction costs.
-fa1_2Scenario :: U.Contract -> NettestScenario m
-fa1_2Scenario contract = uncapsNettest $ do
+fa1_2Scenario :: NettestScenario m
+fa1_2Scenario = uncapsNettest $ do
   comment "-- FA1.2 tests --"
 
   comment "Creating accounts"
@@ -57,7 +56,7 @@ fa1_2Scenario contract = uncapsNettest $ do
 
   comment "Originating FA1.2 contract"
   contractAddr <- TAddress @Parameter <$>
-    originateUntypedSimple "Stablecoin FA1.2" (untypeValue $ toVal storage) contract
+    originateUntypedSimple "Stablecoin FA1.2" (untypeValue $ toVal storage) stablecoinFA1_2Contract
 
   comment "Calling approve"
   callFrom (AddressResolved owner1) contractAddr (Call @"Approve") (#spender .! owner2, #value .! 2)

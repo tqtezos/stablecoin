@@ -1,27 +1,24 @@
 -- SPDX-FileCopyrightText: 2020 TQ Tezos
 -- SPDX-License-Identifier: MIT
 
+-- | This module contains the Haskell bindings for working with the
+-- @stablecoin.fa1.2.tz@ contract.
 module Lorentz.Contracts.StablecoinFA1_2
  ( Storage(..)
  , Parameter(..)
- , parseStablecoinContract
+ , stablecoinFA1_2Contract
  ) where
 
 import Data.FileEmbed (embedStringFile)
+import Fmt (pretty)
 
 import Lorentz
 import qualified Lorentz.Contracts.Spec.ApprovableLedgerInterface as AL
-import qualified Lorentz.Contracts.Stablecoin as S
-import Michelson.Parser (ParserException)
 import Michelson.Runtime (parseExpandContract)
 import qualified Michelson.Untyped as U
 
--- | Parse the stablecoin contract.
-parseStablecoinContract :: Either ParserException U.Contract
-parseStablecoinContract =
-  parseExpandContract
-    (Just "./test/resources/stablecoin.fa1.2.tz")
-    $(embedStringFile "./test/resources/stablecoin.fa1.2.tz")
+import qualified Lorentz.Contracts.Stablecoin as S
+import Lorentz.Contracts.StablecoinPath (stablecoinFA1_2Path)
 
 data Storage = Storage
   { sDefaultExpiry :: S.Expiry
@@ -77,3 +74,19 @@ data Parameter
 
 instance ParameterHasEntrypoints Parameter where
   type ParameterEntrypointsDerivation Parameter = EpdRecursive
+
+-- | Parse the metadata registry contract.
+stablecoinFA1_2Contract :: U.Contract
+stablecoinFA1_2Contract =
+  $(case parseExpandContract (Just stablecoinFA1_2Path) $(embedStringFile stablecoinFA1_2Path) of
+    Left e -> fail (pretty e)
+    Right _ ->
+      [|
+        -- Note: it's ok to use `error` here, because we just proved that the contract
+        -- can be parsed+typechecked.
+        either (error . pretty) id $
+          parseExpandContract
+            (Just stablecoinFA1_2Path)
+            $(embedStringFile stablecoinFA1_2Path)
+      |]
+    )
