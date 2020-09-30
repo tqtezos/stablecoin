@@ -16,7 +16,6 @@ is case action of
   | Balance_of              (params) -> balance_of              (params, store)
   | Token_metadata_registry (params) -> token_metadata_registry (params, store)
   | Update_operators        (params) -> update_operators_action (params, store, full_param)
-  | Is_operator             (params) -> is_operator_action      (params, store)
 end
 
 (*

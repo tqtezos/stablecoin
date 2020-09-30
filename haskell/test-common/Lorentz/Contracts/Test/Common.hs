@@ -38,6 +38,7 @@ module Lorentz.Contracts.Test.Common
   , constructTransfersFromSender
   , constructSingleTransfer
   , withOriginated
+  , mgmContractPaused
   , mkInitialStorage
 
   , lExpectAnyMichelsonFailed
@@ -221,3 +222,6 @@ mkInitialStorage OriginationParams{..} =
       -> Map (Address, Address) ()
       -> Map (Address, Address) ()
     foldFn ow ops m = foldr (\a b -> Map.insert (ow, a) () b) m ops
+
+mgmContractPaused :: ExecutorError -> IntegrationalScenario
+mgmContractPaused = lExpectFailWith (== [mt|CONTRACT_PAUSED|])

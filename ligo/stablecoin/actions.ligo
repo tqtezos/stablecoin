@@ -398,7 +398,8 @@ function update_operators_action
   ; const store : storage
   ; const full_param : closed_parameter
   ) : entrypoint is block
-{ const owners : list(address) = List.map(get_owner, params)
+{ ensure_not_paused (store)
+; const owners : list(address) = List.map(get_owner, params)
 
 // A user can only modify their own operators.
 // So we check that all operations affect the same `owner`,
@@ -414,18 +415,6 @@ function update_operators_action
 } with
   ( (nil : list (operation))
   , store with record [ operators = updated_operators ]
-  )
-
-(*
- * Retrieves a boolean of whether the given address is an operator
- * for `owner` address and remains the store untouched
- *)
-function is_operator_action
-  ( const parameter : is_operator_params
-  ; const store     : storage
-  ) : entrypoint is
-  ( list [is_operator (parameter, store.operators)]
-  , store
   )
 
 (*

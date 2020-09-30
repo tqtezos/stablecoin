@@ -175,7 +175,6 @@ Full list:
 * [`balance_of`](#balance_of)
 * [`token_metadata_registry`](#token_metadata_registry)
 * [`update_operators`](#update_operators)
-* [`is_operator`](#is_operator)
 * [`pause`](#pause)
 * [`unpause`](#unpause)
 * [`configure_minter`](#configure_minter)
@@ -345,6 +344,7 @@ token_id = nat
 operator_param =
   ( address         :owner
   , address         :operator
+  , token_id        :token_id
   )
 
 update_operator_param =
@@ -360,11 +360,15 @@ Parameter (in Michelson)
   (or
     (pair %add_operator
       (address %owner)
-      (address %operator)
+      (pair
+        (address %operator)
+        (nat %token_id))
     )
     (pair %remove_operator
       (address %owner)
-      (address %operator)
+      (pair
+        (address %operator)
+        (nat %token_id))
     )
   )
 )
@@ -378,49 +382,6 @@ Specifically, each `owner` must be equal to `SENDER`, otherwise `NOT_TOKEN_OWNER
 - Fails with `CONTRACT_PAUSED` if the contract is paused.
 
 - A token owner can issue permits allowing others to update the token owner's operators.
-
-### **is_operator**
-
-Types
-```
-token_id = nat
-
-operator_param =
-  ( address         :owner
-  , address         :operator
-  )
-
-is_operator_response =
-  ( operator_param :operator
-  , bool           :is_operator
-  )
-
-is_operator =
-  ( operator_param                :operator
-  , contract is_operator_response :callback
-  )
-```
-
-Parameter (in Michelson):
-```
-(pair %is_operator
-  (pair %operator
-    (address %owner)
-    (address %operator)
-  )
-  (contract %callback
-    (pair
-      (pair %operator
-        (address %owner)
-        (address %operator)
-      )
-      (bool %is_operator)
-    )
-  )
-)
-```
-
-- This entrypoint MUST follow the FA2 requirements.
 
 ## Custom (non-FA2) token functions
 

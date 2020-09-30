@@ -141,7 +141,7 @@ scNettestScenario constructInitialStorage originateTransferlist transferlistType
         (AddressResolved from)
         sc
         (Call @"Update_operators")
-        [FA2.Add_operator FA2.OperatorParam { opOwner = from, opOperator = op }]
+        [FA2.Add_operator FA2.OperatorParam { opOwner = from, opOperator = op, opTokenId = 0 }]
 
     removeOperator :: Address -> Address -> capsM ()
     removeOperator from op =
@@ -149,7 +149,7 @@ scNettestScenario constructInitialStorage originateTransferlist transferlistType
         (AddressResolved from)
         sc
         (Call @"Update_operators")
-        [FA2.Remove_operator FA2.OperatorParam { opOwner = from, opOperator = op }]
+        [FA2.Remove_operator FA2.OperatorParam { opOwner = from, opOperator = op, opTokenId = 0 }]
 
     mint :: Address -> Natural -> capsM ()
     mint to_ value =

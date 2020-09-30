@@ -9,21 +9,6 @@
 #include "permit.ligo"
 
 (*
- * Returns a callback of `Is_operator` entrypoint call
- *)
-function is_operator
-  ( const param     : is_operator_params
-  ; const operators : operators
-  ) : operation is block
-{ const operator_param : operator_param_ =
-    Layout.convert_from_right_comb ((param.0 : operator_param))
-; const operator_key : (owner * operator) =
-    (operator_param.owner, operator_param.operator)
-; const is_present : bool = Big_map.mem (operator_key, operators)
-; const response : is_operator_response = (param.0, is_present)
-} with Tezos.transaction (response, 0mutez, param.1)
-
-(*
  * Validates operators for the given transfer batch
  * and operator storage
  *)
@@ -43,7 +28,8 @@ function add_operator
   ( const param     : operator_param
   ; const operators : operators
   ) : operators is block
-{ const operator_key : (owner * operator) = (param.0, param.1)
+{ validate_token_type(param.1.1)
+; const operator_key : (owner * operator) = (param.0, param.1.0)
 } with Big_map.update (operator_key, Some (unit), operators)
 
 (*
@@ -53,7 +39,8 @@ function remove_operator
   ( const param     : operator_param
   ; const operators : operators
   ) : operators is block
-{ const operator_key : (owner * operator) = (param.0, param.1)
+{ validate_token_type(param.1.1)
+; const operator_key : (owner * operator) = (param.0, param.1.0)
 } with Big_map.remove (operator_key, operators)
 
 (*

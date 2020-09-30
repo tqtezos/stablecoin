@@ -20,7 +20,7 @@ import Test.Hspec (Spec, describe, it)
 
 import Lorentz (mkView)
 import "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
-import Lorentz.Contracts.Stablecoin (sLedger)
+import Lorentz.Contracts.Stablecoin (ParameterC, sLedger, sOperators)
 import Lorentz.Contracts.Test.Common
 import Lorentz.Test
 import Lorentz.Value
@@ -32,7 +32,7 @@ import Util.Named
 -- 1. Supports a single token type.
 -- 2. Does not have an external permission checking transfer hook.
 fa2Spec
-  :: forall param. FA2ParameterC param
+  :: forall param. ParameterC param
   => OriginationFn param
   -> Spec
 fa2Spec fa2Originate = do
@@ -471,24 +471,30 @@ fa2Spec fa2Originate = do
 
   -- These tests require permission descriptor to be configured that allows for operator transfer.
   -- We have such a configuration set by default in defaultOriginationParams.
+  let
+    checkForOperator stablecoinContract owner operator expectation =
+      lExpectStorage stablecoinContract $ \storage -> do
+        let found = isJust $ M.lookup (owner, operator) (unBigMap $ sOperators storage)
+        if found /= expectation
+            then Left $ CustomTestError $ "Unexpected operator status. Expected: "
+              <> show expectation <> " Found: " <> show found
+            else Right ()
+
   describe "Configure operators entrypoint's add operator call" $ do
+
     it "adds operator as expected" $
       integrationalTestExpectation $ do
-        let originationParams = addAccount (wallet1, (commonOperators, 10)) defaultOriginationParams
+        let originationParams = addAccount (wallet1, ([], 10)) defaultOriginationParams
         withOriginated fa2Originate originationParams $ \fa2contract -> do
 
-          consumer <- lOriginateEmpty @IsOperatorResponse contractConsumer "consumer"
           withSender wallet1 $ do
-            let operatorParam = OperatorParam { opOwner = wallet1, opOperator = wallet2 }
+            let operatorParam = OperatorParam { opOwner = wallet1, opOperator = wallet2, opTokenId = 0 }
 
             let addOperatorParam = Add_operator operatorParam
             lCallEP fa2contract (Call @"Update_operators") [addOperatorParam]
 
-            let isOperatorQuery = mkView (#operator .! operatorParam) consumer
-            lCallEP fa2contract (Call @"Is_operator") isOperatorQuery
+            checkForOperator fa2contract wallet1 wallet2 True
 
-            lExpectViewConsumerStorage consumer
-                [IsOperatorResponse operatorParam True]
 
   describe "Configure operators entrypoint's remove operator call" $ do
     it "removes operator as expected" $
@@ -496,53 +502,93 @@ fa2Spec fa2Originate = do
         let originationParams = addAccount (wallet1, (commonOperators, 10)) defaultOriginationParams
         withOriginated fa2Originate originationParams $ \fa2contract -> do
 
-          consumer <- lOriginateEmpty @IsOperatorResponse contractConsumer "consumer"
           withSender wallet1 $ do
-            let operatorParam = OperatorParam { opOwner = wallet1, opOperator = commonOperator }
+            let operatorParam = OperatorParam { opOwner = wallet1, opOperator = commonOperator, opTokenId = 0 }
 
             let removeOperatorParam = Remove_operator operatorParam
             lCallEP fa2contract (Call @"Update_operators") [removeOperatorParam]
 
-            let isOperatorQuery = mkView (#operator .! operatorParam) consumer
-            lCallEP fa2contract (Call @"Is_operator") isOperatorQuery
-
-            lExpectViewConsumerStorage consumer
-                [IsOperatorResponse operatorParam False]
+            checkForOperator fa2contract wallet1 commonOperator False
 
   describe "Configure operators entrypoint" $ do
     it "retains the last operation in case of conflicting operations - Expect removal" $
       integrationalTestExpectation $ do
-        let originationParams = addAccount (wallet1, (commonOperators, 10)) defaultOriginationParams
+        let originationParams = addAccount (wallet1, ([], 10)) defaultOriginationParams
         withOriginated fa2Originate originationParams $ \fa2contract -> do
 
-          consumer <- lOriginateEmpty @IsOperatorResponse contractConsumer "consumer"
           withSender wallet1 $ do
-            let operatorParam = OperatorParam { opOwner = wallet1, opOperator = wallet2 }
+            let operatorParam = OperatorParam { opOwner = wallet1, opOperator = wallet2, opTokenId = 0 }
 
             lCallEP fa2contract (Call @"Update_operators") [Add_operator operatorParam, Remove_operator operatorParam]
 
-            let isOperatorQuery = mkView (#operator .! operatorParam) consumer
-            lCallEP fa2contract (Call @"Is_operator") isOperatorQuery
-
-            lExpectViewConsumerStorage consumer
-                [IsOperatorResponse operatorParam False]
+            checkForOperator fa2contract wallet1 wallet2 False
 
     it "retains the last operation in case of conflicting operations - Expect addition" $
       integrationalTestExpectation $ do
         let originationParams = addAccount (wallet1, (commonOperators, 10)) defaultOriginationParams
         withOriginated fa2Originate originationParams $ \fa2contract -> do
 
-          consumer <- lOriginateEmpty @IsOperatorResponse contractConsumer "consumer"
           withSender wallet1 $ do
-            let operatorParam = OperatorParam { opOwner = wallet1, opOperator = wallet2 }
+            let operatorParam = OperatorParam { opOwner = wallet1, opOperator = wallet2, opTokenId = 0 }
 
             lCallEP fa2contract (Call @"Update_operators") [Remove_operator operatorParam, Add_operator operatorParam]
 
-            let isOperatorQuery = mkView (#operator .! operatorParam) consumer
-            lCallEP fa2contract (Call @"Is_operator") isOperatorQuery
+            checkForOperator fa2contract wallet1 wallet2 True
 
-            lExpectViewConsumerStorage consumer
-                [IsOperatorResponse operatorParam True]
+
+    it "add operator call validates token id" $
+      integrationalTestExpectation $ do
+        let originationParams = addAccount (wallet1, ([], 10)) defaultOriginationParams
+        withOriginated fa2Originate originationParams $ \fa2contract -> do
+
+          withSender wallet1 $ do
+            let operatorParam =
+                  OperatorParam { opOwner = wallet1, opOperator = commonOperator, opTokenId = 1 }
+
+            err <- expectError $  lCallEP fa2contract (Call @"Update_operators")
+                    [Add_operator operatorParam]
+            fa2TokenUndefined err
+
+    it "remove operator call validates token id" $
+      integrationalTestExpectation $ do
+        let originationParams = addAccount (wallet1, (commonOperators, 10)) defaultOriginationParams
+        withOriginated fa2Originate originationParams $ \fa2contract -> do
+
+          withSender wallet1 $ do
+            let operatorParam =
+                  OperatorParam { opOwner = wallet1, opOperator = commonOperator, opTokenId = 1 }
+
+            err <- expectError $ lCallEP fa2contract (Call @"Update_operators")
+                    [Remove_operator operatorParam]
+            fa2TokenUndefined err
+
+    it "add operator call can be paused" $
+      integrationalTestExpectation $ do
+        let originationParams = addAccount (wallet1, ([], 10)) defaultOriginationParams
+        withOriginated fa2Originate originationParams $ \fa2contract -> do
+          withSender testPauser $ lCallEP fa2contract (Call @"Pause") ()
+
+          withSender wallet1 $ do
+            let operatorParam =
+                  OperatorParam { opOwner = wallet1, opOperator = commonOperator, opTokenId = 0 }
+
+            err <- expectError $  lCallEP fa2contract (Call @"Update_operators")
+                    [Add_operator operatorParam]
+            mgmContractPaused err
+
+    it "remove operator call can be paused" $
+      integrationalTestExpectation $ do
+        let originationParams = addAccount (wallet1, (commonOperators, 10)) defaultOriginationParams
+        withOriginated fa2Originate originationParams $ \fa2contract -> do
+          withSender testPauser $ lCallEP fa2contract (Call @"Pause") ()
+
+          withSender wallet1 $ do
+            let operatorParam =
+                  OperatorParam { opOwner = wallet1, opOperator = commonOperator, opTokenId = 0 }
+
+            err <- expectError $ lCallEP fa2contract (Call @"Update_operators")
+                    [Remove_operator operatorParam]
+            mgmContractPaused err
 
   -- Check whether "update operator", "remove operator" operations are executed only by contract owner.
   describe "Configure operators entrypoint" $
@@ -551,7 +597,7 @@ fa2Spec fa2Originate = do
       withOriginated fa2Originate originationParams $ \stablecoinContract -> do
 
         withSender wallet2 $ do
-          let operatorParam = OperatorParam { opOwner = wallet1, opOperator = wallet2 }
+          let operatorParam = OperatorParam { opOwner = wallet1, opOperator = wallet2, opTokenId = 0 }
 
           let addOperatorParam = Add_operator operatorParam
           err <- expectError $ lCallEP stablecoinContract (Call @"Update_operators") [addOperatorParam]
@@ -562,7 +608,7 @@ fa2Spec fa2Originate = do
     withOriginated fa2Originate originationParams $ \stablecoinContract -> do
 
       withSender wallet2 $ do
-        let operatorParam = OperatorParam { opOwner = wallet1, opOperator = commonOperator }
+        let operatorParam = OperatorParam { opOwner = wallet1, opOperator = commonOperator, opTokenId = 0 }
 
         let removeOperatorParam = Remove_operator operatorParam
         err <- expectError $ lCallEP stablecoinContract (Call @"Update_operators") [removeOperatorParam]
@@ -573,7 +619,7 @@ fa2Spec fa2Originate = do
     withOriginated fa2Originate originationParams $ \stablecoinContract -> do
 
       withSender commonOperator $ do
-        let operatorParam = OperatorParam { opOwner = wallet1, opOperator = wallet2 }
+        let operatorParam = OperatorParam { opOwner = wallet1, opOperator = wallet2, opTokenId = 0 }
 
         let addOperatorParam = Add_operator operatorParam
         err <- expectError $ lCallEP stablecoinContract (Call @"Update_operators") [addOperatorParam]
@@ -585,7 +631,7 @@ fa2Spec fa2Originate = do
     withOriginated fa2Originate originationParams $ \stablecoinContract -> do
 
       withSender commonOperator $ do
-        let operatorParam = OperatorParam { opOwner = wallet1, opOperator = commonOperator }
+        let operatorParam = OperatorParam { opOwner = wallet1, opOperator = commonOperator, opTokenId = 0 }
 
         let removeOperatorParam = Remove_operator operatorParam
         err <- expectError $ lCallEP stablecoinContract (Call @"Update_operators") [removeOperatorParam]

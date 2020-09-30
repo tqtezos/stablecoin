@@ -51,9 +51,6 @@ mgmNotMasterMinter = lExpectFailWith (== [mt|NOT_MASTER_MINTER|])
 mgmNotMinter :: ExecutorError -> IntegrationalScenario
 mgmNotMinter = lExpectFailWith (== [mt|NOT_MINTER|])
 
-mgmContractPaused :: ExecutorError -> IntegrationalScenario
-mgmContractPaused = lExpectFailWith (== [mt|CONTRACT_PAUSED|])
-
 mgmContractNotPaused :: ExecutorError -> IntegrationalScenario
 mgmContractNotPaused = lExpectFailWith (== [mt|CONTRACT_NOT_PAUSED|])
 

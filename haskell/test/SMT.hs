@@ -407,8 +407,10 @@ generateTokenOwnerAction idx = do
       operator <- getRandomOperator
       owner <- getRandomOwner
       updateOperation <- lift $ elements
-        [ FA2.Add_operator FA2.OperatorParam { opOwner = owner, opOperator = operator }
-        , FA2.Remove_operator FA2.OperatorParam { opOwner = owner, opOperator = operator }
+        [ FA2.Add_operator FA2.OperatorParam { opOwner = owner, opOperator = operator, opTokenId = 0 }
+        , FA2.Add_operator FA2.OperatorParam { opOwner = owner, opOperator = operator, opTokenId = 1 }
+        , FA2.Remove_operator FA2.OperatorParam { opOwner = owner, opOperator = operator, opTokenId = 0 }
+        , FA2.Remove_operator FA2.OperatorParam { opOwner = owner, opOperator = operator, opTokenId = 1 }
         ]
       pure $ Call_FA2 $ FA2.Update_operators [updateOperation]
 
@@ -724,15 +726,17 @@ applySingleTransfer ccSender estorage (FA2.TransferParam from txs) =
 applyUpdateOperator :: Address -> Either ModelError SimpleStorage -> FA2.UpdateOperator -> Either ModelError SimpleStorage
 applyUpdateOperator ccSender estorage op = case estorage of
   Left err -> Left err
-  Right storage -> case op of
-    FA2.Add_operator (FA2.OperatorParam own operator)
-      -> if own == ccSender -- enforce that sender is owner
-        then Right $ storage { ssOperators = Map.insert (own, operator) () $ ssOperators storage }
-        else Left NOT_TOKEN_OWNER
-    FA2.Remove_operator (FA2.OperatorParam own operator)
-      -> if own == ccSender
-        then Right $ storage { ssOperators = Map.delete (own, operator) $ ssOperators storage }
-        else Left NOT_TOKEN_OWNER
+  Right storage -> do
+    ensureNotPaused storage
+    case op of
+      FA2.Add_operator (FA2.OperatorParam own operator _)
+        -> if own == ccSender -- enforce that sender is owner
+          then Right $ storage { ssOperators = Map.insert (own, operator) () $ ssOperators storage }
+          else Left NOT_TOKEN_OWNER
+      FA2.Remove_operator (FA2.OperatorParam own operator _)
+        -> if own == ccSender
+          then Right $ storage { ssOperators = Map.delete (own, operator) $ ssOperators storage }
+          else Left NOT_TOKEN_OWNER
 
 applyFA2Parameter :: ContractCall FA2.Parameter -> SimpleStorage -> Either ModelError SimpleStorage
 applyFA2Parameter ContractCall {..} cs = do
