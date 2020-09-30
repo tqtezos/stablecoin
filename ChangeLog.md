@@ -5,11 +5,13 @@ SPDX-License-Identifier: MIT
 # Changelog for stablecoin
 
 ## Unreleased changes
+<!-- Prepend new entries here -->
+
+## 1.3.0
 
 * [#118](https://github.com/tqtezos/stablecoin/pull/118)
   Include changes to FA2 w.r.t `Update_operators`.
   Remove `Is_operator` entrypoint.
-
 * [#112](https://github.com/tqtezos/stablecoin/pull/112)
   Haskell bindings for `Storage` and related types now use
   Haskell data constructors instead of nested tuples.
