@@ -18,7 +18,7 @@ import Morley.Nettest
 import Tezos.Address
 import Util.Named
 
-import FA1_2 (fa1_2Scenario)
+import FA1_2Comparison (fa1_2ComparisonScenario)
 import Nettest (TransferlistType(External, Internal), scNettestScenario)
 import Permit (permitScenario)
 import Stablecoin.Client.Cleveland.Caps (runStablecoinClient)
@@ -91,5 +91,5 @@ main = do
     (neMorleyClientEnv env)
     stablecoinClientScenario
 
-  -- Test the FA1.2 version of the stablecoin contract
-  runNettestClient env fa1_2Scenario
+  -- Compare the gas/transaction costs of the FA1.2 vs the FA2 versions of stablecoin
+  runNettestClient env fa1_2ComparisonScenario
