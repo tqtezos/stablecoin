@@ -41,11 +41,9 @@ import qualified Data.Map as M
 import Fmt (Buildable(build), pretty, (+|), (|+))
 import Lorentz (EntrypointRef(Call), HasEntrypointArg, arg, useHasEntrypointArg)
 import Michelson.Typed (Dict(..), IsoValue, fromVal, toVal)
-import qualified Michelson.Typed as T
 import Morley.Client
   (AddressOrAlias(..), Alias, MorleyClientM, TezosClientError(UnknownAddress), getAlias,
-  getContractScript, lTransfer, originateContract, originateUntypedContract, readBigMapValue,
-  readBigMapValueMaybe)
+  getContractScript, lTransfer, originateContract, readBigMapValue, readBigMapValueMaybe)
 import qualified Morley.Client as Client
 import Morley.Client.RPC (OriginationScript(OriginationScript))
 import Morley.Client.TezosClient (resolveAddress)
@@ -91,14 +89,13 @@ deploy (arg #sender -> sender) alias initialStorageData = do
             (isdTokenSymbol initialStorageData)
             (isdTokenName initialStorageData)
             (isdTokenDecimals initialStorageData)
-          registryStorageVal = toVal registryStorage
-      snd <$> originateUntypedContract
+      snd <$> originateContract
         False
         "stablecoin-metadata"
         sender
         (unsafeMkMutez 0)
         registryContract
-        (T.untypeValue registryStorageVal)
+        (toVal registryStorage)
 
   let initialStorageData' = initialStorageData
         { isdMasterMinter = masterMinter

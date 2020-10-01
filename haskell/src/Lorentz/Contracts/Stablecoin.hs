@@ -47,7 +47,6 @@ import qualified Text.Show
 
 import Lorentz
 import qualified Lorentz as L
-import Michelson.Runtime (parseExpandContract)
 import Michelson.Test.Import (readContract)
 import Morley.Client (BigMapId(..))
 import qualified Tezos.Crypto as Hash
@@ -55,7 +54,6 @@ import qualified Tezos.Crypto as Hash
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.StablecoinPath (metadataRegistryContractPath, stablecoinPath)
 import qualified Michelson.Typed as T
-import qualified Michelson.Untyped as U
 
 ------------------------------------------------------------------
 -- Parameter
@@ -394,17 +392,17 @@ stablecoinContract =
   )
 
 -- | Parse the metadata registry contract.
-registryContract :: U.Contract
+registryContract :: T.Contract (ToT ()) (ToT MetadataRegistryStorage)
 registryContract =
-  $(case parseExpandContract (Just metadataRegistryContractPath) $(embedStringFile metadataRegistryContractPath) of
-    Left e -> fail (pretty e)
-    Right _ ->
-      [|
-        -- Note: it's ok to use `error` here, because we just proved that the contract
-        -- can be parsed+typechecked.
-        either (error . pretty) id $
-          parseExpandContract
-            (Just metadataRegistryContractPath)
-            $(embedStringFile metadataRegistryContractPath)
-      |]
-    )
+  $(case readContract @(ToT ()) @(ToT MetadataRegistryStorage) metadataRegistryContractPath $(embedStringFile metadataRegistryContractPath) of
+      Left e -> fail (pretty e)
+      Right _ ->
+        [|
+          -- Note: it's ok to use `error` here, because we just proved that the contract
+          -- can be parsed+typechecked.
+          either (error . pretty) snd $
+            readContract
+              metadataRegistryContractPath
+              $(embedStringFile metadataRegistryContractPath)
+        |]
+  )
