@@ -23,6 +23,10 @@ import Lorentz.Contracts.Test.Common (registryAddress)
 -- It does not actually make any assertions (other than that the contract doesn't fail).
 -- Rather, its main purpose is to automate these operations so we can easily
 -- measure and compare the gas/transaction costs.
+--
+-- Whenever a new version of the contract is released, we should
+-- run this test, collect the gas/transaction costs, and update
+-- the table in the README.
 fa1_2ComparisonScenario :: NettestScenario m
 fa1_2ComparisonScenario = uncapsNettest $ do
   comment "-- FA1.2 vs FA2 comparison tests --"
