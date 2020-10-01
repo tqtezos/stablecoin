@@ -9,7 +9,6 @@ module Lorentz.Contracts.Test.FA1_2
   ) where
 
 import qualified Data.Map as Map
-import Fmt (pretty)
 import Test.Hspec (Spec, describe)
 
 import Lorentz (Address, BigMap(..), TAddress(..), toMutez, toVal)
@@ -18,15 +17,10 @@ import Michelson.Test.Integrational
 import Michelson.Typed (untypeValue)
 
 import Lorentz.Contracts.Stablecoin (Roles(..))
-import Lorentz.Contracts.StablecoinFA1_2 (Parameter, Storage(..), parseStablecoinContract)
+import Lorentz.Contracts.StablecoinFA1_2 (Parameter, Storage(..), stablecoinFA1_2Contract)
 
 alOriginationFunction :: Address -> AlSettings -> IntegrationalScenarioM (TAddress Parameter)
 alOriginationFunction adminAddr (AlInitAddresses addrBalances) = do
-  stablecoionContract <-
-    case parseStablecoinContract of
-      Right c -> pure c
-      Left err -> integrationalFail . CustomTestError $ pretty err
-
   let storage = Storage
         { sDefaultExpiry = 1000
         , sLedger = BigMap $ Map.filter (/= 0) $ Map.fromList $ addrBalances
@@ -45,7 +39,7 @@ alOriginationFunction adminAddr (AlInitAddresses addrBalances) = do
         , sTotalSupply = sum $ snd <$> addrBalances
         }
 
-  TAddress @Parameter <$> originate stablecoionContract "" (untypeValue $ toVal storage) (toMutez 0)
+  TAddress @Parameter <$> originate stablecoinFA1_2Contract "" (untypeValue $ toVal storage) (toMutez 0)
 
 spec_fa1_2 :: Spec
 spec_fa1_2 =

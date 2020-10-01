@@ -6,6 +6,8 @@ SPDX-License-Identifier: MIT
 
 ## Unreleased changes
 <!-- Prepend new entries here -->
+<!-- Don't forget to update the gas/transaction costs tables in the
+README when a new version is released. -->
 
 ## 1.3.0
 

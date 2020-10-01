@@ -4,7 +4,6 @@ module Main
   ( main
   ) where
 
-import Fmt (pretty)
 import Options.Applicative (execParser)
 
 import qualified Data.Text.IO.Utf8 as Utf8
@@ -19,8 +18,7 @@ import Morley.Nettest
 import Tezos.Address
 import Util.Named
 
-import FA1_2 (fa1_2Scenario)
-import qualified Lorentz.Contracts.StablecoinFA1_2 as FA1_2
+import FA1_2Comparison (fa1_2ComparisonScenario)
 import Nettest (TransferlistType(External, Internal), scNettestScenario)
 import Permit (permitScenario)
 import Stablecoin.Client.Cleveland.Caps (runStablecoinClient)
@@ -93,9 +91,5 @@ main = do
     (neMorleyClientEnv env)
     stablecoinClientScenario
 
-  -- Test the FA1.2 version of the stablecoin contract
-  stablecoinContractFA1_2 <-
-    case FA1_2.parseStablecoinContract of
-      Right c -> pure c
-      Left err -> fail $ pretty err
-  runNettestClient env (fa1_2Scenario stablecoinContractFA1_2)
+  -- Compare the gas/transaction costs of the FA1.2 vs the FA2 versions of stablecoin
+  runNettestClient env fa1_2ComparisonScenario
