@@ -55,9 +55,9 @@ import Util.Named ((:!), (.!))
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
   (ConfigureMinterParam(..), MetadataRegistryStorage, MetadataRegistryStorageView, MintParam(..),
-  Parameter, Roles(..), Storage'(..), StorageView, mrsTokenMetadata, registryContract,
-  stablecoinContract)
-import Stablecoin.Client.Contract (InitialStorageData(..), mkInitialStorage, mkRegistryStorage)
+  Parameter, Roles(..), Storage'(..), StorageView, mkMetadataRegistryStorage, mrsTokenMetadata,
+  registryContract, stablecoinContract)
+import Stablecoin.Client.Contract (InitialStorageData(..), mkInitialStorage)
 
 -- | An address and an optional alias, if one is found.
 data AddressAndAlias = AddressAndAlias Address (Maybe Alias)
@@ -85,7 +85,7 @@ deploy (arg #sender -> sender) alias initialStorageData = do
   metadataRegistry <- case isdTokenMetadataRegistry initialStorageData of
     Just mdr -> resolveAddress mdr
     Nothing -> do
-      let registryStorage :: MetadataRegistryStorage = mkRegistryStorage
+      let registryStorage :: MetadataRegistryStorage = mkMetadataRegistryStorage
             (isdTokenSymbol initialStorageData)
             (isdTokenName initialStorageData)
             (isdTokenDecimals initialStorageData)

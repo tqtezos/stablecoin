@@ -3,19 +3,14 @@
 
 module Stablecoin.Client.Contract
   ( mkInitialStorage
-  , mkRegistryStorage
   , InitialStorageData(..)
   ) where
 
-import qualified Data.Map.Strict as Map
 import Michelson.Text (MText)
-import Michelson.Typed (BigMap(BigMap))
 import Morley.Client (AddressOrAlias)
 import Tezos.Address (Address)
 
-import Lorentz.Contracts.Spec.FA2Interface (TokenMetadata(..))
-import Lorentz.Contracts.Stablecoin
-  (Expiry, MetadataRegistryStorage, Roles(..), Storage, Storage'(..), mkMetadataRegistryStorage)
+import Lorentz.Contracts.Stablecoin (Expiry, Roles(..), Storage, Storage'(..))
 
 type family ComputeRegistryAddressType a where
   ComputeRegistryAddressType Address = Address
@@ -53,15 +48,4 @@ mkInitialStorage (InitialStorageData {..}) =
         }
     , sTokenMetadataRegistry = isdTokenMetadataRegistry
     , sTransferlistContract = isdTransferlist
-    }
-
--- | Constuct the stablecoin metadata
-mkRegistryStorage :: MText -> MText -> Natural -> MetadataRegistryStorage
-mkRegistryStorage symbol name decimals = mkMetadataRegistryStorage $ BigMap $ Map.singleton 0 $
-  TokenMetadata
-    { tmTokenId = 0
-    , tmSymbol = symbol
-    , tmName = name
-    , tmDecimals = decimals
-    , tmExtras = mempty
     }
