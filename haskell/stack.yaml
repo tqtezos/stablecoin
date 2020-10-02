@@ -42,8 +42,7 @@ extra-deps:
     https://gitlab.com/morley-framework/morley-ledgers.git
     # ^ CI cannot use ssh, so we use http clone here
   commit:
-    47a94df200451d78d81cf0515f9328645a03bd22 # master
-  # nix-sha256: 0cx2an4kdgg9awd0y008afa6abihsy6rqldq2xxmyb2m20vdzgms
+    cd02068501e57c5893a6642e5100cba66e4b3ae1 # master
   subdirs:
     - code/morley-ledgers
     - code/morley-ledgers-test
