@@ -18,17 +18,18 @@ import Data.Map.Strict as M (size)
 import qualified Data.Set as Set
 import Test.Hspec (Spec, describe, it)
 
-import qualified Indigo.Contracts.Transferlist.Internal as Transferlist
 import Lorentz (mkView, mt, unBigMap)
 import Lorentz.Address
-import qualified "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
-import Lorentz.Contracts.Stablecoin hiding (stablecoinContract)
-import Lorentz.Contracts.Test.Common
 import Lorentz.Test
 import Michelson.Runtime (ExecutorError)
 import Tezos.Address (detGenKeyAddress)
 import Tezos.Core (unsafeMkMutez)
 import Util.Named
+
+import qualified Indigo.Contracts.Transferlist.Internal as Transferlist
+import qualified "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
+import Lorentz.Contracts.Stablecoin hiding (stablecoinContract)
+import Lorentz.Contracts.Test.Common
 
 mgmXtzReceived :: ExecutorError -> IntegrationalScenario
 mgmXtzReceived = lExpectFailWith (== [mt|XTZ_RECEIVED|])
@@ -97,9 +98,11 @@ managementSpec originate = do
         mgmXtzReceived err
 
     it "token metadata registry is present in storage" $ integrationalTestExpectation $ do
-      withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
+      mrAddress <- originateMetadataRegistry
+      let originationParams = defaultOriginationParams { opTokenMetadataRegistry = Just mrAddress }
+      withOriginated originate originationParams $ \stablecoinContract -> do
         lExpectStorage @Storage stablecoinContract $ \storage ->
-          unless (sTokenMetadataRegistry storage == registryAddress) $
+          unless (sTokenMetadataRegistry storage == mrAddress) $
             Left $ CustomTestError "Malformed token metadata registry address in contract storage"
 
   describe "Contract pausing" $ do

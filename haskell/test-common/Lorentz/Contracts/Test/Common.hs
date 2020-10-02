@@ -26,7 +26,6 @@ module Lorentz.Contracts.Test.Common
   , wallet5
   , commonOperator
   , commonOperators
-  , registryAddress
 
   , OriginationFn
   , OriginationParams (..)
@@ -40,6 +39,8 @@ module Lorentz.Contracts.Test.Common
   , withOriginated
   , mgmContractPaused
   , mkInitialStorage
+  , originateMetadataRegistry
+  , nettestOriginateMetadataRegistry
 
   , lExpectAnyMichelsonFailed
   ) where
@@ -47,19 +48,22 @@ module Lorentz.Contracts.Test.Common
 import Data.List.NonEmpty ((!!))
 import qualified Data.Map as Map
 
-import qualified Indigo.Contracts.Transferlist.Internal as Transferlist
 import Lorentz (arg)
-import "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
-import Lorentz.Contracts.Stablecoin as SC
 import Lorentz.Test
 import Lorentz.Value
 import Michelson.Runtime (ExecutorError)
 import Michelson.Runtime.GState (genesisSecrets)
-import Tezos.Address (detGenKeyAddress)
+import Michelson.Test (tOriginate)
+import Michelson.Typed (convertContract, untypeValue)
+import Morley.Nettest as NT
 import Tezos.Crypto (SecretKey, toPublic)
 import Util.Named
 
-registryAddress, testOwner, testPauser, testMasterMinter, wallet1, wallet2, wallet3, wallet4, wallet5, commonOperator :: Address
+import qualified Indigo.Contracts.Transferlist.Internal as Transferlist
+import "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
+import Lorentz.Contracts.Stablecoin as SC
+
+testOwner, testPauser, testMasterMinter, wallet1, wallet2, wallet3, wallet4, wallet5, commonOperator :: Address
 wallet1 = genesisAddress1
 wallet2 = genesisAddress2
 wallet3 = genesisAddress3
@@ -69,7 +73,6 @@ commonOperator = genesisAddress6
 testOwner = genesisAddresses !! 7
 testPauser = genesisAddresses !! 8
 testMasterMinter = genesisAddresses !! 9
-registryAddress = detGenKeyAddress "metadata-registry"
 
 wallet1SK, wallet2SK, testOwnerSK, testPauserSK, testMasterMinterSK :: SecretKey
 wallet1SK = genesisSecrets !! 1
@@ -118,7 +121,7 @@ data OriginationParams = OriginationParams
   , opPaused :: Bool
   , opMinters :: Map Address Natural
   , opPendingOwner :: Maybe Address
-  , opTokenMetadataRegistry :: Address
+  , opTokenMetadataRegistry :: Maybe Address
   , opTransferlistContract :: Maybe (TAddress Transferlist.Parameter)
   , opDefaultExpiry :: Natural
   , opPermits :: Map Address UserPermits
@@ -134,7 +137,7 @@ defaultOriginationParams = OriginationParams
   , opPaused = False
   , opMinters = mempty
   , opPendingOwner = Nothing
-  , opTokenMetadataRegistry = registryAddress
+  , opTokenMetadataRegistry = Nothing
   , opTransferlistContract = Nothing
   , opDefaultExpiry = 1000
   , opPermits = mempty
@@ -196,8 +199,8 @@ withOriginated
   -> IntegrationalScenario
 withOriginated fn op tests = fn op >>= tests
 
-mkInitialStorage :: OriginationParams -> Storage
-mkInitialStorage OriginationParams{..} =
+mkInitialStorage :: OriginationParams -> Address -> Storage
+mkInitialStorage OriginationParams{..} metadataRegistryAddress =
   Storage
     { sDefaultExpiry = opDefaultExpiry
     , sLedger = BigMap opBalances
@@ -212,7 +215,7 @@ mkInitialStorage OriginationParams{..} =
         , rPauser = opPauser
         , rPendingOwner = opPendingOwner
         }
-    , sTokenMetadataRegistry = opTokenMetadataRegistry
+    , sTokenMetadataRegistry = fromMaybe metadataRegistryAddress opTokenMetadataRegistry
     , sTransferlistContract = unTAddress <$> opTransferlistContract
     }
   where
@@ -225,3 +228,18 @@ mkInitialStorage OriginationParams{..} =
 
 mgmContractPaused :: ExecutorError -> IntegrationalScenario
 mgmContractPaused = lExpectFailWith (== [mt|CONTRACT_PAUSED|])
+
+originateMetadataRegistry :: IntegrationalScenarioM Address
+originateMetadataRegistry =
+  tOriginate
+    registryContract
+    "Metadata Registry contract"
+    (toVal defaultMetadataRegistryStorage)
+    (toMutez 0)
+
+nettestOriginateMetadataRegistry :: MonadNettest caps base m => m Address
+nettestOriginateMetadataRegistry =
+  originateUntypedSimple
+    "nettest.MetadataRegistry"
+    (untypeValue (toVal defaultMetadataRegistryStorage))
+    (convertContract registryContract)
