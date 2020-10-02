@@ -93,8 +93,10 @@ generateContractInputs count = do
 smtProperty
   :: PropertyTestInput
   -> Property
-smtProperty (PropertyTestInput (inputs, initialState))
-  = integrationalTestProperty $ applyBothAndCompare inputs initialState
+smtProperty (PropertyTestInput (inputs, initialState)) =
+  integrationalTestProperty $ do
+    mrAddress <- originateMetadataRegistry
+    applyBothAndCompare inputs mrAddress initialState
 
 -- | Accept a contract, a list of contract inputs and an initial state.  Then
 -- apply each contract input to each model (haskell and michelson), check if
@@ -104,15 +106,16 @@ smtProperty (PropertyTestInput (inputs, initialState))
 -- state diverges.
 applyBothAndCompare
   :: [ContractCall Parameter]
+  -> Address
   -> ContractState
   -> IntegrationalScenario
-applyBothAndCompare [] _ = pass
-applyBothAndCompare (cc:ccs) cs = let
+applyBothAndCompare [] _ _ = pass
+applyBothAndCompare (cc:ccs) mrAddress cs = let
   haskellResult = stablecoinHaskellModel cc cs
-  michelsonResult = stablecoinMichelsonModel cc cs
+  michelsonResult = stablecoinMichelsonModel mrAddress cc cs
   in if haskellResult /= michelsonResult
     then integrationalFail $ CustomTestError ("Models differ : " <> (show (cc, cs, haskellResult, michelsonResult)))
-    else applyBothAndCompare ccs haskellResult
+    else applyBothAndCompare ccs mrAddress haskellResult
 
 -- Size of the random address pool
 poolSize :: Int
@@ -494,12 +497,13 @@ contractErrorToModelError m = let
 -- the final @ContractState@ from Haskell model and this model should
 -- match exactly, including the list of errors.
 stablecoinMichelsonModel
-  :: ContractCall Parameter
+  :: Address
+  -> ContractCall Parameter
   -> ContractState
   -> ContractState
-stablecoinMichelsonModel cc@(ContractCall {..}) cs = let
+stablecoinMichelsonModel mrAddress cc@(ContractCall {..}) cs = let
   contractEnv = dummyContractEnv { ceSender = ccSender, ceAmount = unsafeMkMutez 0 }
-  initSt = mkInitialStorage $ ssToOriginationParams $ csStorage cs
+  initSt = mkInitialStorage (ssToOriginationParams $ csStorage cs) mrAddress
   iResult = callEntrypoint cc initSt contractEnv
   in case iResult of
     Right iRes -> let

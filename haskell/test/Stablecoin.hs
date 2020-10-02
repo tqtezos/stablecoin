@@ -24,8 +24,13 @@ import SMT
 import Tezos.Core
 
 origination :: OriginationFn SC.Parameter
-origination (mkInitialStorage -> storageVal) = TAddress @SC.Parameter <$>
-    tOriginate stablecoinContract "Stablecoin contract" (toVal storageVal) (unsafeMkMutez 0)
+origination originationParams = do
+  mrAddress <- originateMetadataRegistry
+  TAddress @SC.Parameter <$> tOriginate
+    stablecoinContract
+    "Stablecoin contract"
+    (toVal (mkInitialStorage originationParams mrAddress))
+    (toMutez 0)
 
 spec_FA2 :: Spec
 spec_FA2 =

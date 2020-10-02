@@ -63,7 +63,6 @@ main = do
     scenarioWithInternalTransferlist impl = do
       niComment impl "Stablecoin contract nettest scenarioWithInternalTransferlist"
       scNettestScenario
-        mkInitialStorage
         originateTransferlistInternal
         Internal
         impl
@@ -72,7 +71,6 @@ main = do
     scenarioWithExternalTransferlist impl = do
       niComment impl "Stablecoin contract nettest scenarioWithExternalTransferlist"
       scNettestScenario
-        mkInitialStorage
         (originateTransferlistExternal @m @capsM)
         External
         impl

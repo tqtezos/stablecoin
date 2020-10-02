@@ -41,11 +41,9 @@ import qualified Data.Map as M
 import Fmt (Buildable(build), pretty, (+|), (|+))
 import Lorentz (EntrypointRef(Call), HasEntrypointArg, arg, useHasEntrypointArg)
 import Michelson.Typed (Dict(..), IsoValue, fromVal, toVal)
-import qualified Michelson.Typed as T
 import Morley.Client
   (AddressOrAlias(..), Alias, MorleyClientM, TezosClientError(UnknownAddress), getAlias,
-  getContractScript, lTransfer, originateContract, originateUntypedContract, readBigMapValue,
-  readBigMapValueMaybe)
+  getContractScript, lTransfer, originateContract, readBigMapValue, readBigMapValueMaybe)
 import qualified Morley.Client as Client
 import Morley.Client.RPC (OriginationScript(OriginationScript))
 import Morley.Client.TezosClient (resolveAddress)
@@ -57,9 +55,9 @@ import Util.Named ((:!), (.!))
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
   (ConfigureMinterParam(..), MetadataRegistryStorage, MetadataRegistryStorageView, MintParam(..),
-  Parameter, Roles(..), Storage'(..), StorageView, mrsTokenMetadata, registryContract,
-  stablecoinContract)
-import Stablecoin.Client.Contract (InitialStorageData(..), mkInitialStorage, mkRegistryStorage)
+  Parameter, Roles(..), Storage'(..), StorageView, mkMetadataRegistryStorage, mrsTokenMetadata,
+  registryContract, stablecoinContract)
+import Stablecoin.Client.Contract (InitialStorageData(..), mkInitialStorage)
 
 -- | An address and an optional alias, if one is found.
 data AddressAndAlias = AddressAndAlias Address (Maybe Alias)
@@ -87,18 +85,17 @@ deploy (arg #sender -> sender) alias initialStorageData = do
   metadataRegistry <- case isdTokenMetadataRegistry initialStorageData of
     Just mdr -> resolveAddress mdr
     Nothing -> do
-      let registryStorage :: MetadataRegistryStorage = mkRegistryStorage
+      let registryStorage :: MetadataRegistryStorage = mkMetadataRegistryStorage
             (isdTokenSymbol initialStorageData)
             (isdTokenName initialStorageData)
             (isdTokenDecimals initialStorageData)
-          registryStorageVal = toVal registryStorage
-      snd <$> originateUntypedContract
+      snd <$> originateContract
         False
         "stablecoin-metadata"
         sender
         (unsafeMkMutez 0)
         registryContract
-        (T.untypeValue registryStorageVal)
+        (toVal registryStorage)
 
   let initialStorageData' = initialStorageData
         { isdMasterMinter = masterMinter

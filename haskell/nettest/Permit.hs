@@ -23,7 +23,8 @@ import Lorentz.Contracts.Stablecoin
   stablecoinContract)
 
 import Lorentz.Contracts.Test.Common
-  (OriginationParams(..), addAccount, defaultOriginationParams, mkInitialStorage)
+  (OriginationParams(..), addAccount, defaultOriginationParams, mkInitialStorage,
+  nettestOriginateMetadataRegistry)
 
 
 permitScenario :: NettestScenario m
@@ -39,13 +40,15 @@ permitScenario = uncapsNettest $ do
   (_, user1) <- createUser "Steve"
 
   comment "Originating contracts"
-  let storage = mkInitialStorage $
+  mrAddress <- nettestOriginateMetadataRegistry
+  let originationParams =
         addAccount (owner1 , ([], 1000)) $
           defaultOriginationParams
             { opOwner = owner1
             , opPauser = pauser
             , opMasterMinter = masterMinter
             }
+      storage = mkInitialStorage originationParams mrAddress
   contract <- TAddress @Parameter <$> originateUntypedSimple
     "nettest.Stablecoin"
     (untypeValue (toVal storage))

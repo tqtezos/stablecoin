@@ -12,6 +12,7 @@ module Lorentz.Contracts.Stablecoin
   , MetadataRegistryStorage
   , MetadataRegistryStorageView
   , mkMetadataRegistryStorage
+  , defaultMetadataRegistryStorage
   , MintParams
   , MintParam(..)
   , BurnParams
@@ -34,7 +35,6 @@ module Lorentz.Contracts.Stablecoin
   , SetExpiryParam(..)
   , GetDefaultExpiryParam
   , minterLimit
-  , stablecoinTokenMetadata
 
   -- Embedded LIGO contracts
   , stablecoinContract
@@ -42,20 +42,19 @@ module Lorentz.Contracts.Stablecoin
   ) where
 
 import Data.FileEmbed (embedStringFile)
+import qualified Data.Map as Map
 import Fmt
 import qualified Text.Show
 
 import Lorentz
 import qualified Lorentz as L
-import Michelson.Runtime (parseExpandContract)
 import Michelson.Test.Import (readContract)
+import qualified Michelson.Typed as T
 import Morley.Client (BigMapId(..))
 import qualified Tezos.Crypto as Hash
 
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.StablecoinPath (metadataRegistryContractPath, stablecoinPath)
-import qualified Michelson.Typed as T
-import qualified Michelson.Untyped as U
 
 ------------------------------------------------------------------
 -- Parameter
@@ -318,16 +317,6 @@ type StorageView = Storage' BigMapId
 deriving stock instance Show StorageView
 deriving anyclass instance IsoValue StorageView
 
--- We will hard code stablecoin token metadata here
-stablecoinTokenMetadata :: FA2.TokenMetadata
-stablecoinTokenMetadata = FA2.TokenMetadata
-  { tmTokenId = 0
-  , tmSymbol = [mt|TEST|]
-  , tmName = [mt|Test|]
-  , tmDecimals = 8
-  , tmExtras = mempty
-  }
-
 -- Currently the contract allows to add upto 12 minters.
 minterLimit :: Int
 minterLimit = 12
@@ -347,8 +336,30 @@ deriving stock instance Show (MetadataRegistryStorageView)
 deriving anyclass instance IsoValue (MetadataRegistryStorage)
 deriving anyclass instance IsoValue (MetadataRegistryStorageView)
 
-mkMetadataRegistryStorage :: big_map FA2.TokenId FA2.TokenMetadata -> MetadataRegistryStorage' big_map
-mkMetadataRegistryStorage bm = MetadataRegistryStorage () bm
+-- | Construct the storage for the Metadata Registry contract.
+mkMetadataRegistryStorage :: MText -> MText -> Natural -> MetadataRegistryStorage
+mkMetadataRegistryStorage symbol name decimals =
+  MetadataRegistryStorage
+    { mrsDummyField = ()
+    , mrsTokenMetadata = BigMap $ Map.singleton 0 $
+        FA2.TokenMetadata
+          { tmTokenId = 0
+          , tmSymbol = symbol
+          , tmName = name
+          , tmDecimals = decimals
+          , tmExtras = mempty
+          }
+    }
+
+-- | The default storage for the Metadata Registry storage
+-- with some hardcoded token metadata.
+-- Useful for testing.
+defaultMetadataRegistryStorage :: MetadataRegistryStorage
+defaultMetadataRegistryStorage =
+  mkMetadataRegistryStorage
+    [mt|TEST|]
+    [mt|Test|]
+    8
 
 -- This empty splice lets us workaround the GHC stage restriction, and refer to `Storage`
 -- in the TH splices below.
@@ -394,17 +405,17 @@ stablecoinContract =
   )
 
 -- | Parse the metadata registry contract.
-registryContract :: U.Contract
+registryContract :: T.Contract (ToT ()) (ToT MetadataRegistryStorage)
 registryContract =
-  $(case parseExpandContract (Just metadataRegistryContractPath) $(embedStringFile metadataRegistryContractPath) of
-    Left e -> fail (pretty e)
-    Right _ ->
-      [|
-        -- Note: it's ok to use `error` here, because we just proved that the contract
-        -- can be parsed+typechecked.
-        either (error . pretty) id $
-          parseExpandContract
-            (Just metadataRegistryContractPath)
-            $(embedStringFile metadataRegistryContractPath)
-      |]
-    )
+  $(case readContract @(ToT ()) @(ToT MetadataRegistryStorage) metadataRegistryContractPath $(embedStringFile metadataRegistryContractPath) of
+      Left e -> fail (pretty e)
+      Right _ ->
+        [|
+          -- Note: it's ok to use `error` here, because we just proved that the contract
+          -- can be parsed+typechecked.
+          either (error . pretty) snd $
+            readContract
+              metadataRegistryContractPath
+              $(embedStringFile metadataRegistryContractPath)
+        |]
+  )

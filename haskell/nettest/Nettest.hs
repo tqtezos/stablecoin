@@ -28,12 +28,11 @@ data TransferlistType = External | Internal
 scNettestScenario
   :: forall m capsM.
      (Monad m, capsM ~ NettestT m)
-  => (OriginationParams -> Storage)
-  -> (Set (Address, Address) -> Set Address -> capsM Address)
+  => (Set (Address, Address) -> Set Address -> capsM Address)
   -> TransferlistType
   -> NettestImpl m
   -> m ()
-scNettestScenario constructInitialStorage originateTransferlist transferlistType = uncapsNettest $ do
+scNettestScenario originateTransferlist transferlistType = uncapsNettest $ do
   comment "Resolving contract managers"
 
   superuser <- resolveNettestAddress
@@ -52,7 +51,7 @@ scNettestScenario constructInitialStorage originateTransferlist transferlistType
   otherOperator <- newAddress "Other operator"
 
   let
-    initialStorage =
+    originationParams =
         addAccount (superuser , ([operator], 1110000))
       . addAccount (owner1, ([operator], 100))
       . addAccount (owner2, ([operator], 0))
@@ -65,11 +64,15 @@ scNettestScenario constructInitialStorage originateTransferlist transferlistType
           , opMasterMinter = nettestMasterMinter
           }
 
-  comment "Originating stablecoin contract"
+  comment "Originating metadata registry contract"
+  mrAddress <- nettestOriginateMetadataRegistry
 
-  scAddress <- do
-    let str = constructInitialStorage initialStorage
-    originateUntypedSimple "nettest.Stablecoin" (untypeValue $ toVal str) (T.convertContract stablecoinContract)
+  comment "Originating stablecoin contract"
+  scAddress <-
+    originateUntypedSimple
+      "nettest.Stablecoin"
+      (untypeValue (toVal (mkInitialStorage originationParams mrAddress)))
+      (T.convertContract stablecoinContract)
 
   comment "Originating transferlist contract"
 
@@ -362,7 +365,7 @@ scNettestScenario constructInitialStorage originateTransferlist transferlistType
 
       -- We originate a new contract to make sure the minters list is empty
       scAddress' <- do
-        let str = constructInitialStorage $ initialStorage { opMinters = mempty }
+        let str = mkInitialStorage (originationParams { opMinters = mempty }) mrAddress
         originateUntypedSimple "nettest.Stablecoin_for_minter_test" (untypeValue $ toVal str) (T.convertContract stablecoinContract)
 
       let
