@@ -61,6 +61,9 @@ steps:
         limit: 1
  - label: nettest-scheduled-carthagenet
    if: build.source == "schedule"
+   # use another agent for long scheduled jobs
+   agents:
+    queue: "scheduled"
    env:
      NETTEST_NODE_ADDR: "carthage.testnet.tezos.serokell.team"
      NETTEST_NODE_PORT: "8732"
