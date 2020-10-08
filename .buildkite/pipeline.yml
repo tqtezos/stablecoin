@@ -45,7 +45,7 @@ steps:
      - cd haskell
      - nix build -L -f .. test
      - ./result/bin/stablecoin-test
- - label: nettest-local-chain
+ - label: nettest-local-chain-006
    if: *not_scheduled
    env:
      NETTEST_NODE_ADDR: "localhost"
@@ -59,6 +59,14 @@ steps:
    retry: &retry-nettest
       automatic:
         limit: 1
+ - label: nettest-local-chain-007
+   if: *not_scheduled
+   env:
+     NETTEST_NODE_ADDR: "localhost"
+     NETTEST_NODE_PORT: "8735"
+     MONEYBAG: "unencrypted:edsk3GjD83F7oj2LrnRGYQer99Fj69U2QLyjWGiJ4UoBZNQwS38J4v"
+   commands: *run-nettest
+   retry: *retry-nettest
  - label: nettest-scheduled-carthagenet
    if: build.source == "schedule"
    # use another agent for long scheduled jobs
