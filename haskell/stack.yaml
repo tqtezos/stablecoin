@@ -15,15 +15,15 @@ extra-deps:
   commit:
     d8bf45279141f60e1bf317abbbd210a4182451a8 # master
   subdirs:
-    - code/morley
-    - code/lorentz
     - code/cleveland
     - code/morley-client
-    - code/indigo
 
 # Stable parts of morley available from Hackage
 - morley-prelude-0.3.0
 - tasty-hunit-compat-0.2
+- morley-1.7.1
+- lorentz-0.6.2
+- indigo-0.3.0
 
 # Required by morley
 - base58-bytestring-0.1.0
@@ -42,7 +42,7 @@ extra-deps:
     https://gitlab.com/morley-framework/morley-ledgers.git
     # ^ CI cannot use ssh, so we use http clone here
   commit:
-    cd02068501e57c5893a6642e5100cba66e4b3ae1 # master
+    2697445b68fae5e7959de473fd35ab8bf4abcb50 # master
   subdirs:
     - code/morley-ledgers
     - code/morley-ledgers-test
