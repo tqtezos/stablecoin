@@ -76,7 +76,7 @@ let
 
   morley =
     (pkgs.haskell-nix.hackage-package
-      { name = "morley"; version = "1.4.0"; compiler-nix-name = "ghc883"; }
+      { name = "morley"; version = "1.7.1"; compiler-nix-name = "ghc883"; }
     ).components.exes.morley;
 in
 {
