@@ -38,6 +38,9 @@ steps:
      - stablecoin.fa1.2.tz
      - metadata.tz
 
+ # wait for the contract step to complete, so the next steps can download generated contract
+ - wait
+
  - label: build library
    if: *not_scheduled
    commands:
