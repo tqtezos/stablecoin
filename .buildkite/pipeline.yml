@@ -12,16 +12,20 @@ steps:
      build.source != "schedule"
    command:
      nix run -f. pkgs.hlint -c ./scripts/lint.sh
- - command: nix run -f. pkgs.reuse -c reuse lint
+
+ - label: reuse lint
+   command: nix run -f. pkgs.reuse -c reuse lint
    if: *not_scheduled
-   label: reuse lint
- - command: .buildkite/check-trailing-whitespace.sh
+
+ - label: check trailing whitespace
+   command: .buildkite/check-trailing-whitespace.sh
    if: *not_scheduled
-   label: check trailing whitespace
- - command: "nix run -f https://github.com/serokell/xrefcheck/archive/b54c38d91bd45e5c402ebf51d68c653faf959c2c.tar.gz -c xrefcheck"
+
+ - label: xrefcheck
+   command: "nix run -f https://github.com/serokell/xrefcheck/archive/b54c38d91bd45e5c402ebf51d68c653faf959c2c.tar.gz -c xrefcheck"
    if: *not_scheduled
-   label: xrefcheck
    soft_fail: true
+
  - label: LIGO-contract
    commands:
      - nix-build -A tezos-contract -o stablecoin_raw.tz
@@ -33,11 +37,16 @@ steps:
      - stablecoin.tz
      - stablecoin.fa1.2.tz
      - metadata.tz
+
+ # wait for the contract step to complete, so the next steps can download generated contract
+ - wait
+
  - label: build library
    if: *not_scheduled
    commands:
      - eval "$FETCH_CONTRACT"
      - nix build -L -f. lib
+
  - label: test
    if: *not_scheduled
    commands:
@@ -45,6 +54,7 @@ steps:
      - cd haskell
      - nix build -L -f .. test
      - ./result/bin/stablecoin-test
+
  - label: nettest-local-chain-006
    if: *not_scheduled
    env:
@@ -59,6 +69,7 @@ steps:
    retry: &retry-nettest
       automatic:
         limit: 1
+
  - label: nettest-local-chain-007
    if: *not_scheduled
    env:
@@ -67,6 +78,7 @@ steps:
      MONEYBAG: "unencrypted:edsk3GjD83F7oj2LrnRGYQer99Fj69U2QLyjWGiJ4UoBZNQwS38J4v"
    commands: *run-nettest
    retry: *retry-nettest
+
  - label: nettest-scheduled-carthagenet
    if: build.source == "schedule"
    # use another agent for long scheduled jobs
@@ -80,8 +92,11 @@ steps:
      MONEYBAG: "unencrypted:edsk4EYgVvKVKppJXAyeoqxJrNeyoktNqmcx5op1CFht9P1p8pPxp7"
    commands: *run-nettest
    timeout_in_minutes: 150
+
  - label: nettest-scheduled-delphinet
    if: build.source == "schedule"
+   agents:
+    queue: "scheduled"
    env:
      NETTEST_NODE_ADDR: "delphi.testnet.tezos.serokell.team"
      NETTEST_NODE_PORT: "8732"
@@ -89,6 +104,7 @@ steps:
      MONEYBAG: "unencrypted:edsk4EYgVvKVKppJXAyeoqxJrNeyoktNqmcx5op1CFht9P1p8pPxp7"
    commands: *run-nettest
    timeout_in_minutes: 150
+
  - label: weeder
    if: *not_scheduled
    commands:
@@ -98,6 +114,7 @@ steps:
      # weeder needs .cabal file:
      - nix run -f.. pkgs.haskellPackages.hpack -c hpack
      - ./result
+
  - label: packaging
    if: *not_scheduled
    commands:
