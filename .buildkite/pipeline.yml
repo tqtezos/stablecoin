@@ -95,6 +95,8 @@ steps:
 
  - label: nettest-scheduled-delphinet
    if: build.source == "schedule"
+   agents:
+    queue: "scheduled"
    env:
      NETTEST_NODE_ADDR: "delphi.testnet.tezos.serokell.team"
      NETTEST_NODE_PORT: "8732"
