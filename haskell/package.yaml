@@ -31,7 +31,6 @@ library:
     - morley
     - containers
     - indigo
-    - tasty-quickcheck
     - fmt
     - optparse-applicative
     - file-embed
@@ -65,8 +64,8 @@ tests:
       - cleveland
       - tasty
       - tasty-hspec
-      - tasty-quickcheck
-      - QuickCheck
+      - tasty-hedgehog
+      - hedgehog
       - stablecoin
       - hspec
       - containers

@@ -8,9 +8,10 @@ module Stablecoin
   , test_SMT
   ) where
 
+import Hedgehog (withTests)
 import Test.Hspec (Spec)
 import Test.Tasty (TestTree)
-import Test.Tasty.QuickCheck (testProperty, withMaxSuccess)
+import Test.Tasty.Hedgehog (testProperty)
 
 import Lorentz (TAddress(..))
 import Lorentz.Contracts.Stablecoin as SC
@@ -36,12 +37,11 @@ spec_FA2 :: Spec
 spec_FA2 =
   fa2Spec origination
 
-test_SMT :: IO [TestTree]
+test_SMT :: [TestTree]
 test_SMT =
-  pure
-    [ testProperty "have the same state as the model after running the inputs"
-      (withMaxSuccess 20 $ smtProperty)
-    ]
+  [ testProperty "have the same state as the model after running the inputs"
+    (withTests 20 $ smtProperty)
+  ]
 
 spec_Management :: Spec
 spec_Management =

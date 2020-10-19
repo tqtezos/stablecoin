@@ -1,7 +1,6 @@
 -- SPDX-FileCopyrightText: 2020 TQ Tezos
 -- SPDX-License-Identifier: MIT
 {-# OPTIONS_GHC -Wno-orphans #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
 {-# LANGUAGE PackageImports #-}
 
 module SMT
@@ -11,25 +10,25 @@ module SMT
 import qualified Data.Map as Map
 import Data.Typeable (cast)
 import Fmt
-
-import Test.Tasty.QuickCheck
-  (Arbitrary, Gen, Property, arbitrary, arbitraryBoundedEnum, choose, elements, shuffle, sublistOf,
-  vectorOf)
+import Hedgehog
+import qualified Hedgehog.Gen as Gen
+import qualified Hedgehog.Range as Range
 import qualified Text.Show
 
-import Tezos.Core (unsafeMkMutez)
-
+import Hedgehog.Gen.Tezos.Address (genAddress)
 import Lorentz
-  (Address, EntrypointRef(Call), GetEntrypointArgCustom, IsoValue(..), TAddress(TAddress),
+  (Address, EntrypointRef(Call), GetEntrypointArgCustom, IsoValue (..), TAddress(TAddress),
   parameterEntrypointCallCustom)
-import qualified "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
-import Lorentz.Contracts.Stablecoin
-import Lorentz.Contracts.Test.Common
 import Michelson.Interpret
 import Michelson.Test.Dummy
 import Michelson.Test.Integrational
 import Michelson.Text
 import qualified Michelson.Typed as T
+import Tezos.Core (unsafeMkMutez)
+
+import qualified "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
+import Lorentz.Contracts.Stablecoin
+import Lorentz.Contracts.Test.Common
 
 -- Some implementation notes:
 --
@@ -59,24 +58,25 @@ import qualified Michelson.Typed as T
 -- for various roles are not generated randomly, but randomly choosen from the
 -- pool for the corresponding role. This give us some assurance that some of these
 -- actions will be legal, and will be executed succesfully.
-generateContractInputs :: Int -> Gen ([ContractCall Parameter], ContractState)
+generateContractInputs :: MonadGen m => Int -> m ([ContractCall Parameter], ContractState)
 generateContractInputs count = do
-  gsOwnerPool <- vectorOf poolSize (arbitrary @Address)
-  gsMasterMinterPool <- vectorOf poolSize (arbitrary @Address)
-  gsPauserPool <- vectorOf poolSize (arbitrary @Address)
-  gsTokenOwnerPool <- vectorOf poolSize (arbitrary @Address)
-  gsMinterPool <- Map.fromList . fmap unMintingAllowance <$> vectorOf 3 (arbitrary @MintingAllowance)
-  owner <- elements gsOwnerPool
-  masterMinter <- elements gsMasterMinterPool
-  pauser <- elements gsPauserPool
+  gsOwnerPool <- vectorOf poolSize genAddress
+  gsMasterMinterPool <- vectorOf poolSize genAddress
+  gsPauserPool <- vectorOf poolSize genAddress
+  gsTokenOwnerPool <- vectorOf poolSize genAddress
+  gsMinterPool <- Map.fromList . fmap unMintingAllowance <$> vectorOf 3 genMintingAllowance
+  owner <- Gen.element gsOwnerPool
+  masterMinter <- Gen.element gsMasterMinterPool
+  pauser <- Gen.element gsPauserPool
   pendingOwner <-  do
-    p <- elements gsOwnerPool
-    elements [Nothing, Just p]
-  operators <- (shuffle $ zip gsTokenOwnerPool gsTokenOwnerPool) >>= sublistOf
-  isPaused <- arbitrary @Bool
+    p <- Gen.element gsOwnerPool
+    Gen.element [Nothing, Just p]
+  operators <- (Gen.shuffle $ zip gsTokenOwnerPool gsTokenOwnerPool) >>= Gen.subsequence
+  isPaused <- Gen.bool
   ledgerBalances <- Map.fromList <$> do
-    randomBalances <- vectorOf poolSize ((fromIntegral @Int) <$> (choose @Int (0, amountRange)))
-    sublistOf $ zip gsTokenOwnerPool randomBalances
+    randomBalances <- vectorOf poolSize $
+      Gen.integral (Range.constant 0 amountRange)
+    Gen.subsequence $ zip gsTokenOwnerPool randomBalances
   let
     generatorState :: GeneratorState = GeneratorState
         gsOwnerPool gsMasterMinterPool gsMinterPool
@@ -88,13 +88,10 @@ generateContractInputs count = do
   pure (inputs, ContractState startingStorage [])
 
 -- | The property that is being tested.
--- This is a quickcheck `Testable` because we have an
--- arbitrary instance for `PropertyTestInput`.
-smtProperty
-  :: PropertyTestInput
-  -> Property
-smtProperty (PropertyTestInput (inputs, initialState)) =
-  integrationalTestProperty $ do
+smtProperty :: Property
+smtProperty = property $ do
+  PropertyTestInput (inputs, initialState) <- forAll genPropertyTestInput
+  integrationalTestProp $ do
     mrAddress <- originateMetadataRegistry
     applyBothAndCompare inputs mrAddress initialState
 
@@ -114,7 +111,8 @@ applyBothAndCompare (cc:ccs) mrAddress cs = let
   haskellResult = stablecoinHaskellModel cc cs
   michelsonResult = stablecoinMichelsonModel mrAddress cc cs
   in if haskellResult /= michelsonResult
-    then integrationalFail $ CustomTestError ("Models differ : " <> (show (cc, cs, haskellResult, michelsonResult)))
+    then integrationalFail $ CustomTestError $
+         "Models differ : " <> show (cc, cs, haskellResult, michelsonResult)
     else applyBothAndCompare ccs mrAddress haskellResult
 
 -- Size of the random address pool
@@ -250,23 +248,23 @@ data GeneratorState = GeneratorState
   , gsTokenOwnerPool :: [Address]
   }
 
-type GeneratorM = ReaderT GeneratorState Gen
-
+type GeneratorM a = forall m. MonadGen m => ReaderT GeneratorState m a
 
 newtype PropertyTestInput =
   PropertyTestInput ([ContractCall Parameter], ContractState)
   deriving stock Show
 
-instance Arbitrary PropertyTestInput where
-  arbitrary = PropertyTestInput <$> (generateContractInputs testSize)
+genPropertyTestInput :: MonadGen m => m PropertyTestInput
+genPropertyTestInput = PropertyTestInput <$> generateContractInputs testSize
 
-newtype MintingAllowance = MintingAllowance { unMintingAllowance :: (Address, Natural) }
+newtype MintingAllowance = MintingAllowance
+  { unMintingAllowance :: (Address, Natural) }
 
-instance Arbitrary MintingAllowance where
-  arbitrary = do
-    addr <- arbitrary
-    allowance <- choose @Int (0, amountRange)
-    pure $ MintingAllowance (addr, fromIntegral allowance)
+genMintingAllowance :: MonadGen m => m MintingAllowance
+genMintingAllowance = do
+  addr <- genAddress
+  allowance <- Gen.integral (Range.constant 0 amountRange)
+  pure $ MintingAllowance (addr, allowance)
 
 -- | A helper type to randomly select the type of action that we should
 -- create at every iteration/call of @generateAction@ function.
@@ -283,7 +281,7 @@ data ActionType
 -- choosed from the corresponding address pool.
 generateAction :: Int -> GeneratorM (ContractCall Parameter)
 generateAction idx = do
-  (lift $ arbitraryBoundedEnum @ActionType) >>= \case
+  Gen.enumBounded >>= \case
     OwnerAction -> generateOwnerAction idx
     MasterMinterAction -> generateMasterMinterAction idx
     PauserAction -> generatePauserAction idx
@@ -298,7 +296,7 @@ generateOwnerAction idx = do
   acceptOwnershipAction <- generateAcceptOwnershipAction
   changeMasterMinterAction <- generateChangeMasterMinterAction
   changePauserAction <- generateChangePauserAction
-  param <- lift $ elements
+  param <- Gen.element
     [ transferOwnershipAction
     , acceptOwnershipAction
     , changeMasterMinterAction
@@ -328,39 +326,39 @@ getMinterAllowance minter = do
 getRandomOwner :: GeneratorM Address
 getRandomOwner = do
   pool <- gsOwnerPool <$> ask
-  lift $ elements pool
+  Gen.element pool
 
 getRandomPauser :: GeneratorM Address
 getRandomPauser = do
   pool <- gsPauserPool <$> ask
-  lift $ elements pool
+  Gen.element pool
 
 getRandomMinter :: GeneratorM Address
 getRandomMinter = do
   pool <- gsMinterPool <$> ask
-  lift $ elements $ Map.keys pool
+  Gen.element (Map.keys pool)
 
 getRandomMasterMinter :: GeneratorM Address
 getRandomMasterMinter = do
   pool <- gsMasterMinterPool <$> ask
-  lift $ elements pool
+  Gen.element pool
 
 getRandomTokenOwner :: GeneratorM Address
 getRandomTokenOwner = do
   pool <- gsTokenOwnerPool <$> ask
-  lift $ elements pool
+  Gen.element pool
 
 getRandomOperator :: GeneratorM Address
 getRandomOperator = do
   pool <- gsTokenOwnerPool <$> ask
-  lift $ elements pool
+  Gen.element pool
 
 generateMasterMinterAction :: Int -> GeneratorM (ContractCall Parameter)
 generateMasterMinterAction idx = do
   sender <-getRandomMasterMinter
   configureMinterAction <- generateConfigureMinterAction
   removeMinterAction <- generateRemoveMinterAction
-  param <- lift $ elements
+  param <- Gen.element
     [ configureMinterAction
     , removeMinterAction
     ]
@@ -376,23 +374,25 @@ generateMasterMinterAction idx = do
         currentMintingAllowance <-
           case mbMintingAllowance of
             Just ma -> do
-              randomNatural <- lift $ choose @Int (0, amountRange)
-              lift $ elements [Just (fromIntegral randomNatural), Just ma, Nothing] -- supply correct current minting allowances only some of the time
+              randomNatural <- Gen.integral (Range.constant 0 amountRange)
+              -- supply correct current minting allowances only some of the time
+              Gen.element [Just randomNatural, Just ma, Nothing]
             Nothing -> do
-              randomNatural <- lift $ choose @Int (0, amountRange)
-              lift $ elements [Just (fromIntegral randomNatural), Nothing] -- supply correct current minting allowances only some of the time
+              randomNatural <- Gen.integral (Range.constant 0 amountRange)
+              -- supply correct current minting allowances only some of the time
+              Gen.element [Just randomNatural, Nothing]
 
-        newMintingAllowances <- lift $ choose @Int (0, amountRange)
+        newMintingAllowances <- Gen.integral (Range.constant 0 amountRange)
         pure $ Configure_minter ConfigureMinterParam
           { cmpMinter = minter
           , cmpCurrentMintingAllowance = currentMintingAllowance
-          , cmpNewMintingAllowance = fromIntegral newMintingAllowances
+          , cmpNewMintingAllowance = newMintingAllowances
           }
 
 generatePauserAction :: Int -> GeneratorM (ContractCall Parameter)
 generatePauserAction idx = do
   sender <- getRandomPauser
-  param <- lift $ elements [Pause, Unpause]
+  param <- Gen.element [Pause, Unpause]
   pure $ ContractCall sender param idx
 
 generateTokenOwnerAction :: Int -> GeneratorM (ContractCall Parameter)
@@ -400,7 +400,7 @@ generateTokenOwnerAction idx = do
   sender <- getRandomTokenOwner
   transferAction <- generateTransferAction
   updateOperatorsAction <- generateUpdateOperatorsAction
-  param <- lift $ elements
+  param <- Gen.element
     [ transferAction
     , updateOperatorsAction
     ]
@@ -409,7 +409,7 @@ generateTokenOwnerAction idx = do
     generateUpdateOperatorsAction = do
       operator <- getRandomOperator
       owner <- getRandomOwner
-      updateOperation <- lift $ elements
+      updateOperation <- Gen.element
         [ FA2.Add_operator FA2.OperatorParam { opOwner = owner, opOperator = operator, opTokenId = 0 }
         , FA2.Add_operator FA2.OperatorParam { opOwner = owner, opOperator = operator, opTokenId = 1 }
         , FA2.Remove_operator FA2.OperatorParam { opOwner = owner, opOperator = operator, opTokenId = 0 }
@@ -422,9 +422,9 @@ generateTransferAction = do
   from <- getRandomTokenOwner
   txs <- replicateM 10 $ do
     to <- getRandomTokenOwner
-    amount <- lift $ choose @Int (0, amountRange)
-    pure FA2.TransferDestination { tdTo = to, tdTokenId = 0, tdAmount = fromIntegral amount }
-  stxs <- lift $ sublistOf txs
+    amount <- Gen.integral (Range.constant 0 amountRange)
+    pure FA2.TransferDestination { tdTo = to, tdTokenId = 0, tdAmount = amount }
+  stxs <- Gen.subsequence txs
   let transferItem = FA2.TransferParam { tpFrom = from, tpTxs = stxs }
   pure $ Call_FA2 $ FA2.Transfer [transferItem]
 
@@ -438,7 +438,7 @@ generateMinterAction :: Int -> GeneratorM (ContractCall Parameter)
 generateMinterAction idx = do
   mintAction <- generateMintAction idx
   burnAction <- generateBurnAction idx
-  lift $ elements [mintAction, burnAction]
+  Gen.element [mintAction, burnAction]
 
 generateMintAction :: Int -> GeneratorM (ContractCall Parameter)
 generateMintAction idx = do
@@ -446,17 +446,17 @@ generateMintAction idx = do
   mints <- replicateM 10 $ do
     targetMinter <- getRandomMinter
     targetTokenOwner <- getRandomTokenOwner
-    target <- lift $ elements [targetMinter, targetTokenOwner]
-    mintValue <- lift $ choose @Int (0, amountRange)
-    pure (MintParam target (fromIntegral mintValue))
-  parameter <- lift $ sublistOf mints
+    target <- Gen.element [targetMinter, targetTokenOwner]
+    mintValue <- Gen.integral (Range.constant 0 amountRange)
+    pure (MintParam target mintValue)
+  parameter <- Gen.subsequence mints
   pure $ ContractCall sender (Mint parameter) idx
 
 generateBurnAction :: Int -> GeneratorM (ContractCall Parameter)
 generateBurnAction idx = do
   sender <- getRandomMinter
-  burns <- lift $ vectorOf 10 $ choose @Int (0, amountRange)
-  pure $ ContractCall sender (Burn $ fromIntegral <$> burns) idx
+  burns <- vectorOf 10 $ Gen.integral (Range.constant 0 amountRange)
+  pure $ ContractCall sender (Burn burns) idx
 
 -- | Haskell model that mimicks the expected contract behavior
 stablecoinHaskellModel
@@ -748,3 +748,9 @@ applyFA2Parameter ContractCall {..} cs = do
     FA2.Transfer tis -> applyTransfer ccSender cs tis
     FA2.Update_operators ops -> foldl' (applyUpdateOperator ccSender) (Right cs) ops
     _ -> error "Unexpected param"
+
+-- | Generate a list of items using given generator of a single item.
+-- Takes a size parameter. Unlike QuickCheck's @vectorOf@, this function
+-- can generate a smaller list (always non-empty).
+vectorOf :: MonadGen m => Int -> m x -> m [x]
+vectorOf n = Gen.list (Range.linear 1 n)

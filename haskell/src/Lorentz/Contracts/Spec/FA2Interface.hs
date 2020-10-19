@@ -31,10 +31,8 @@ module Lorentz.Contracts.Spec.FA2Interface
   ) where
 
 import Fmt (Buildable(..), genericF)
-import Test.Tasty.QuickCheck (Arbitrary(..), elements)
 
 import Lorentz
-import Util.Named
 
 -- Transfer
 -- --------
@@ -126,14 +124,6 @@ data OperatorTransferPolicy
   deriving stock (Eq, Generic, Show)
   deriving anyclass (IsoValue, HasAnnotation)
 
-instance Arbitrary OperatorTransferPolicy where
-  arbitrary =
-    elements
-      [ OwnerTransfer (#owner_transfer .! ())
-      , NoTransfer (#no_transfer .! ())
-      , OwnerOrOperatorTransfer (#owner_or_operator_transfer .! ())
-      ]
-
 instance TypeHasDoc OperatorTransferPolicy where
   typeDocMdDescription = "Describes if operator can make transfer on behalf of token owner"
 
@@ -143,14 +133,6 @@ data OwnerTransferMode
   | RequiredOwnerHook ("required_owner_hook" :! ())
   deriving stock (Generic, Show)
   deriving anyclass (IsoValue, HasAnnotation)
-
-instance Arbitrary OwnerTransferMode where
-  arbitrary =
-    elements
-      [ OwnerNoHook (#owner_no_op .! ())
-      , OptionalOwnerHook (#optional_owner_hook .! ())
-      , RequiredOwnerHook (#required_owner_hook .! ())
-      ]
 
 instance TypeHasDoc OwnerTransferMode where
   typeDocMdDescription = "Describes if owener hooks are required in sender/receiver addresses"
