@@ -749,5 +749,8 @@ applyFA2Parameter ContractCall {..} cs = do
     FA2.Update_operators ops -> foldl' (applyUpdateOperator ccSender) (Right cs) ops
     _ -> error "Unexpected param"
 
+-- | Generate a list of items using given generator of a single item.
+-- Takes a size parameter. Unlike QuickCheck's @vectorOf@, this function
+-- can generate a smaller list (always non-empty).
 vectorOf :: MonadGen m => Int -> m x -> m [x]
-vectorOf n = Gen.list (Range.singleton n)
+vectorOf n = Gen.list (Range.linear 1 n)
