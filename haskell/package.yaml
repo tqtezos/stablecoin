@@ -31,7 +31,6 @@ library:
     - morley
     - containers
     - indigo
-    - tasty-quickcheck
     - fmt
     - optparse-applicative
     - file-embed
