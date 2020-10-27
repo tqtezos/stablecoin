@@ -91,7 +91,8 @@ steps:
      # more tz, its address: tz1ij8gUYbMRUXa4xX3mNvKguhaWG9GGbURn
      MONEYBAG: "unencrypted:edsk4EYgVvKVKppJXAyeoqxJrNeyoktNqmcx5op1CFht9P1p8pPxp7"
    commands: *run-nettest
-   timeout_in_minutes: 150
+   retry: *retry-nettest
+   timeout_in_minutes: 180
 
  - label: nettest-scheduled-delphinet
    if: build.source == "schedule"
@@ -103,7 +104,8 @@ steps:
      # same address as in carthagenet
      MONEYBAG: "unencrypted:edsk4EYgVvKVKppJXAyeoqxJrNeyoktNqmcx5op1CFht9P1p8pPxp7"
    commands: *run-nettest
-   timeout_in_minutes: 150
+   retry: *retry-nettest
+   timeout_in_minutes: 180
 
  - label: weeder
    if: *not_scheduled
