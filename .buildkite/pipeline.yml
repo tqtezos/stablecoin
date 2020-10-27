@@ -92,7 +92,7 @@ steps:
      MONEYBAG: "unencrypted:edsk4EYgVvKVKppJXAyeoqxJrNeyoktNqmcx5op1CFht9P1p8pPxp7"
    commands: *run-nettest
    retry: *retry-nettest
-   timeout_in_minutes: 150
+   timeout_in_minutes: 180
 
  - label: nettest-scheduled-delphinet
    if: build.source == "schedule"
@@ -105,7 +105,7 @@ steps:
      MONEYBAG: "unencrypted:edsk4EYgVvKVKppJXAyeoqxJrNeyoktNqmcx5op1CFht9P1p8pPxp7"
    commands: *run-nettest
    retry: *retry-nettest
-   timeout_in_minutes: 150
+   timeout_in_minutes: 180
 
  - label: weeder
    if: *not_scheduled
