@@ -55,11 +55,11 @@ steps:
      - nix build -L -f .. test
      - ./result/bin/stablecoin-test
 
- - label: nettest-local-chain-006
+ - label: nettest-local-chain-007
    if: *not_scheduled
    env:
      NETTEST_NODE_ADDR: "localhost"
-     NETTEST_NODE_PORT: "8734"
+     NETTEST_NODE_PORT: "8735"
      MONEYBAG: "unencrypted:edsk3GjD83F7oj2LrnRGYQer99Fj69U2QLyjWGiJ4UoBZNQwS38J4v"
    commands: &run-nettest
      - eval "$FETCH_CONTRACT"
@@ -70,38 +70,16 @@ steps:
       automatic:
         limit: 1
 
- - label: nettest-local-chain-007
-   if: *not_scheduled
-   env:
-     NETTEST_NODE_ADDR: "localhost"
-     NETTEST_NODE_PORT: "8735"
-     MONEYBAG: "unencrypted:edsk3GjD83F7oj2LrnRGYQer99Fj69U2QLyjWGiJ4UoBZNQwS38J4v"
-   commands: *run-nettest
-   retry: *retry-nettest
-
- - label: nettest-scheduled-carthagenet
+ - label: nettest-scheduled-delphinet
    if: build.source == "schedule"
    # use another agent for long scheduled jobs
    agents:
     queue: "scheduled"
    env:
-     NETTEST_NODE_ADDR: "carthage.testnet.tezos.serokell.team"
+     NETTEST_NODE_ADDR: "delphi.testnet.tezos.serokell.team"
      NETTEST_NODE_PORT: "8732"
      # Note that testnet moneybag can run out of tz. If this happened, someone should transfer it some
      # more tz, its address: tz1ij8gUYbMRUXa4xX3mNvKguhaWG9GGbURn
-     MONEYBAG: "unencrypted:edsk4EYgVvKVKppJXAyeoqxJrNeyoktNqmcx5op1CFht9P1p8pPxp7"
-   commands: *run-nettest
-   retry: *retry-nettest
-   timeout_in_minutes: 180
-
- - label: nettest-scheduled-delphinet
-   if: build.source == "schedule"
-   agents:
-    queue: "scheduled"
-   env:
-     NETTEST_NODE_ADDR: "delphi.testnet.tezos.serokell.team"
-     NETTEST_NODE_PORT: "8732"
-     # same address as in carthagenet
      MONEYBAG: "unencrypted:edsk4EYgVvKVKppJXAyeoqxJrNeyoktNqmcx5op1CFht9P1p8pPxp7"
    commands: *run-nettest
    retry: *retry-nettest
