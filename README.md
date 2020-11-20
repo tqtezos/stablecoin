@@ -8,7 +8,7 @@ SPDX-License-Identifier: MIT
 [![Build status](https://badge.buildkite.com/c38c76106a10aeaea23f487d41b52514f4ffb84974852021f7.svg?branch=master)](https://buildkite.com/serokell/stablecoin)
 
 Tezos Stablecoin project implements an FA2-compatible token smart contract.
-It is based on [CENTRE Fiat Token](https://github.com/centrehq/centre-tokens/blob/78d964a1a8d481ffd8152772d7a66e47df54b3db/doc/tokendesign.md).
+It draws inspiration from the [CENTRE Fiat Token](https://github.com/centrehq/centre-tokens/blob/78d964a1a8d481ffd8152772d7a66e47df54b3db/doc/tokendesign.md) and other similar contracts.
 The contract is implemented in the [LIGO language](https://ligolang.org/).
 See the [`ligo/`](ligo/) folder.
 Contract specification is [available](/docs/specification.md).
