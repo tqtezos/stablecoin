@@ -5,6 +5,11 @@
  * Permit library for stablecoin smart-contract
  *)
 
+(*
+ * Maximum value that is allowed for expiry in the argument of a
+ * `Set_expiry` call.
+ *)
+const permit_expiry_limit: nat = 31557600000n; // A thousand years
 
 (*
  * Check whether a permit has expired.
@@ -201,24 +206,27 @@ function set_permit_expiry
   ; const new_expiry : seconds
   ; const permits : permits
   ) : permits is
-  case Big_map.find_opt(user, permits) of
-  | None -> permits
-  | Some(user_permits) ->
-      case Map.find_opt(permit, user_permits.permits) of
-      | None -> permits
-      | Some(permit_info) ->
-          block {
-            const updated_permit_info : permit_info =
-              permit_info with record [ expiry = Some(new_expiry) ]
+  if new_expiry < permit_expiry_limit then
+    case Big_map.find_opt(user, permits) of
+    | None -> permits
+    | Some(user_permits) ->
+        case Map.find_opt(permit, user_permits.permits) of
+        | None -> permits
+        | Some(permit_info) ->
+            block {
+              const updated_permit_info : permit_info =
+                permit_info with record [ expiry = Some(new_expiry) ]
 
-          ; const updated_user_permits : user_permits =
-              user_permits with record [
-                permits = Map.update(
-                  permit,
-                  Some(updated_permit_info),
-                  user_permits.permits
-                )
-              ]
-          } with Big_map.update(user, Some(updated_user_permits), permits)
-      end
-  end
+            ; const updated_user_permits : user_permits =
+                user_permits with record [
+                  permits = Map.update(
+                    permit,
+                    Some(updated_permit_info),
+                    user_permits.permits
+                  )
+                ]
+            } with Big_map.update(user, Some(updated_user_permits), permits)
+        end
+    end
+  else
+    (failwith("EXPIRY_TOO_BIG") : permits)

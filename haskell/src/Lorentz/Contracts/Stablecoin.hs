@@ -122,8 +122,8 @@ instance Buildable PermitParam where
 type Expiry = Natural
 
 data SetExpiryParam = SetExpiryParam
-  { sepExpiry :: Expiry
-  , sepPermit :: Maybe (PermitHash, Address)
+  { sepOwner :: Address
+  , sepExpiry :: (Expiry, Maybe PermitHash)
   }
   deriving stock (Show, Generic)
 
