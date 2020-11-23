@@ -754,13 +754,16 @@ function set_expiry
   ( const param: set_expiry_param
   ; const store : storage
   ) : entrypoint is block
-{ const new_expiry : seconds = param.0
+{ const owner : address = param.0
+; const new_expiry : seconds = param.1.0
+; const specific_permit_or_default : option(bytes) = param.1.1
+
 ; const updated_permits : permits =
-    case param.1 of
+    case specific_permit_or_default of
     | None ->
-        set_user_default_expiry(Tezos.sender, new_expiry, store.permits)
-    | Some(hash_and_address) ->
-        set_permit_expiry(hash_and_address.1, hash_and_address.0, new_expiry, store.permits)
+        set_user_default_expiry(owner, new_expiry, store.permits)
+    | Some(permit_hash) ->
+        set_permit_expiry(owner, permit_hash, new_expiry, store.permits)
     end
 } with
     ( (nil : list(operation))
