@@ -195,6 +195,20 @@ function set_user_default_expiry
 } with Big_map.update(user, Some(updated_user_permits), permits)
 
 (*
+ * Checks if permit has expired, return after setting new expire if not
+ *)
+function set_permit_expiry_with_check
+  ( const permit_info : permit_info
+  ; const new_expiry : seconds
+  ) : option(permit_info) is block {
+    const permit_age: int = Tezos.now - permit_info.created_at;
+  } with if permit_age >= int(new_expiry)
+      then (None : option(permit_info))
+      else Some(permit_info with record [
+        expiry = Some(new_expiry)
+      ])
+
+(*
  * Sets the expiry for a permit.
  *
  * If the permit already had an expiry set, the old expiry is overriden by the new one.
@@ -205,6 +219,7 @@ function set_permit_expiry
   ; const permit : blake2b_hash
   ; const new_expiry : seconds
   ; const permits : permits
+  ; const default_expiry : seconds
   ) : permits is
   if new_expiry < permit_expiry_limit then
     case Big_map.find_opt(user, permits) of
@@ -214,17 +229,16 @@ function set_permit_expiry
         | None -> permits
         | Some(permit_info) ->
             block {
-              const updated_permit_info : permit_info =
-                permit_info with record [ expiry = Some(new_expiry) ]
-
-            ; const updated_user_permits : user_permits =
-                user_permits with record [
-                  permits = Map.update(
-                    permit,
-                    Some(updated_permit_info),
-                    user_permits.permits
-                  )
-                ]
+              const updated_user_permits : user_permits =
+                if has_expired(default_expiry, user_permits.expiry, permit_info)
+                  then user_permits
+                  else user_permits with record [
+                    permits = Map.update(
+                      permit,
+                      set_permit_expiry_with_check(permit_info, new_expiry),
+                      user_permits.permits
+                    )
+                  ]
             } with Big_map.update(user, Some(updated_user_permits), permits)
         end
     end

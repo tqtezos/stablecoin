@@ -123,7 +123,8 @@ type Expiry = Natural
 
 data SetExpiryParam = SetExpiryParam
   { sepOwner :: Address
-  , sepExpiry :: (Expiry, Maybe PermitHash)
+  , sepExpiry :: Expiry
+  , sepPermitHash :: Maybe PermitHash
   }
   deriving stock (Show, Generic)
 
@@ -473,6 +474,7 @@ metadataJSON =
         , mkError [mt|EXPIRED_PERMIT|]             [mt|A permit was found, but it has already expired|]
         , mkError [mt|NOT_PERMIT_ISSUER|]          [mt|You're not the issuer of the given permit|]
         , mkError [mt|DUP_PERMIT|]                 [mt|The given permit already exists|]
+        , mkError [mt|EXPIRY_TOO_BIG|]             [mt|The `set_expiry` entrypoint was called with an expiry value that is too big|]
         ]
     , mViews =
         [ getDefaultExpiryView

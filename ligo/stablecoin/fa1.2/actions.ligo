@@ -719,7 +719,7 @@ function set_expiry
     | None ->
         set_user_default_expiry(Tezos.sender, new_expiry, store.permits)
     | Some(hash_and_address) ->
-        set_permit_expiry(hash_and_address.1, hash_and_address.0, new_expiry, store.permits)
+        set_permit_expiry(hash_and_address.1, hash_and_address.0, new_expiry, store.permits, store.default_expiry)
     end
 } with
     ( (nil : list(operation))

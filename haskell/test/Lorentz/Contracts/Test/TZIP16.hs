@@ -282,6 +282,11 @@ expectedMetadataJSON =
         "error": { "string": "DUP_PERMIT" },
         "expansion": { "string": "The given permit already exists" },
         "languages": [ "en" ]
+      },
+      {
+        "error": { "string": "EXPIRY_TOO_BIG" },
+        "expansion": { "string": "The `set_expiry` entrypoint was called with an expiry value that is too big" },
+        "languages": [ "en" ]
       }
     ]
   }

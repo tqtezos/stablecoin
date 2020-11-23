@@ -753,19 +753,21 @@ function add_permit
 function set_expiry
   ( const param: set_expiry_param
   ; const store : storage
+  ; const full_param: closed_parameter
   ) : entrypoint is block
 { const owner : address = param.0
 ; const new_expiry : seconds = param.1.0
-; const specific_permit_or_default : option(bytes) = param.1.1
+; const specific_permit_or_default : option(blake2b_hash) = param.1.1
+; const updated_store : storage = sender_check(owner, store, full_param, "NOT_PERMIT_ISSUER")
 
 ; const updated_permits : permits =
     case specific_permit_or_default of
     | None ->
-        set_user_default_expiry(owner, new_expiry, store.permits)
+        set_user_default_expiry(owner, new_expiry, updated_store.permits)
     | Some(permit_hash) ->
-        set_permit_expiry(owner, permit_hash, new_expiry, store.permits)
+        set_permit_expiry(owner, permit_hash, new_expiry, updated_store.permits, store.default_expiry)
     end
 } with
     ( (nil : list(operation))
-    , store with record [ permits = updated_permits ]
+    , updated_store with record [ permits = updated_permits ]
     )
