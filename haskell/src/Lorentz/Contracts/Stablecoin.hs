@@ -36,25 +36,37 @@ module Lorentz.Contracts.Stablecoin
   , GetDefaultExpiryParam
   , minterLimit
 
-  -- Embedded LIGO contracts
+  -- * TZIP-16
+  , metadataMap
+  , metadataJSON
+
+  -- * Embedded LIGO contracts
   , stablecoinContract
   , registryContract
   ) where
 
+import qualified Data.Aeson as J
+import qualified Data.ByteString.Lazy as BSL
 import Data.FileEmbed (embedStringFile)
 import qualified Data.Map as Map
+import Data.Version (showVersion)
 import Fmt
 import qualified Text.Show
 
-import Lorentz
-import qualified Lorentz as L
+import Lorentz as L
 import Michelson.Test.Import (readContract)
 import qualified Michelson.Typed as T
 import Morley.Client (BigMapId(..))
+import Morley.Micheline (ToExpression(toExpression))
 import qualified Tezos.Crypto as Hash
 
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
+import Lorentz.Contracts.Spec.TZIP16Interface
+  (Error(..), License(..), Metadata(..), MetadataMap, SomeMichelsonStorageView(..), Source(..),
+  ViewImplementation(..), mkMichelsonStorageView)
+import qualified Lorentz.Contracts.Spec.TZIP16Interface as TZ (View(..))
 import Lorentz.Contracts.StablecoinPath (metadataRegistryContractPath, stablecoinPath)
+import Paths_stablecoin (version)
 
 ------------------------------------------------------------------
 -- Parameter
@@ -147,8 +159,6 @@ data Parameter
   | Change_master_minter ChangeMasterMinterParam
   | Change_pauser ChangePauserParam
   | Configure_minter ConfigureMinterParam
-  | Get_counter GetCounterParam
-  | Get_default_expiry GetDefaultExpiryParam
   | Mint MintParams
   | Pause
   | Permit PermitParam
@@ -172,23 +182,21 @@ data Parameter
 -- >>>
 -- >>> pretty $ demote @(ToT Parameter)
 $(customGeneric "Parameter" $ withDepths
-    [ cstr @5 []       -- %accept_ownership
-    , cstr @5 [fld @0] -- %burn
-    , cstr @5 [fld @0] -- %call_FA2
-    , cstr @5 [fld @0] -- %change_master_minter
-    , cstr @5 [fld @0] -- %change_pauser
-    , cstr @5 [fld @0] -- %configure_minter
-    , cstr @5 [fld @0] -- %get_counter
-    , cstr @5 [fld @0] -- %get_default_expiry
-    , cstr @5 [fld @0] -- %mint
-    , cstr @5 []       -- %pause
-    , cstr @5 [fld @0] -- %permit
-    , cstr @5 [fld @0] -- %remove_minter
-    , cstr @5 [fld @0] -- %revoke
-    , cstr @5 [fld @0] -- %set_expiry
-    , cstr @5 [fld @0] -- %set_transferlist
-    , cstr @5 [fld @0] -- %transfer_ownership
-    , cstr @1 []       -- %unpause
+    [ cstr @4 []       -- %accept_ownership
+    , cstr @4 [fld @0] -- %burn
+    , cstr @4 [fld @0] -- %call_FA2
+    , cstr @4 [fld @0] -- %change_master_minter
+    , cstr @4 [fld @0] -- %change_pauser
+    , cstr @4 [fld @0] -- %configure_minter
+    , cstr @4 [fld @0] -- %mint
+    , cstr @4 []       -- %pause
+    , cstr @4 [fld @0] -- %permit
+    , cstr @4 [fld @0] -- %remove_minter
+    , cstr @4 [fld @0] -- %revoke
+    , cstr @4 [fld @0] -- %set_expiry
+    , cstr @4 [fld @0] -- %set_transferlist
+    , cstr @4 [fld @0] -- %transfer_ownership
+    , cstr @3 []       -- %unpause
     ]
   )
 
@@ -221,7 +229,6 @@ type PermitEntrypoints =
     [ "Permit" :> PermitParam
     , "Revoke" :> RevokeParams
     , "Set_expiry" :> SetExpiryParam
-    , "Get_default_expiry" :> GetDefaultExpiryParam
     ]
 
 type ParameterC param =
@@ -276,6 +283,7 @@ $(customGeneric "Roles" $ withDepths
 data Storage' big_map = Storage
   { sDefaultExpiry :: Expiry
   , sLedger :: big_map Address Natural
+  , sMetadata :: MetadataMap big_map
   , sMintingAllowances :: Map Address Natural
   , sOperators :: big_map (Address, Address) ()
   , sIsPaused :: Bool
@@ -290,13 +298,14 @@ $(customGeneric "Storage'" $ withDepths
     [ cstr @0
       [ fld @4 -- sDefaultExpiry
       , fld @4 -- sLedger
+      , fld @4 -- sMetadata
       , fld @4 -- sMintingAllowances
       , fld @4 -- sOperators
       , fld @4 -- sIsPaused
       , fld @4 -- sPermitCounter
       , fld @4 -- sPermits
-      , fld @4 -- sRoles
-      , fld @2 -- sTokenMetadataRegistry
+      , fld @3 -- sRoles
+      , fld @3 -- sTokenMetadataRegistry
       , fld @2 -- sTransferlistContract
       ]
     ]
@@ -419,3 +428,103 @@ registryContract =
               $(embedStringFile metadataRegistryContractPath)
         |]
   )
+
+----------------------------------------------------------------------------
+-- TZIP-16 Metadata
+----------------------------------------------------------------------------
+
+metadataMap :: MetadataMap BigMap
+metadataMap = BigMap $ Map.fromList
+  -- One might reasonable expect that the URI would be stored as packed Michelson strings,
+  -- but the TZIP-16 spec is explicit about that not being the case.
+  --
+  -- > Unless otherwise-specified, the encoding of the values must be the direct stream
+  -- > of bytes of the data being stored. (...)
+  -- > There is no implicit conversion to Michelson's binary format (PACK) nor
+  -- > quoting mechanism.
+  --
+  -- See: <https://gitlab.com/tzip/tzip/-/blob/eb1da57684599a266334a73babd7ba82dbbbce66/proposals/tzip-16/tzip-16.md#contract-storage>
+  --
+  -- So, instead, we encode it as UTF-8 byte sequences.
+  [ (mempty, encodeUtf8 @Text "tezos-storage:metadataJSON")
+  , ([mt|metadataJSON|], BSL.toStrict (J.encode metadataJSON))
+  ]
+
+metadataJSON :: Metadata (ToT Storage)
+metadataJSON =
+  Metadata
+    { mName = Just "stablecoin"
+    , mDescription = Nothing
+    , mVersion = Just (toText $ showVersion version)
+    , mLicense = Just License { lName = "MIT", lDetails = Nothing }
+    , mAuthors =
+        [ "Serokell <https://serokell.io/>"
+        , "TQ Tezos <https://tqtezos.com/>"
+        ]
+    , mHomepage = Just "https://github.com/tqtezos/stablecoin/"
+    , mSource = Just Source
+        { sLocation = "https://github.com/tqtezos/stablecoin/tree/v" <> toText (showVersion version) <> "/ligo/stablecoin"
+        , sTools = [ "ligo " ] -- TODO: add ligo version
+        }
+    , mInterfaces = [ "TZIP-12", "TZIP-17" ]
+    , mErrors =
+        [ mkError [mt|FA2_TOKEN_UNDEFINED|]        [mt|One of the specified `token_id`s is not defined (i.e. not zero)|]
+        , mkError [mt|FA2_INSUFFICIENT_BALANCE|]   [mt|Cannot debit from a wallet because of excessive amount of tokens|]
+        , mkError [mt|FA2_NOT_OPERATOR|]           [mt|A transfer is initiated neither by the token owner nor a permitted operator|]
+        , mkError [mt|XTZ_RECEIVED|]               [mt|Contract received a non-zero amount of tokens and should not proceed any further|]
+        , mkError [mt|NOT_CONTRACT_OWNER|]         [mt|Authorized sender is not contract owner|]
+        , mkError [mt|NOT_PENDING_OWNER|]          [mt|Authorized sender is not current contract pending owner|]
+        , mkError [mt|NO_PENDING_OWNER_SET|]       [mt|Thrown when trying to authorize as pending owner whilst is not set for a contract|]
+        , mkError [mt|NOT_PAUSER|]                 [mt|Authorized sender is not contract pauser|]
+        , mkError [mt|NOT_MASTER_MINTER|]          [mt|Authorized sender is not master minter|]
+        , mkError [mt|NOT_MINTER|]                 [mt|Sender is not registered as minter|]
+        , mkError [mt|CONTRACT_PAUSED|]            [mt|Operation cannot be performed during contract pause|]
+        , mkError [mt|CONTRACT_NOT_PAUSED|]        [mt|Operation cannot be peformed if the contract is not paused|]
+        , mkError [mt|NOT_TOKEN_OWNER|]            [mt|Trying to configure operators for a different wallet which sender does not own|]
+        , mkError [mt|CURRENT_ALLOWANCE_REQUIRED|] [mt|In `configure_minter` the caller wrongly expects the address to be not a minter|]
+        , mkError [mt|ALLOWANCE_MISMATCH|]         [mt|In `configure_minter` both allowances are not `None`, but different|]
+        , mkError [mt|ADDR_NOT_MINTER|]            [mt|An attempt is made to modify minter data of an address that's not a minter|]
+        , mkError [mt|ALLOWANCE_EXCEEDED|]         [mt|Thrown when trying to mint tokens more than currently allowed for an address|]
+        , mkError [mt|BAD_TRANSFERLIST|]           [mt|Given address is a not a smart contract complying with the transferlist interface|]
+        , mkError [mt|MINTER_LIMIT_REACHED|]       [mt|Cannot add new minter because the number of minters is already at the limit.|]
+        , mkError [mt|MISSIGNED|]                  [mt|The signature used to create a permit was invalid.|]
+        , mkError [mt|EXPIRED_PERMIT|]             [mt|The sender tried to access an entrypoint for which a permit was found, but it was expired.|]
+        , mkError [mt|NOT_PERMIT_ISSUER|]          [mt|The sender tried to revoke a permit that wasn't theirs and no permit was issued to allow this call.|]
+        ]
+    , mViews =
+        [ getDefaultExpiryView
+        , getCounterView
+        ]
+    }
+  where
+    mkError :: MText -> MText -> Error
+    mkError err expansion =
+      Error
+        { eError = toExpression (toVal err)
+        , eExpansion = toExpression (toVal expansion)
+        , eLanguages = ["en"]
+        }
+
+getDefaultExpiryView :: TZ.View (ToT Storage)
+getDefaultExpiryView =
+  TZ.View
+    { vName = "GetDefaultExpiry"
+    , vDescription = Just "Access the contract's default expiry in seconds"
+    , vPure = True
+    , vImplementations = one $
+        VIMichelsonStorageView $ SomeMichelsonStorageView $
+          mkMichelsonStorageView @Storage @() [] $
+            L.car # L.toField #sDefaultExpiry
+    }
+
+getCounterView :: TZ.View (ToT Storage)
+getCounterView =
+  TZ.View
+    { vName = "GetCounter"
+    , vDescription = Just "Access the current permit counter"
+    , vPure = True
+    , vImplementations = one $
+        VIMichelsonStorageView $ SomeMichelsonStorageView $
+          mkMichelsonStorageView @Storage @() [] $
+            L.car # L.toField #sPermitCounter
+    }

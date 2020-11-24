@@ -5,11 +5,9 @@ module Permit
   ( permitScenario
   ) where
 
-import Lorentz (Address, EntrypointRef(Call), TAddress(..), fromVal, lPackValue, mkView, mt, toVal)
-import Lorentz.Test.Consumer (contractConsumer)
+import Lorentz (Address, EntrypointRef(Call), TAddress(..), lPackValue, mt, toVal)
 import Michelson.Typed (convertContract, untypeValue)
 import Morley.Nettest
-import qualified Unsafe
 
 import Lorentz.Contracts.Spec.FA2Interface (TransferDestination(..), TransferParam(..))
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
@@ -47,19 +45,26 @@ permitScenario = uncapsNettest $ do
     "nettest.Stablecoin"
     (untypeValue (toVal storage))
     (convertContract stablecoinContract)
-  permitCounterConsumer <- originateSimple "permitCounterConsumer" [] (contractConsumer @Natural)
   chainId <- getChainId
 
   let
-    getCounter :: MonadNettest caps base m => m Natural
-    getCounter = do
-      call contract (Call @"Get_counter") (mkView () permitCounterConsumer)
-      counters <- fromVal @[Natural] <$> getStorage (addressResolved permitCounterConsumer)
-      pure $ Unsafe.fromJust $ safeHead counters
+    issuePermit :: MonadNettest caps base m => Natural -> Alias -> Parameter -> m ()
+    issuePermit counter alias param = do
+      -- NOTE: A couples of changes were introduced in #124. Crucially:
+      --
+      -- 1. The TZIP-17 views have been moved off-chain
+      -- 2. In order to run them, you must first know the full storage value.
+      --
+      -- The current "Morley.Nettest" interface does not allow us to retrieve the
+      -- contract's storage if it contains big maps and, in this case, it does.
+      -- Therefore, we cannot run the "GetCounter" view using "Morley.Nettest".
+      --
+      -- TODO: when morley/#346 is merged, we can go back to using
+      -- the "GetCounter" view.
+      -- https://gitlab.com/morley-framework/morley/-/issues/346
+      --
+      -- counter <- getCounter
 
-    issuePermit :: MonadNettest caps base m => Alias -> Parameter -> m ()
-    issuePermit alias param = do
-      counter <- getCounter
       let permitHash = mkPermitHash param
       let bytes = lPackValue ((contract, chainId), (counter, permitHash))
       sig <- signBytes bytes alias
@@ -67,59 +72,59 @@ permitScenario = uncapsNettest $ do
       call contract (Call @"Permit") (PermitParam pk sig permitHash)
 
   comment "Issue a permit for Pause"
-  issuePermit pauserAlias Pause
+  issuePermit 0 pauserAlias Pause
   callFrom (addressResolved user1) contract (Call @"Pause") ()
 
   comment "Issue a permit for Unpause"
-  issuePermit pauserAlias Unpause
+  issuePermit 1 pauserAlias Unpause
   callFrom (addressResolved user1) contract (Call @"Unpause") ()
 
   comment "Issue a permit for Revoke"
-  issuePermit pauserAlias Pause
+  issuePermit 2 pauserAlias Pause
   let revokeParam = [RevokeParam (mkPermitHash Pause) pauser]
-  issuePermit pauserAlias (Revoke revokeParam)
+  issuePermit 3 pauserAlias (Revoke revokeParam)
   callFrom (addressResolved user1) contract (Call @"Revoke") revokeParam
   callFrom (addressResolved user1) contract (Call @"Pause") ()
     `expectFailure` NettestFailedWith contract [mt|NOT_PAUSER|]
 
   comment "Issue a permit for Transfer"
   let transferParam = [ TransferParam owner1 [TransferDestination user1 0 1] ]
-  issuePermit owner1Alias (Call_FA2 $ FA2.Transfer transferParam)
+  issuePermit 4 owner1Alias (Call_FA2 $ FA2.Transfer transferParam)
   callFrom (addressResolved user1) contract (Call @"Transfer") transferParam
 
   comment "Issue a permit for Update_operators"
   let param = [ FA2.Add_operator FA2.OperatorParam { opOwner = owner1, opOperator = user1, opTokenId = 0 } ]
-  issuePermit owner1Alias (Call_FA2 $ FA2.Update_operators param)
+  issuePermit 5 owner1Alias (Call_FA2 $ FA2.Update_operators param)
   callFrom (addressResolved user1) contract (Call @"Update_operators") param
 
   comment "Issue a permit for Configure_minter"
   let configureMinterParam = ConfigureMinterParam user1 Nothing 30
-  issuePermit masterMinterAlias (Configure_minter configureMinterParam)
+  issuePermit 6 masterMinterAlias (Configure_minter configureMinterParam)
   callFrom (addressResolved user1) contract (Call @"Configure_minter") configureMinterParam
 
   comment "Issue a permit for Remove_minter"
   let removeMinterParam = user1
-  issuePermit masterMinterAlias (Remove_minter removeMinterParam)
+  issuePermit 7 masterMinterAlias (Remove_minter removeMinterParam)
   callFrom (addressResolved user1) contract (Call @"Remove_minter") removeMinterParam
 
   comment "Issue a permit for Set_transferlist"
-  issuePermit owner1Alias (Set_transferlist Nothing)
+  issuePermit 8 owner1Alias (Set_transferlist Nothing)
   callFrom (addressResolved user1) contract (Call @"Set_transferlist") Nothing
 
   comment "Issue a permit for Change_pauser"
-  issuePermit owner1Alias (Change_pauser owner2)
+  issuePermit 9 owner1Alias (Change_pauser owner2)
   callFrom (addressResolved user1) contract (Call @"Change_pauser") owner2
 
   comment "Issue a permit for Change_master_minter"
-  issuePermit owner1Alias (Change_master_minter owner2)
+  issuePermit 10 owner1Alias (Change_master_minter owner2)
   callFrom (addressResolved user1) contract (Call @"Change_master_minter") owner2
 
   comment "Issue a permit for Transfer_ownership"
-  issuePermit owner1Alias (Transfer_ownership owner2)
+  issuePermit 11 owner1Alias (Transfer_ownership owner2)
   callFrom (addressResolved user1) contract (Call @"Transfer_ownership") owner2
 
   comment "Issue a permit for Accept_ownership"
-  issuePermit owner2Alias Accept_ownership
+  issuePermit 12 owner2Alias Accept_ownership
   callFrom (addressResolved user1) contract (Call @"Accept_ownership") ()
 
   where

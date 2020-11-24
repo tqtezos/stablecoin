@@ -168,6 +168,8 @@ The next group consists of the errors that are not part of the FA2 specification
 | `EXPIRED_PERMIT`             | The sender tried to access an entrypoint for which a permit was found, but it was expired.                                     |
 | `NOT_PERMIT_ISSUER`          | The sender tried to revoke a permit that wasn't theirs and no permit was issued to allow this call.                            |
 
+<!-- NOTE: when you update this table, please also update the list of errors in `metadataJSON` in haskell/src/Lorentz/Contracts/Stablecoin.hs -->
+
 # Entrypoints
 
 Full list:

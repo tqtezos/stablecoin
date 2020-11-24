@@ -10,7 +10,7 @@ import Michelson.Text (MText)
 import Morley.Client (AddressOrAlias)
 import Tezos.Address (Address)
 
-import Lorentz.Contracts.Stablecoin (Expiry, Roles(..), Storage, Storage'(..))
+import Lorentz.Contracts.Stablecoin (Expiry, Roles(..), Storage, Storage'(..), metadataMap)
 
 type family ComputeRegistryAddressType a where
   ComputeRegistryAddressType Address = Address
@@ -48,4 +48,5 @@ mkInitialStorage (InitialStorageData {..}) =
         }
     , sTokenMetadataRegistry = isdTokenMetadataRegistry
     , sTransferlistContract = isdTransferlist
+    , sMetadata = metadataMap
     }

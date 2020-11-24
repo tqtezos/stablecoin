@@ -217,6 +217,7 @@ mkInitialStorage OriginationParams{..} metadataRegistryAddress =
         }
     , sTokenMetadataRegistry = fromMaybe metadataRegistryAddress opTokenMetadataRegistry
     , sTransferlistContract = unTAddress <$> opTransferlistContract
+    , sMetadata = metadataMap
     }
   where
     foldFn

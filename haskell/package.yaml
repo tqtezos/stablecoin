@@ -24,6 +24,8 @@ library:
   <<: *lib-common
 
   dependencies:
+    - aeson
+    - aeson-casing
     - morley-prelude
     - morley-client
     - morley-ledgers
@@ -39,6 +41,8 @@ library:
     - megaparsec
     - caps
     - text
+    - singletons
+    - bytestring
 
 executables:
   stablecoin-client:
@@ -57,6 +61,7 @@ tests:
       - test-common
 
     dependencies:
+      - aeson
       - morley
       - morley-prelude
       - morley-ledgers-test
@@ -64,6 +69,7 @@ tests:
       - cleveland
       - tasty
       - tasty-hspec
+      - tasty-hunit-compat
       - tasty-hedgehog
       - hedgehog
       - stablecoin
@@ -71,6 +77,9 @@ tests:
       - containers
       - mtl
       - fmt
+      - text
+      - bytestring
+      - interpolate
 
   stablecoin-nettest:
     <<: *test-common

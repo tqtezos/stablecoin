@@ -80,6 +80,7 @@ fa1_2ComparisonScenario = uncapsNettest $ do
         , sTransferlistContract = Nothing
         , sOperators = mempty
         , sTokenMetadataRegistry = mrAddress
+        , sMetadata = metadataMap
         }
 
   comment "Originating Stablecoin FA2 contract"
