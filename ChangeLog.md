@@ -8,7 +8,15 @@ SPDX-License-Identifier: MIT
 <!-- Prepend new entries here -->
 <!-- Don't forget to update the gas/transaction costs tables in the
 README when a new version is released. -->
+## 1.4.0
 
+* [#134](https://github.com/tqtezos/stablecoin/pull/134)
+  * Updated TZIP-17 implementation:
+    * Update parameter of `setExpiry` entrypoint
+    * Fail with `"EXPIRY_TOO_BIG"` when expiry parameter is too big
+    * Setting expiry of zero revokes the permit.
+    * Fail with `"NOT_PERMIT_ISSUER"` when someone other then permit
+      issuer tries to call `setExpiry` entrypoint.
 * [#135](https://github.com/tqtezos/stablecoin/pull/135)
   * Updated TZIP-17 implementation:
     * Fail with `"DUP_PERMIT"` when a permit is issued twice

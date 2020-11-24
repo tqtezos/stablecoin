@@ -169,10 +169,9 @@ The next group consists of the errors that are not part of the FA2 specification
 | `MINTER_LIMIT_REACHED`       | Cannot add new minter because the number of minters is already at the limit.                                                   |
 | `MISSIGNED`                  | The signature used to create a permit was invalid.                                                                             |
 | `EXPIRED_PERMIT`             | The sender tried to access an entrypoint for which a permit was found, but it was expired.                                     |
-| `NOT_PERMIT_ISSUER`          | The sender tried to revoke a permit that wasn't theirs and no permit was issued to allow this call.                            |
+| `NOT_PERMIT_ISSUER`          | The sender tried to set the expiry on a permit that wasn't theirs and no permit was issued to allow this call.                 |
 | `DUP_PERMIT`                 | The sender tried to issue a duplicate permit.                                                                                  |
-
-<!-- NOTE: when you update this table, please also update the list of errors in `metadataJSON` in haskell/src/Lorentz/Contracts/Stablecoin.hs -->
+| `EXPIRY_TOO_BIG`             | The `set_expiry` entrypoint was called with an expiry value that is too big.                                                   |
 
 # Entrypoints
 
@@ -640,17 +639,26 @@ pair %permit
 
 Parameter (in Michelson):
 ```
+
 pair
-  (nat %seconds)
-  (option
-    (pair
-      (bytes %permit_hash)
-      (address %issuer)))
+  (address %issuer)
+  (pair
+    (nat %expiry)
+    (option %permit_hash bytes))
 ```
+
+- Only the issuer of permit can set expiry.
+
+  + Alternatively, they can issue another permit allowing other users to set expiry on their permits.
+  + Otherwise, this entrypoint fails with `NOT_PERMIT_ISSUER`.
 
 - If the pair's second member is a `Some`, then a permit-level expiry will be set for the given permit hash and issuer.
 
 - Otherwise, a user-level expiry will be set for the sender. This will affect all permits signed by the sender, for which no permit-level expiry has been set.
+
+- There is a maximum value of expiry that the contract will accept and is currently set to 31557600000.
+
+- Setting a zero value to expiry revokes the permit.
 
 # Off-chain views
 
