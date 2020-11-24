@@ -42,8 +42,8 @@ import Fmt (Buildable(build), pretty, (+|), (|+))
 import Lorentz (EntrypointRef(Call), HasEntrypointArg, arg, useHasEntrypointArg)
 import Michelson.Typed (Dict(..), IsoValue, fromVal, toVal)
 import Morley.Client
-  (AddressOrAlias(..), Alias, MorleyClientM, TezosClientError(UnknownAddress), getAlias,
-  getContractScript, lTransfer, originateContract, readBigMapValue, readBigMapValueMaybe)
+  (AddressOrAlias(..), Alias, AliasHint(..), MorleyClientM, TezosClientError(UnknownAddress),
+  getAlias, getContractScript, lTransfer, originateContract, readBigMapValue, readBigMapValueMaybe)
 import qualified Morley.Client as Client
 import Morley.Client.RPC (OriginationScript(OriginationScript))
 import Morley.Client.TezosClient (resolveAddress)
@@ -74,7 +74,7 @@ data UpdateOperatorData
 --
 -- Saves the contract with the given alias.
 -- If the given alias already exists, nothing happens.
-deploy :: "sender" :! AddressOrAlias -> Text -> InitialStorageData AddressOrAlias -> MorleyClientM (Text, Address, Address)
+deploy :: "sender" :! AddressOrAlias -> AliasHint -> InitialStorageData AddressOrAlias -> MorleyClientM (Text, Address, Address)
 deploy (arg #sender -> sender) alias initialStorageData = do
   masterMinter <- resolveAddress (isdMasterMinter initialStorageData)
   contractOwner <- resolveAddress (isdContractOwner initialStorageData)

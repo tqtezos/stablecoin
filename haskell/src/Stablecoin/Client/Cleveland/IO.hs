@@ -20,9 +20,8 @@ module Stablecoin.Client.Cleveland.IO
 
 import Data.Char (isAlpha, isDigit)
 import Fmt (Buildable, pretty, (+|), (|+))
-import Morley.Client (Alias)
+import Morley.Client (Alias(..), MorleyClientConfig(..))
 import qualified Morley.Client as MorleyClient
-import Morley.Nettest (MorleyClientConfig(..))
 import System.Exit (ExitCode(..))
 import System.Process (readProcessWithExitCode)
 import qualified Text.Megaparsec as P
@@ -55,7 +54,7 @@ putErrLn = hPutStrLn stderr
 
 morleyClientOpts :: MorleyClientConfig -> [String]
 morleyClientOpts (MorleyClientConfig _ap addr port tzPath dataDir useHttps verb key) =
-  encodeMaybeOption "--node-url" addr
+  encodeMaybeOption "--node-addr" addr
   <> encodeMaybeOption "--node-port" port
   <> ["--client-path", tzPath]
   <> encodeMaybeOption "--data-dir" dataDir
@@ -121,7 +120,7 @@ addressParser = do
       (isDigit c && c /= '0') || (isAlpha c && c /= 'O' && c /= 'I' && c /= 'l')
 
 aliasParser :: Parser Alias
-aliasParser = textParser
+aliasParser = Alias <$> textParser
 
 addressAndAliasParser :: Text -> Parser AddressAndAlias
 addressAndAliasParser label =

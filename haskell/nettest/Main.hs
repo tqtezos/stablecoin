@@ -1,5 +1,7 @@
 -- SPDX-FileCopyrightText: 2020 TQ Tezos
 -- SPDX-License-Identifier: MIT
+{-# OPTIONS_GHC -Wno-deprecations #-}
+
 module Main
   ( main
   ) where
@@ -14,7 +16,10 @@ import Lorentz.Contracts.Test.Common
 import Michelson.Runtime (parseExpandContract)
 import Michelson.Typed (untypeValue)
 import Michelson.Typed.Convert (convertContract)
+import Morley.Client (parserInfo)
 import Morley.Nettest
+import Morley.Nettest.Parser (NettestConfig(..), mkNettestEnv, nettestConfigParser)
+import Morley.Nettest.Pure (runNettestViaIntegrational)
 import Tezos.Address
 import Util.Named
 

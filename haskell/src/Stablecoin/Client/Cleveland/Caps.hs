@@ -39,9 +39,8 @@ module Stablecoin.Client.Cleveland.Caps
   ) where
 
 import qualified Monad.Capabilities as Caps
-import Morley.Client (Alias, disableAlphanetWarning)
-import Morley.Nettest
-  (AddressOrAlias, MorleyClientConfig, MorleyClientEnv, NettestImpl(..), nettestImplClient)
+import Morley.Client (Alias, MorleyClientConfig, disableAlphanetWarning)
+import Morley.Nettest (AddressOrAlias, MorleyClientEnv, NettestImpl(..), nettestImplClient)
 import Morley.Nettest.Caps (actionToCaps, nettestCapImpl)
 import Tezos.Address (Address)
 import Tezos.Core (Mutez)

@@ -29,7 +29,7 @@ import Data.Version (showVersion)
 import Lorentz (mt)
 import Michelson.Text (MText)
 import Morley.CLI (mTextOption)
-import Morley.Client (AddressOrAlias(..), MorleyClientConfig, clientConfigParser)
+import Morley.Client (AddressOrAlias(..), Alias(..), MorleyClientConfig, clientConfigParser)
 import qualified Options.Applicative as Opt
 import Options.Applicative.Help.Pretty (Doc, linebreak)
 import Paths_stablecoin (version)
@@ -179,11 +179,11 @@ globalOptionsParser :: Opt.Parser GlobalOptions
 globalOptionsParser =
   GlobalOptions
     <$> addressOrAliasOption
-      (Just $ AddressAlias "stablecoin-user")
+      (Just $ AddressAlias (Alias "stablecoin-user"))
       (#name .! "user")
       (#help .! "User to send operations as")
     <*> addressOrAliasOption
-      (Just $ AddressAlias "stablecoin")
+      (Just $ AddressAlias (Alias "stablecoin"))
       (#name .! "contract")
       (#help .! "The stablecoin contract address/alias to use")
 

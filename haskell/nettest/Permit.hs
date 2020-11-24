@@ -5,16 +5,11 @@ module Permit
   ( permitScenario
   ) where
 
-import Fmt (pretty)
-import Lorentz
-  (Address, ChainId, Contract, EntrypointRef(Call, CallDefault), TAddress(..), ToT,
-  defaultContract, fromVal, lPackValue, lUnpackValue, mkView, mt, toVal, ( # ))
-import qualified Lorentz as L
+import Lorentz (Address, EntrypointRef(Call), TAddress(..), fromVal, lPackValue, mkView, mt, toVal)
 import Lorentz.Test.Consumer (contractConsumer)
 import Michelson.Typed (convertContract, untypeValue)
-import Morley.Client (Alias)
 import Morley.Nettest
-import qualified Unsafe as Unsafe
+import qualified Unsafe
 
 import Lorentz.Contracts.Spec.FA2Interface (TransferDestination(..), TransferParam(..))
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
@@ -25,7 +20,6 @@ import Lorentz.Contracts.Stablecoin
 import Lorentz.Contracts.Test.Common
   (OriginationParams(..), addAccount, defaultOriginationParams, mkInitialStorage,
   nettestOriginateMetadataRegistry)
-
 
 permitScenario :: NettestScenario m
 permitScenario = uncapsNettest $ do
@@ -129,32 +123,12 @@ permitScenario = uncapsNettest $ do
   callFrom (addressResolved user1) contract (Call @"Accept_ownership") ()
 
   where
-    createUser :: MonadNettest caps base m => Alias -> m (Alias, Address)
-    createUser alias = do
-      addr <- newAddress alias
+    createUser :: MonadNettest caps base m => AliasHint -> m (Alias, Address)
+    createUser aliasHint = do
+      addr <- newAddress aliasHint
       -- Note: `newAddress` prepends the alias with the prefix from the
       -- `MorleyClientConfig`.
       -- So we use `getAlias` to get the actual alias (prefix included)
       -- associated with this address.
-      actualAlias <- getAlias (AddressResolved addr)
-      pure (actualAlias, addr)
-
-    getChainId :: MonadNettest caps base m => m ChainId
-    getChainId = do
-      addr <- originateSimple "chainIdContract" "" chainIdContract
-      call addr CallDefault ()
-
-      storage <- fromVal @ByteString <$> getStorage @(ToT ByteString) (addressResolved addr)
-      case lUnpackValue @ChainId storage of
-        Left err -> error $ "Invalid ChainId retrieved from 'chainIdContract':\n" <> pretty err
-        Right chainId -> pure chainId
-
-
--- | A contract that stores the current ChainId in its storage.
---
--- NOTE: `compileLorentzContract` requires the contract's parameter to have an instance for
--- `HasAnnotation`, and ChainId doesn't.
--- So, instead, we store it as a ByteString and pack/unpack as needed.
-chainIdContract :: Contract () ByteString
-chainIdContract = defaultContract $
-  L.drop # L.chainId # L.pack # L.nil # L.pair
+      alias <- getAlias (AddressResolved addr)
+      pure (alias, addr)

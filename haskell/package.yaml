@@ -88,4 +88,3 @@ tests:
       - optparse-applicative
       - stablecoin
       - with-utf8
-      - fmt
