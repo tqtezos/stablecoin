@@ -130,6 +130,7 @@ testSize = 100
 -- The possible contract errors for the models
 data ModelError
   = FA2_INSUFFICIENT_BALANCE
+  | FA2_TOKEN_UNDEFINED
   | ALLOWANCE_EXCEEDED
   | FA2_NOT_OPERATOR
   | NOT_CONTRACT_OWNER
@@ -480,6 +481,7 @@ contractErrorToModelError m = let
    "NOT_PAUSER" -> NOT_PAUSER
    "NOT_PENDING_OWNER" -> NOT_PENDING_OWNER
    "FA2_INSUFFICIENT_BALANCE" -> FA2_INSUFFICIENT_BALANCE
+   "FA2_TOKEN_UNDEFINED" -> FA2_TOKEN_UNDEFINED
    "CONTRACT_NOT_PAUSED" -> CONTRACT_NOT_PAUSED
    "NO_PENDING_OWNER_SET" -> CONTRACT_NOT_IN_TRANSFER
    "ADDR_NOT_MINTER" -> ADDR_NOT_MINTER
@@ -571,6 +573,14 @@ ensureNotPaused SimpleStorage {..} = if not ssIsPaused then Right () else Left C
 ensurePaused :: SimpleStorage -> Either ModelError ()
 ensurePaused SimpleStorage {..} = if ssIsPaused then Right () else Left CONTRACT_NOT_PAUSED
 
+validateTokenId :: FA2.UpdateOperator -> Either ModelError ()
+validateTokenId = \case
+  FA2.Add_operator op -> validateTokenId' op
+  FA2.Remove_operator op -> validateTokenId' op
+  where
+    validateTokenId' :: FA2.OperatorParam -> Either ModelError ()
+    validateTokenId' FA2.OperatorParam {..} = if opTokenId == 0 then Right () else Left FA2_TOKEN_UNDEFINED
+
 ensureMinter :: Address -> SimpleStorage -> Either ModelError Natural
 ensureMinter minter cs = case Map.lookup minter $ ssMintingAllowances cs of
   Just ma -> Right ma
@@ -653,8 +663,14 @@ applyBurn ccSender cs burnparams = do
     then let
       burn value storage =
         storage { ssLedger = Map.alter (\case
-          Nothing -> error "Unexpected burn"
-          Just x -> Just $ x - value) ccSender $ ssLedger cs }
+          Nothing -> if value > 0
+            then error ("Unexpected burn:" <> show value)
+            else Nothing
+                -- As per FA2, burn should follow the tranfer logic, which allows zero transfer
+                -- from non-existant accounts. So here we should do nothing, instead of throwing an
+                -- error.
+          Just x -> let b = x - value
+            in if b > 0 then Just b else Nothing) ccSender $ ssLedger cs }
       in Right $ foldr burn cs burnparams
     else Left FA2_INSUFFICIENT_BALANCE
 
@@ -732,11 +748,15 @@ applyUpdateOperator ccSender estorage op = case estorage of
     case op of
       FA2.Add_operator (FA2.OperatorParam own operator _)
         -> if own == ccSender -- enforce that sender is owner
-          then Right $ storage { ssOperators = Map.insert (own, operator) () $ ssOperators storage }
+          then do
+            validateTokenId op
+            Right $ storage { ssOperators = Map.insert (own, operator) () $ ssOperators storage }
           else Left NOT_TOKEN_OWNER
       FA2.Remove_operator (FA2.OperatorParam own operator _)
         -> if own == ccSender
-          then Right $ storage { ssOperators = Map.delete (own, operator) $ ssOperators storage }
+          then do
+            validateTokenId op
+            Right $ storage { ssOperators = Map.delete (own, operator) $ ssOperators storage }
           else Left NOT_TOKEN_OWNER
 
 applyFA2Parameter :: ContractCall FA2.Parameter -> SimpleStorage -> Either ModelError SimpleStorage
