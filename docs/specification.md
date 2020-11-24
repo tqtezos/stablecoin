@@ -770,6 +770,5 @@ In this contract `update_operator` IS paused.
 Our project is different: whitelisting and blacklisting are offloaded to a separate [`Transferlist` contract](#transferlist).
 
 [FA2]: https://gitlab.com/tzip/tzip/-/blob/b916f32718234b7c4016f46e00327d66702511a2/proposals/tzip-12/tzip-12.md
-<!-- TODO: update this link once TZIP-17 has been merged to master. -->
-[TZIP-17]: https://gitlab.com/tzip/tzip/-/blob/tzip-17-permit/proposals/tzip-17/tzip-17.md
+[TZIP-17]: https://gitlab.com/tzip/tzip/-/blob/eb1da57684599a266334a73babd7ba82dbbbce66/proposals/tzip-17/tzip-17.md
 [view]: https://gitlab.com/tzip/tzip/-/blob/master/proposals/tzip-4/tzip-4.md#view-entrypoints
