@@ -42,6 +42,4 @@ function stablecoin_main
   | Permit                (params) -> add_permit            (params, store)
   | Revoke                (params) -> revoke_permits        (params, store, full_param)
   | Set_expiry            (params) -> set_expiry            (params, store)
-  | Get_default_expiry    (params) -> get_default_expiry    (params, store)
-  | Get_counter           (params) -> get_counter           (params, store)
   end
