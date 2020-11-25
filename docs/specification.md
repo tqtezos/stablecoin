@@ -15,6 +15,9 @@ These specifications were assembled with the following references:
 - Contract Permit Interface:
   [*TZIP-17*][TZIP-17]
 
+- Contract Metadata:
+  [*TZIP-16*][TZIP-16]
+
 - [*Michelson Contract Interfaces and Conventions*](https://gitlab.com/tzip/tzip/blob/ae2f1e7ebb3454d811a2bea3cd0698b0e64ccea5/proposals/tzip-4/tzip-4.md) TZIP which defines `view` and `void` type synonyms
 
 # General Requirements
@@ -95,7 +98,7 @@ Permits expire after a certain number of seconds have passed.
 A permit's expiry is determined as follows:
   1. If a permit-level expiry has been set via the [`set_expiry`](#set_expiry) entrypoint, the permit will expire after these many seconds.
   1. Otherwise, if a user-level expiry has been set for this permit's issuer via the [`set_expiry`](#set_expiry) entrypoint, the permit will expire after these many seconds.
-  1. Otherwise, the contract's default expiry will be used. This is set once, during contract origination, and can be queried via the [`get_default_expiry`](#get_default_expiry) entrypoint.
+  1. Otherwise, the contract's default expiry will be used. This is set once, during contract origination, and can be queried via the [`GetDefaultExpiry`](#getdefaultexpiry) off-chain view.
 
 If a user attempts to use an expired permit, the call must fail with `EXPIRED_PERMIT`.
 
@@ -105,7 +108,7 @@ To create a permit hash, the user should construct a value of the same type as t
 
 To sign the hash, the user should:
 
-1. Obtain the contract's [current counter](#get_counter) value.
+1. Obtain the contract's [current counter](#getcounter) value.
 1. Create a balanced 4-tuple as follows (where `%contract_address` represents the stablecoin contract's address):
     ```
     pair
@@ -191,8 +194,6 @@ Full list:
 * [`permit`](#permit)
 * [`revoke`](#revoke)
 * [`set_expiry`](#set_expiry)
-* [`get_default_expiry`](#get_default_expiry)
-* [`get_counter`](#get_counter)
 
 Format:
 ```
@@ -624,7 +625,7 @@ pair %permit
 
 - The parameter's `signature` represents the signature of the permit hash (see ["Creating and signing a permit hash"](#creating-and-signing-a-permit-hash)).
 
-- The entrypoint checks that the permit hash was signed with the correct chain ID, the contract's address, and the [contract's current counter](#get_counter).
+- The entrypoint checks that the permit hash was signed with the correct chain ID, the contract's address, and the [contract's current counter](#getcounter).
   + If successful, the contract's counter is incremented by 1. This ensures that a permit's signature is valid for one use only.
 
 - Fails with a `pair string bytes` if the signature is invalid (e.g. the wrong counter was used, or it was signed with a private key that does not correspond to the public key in the entrypoint's parameter).
@@ -668,29 +669,29 @@ pair
 
 - Otherwise, a user-level expiry will be set for the sender. This will affect all permits signed by the sender, for which no permit-level expiry has been set.
 
-### **get_default_expiry**
+# Off-chain views
 
-Parameter (in Michelson):
+Stablecoin provides the following off-chain views (as defined by [TZIP-16]):
+
+* [`GetDefaultExpiry`](#getdefaultexpiry)
+* [`GetCounter`](#getcounter)
+
+### **GetDefaultExpiry**
+
 ```
-pair %get_default_expiry
-  unit
-  (contract %callback nat)
-```
-
-- `get_default_expiry` is a [view entrypoint][view] that retrieves the contract's default expiry (in seconds).
-
-- This expiry affects all permits for which no permit-level expiry has been set and for whose issuer no user-level expiry has been set.
-
-### **get_counter**
-
-Parameter (in Michelson):
-```
-pair %get_counter
-  unit
-  (contract %callback nat)
+GetDefaultExpiry: unit → nat
 ```
 
-* `get_counter` is a [view entrypoint][view] that retrieves the contract's current counter.
+Retrieves the contract's default expiry (in seconds).
+This expiry affects all permits for which no permit-level expiry has been set and for whose issuer no user-level expiry has been set.
+
+### **GetCounter**
+
+```
+GetCounter: unit → nat
+```
+
+Retrieves the contract's current counter, and is used to [sign and verify permits](#creating-and-signing-a-permit-hash).
 
 # Rationale and design considerations
 
@@ -773,4 +774,5 @@ Our project is different: whitelisting and blacklisting are offloaded to a separ
 
 [FA2]: https://gitlab.com/tzip/tzip/-/blob/b916f32718234b7c4016f46e00327d66702511a2/proposals/tzip-12/tzip-12.md
 [TZIP-17]: https://gitlab.com/tzip/tzip/-/blob/eb1da57684599a266334a73babd7ba82dbbbce66/proposals/tzip-17/tzip-17.md
+[TZIP-16]: https://gitlab.com/tzip/tzip/-/blob/eb1da57684599a266334a73babd7ba82dbbbce66/proposals/tzip-16/tzip-16.md
 [view]: https://gitlab.com/tzip/tzip/-/blob/master/proposals/tzip-4/tzip-4.md#view-entrypoints
