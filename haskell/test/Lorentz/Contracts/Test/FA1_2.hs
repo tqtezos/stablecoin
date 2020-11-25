@@ -17,7 +17,8 @@ import Michelson.Test.Integrational
 import Michelson.Typed (untypeValue)
 
 import Lorentz.Contracts.Stablecoin (Roles(..))
-import Lorentz.Contracts.StablecoinFA1_2 (Parameter, Storage(..), stablecoinFA1_2Contract)
+import Lorentz.Contracts.StablecoinFA1_2
+  (Parameter, Storage(..), metadataMap, stablecoinFA1_2Contract)
 
 alOriginationFunction :: Address -> AlSettings -> IntegrationalScenarioM (TAddress Parameter)
 alOriginationFunction adminAddr (AlInitAddresses addrBalances) = do
@@ -37,6 +38,7 @@ alOriginationFunction adminAddr (AlInitAddresses addrBalances) = do
             }
         , sTransferlistContract = Nothing
         , sTotalSupply = sum $ snd <$> addrBalances
+        , sMetadata = metadataMap
         }
 
   TAddress @Parameter <$> originate stablecoinFA1_2Contract "" (untypeValue $ toVal storage) (toMutez 0)

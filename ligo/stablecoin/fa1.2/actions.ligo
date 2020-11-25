@@ -761,31 +761,3 @@ function set_expiry
     ( (nil : list(operation))
     , store with record [ permits = updated_permits ]
     )
-
-(*
- * Retrieves the contract's default permit expiry and leaves the storage untouched.
- *)
-function get_default_expiry
-  ( const parameter: get_default_expiry_param
-  ; const store : storage
-  ) : entrypoint is block
-{ const transfer_operation : operation =
-    Tezos.transaction (store.default_expiry, 0mutez, parameter.1)
-} with
-    ( list [transfer_operation]
-    , store
-    )
-
-(*
- * Retrieves the contract's permit counter and leaves the storage untouched.
- *)
-function get_counter
-  ( const parameter: get_counter_param
-  ; const store : storage
-  ) : entrypoint is block
-{ const transfer_operation : operation =
-    Tezos.transaction (store.permit_counter, 0mutez, parameter.1)
-} with
-    ( list [transfer_operation]
-    , store
-    )

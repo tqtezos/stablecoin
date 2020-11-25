@@ -60,6 +60,7 @@ fa1_2ComparisonScenario = uncapsNettest $ do
         , sTransferlistContract = Nothing
         , sTotalSupply = sum balances
         , sSpenderAllowances = mempty
+        , sMetadata = SFA1_2.metadataMap
         }
 
   fa1_2ContractAddr <- TAddress @SFA1_2.Parameter <$>
@@ -80,7 +81,7 @@ fa1_2ComparisonScenario = uncapsNettest $ do
         , sTransferlistContract = Nothing
         , sOperators = mempty
         , sTokenMetadataRegistry = mrAddress
-        , sMetadata = metadataMap
+        , sMetadata = SFA2.metadataMap
         }
 
   comment "Originating Stablecoin FA2 contract"
