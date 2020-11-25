@@ -701,6 +701,8 @@ function set_transferlist
 (*
  * Creates a new permit, allowing any user to act on behalf of the user
  * who signed the permit.
+ *
+ * Fails with `"DUP_PERMIT"` if the same permit hash is re-uploaded before it expires.
  *)
 function add_permit
   ( const parameter: permit_param
@@ -723,7 +725,7 @@ function add_permit
         [ permit_counter = store.permit_counter + 1n
         ; permits =
             delete_expired_permits(store.default_expiry, issuer,
-              insert_permit(issuer, permit, store.permits)
+              insert_permit(store.default_expiry, issuer, permit, store.permits)
             )
         ]
     else block {

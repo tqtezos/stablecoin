@@ -277,6 +277,11 @@ expectedMetadataJSON =
         "error": { "string": "NOT_PERMIT_ISSUER" },
         "expansion": { "string": "The sender tried to revoke a permit that wasn't theirs and no permit was issued to allow this call." },
         "languages": [ "en" ]
+      },
+      {
+        "error": { "string": "DUP_PERMIT" },
+        "expansion": { "string": "The sender tried to issue a duplicate permit." },
+        "languages": [ "en" ]
       }
     ]
   }

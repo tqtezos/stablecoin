@@ -472,6 +472,7 @@ metadataJSON =
         , mkError [mt|MISSIGNED|]                  [mt|The signature used to create a permit was invalid.|]
         , mkError [mt|EXPIRED_PERMIT|]             [mt|The sender tried to access an entrypoint for which a permit was found, but it was expired.|]
         , mkError [mt|NOT_PERMIT_ISSUER|]          [mt|The sender tried to revoke a permit that wasn't theirs and no permit was issued to allow this call.|]
+        , mkError [mt|DUP_PERMIT|]                 [mt|The sender tried to issue a duplicate permit.|]
         ]
     , mViews =
         [ getDefaultExpiryView

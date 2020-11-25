@@ -170,6 +170,7 @@ The next group consists of the errors that are not part of the FA2 specification
 | `MISSIGNED`                  | The signature used to create a permit was invalid.                                                                             |
 | `EXPIRED_PERMIT`             | The sender tried to access an entrypoint for which a permit was found, but it was expired.                                     |
 | `NOT_PERMIT_ISSUER`          | The sender tried to revoke a permit that wasn't theirs and no permit was issued to allow this call.                            |
+| `DUP_PERMIT`                 | The sender tried to issue a duplicate permit.                                                                                  |
 
 <!-- NOTE: when you update this table, please also update the list of errors in `metadataJSON` in haskell/src/Lorentz/Contracts/Stablecoin.hs -->
 
@@ -631,8 +632,7 @@ pair %permit
   + the `string` is `"MISSIGNED"`.
   + the `bytes` is [the packed 4-tuple](#creating-and-signing-a-permit-hash) whose signature did not match the expected signature.
 
-- Re-uploading the same permit hash resets the time it had left until expiry.
-  If the permit had a permit-level expiry set, this is removed.
+- Fails with `"DUP_PERMIT"` if the same permit hash is re-uploaded before it expires.
 
 - When a permit is issued, the issuer's expired permits are deleted.
 

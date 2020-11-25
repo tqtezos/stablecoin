@@ -121,10 +121,28 @@ const new_user_permits : user_permits =
   ]
 
 (*
+ * Fails with `"DUP_PERMIT"` if the given permit hash already exists and hasn't expired.
+ *)
+function check_duplicates
+  ( const default_expiry: seconds
+  ; const user_expiry_opt: option(seconds)
+  ; const user_permits: user_permits
+  ; const permit: blake2b_hash
+  ) : unit is
+  case Map.find_opt(permit, user_permits.permits) of
+  | None -> unit
+  | Some(permit_info) ->
+      if (has_expired(default_expiry, user_expiry_opt, permit_info))
+        then unit
+        else failwith("DUP_PERMIT")
+  end
+
+(*
  * Inserts an already validated permit in the permits storage.
  *)
 function insert_permit
-  ( const user: address
+  ( const default_expiry: seconds
+  ; const user: address
   ; const permit: blake2b_hash
   ; const permits: permits
   ) : permits is block {
@@ -134,6 +152,8 @@ function insert_permit
         Some(user_permits) -> user_permits
       | None -> new_user_permits
       end
+
+  ; check_duplicates(default_expiry, user_permits.expiry, user_permits, permit)
 
   // Add a new entry to this user's permits
   ; const updated_user_permits: user_permits =
