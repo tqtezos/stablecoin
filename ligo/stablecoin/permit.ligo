@@ -149,32 +149,6 @@ function insert_permit
    Big_map.update(user, Some(updated_user_permits), permits)
 
 (*
- * Deletes the given permit.
- * This operation does not fail if the permit is not found.
- *)
-function remove_permit
-  ( const user: address
-  ; const permit: blake2b_hash
-  ; const permits: permits
-  ) : permits is
-  // look for the user's permits
-  case Big_map.find_opt(user, permits) of
-  | None -> permits
-  | Some(user_permits) ->
-      block {
-        // remove this permit from the user's permits
-        const updated_user_permits : user_permits =
-          user_permits with record [
-            permits = Map.remove(
-              permit,
-              user_permits.permits
-            )
-          ]
-      } with
-        Big_map.update(user, Some(updated_user_permits), permits)
-  end
-
-(*
  * Sets the default expiry for a user.
  *
  * If the user already had an expiry set, the old expiry is overriden by the new one.

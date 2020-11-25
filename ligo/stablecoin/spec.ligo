@@ -249,7 +249,6 @@ type closed_parameter is
 | Change_pauser         of change_pauser_param
 | Set_transferlist      of set_transferlist_param
 | Permit                of permit_param
-| Revoke                of revoke_params
 | Set_expiry            of set_expiry_param
 
 (* ------------------------------------------------------------- *)

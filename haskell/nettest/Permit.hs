@@ -5,15 +5,14 @@ module Permit
   ( permitScenario
   ) where
 
-import Lorentz (Address, EntrypointRef(Call), TAddress(..), lPackValue, mt, toVal)
+import Lorentz (Address, EntrypointRef(Call), TAddress(..), lPackValue, toVal)
 import Michelson.Typed (convertContract, untypeValue)
 import Morley.Nettest
 
 import Lorentz.Contracts.Spec.FA2Interface (TransferDestination(..), TransferParam(..))
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
-  (ConfigureMinterParam(..), Parameter(..), PermitParam(..), RevokeParam(..), mkPermitHash,
-  stablecoinContract)
+  (ConfigureMinterParam(..), Parameter(..), PermitParam(..), mkPermitHash, stablecoinContract)
 
 import Lorentz.Contracts.Test.Common
   (OriginationParams(..), addAccount, defaultOriginationParams, mkInitialStorage,
@@ -79,52 +78,44 @@ permitScenario = uncapsNettest $ do
   issuePermit 1 pauserAlias Unpause
   callFrom (addressResolved user1) contract (Call @"Unpause") ()
 
-  comment "Issue a permit for Revoke"
-  issuePermit 2 pauserAlias Pause
-  let revokeParam = [RevokeParam (mkPermitHash Pause) pauser]
-  issuePermit 3 pauserAlias (Revoke revokeParam)
-  callFrom (addressResolved user1) contract (Call @"Revoke") revokeParam
-  callFrom (addressResolved user1) contract (Call @"Pause") ()
-    `expectFailure` NettestFailedWith contract [mt|NOT_PAUSER|]
-
   comment "Issue a permit for Transfer"
   let transferParam = [ TransferParam owner1 [TransferDestination user1 0 1] ]
-  issuePermit 4 owner1Alias (Call_FA2 $ FA2.Transfer transferParam)
+  issuePermit 2 owner1Alias (Call_FA2 $ FA2.Transfer transferParam)
   callFrom (addressResolved user1) contract (Call @"Transfer") transferParam
 
   comment "Issue a permit for Update_operators"
   let param = [ FA2.Add_operator FA2.OperatorParam { opOwner = owner1, opOperator = user1, opTokenId = 0 } ]
-  issuePermit 5 owner1Alias (Call_FA2 $ FA2.Update_operators param)
+  issuePermit 3 owner1Alias (Call_FA2 $ FA2.Update_operators param)
   callFrom (addressResolved user1) contract (Call @"Update_operators") param
 
   comment "Issue a permit for Configure_minter"
   let configureMinterParam = ConfigureMinterParam user1 Nothing 30
-  issuePermit 6 masterMinterAlias (Configure_minter configureMinterParam)
+  issuePermit 4 masterMinterAlias (Configure_minter configureMinterParam)
   callFrom (addressResolved user1) contract (Call @"Configure_minter") configureMinterParam
 
   comment "Issue a permit for Remove_minter"
   let removeMinterParam = user1
-  issuePermit 7 masterMinterAlias (Remove_minter removeMinterParam)
+  issuePermit 5 masterMinterAlias (Remove_minter removeMinterParam)
   callFrom (addressResolved user1) contract (Call @"Remove_minter") removeMinterParam
 
   comment "Issue a permit for Set_transferlist"
-  issuePermit 8 owner1Alias (Set_transferlist Nothing)
+  issuePermit 6 owner1Alias (Set_transferlist Nothing)
   callFrom (addressResolved user1) contract (Call @"Set_transferlist") Nothing
 
   comment "Issue a permit for Change_pauser"
-  issuePermit 9 owner1Alias (Change_pauser owner2)
+  issuePermit 7 owner1Alias (Change_pauser owner2)
   callFrom (addressResolved user1) contract (Call @"Change_pauser") owner2
 
   comment "Issue a permit for Change_master_minter"
-  issuePermit 10 owner1Alias (Change_master_minter owner2)
+  issuePermit 8 owner1Alias (Change_master_minter owner2)
   callFrom (addressResolved user1) contract (Call @"Change_master_minter") owner2
 
   comment "Issue a permit for Transfer_ownership"
-  issuePermit 11 owner1Alias (Transfer_ownership owner2)
+  issuePermit 9 owner1Alias (Transfer_ownership owner2)
   callFrom (addressResolved user1) contract (Call @"Transfer_ownership") owner2
 
   comment "Issue a permit for Accept_ownership"
-  issuePermit 12 owner2Alias Accept_ownership
+  issuePermit 10 owner2Alias Accept_ownership
   callFrom (addressResolved user1) contract (Call @"Accept_ownership") ()
 
   where

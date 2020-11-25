@@ -192,7 +192,6 @@ Full list:
 * [`change_pauser`](#change_pauser)
 * [`set_transferlist`](#set_transferlist)
 * [`permit`](#permit)
-* [`revoke`](#revoke)
 * [`set_expiry`](#set_expiry)
 
 Format:
@@ -636,22 +635,6 @@ pair %permit
   If the permit had a permit-level expiry set, this is removed.
 
 - When a permit is issued, the issuer's expired permits are deleted.
-
-### **revoke**
-
-Parameter (in Michelson):
-```
-list (pair (bytes %permit_hash) (address %issuer))
-```
-
-- Revokes one or more previously issued permits.
-
-- Only the issuer of a permit can revoke it.
-  + Alternatively, they can issue another permit allowing other users to revoke their permits.
-  + Otherwise, this entrypoint fails with `NOT_PERMIT_ISSUER`.
-
-- For each `pair (bytes %permit_hash) (address %issuer)`, if a permit with the given hash and issuer does not exist, the pair is skipped.
-  If it does exist but has expired, it should be deleted.
 
 ### **set_expiry**
 

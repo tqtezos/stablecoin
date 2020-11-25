@@ -742,44 +742,6 @@ function add_permit
     )
 
 (*
- * Deletes the given permits.
- *
- * Only the issuer X of a permit can revoke X's permits.
- * Otherwise, X can issue a separate permit allowing other users to revoke X's permits.
- *
- * This operation does not fail if a given permit is not found.
- *
- * Fails with 'NOT_PERMIT_ISSUER' if:
- *   a) the sender is not the issuer of any of the given permits,
- *   b) and the issuer has not issued a permit allowing others to revoke their permits
- *)
-function revoke_permits
-  ( const params: revoke_params
-  ; const store : storage
-  ; const full_param : closed_parameter
-  ) : entrypoint is block
-{ const issuers : list(address) =
-    List.map(function(const p: revoke_param): address is p.1, params)
-
-; const store : storage =
-    case all_equal(issuers, "NOT_PERMIT_ISSUER") of
-    | None -> store
-    | Some(issuer) -> sender_check(issuer, store, full_param, "NOT_PERMIT_ISSUER")
-    end
-
-;  const updated_permits : permits =
-    List.fold
-      ( function(const permits: permits; const param: revoke_param) : permits is
-          remove_permit(param.1, param.0, permits)
-      , params
-      , store.permits
-      )
-} with
-    ( (nil : list(operation))
-    , store with record [ permits = updated_permits ]
-    )
-
-(*
  * Sets the default expiry for the sender (if the param contains a `None`)
  * or for a specific permit (if the param contains a `Some`).
  *

@@ -534,7 +534,6 @@ callEntrypoint cc st env = case ccParameter cc of
     FA2.Update_operators p -> call (Call @"Update_operators") p
     _ -> error "Unexpected call"
   Permit _ -> error "Unexpected call"
-  Revoke _ -> error "Unexpected call"
   Set_expiry _ -> error "Unexpected call"
   where
     call

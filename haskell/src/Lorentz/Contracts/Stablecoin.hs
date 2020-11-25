@@ -30,8 +30,6 @@ module Lorentz.Contracts.Stablecoin
   , PermitHash(..)
   , mkPermitHash
   , PermitParam(..)
-  , RevokeParam(..)
-  , RevokeParams
   , SetExpiryParam(..)
   , GetDefaultExpiryParam
   , minterLimit
@@ -121,19 +119,6 @@ data PermitParam = PermitParam
 instance Buildable PermitParam where
   build = genericF
 
-data RevokeParam = RevokeParam
-  { rpPermitHash :: PermitHash
-  , rpPermitIssuer :: Address
-  }
-  deriving stock (Show, Generic)
-
-deriving anyclass instance IsoValue RevokeParam
-deriving anyclass instance HasAnnotation RevokeParam
-instance Buildable RevokeParam where
-  build = genericF
-
-type RevokeParams = [RevokeParam]
-
 type Expiry = Natural
 
 data SetExpiryParam = SetExpiryParam
@@ -163,7 +148,6 @@ data Parameter
   | Pause
   | Permit PermitParam
   | Remove_minter RemoveMinterParam
-  | Revoke RevokeParams
   | Set_expiry SetExpiryParam
   | Set_transferlist SetTransferlistParam
   | Transfer_ownership TransferOwnershipParam
@@ -192,10 +176,9 @@ $(customGeneric "Parameter" $ withDepths
     , cstr @4 []       -- %pause
     , cstr @4 [fld @0] -- %permit
     , cstr @4 [fld @0] -- %remove_minter
-    , cstr @4 [fld @0] -- %revoke
     , cstr @4 [fld @0] -- %set_expiry
     , cstr @4 [fld @0] -- %set_transferlist
-    , cstr @4 [fld @0] -- %transfer_ownership
+    , cstr @3 [fld @0] -- %transfer_ownership
     , cstr @3 []       -- %unpause
     ]
   )
@@ -227,7 +210,6 @@ type ManagementMichelsonEntrypoints =
 
 type PermitEntrypoints =
     [ "Permit" :> PermitParam
-    , "Revoke" :> RevokeParams
     , "Set_expiry" :> SetExpiryParam
     ]
 

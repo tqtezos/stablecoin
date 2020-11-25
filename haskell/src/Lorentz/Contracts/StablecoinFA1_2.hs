@@ -76,7 +76,6 @@ data Parameter
   | Pause
   | Permit S.PermitParam
   | Remove_minter S.RemoveMinterParam
-  | Revoke S.RevokeParams
   | Set_expiry S.SetExpiryParam
   | Set_transferlist S.SetTransferlistParam
   | Transfer_ownership S.TransferOwnershipParam
