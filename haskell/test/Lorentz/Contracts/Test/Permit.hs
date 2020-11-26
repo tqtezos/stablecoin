@@ -64,9 +64,11 @@ callPermit contractAddr pk sk counter param = do
   lCallEP contractAddr (Call @"Permit") $ PermitParam pk sig permitHash
   pure permitHash
 
-errExpiredPermit, errDupPermit :: ExecutorError -> IntegrationalScenario
+errExpiredPermit, errDupPermit, errNotPermitIssuer, errExpiryTooBig :: ExecutorError -> IntegrationalScenario
 errExpiredPermit = lExpectFailWith (== [mt|EXPIRED_PERMIT|])
 errDupPermit = lExpectFailWith (== [mt|DUP_PERMIT|])
+errNotPermitIssuer = lExpectFailWith (== [mt|NOT_PERMIT_ISSUER|])
+errExpiryTooBig = lExpectFailWith (== [mt|EXPIRY_TOO_BIG|])
 
 errMissignedPermit :: ByteString -> ExecutorError -> IntegrationalScenario
 errMissignedPermit signedBytes = lExpectFailWith (== ([mt|MISSIGNED|], signedBytes))
@@ -250,9 +252,9 @@ permitSpec originate = do
         let defaultExpiry = 5
         let originationParams = defaultOriginationParams { opDefaultExpiry = defaultExpiry }
         withOriginated originate originationParams $ \stablecoinContract -> do
-          withSender wallet1 $ do
+          withSender testPauser $ do
             hash <- callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
-            lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam 1 (Just (hash, testPauser))
+            lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam testPauser 1 $ Just hash
 
             -- Advance enough time for the permit to expire
             rewindTime 2
@@ -263,7 +265,7 @@ permitSpec originate = do
             -- If the permit's `created_at`/`expiry` settings were reset (as expected),
             -- we should be able to advance up to 5 seconds and consume the permit.
             rewindTime 3
-            lCallEP stablecoinContract (Call @"Pause") ()
+          lCallEP stablecoinContract (Call @"Pause") ()
 
     specify "When a permit is issued, the issuer's expired permits are purged" $
       integrationalTestExpectation $ do
@@ -276,28 +278,26 @@ permitSpec originate = do
             assertPermitCount stablecoinContract 1
 
     describe "Set_expiry" $ do
-      it "anyone can set the expiry for a specific permit" $ do
-        integrationalTestExpectation $ do
-          withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
-            hash <- withSender testPauser $
-              callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
-
-            withSender wallet1 $ do
-              lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam 1 (Just (hash, testPauser))
-              rewindTime 2
-              lCallEP stablecoinContract (Call @"Pause") () `catchExpectedError` errExpiredPermit
-
       it "does not fail when permit does not exist" $ do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             let hash = PermitHash (Hash.blake2b "abc")
-            lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam 1 (Just (hash, testPauser))
+            withSender testPauser $
+              lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam testPauser 1 $ Just hash
+
+      it "does not allow too big expiry" $ do
+        integrationalTestExpectation $ do
+          withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
+            let hash = PermitHash (Hash.blake2b "abc")
+            withSender testPauser $
+              lCallEP stablecoinContract (Call @"Set_expiry")
+                (SetExpiryParam testPauser 31557600000 $ Just hash) `catchExpectedError` errExpiryTooBig
 
       it "a user can set a default expiry for all permits signed with their secret key" $ do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             withSender testPauser $
-              lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam 1 Nothing
+              lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam testPauser 1 $ Nothing
             withSender wallet1 $ do
               callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
               rewindTime 2
@@ -308,8 +308,8 @@ permitSpec originate = do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             withSender testPauser $ do
               hash <- callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
-              lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam 5 (Just (hash, testPauser))
-              lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam 10 Nothing
+              lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam testPauser 5 $ Just hash
+              lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam testPauser 10 $ Nothing
             withSender wallet1 $ do
               rewindTime 6
               lCallEP stablecoinContract (Call @"Pause") () `catchExpectedError` errExpiredPermit
@@ -319,18 +319,62 @@ permitSpec originate = do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             withSender testPauser $ do
               hash <- callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
-              lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam 5 (Just (hash, testPauser))
-              lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam 3 (Just (hash, testPauser))
+              lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam testPauser 5 $ Just hash
+              lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam testPauser 3 $ Just hash
             withSender wallet1 $ do
               rewindTime 4
               lCallEP stablecoinContract (Call @"Pause") () `catchExpectedError` errExpiredPermit
+
+      it "setting expiry of an expired permit does not prolong its life" $ do
+        integrationalTestExpectation $ do
+          withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
+            withSender testPauser $ do
+              hash <- callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
+              lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam testPauser 3 $ Just hash
+              rewindTime 5
+              lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam testPauser 20 $ Just hash
+            withSender wallet1 $ do
+              rewindTime 10
+              lCallEP stablecoinContract (Call @"Pause") () `catchExpectedError` errExpiredPermit
+
+      it "can only be accessed by the issuer of the permit" $
+        integrationalTestExpectation $ do
+          withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
+            withSender wallet1 $ do
+              pausePermitHash <- callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
+              lCallEP stablecoinContract
+                (Call @"Set_expiry") (SetExpiryParam testPauser 10 $ Just pausePermitHash)
+                `catchExpectedError` errNotPermitIssuer
+
+      it "can be accessed via a permit" $
+        integrationalTestExpectation $ do
+          let defaultExpiry = 1
+          let originationParams = defaultOriginationParams { opDefaultExpiry = defaultExpiry }
+          withOriginated originate originationParams $ \stablecoinContract -> do
+            withSender wallet1 $ do
+              pausePermitHash <- callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
+              callPermit stablecoinContract testPauserPK testPauserSK 1 $
+                Set_expiry $ SetExpiryParam testPauser 5 $ Just pausePermitHash
+              lCallEP stablecoinContract (Call @"Set_expiry") $
+                SetExpiryParam testPauser 5  $ Just pausePermitHash
+              rewindTime 3
+              lCallEP stablecoinContract (Call @"Pause") ()
+
+      it "should revoke the permit when set to zero" $
+        integrationalTestExpectation $ do
+          withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
+            withSender testPauser $ do
+              pausePermitHash <- callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
+              lCallEP stablecoinContract (Call @"Set_expiry") $
+                SetExpiryParam testPauser 0  $ Just pausePermitHash
+            lCallEP stablecoinContract (Call @"Pause") () `catchExpectedError` mgmNotPauser
 
       it "overrides user's previous expiry" $ do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             withSender testPauser $ do
-              lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam 5 Nothing
-              lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam 3 Nothing
+              lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam testPauser 5 $ Nothing
+              lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam testPauser 3 $ Nothing
               callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
             withSender wallet1 $ do
               rewindTime 4

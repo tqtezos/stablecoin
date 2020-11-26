@@ -220,7 +220,7 @@ type permit_param is (key * (signature * blake2b_hash))
 type revoke_param is blake2b_hash * address
 type revoke_params is list(revoke_param)
 
-type set_expiry_param is (seconds * option(blake2b_hash * address))
+type set_expiry_param is (address * (seconds * option(blake2b_hash)))
 
 (*
  * A counter that's incremented everytime a permit is created.
