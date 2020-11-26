@@ -9,6 +9,12 @@ SPDX-License-Identifier: MIT
 <!-- Don't forget to update the gas/transaction costs tables in the
 README when a new version is released. -->
 
+* [#135](https://github.com/tqtezos/stablecoin/pull/135)
+  * Updated TZIP-17 implementation:
+    * Fail with `"DUP_PERMIT"` when a permit is issued twice
+    * Removed `revoke` entrypoint
+  * Added support for TZIP-16
+
 ## 1.3.0
 
 * [#118](https://github.com/tqtezos/stablecoin/pull/118)

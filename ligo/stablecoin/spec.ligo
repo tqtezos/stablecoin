@@ -222,11 +222,6 @@ type revoke_params is list(revoke_param)
 
 type set_expiry_param is (seconds * option(blake2b_hash * address))
 
-type get_default_expiry_param is michelson_pair_right_comb(record
-  param : unit
-; callback : contract(seconds)
-end)
-
 (*
  * A counter that's incremented everytime a permit is created.
  *
@@ -236,11 +231,6 @@ end)
  * This ensures that a permit's signature is valid for one use only.
  *)
 type counter is nat
-
-type get_counter_param is michelson_pair_right_comb(record
-  param : unit
-; callback : contract(counter)
-end)
 
 (* ------------------------------------------------------------- *)
 
@@ -259,10 +249,7 @@ type closed_parameter is
 | Change_pauser         of change_pauser_param
 | Set_transferlist      of set_transferlist_param
 | Permit                of permit_param
-| Revoke                of revoke_params
 | Set_expiry            of set_expiry_param
-| Get_default_expiry    of get_default_expiry_param
-| Get_counter           of get_counter_param
 
 (* ------------------------------------------------------------- *)
 
@@ -287,6 +274,8 @@ type ledger is big_map (address, nat)
 
 type minting_allowances is map (address, nat)
 
+type metadata is big_map (string, bytes)
+
 type storage is record
   ledger                  : ledger
 ; token_metadata_registry : address
@@ -298,6 +287,7 @@ type storage is record
 ; permit_counter          : counter
 ; permits                 : permits
 ; default_expiry          : seconds
+; metadata                : metadata
 end
 
 type entrypoint is list (operation) * storage

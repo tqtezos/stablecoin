@@ -15,6 +15,9 @@ These specifications were assembled with the following references:
 - Contract Permit Interface:
   [*TZIP-17*][TZIP-17]
 
+- Contract Metadata:
+  [*TZIP-16*][TZIP-16]
+
 - [*Michelson Contract Interfaces and Conventions*](https://gitlab.com/tzip/tzip/blob/ae2f1e7ebb3454d811a2bea3cd0698b0e64ccea5/proposals/tzip-4/tzip-4.md) TZIP which defines `view` and `void` type synonyms
 
 # General Requirements
@@ -95,7 +98,7 @@ Permits expire after a certain number of seconds have passed.
 A permit's expiry is determined as follows:
   1. If a permit-level expiry has been set via the [`set_expiry`](#set_expiry) entrypoint, the permit will expire after these many seconds.
   1. Otherwise, if a user-level expiry has been set for this permit's issuer via the [`set_expiry`](#set_expiry) entrypoint, the permit will expire after these many seconds.
-  1. Otherwise, the contract's default expiry will be used. This is set once, during contract origination, and can be queried via the [`get_default_expiry`](#get_default_expiry) entrypoint.
+  1. Otherwise, the contract's default expiry will be used. This is set once, during contract origination, and can be queried via the [`GetDefaultExpiry`](#getdefaultexpiry) off-chain view.
 
 If a user attempts to use an expired permit, the call must fail with `EXPIRED_PERMIT`.
 
@@ -105,7 +108,7 @@ To create a permit hash, the user should construct a value of the same type as t
 
 To sign the hash, the user should:
 
-1. Obtain the contract's [current counter](#get_counter) value.
+1. Obtain the contract's [current counter](#getcounter) value.
 1. Create a balanced 4-tuple as follows (where `%contract_address` represents the stablecoin contract's address):
     ```
     pair
@@ -138,11 +141,11 @@ In error scenarios the stablecoin contract fails with a string.
 Here is a summary of all the strings used as error messages.
 We start with standard FA2 errors which are part of the FA2 specification.
 
-| Error                      | Description                                                                 |
-|----------------------------|-----------------------------------------------------------------------------|
-| `FA2_TOKEN_UNDEFINED`      | One of the specified `token_id`s is not defined (i.e. not zero)             |
-| `FA2_INSUFFICIENT_BALANCE` | Cannot debit from a wallet because of excessive amount of tokens            |
-| `FA2_NOT_OPERATOR`         | A transfer is initiated neither by the token owner nor a permitted operator |
+| Error                      | Description                                                                    |
+|----------------------------|--------------------------------------------------------------------------------|
+| `FA2_TOKEN_UNDEFINED`      | One of the specified `token_id`s is not defined (i.e. not zero)                |
+| `FA2_INSUFFICIENT_BALANCE` | Cannot debit from a wallet because of insufficient amount of tokens            |
+| `FA2_NOT_OPERATOR`         | A transfer was initiated by neither the token owner nor a permitted operator   |
 
 The next group consists of the errors that are not part of the FA2 specification.
 
@@ -151,12 +154,12 @@ The next group consists of the errors that are not part of the FA2 specification
 | `XTZ_RECEIVED`               | Contract received a non-zero amount of tokens and should not proceed any further                                               |
 | `NOT_CONTRACT_OWNER`         | Authorized sender is not contract owner                                                                                        |
 | `NOT_PENDING_OWNER`          | Authorized sender is not current contract pending owner                                                                        |
-| `NO_PENDING_OWNER_SET`       | Thrown when trying to authorize as pending owner whilst is not set for a contract                                              |
+| `NO_PENDING_OWNER_SET`       | Thrown when trying to accept a transfer of ownership, but no transfer was initiated beforehand                                 |
 | `NOT_PAUSER`                 | Authorized sender is not contract pauser                                                                                       |
 | `NOT_MASTER_MINTER`          | Authorized sender is not master minter                                                                                         |
 | `NOT_MINTER`                 | Sender is not registered as minter                                                                                             |
 | `CONTRACT_PAUSED`            | Operation cannot be performed during contract pause                                                                            |
-| `CONTRACT_NOT_PAUSED`        | Operation cannot be peformed if the contract is not paused                                                                     |
+| `CONTRACT_NOT_PAUSED`        | Operation cannot be performed if the contract is not paused                                                                    |
 | `NOT_TOKEN_OWNER`            | Trying to configure operators for a different wallet which sender does not own                                                 |
 | `CURRENT_ALLOWANCE_REQUIRED` | In `configure_minter` the caller wrongly expects the address to be not a minter                                                |
 | `ALLOWANCE_MISMATCH`         | In `configure_minter` both allowances are not `None`, but different                                                            |
@@ -167,6 +170,9 @@ The next group consists of the errors that are not part of the FA2 specification
 | `MISSIGNED`                  | The signature used to create a permit was invalid.                                                                             |
 | `EXPIRED_PERMIT`             | The sender tried to access an entrypoint for which a permit was found, but it was expired.                                     |
 | `NOT_PERMIT_ISSUER`          | The sender tried to revoke a permit that wasn't theirs and no permit was issued to allow this call.                            |
+| `DUP_PERMIT`                 | The sender tried to issue a duplicate permit.                                                                                  |
+
+<!-- NOTE: when you update this table, please also update the list of errors in `metadataJSON` in haskell/src/Lorentz/Contracts/Stablecoin.hs -->
 
 # Entrypoints
 
@@ -187,10 +193,7 @@ Full list:
 * [`change_pauser`](#change_pauser)
 * [`set_transferlist`](#set_transferlist)
 * [`permit`](#permit)
-* [`revoke`](#revoke)
 * [`set_expiry`](#set_expiry)
-* [`get_default_expiry`](#get_default_expiry)
-* [`get_counter`](#get_counter)
 
 Format:
 ```
@@ -622,33 +625,16 @@ pair %permit
 
 - The parameter's `signature` represents the signature of the permit hash (see ["Creating and signing a permit hash"](#creating-and-signing-a-permit-hash)).
 
-- The entrypoint checks that the permit hash was signed with the correct chain ID, the contract's address, and the [contract's current counter](#get_counter).
+- The entrypoint checks that the permit hash was signed with the correct chain ID, the contract's address, and the [contract's current counter](#getcounter).
   + If successful, the contract's counter is incremented by 1. This ensures that a permit's signature is valid for one use only.
 
 - Fails with a `pair string bytes` if the signature is invalid (e.g. the wrong counter was used, or it was signed with a private key that does not correspond to the public key in the entrypoint's parameter).
   + the `string` is `"MISSIGNED"`.
   + the `bytes` is [the packed 4-tuple](#creating-and-signing-a-permit-hash) whose signature did not match the expected signature.
 
-- Re-uploading the same permit hash resets the time it had left until expiry.
-  If the permit had a permit-level expiry set, this is removed.
+- Fails with `"DUP_PERMIT"` if the same permit hash is re-uploaded before it expires.
 
 - When a permit is issued, the issuer's expired permits are deleted.
-
-### **revoke**
-
-Parameter (in Michelson):
-```
-list (pair (bytes %permit_hash) (address %issuer))
-```
-
-- Revokes one or more previously issued permits.
-
-- Only the issuer of a permit can revoke it.
-  + Alternatively, they can issue another permit allowing other users to revoke their permits.
-  + Otherwise, this entrypoint fails with `NOT_PERMIT_ISSUER`.
-
-- For each `pair (bytes %permit_hash) (address %issuer)`, if a permit with the given hash and issuer does not exist, the pair is skipped.
-  If it does exist but has expired, it should be deleted.
 
 ### **set_expiry**
 
@@ -666,29 +652,29 @@ pair
 
 - Otherwise, a user-level expiry will be set for the sender. This will affect all permits signed by the sender, for which no permit-level expiry has been set.
 
-### **get_default_expiry**
+# Off-chain views
 
-Parameter (in Michelson):
+Stablecoin provides the following off-chain views (as defined by [TZIP-16]):
+
+* [`GetDefaultExpiry`](#getdefaultexpiry)
+* [`GetCounter`](#getcounter)
+
+### **GetDefaultExpiry**
+
 ```
-pair %get_default_expiry
-  unit
-  (contract %callback nat)
-```
-
-- `get_default_expiry` is a [view entrypoint][view] that retrieves the contract's default expiry (in seconds).
-
-- This expiry affects all permits for which no permit-level expiry has been set and for whose issuer no user-level expiry has been set.
-
-### **get_counter**
-
-Parameter (in Michelson):
-```
-pair %get_counter
-  unit
-  (contract %callback nat)
+GetDefaultExpiry: unit → nat
 ```
 
-* `get_counter` is a [view entrypoint][view] that retrieves the contract's current counter.
+Retrieves the contract's default expiry (in seconds).
+This expiry affects all permits for which no permit-level expiry has been set and for whose issuer no user-level expiry has been set.
+
+### **GetCounter**
+
+```
+GetCounter: unit → nat
+```
+
+Retrieves the contract's current counter, and is used to [sign and verify permits](#creating-and-signing-a-permit-hash).
 
 # Rationale and design considerations
 
@@ -770,6 +756,6 @@ In this contract `update_operator` IS paused.
 Our project is different: whitelisting and blacklisting are offloaded to a separate [`Transferlist` contract](#transferlist).
 
 [FA2]: https://gitlab.com/tzip/tzip/-/blob/b916f32718234b7c4016f46e00327d66702511a2/proposals/tzip-12/tzip-12.md
-<!-- TODO: update this link once TZIP-17 has been merged to master. -->
-[TZIP-17]: https://gitlab.com/tzip/tzip/-/blob/tzip-17-permit/proposals/tzip-17/tzip-17.md
+[TZIP-17]: https://gitlab.com/tzip/tzip/-/blob/eb1da57684599a266334a73babd7ba82dbbbce66/proposals/tzip-17/tzip-17.md
+[TZIP-16]: https://gitlab.com/tzip/tzip/-/blob/eb1da57684599a266334a73babd7ba82dbbbce66/proposals/tzip-16/tzip-16.md
 [view]: https://gitlab.com/tzip/tzip/-/blob/master/proposals/tzip-4/tzip-4.md#view-entrypoints

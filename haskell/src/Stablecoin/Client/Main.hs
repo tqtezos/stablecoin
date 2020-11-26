@@ -6,10 +6,11 @@ module Stablecoin.Client.Main
   , mainProgramIO
   ) where
 
+import Data.Coerce (coerce)
 import Fmt (pretty)
 import Morley.Client
-  (AddressOrAlias(AddressAlias), Alias, MorleyClientM, TezosClientError(UnknownAddressAlias),
-  mkMorleyClientEnv, rememberContract, runMorleyClientM)
+  (AddressOrAlias(AddressAlias), Alias(..), AliasHint(..), MorleyClientM,
+  TezosClientError(UnknownAddressAlias), mkMorleyClientEnv, rememberContract, runMorleyClientM)
 import Morley.Client.TezosClient (resolveAddress)
 import qualified Options.Applicative as Opt
 import Util.Exception (displayUncaughtException)
@@ -42,10 +43,13 @@ mainProgram :: ClientArgs -> MorleyClientM ()
 mainProgram (ClientArgs _ globalOptions cmd) = do
   case cmd of
     CmdDeployContract DeployContractOptions {..} -> do
-      let contractAlias = "stablecoin"
-      aliasAlreadyExists <- checkIfAliasExists contractAlias
+      let contractAlias = AliasHint "stablecoin"
+      -- TODO: we're using coerce in a few places to convert `AliasHint` to `Alias`
+      -- where necessary, but we shouldn't be doing this because it assumes no alias
+      -- prefix option was passed in via the CLI.
+      aliasAlreadyExists <- checkIfAliasExists (coerce contractAlias)
 
-      (opHash, contractAddr, metadataRegAddr) <- deploy user contractAlias InitialStorageData
+      (opHash, contractAddr, metadataRegAddr) <- deploy user (coerce contractAlias) InitialStorageData
         { isdMasterMinter = dcoMasterMinter
         , isdContractOwner = dcoContractOwner
         , isdPauser = dcoPauser
@@ -68,7 +72,7 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
         then if dcoReplaceAlias
           then do
             -- silently replace existing alias
-            rememberContract True contractAddr contractAlias
+            rememberContract True contractAddr (coerce contractAlias)
             printAlias
           else do
             -- ask the user whether they want to replace the existing alias
@@ -77,7 +81,7 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
             confirmAction "Would you like to replace it with the newly deployed contract?" >>= \case
               Canceled -> pass
               Confirmed -> do
-                rememberContract True contractAddr contractAlias
+                rememberContract True contractAddr (coerce contractAlias)
                 printAlias
         else
           printAlias

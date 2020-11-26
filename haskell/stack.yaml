@@ -13,15 +13,22 @@ extra-deps:
     https://gitlab.com/morley-framework/morley.git
     # ^ CI cannot use ssh, so we use http clone here
   commit:
-    17f54b2ef528e201bffca22073055525f4b3de56 # morley-1.7.1
+    9433a4df02b90a98cbba9b699db28901ba2e7119
   subdirs:
     - code/cleveland
+
+- git:
+    https://gitlab.com/morley-framework/morley.git
+    # ^ CI cannot use ssh, so we use http clone here
+  commit:
+    bdf6fe2f2ef7833dbe7ee65d61cf4b2e4691f365
+  subdirs:
+    - code/morley
     - code/morley-client
 
 # Stable parts of morley available from Hackage
 - morley-prelude-0.3.0
 - tasty-hunit-compat-0.2
-- morley-1.7.1
 - lorentz-0.6.2
 - indigo-0.3.0
 
@@ -42,7 +49,7 @@ extra-deps:
     https://gitlab.com/morley-framework/morley-ledgers.git
     # ^ CI cannot use ssh, so we use http clone here
   commit:
-    2697445b68fae5e7959de473fd35ab8bf4abcb50 # master
+    552774ec4fe8a9da6afc77bbae31c30483402b9a # master
   subdirs:
     - code/morley-ledgers
     - code/morley-ledgers-test

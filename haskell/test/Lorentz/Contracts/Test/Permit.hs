@@ -13,12 +13,18 @@ module Lorentz.Contracts.Test.Permit
   ( permitSpec
   ) where
 
+import qualified Data.Aeson as J
+import qualified Data.ByteString.Lazy as BSL
+import qualified Data.Map as Map
+import qualified Data.Text as Text
+import Fmt (pretty)
 import Test.Hspec (Spec, describe, it, specify)
 
-import Lorentz (BigMap(..), TAddress, lPackValue, mkView, mt)
+import Lorentz (BigMap(..), IsoValue, TAddress, ToT, lPackValue, mt)
 import Lorentz.Test
 import Michelson.Runtime (ExecutorError)
 import Michelson.Runtime.GState (GState(gsChainId), initGState)
+import Michelson.Text (mkMText)
 import Tezos.Address (Address)
 import Tezos.Crypto (PublicKey, SecretKey(..), Signature(..))
 import qualified Tezos.Crypto.Ed25519 as Ed25519
@@ -28,7 +34,8 @@ import qualified Tezos.Crypto.Secp256k1 as Secp256k1
 import Tezos.Crypto.Util (deterministic)
 
 import qualified "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
-import Lorentz.Contracts.Stablecoin hiding (stablecoinContract)
+import qualified Lorentz.Contracts.Spec.TZIP16Interface as TZ
+import Lorentz.Contracts.Stablecoin hiding (metadataJSON, stablecoinContract)
 
 import Lorentz.Contracts.Test.Common
 import Lorentz.Contracts.Test.FA2 (fa2NotOperator, fa2NotOwner)
@@ -57,9 +64,9 @@ callPermit contractAddr pk sk counter param = do
   lCallEP contractAddr (Call @"Permit") $ PermitParam pk sig permitHash
   pure permitHash
 
-errExpiredPermit, errNotPermitIssuer :: ExecutorError -> IntegrationalScenario
+errExpiredPermit, errDupPermit :: ExecutorError -> IntegrationalScenario
 errExpiredPermit = lExpectFailWith (== [mt|EXPIRED_PERMIT|])
-errNotPermitIssuer = lExpectFailWith (== [mt|NOT_PERMIT_ISSUER|])
+errDupPermit = lExpectFailWith (== [mt|DUP_PERMIT|])
 
 errMissignedPermit :: ByteString -> ExecutorError -> IntegrationalScenario
 errMissignedPermit signedBytes = lExpectFailWith (== ([mt|MISSIGNED|], signedBytes))
@@ -81,6 +88,61 @@ assertPermitCount contractAddr expectedCount =
     permitCount (BigMap permits) =
       sum $
         permits <&> \userPermits -> length (upPermits userPermits)
+
+checkView
+  :: forall viewParam viewVal
+   . (IsoValue viewParam, IsoValue viewVal, Eq viewVal, Show viewVal)
+  => TAddress Parameter -> Text -> viewParam -> viewVal -> IntegrationalScenario
+checkView addr viewName viewParam expectedViewVal =
+  lExpectStorage @Storage addr $ \st -> do
+    uri <-
+      maybeToRight (CustomTestError "Metadata bigmap did not contain a key with the empty string") $
+        fmap (decodeUtf8 @Text) . Map.lookup mempty . unBigMap $ sMetadata st
+
+    metadataJSONKey <-
+      maybeToRight (CustomTestError $ "Expected 'tezos-storage' uri, but found: " <> uri) $
+        Text.stripPrefix "tezos-storage:" uri
+
+    metadataJSONKeyMText <-
+      first
+        (\err -> CustomTestError $
+            "Expected '" <> metadataJSONKey <> "' to be a valid Michelson string, but it wasn't."
+            <> "\nReason: " <> err
+        ) $
+        mkMText metadataJSONKey
+
+    metadataJSONBytestring <-
+      maybeToRight (CustomTestError $ "Metadata bigmap did not contain the key: " <> metadataJSONKey) $
+        Map.lookup metadataJSONKeyMText . unBigMap $ sMetadata st
+
+    metadataJSON <-
+      first
+        (\err -> CustomTestError (toText err)) $
+        J.eitherDecode' @(TZ.Metadata (ToT Storage)) (BSL.fromStrict metadataJSONBytestring)
+
+    view_ <-
+      maybeToRight (CustomTestError $ "Metadata does not contain view with name" <> viewName) $
+        TZ.getView metadataJSON viewName
+
+    -- See note below.
+    unless (TZ.vPure view_) $
+      Left $ CustomTestError $ "Expected view '" <> viewName <> "' to be pure, but it isn't."
+
+    actualViewVal <-
+      first
+        (CustomTestError . pretty) $
+        -- NOTE: it's OK to use `dummyContractEnv` here because we now this
+        -- contract's views are pure (i.e. don't depend on the contract env).
+        -- But, in the general case, this is not safe.
+        TZ.interpretView @_ @_ @viewVal dummyContractEnv view_ st viewParam
+
+    when (actualViewVal /= expectedViewVal) $
+      Left $ CustomTestError $ unlines
+        [ "Expected: "
+        , show expectedViewVal
+        , "Got:"
+        , show actualViewVal
+        ]
 
 permitSpec :: OriginationFn Parameter -> Spec
 permitSpec originate = do
@@ -132,11 +194,14 @@ permitSpec originate = do
           let issuePermit counter =
                 void $ callPermit stablecoinContract testPauserPK testPauserSK counter Pause
 
-          withSender testPauser $ do
-            issuePermit 0
-            issuePermit 1
-            issuePermit 2
-            issuePermit 3
+          let consumePermitAndUnpause = do
+                lCallEP stablecoinContract (Call @"Pause") ()
+                withSender testPauser $ lCallEP stablecoinContract (Call @"Unpause") ()
+
+          issuePermit 0 >> consumePermitAndUnpause
+          issuePermit 1 >> consumePermitAndUnpause
+          issuePermit 2 >> consumePermitAndUnpause
+          issuePermit 3 >> consumePermitAndUnpause
 
     specify "`Unpause` permit cannot be used to pause" $
       -- More generally, we want to assert that if two entrypoints X and Y have the same
@@ -159,39 +224,45 @@ permitSpec originate = do
             rewindTime (fromIntegral defaultExpiry + 1)
             lCallEP stablecoinContract (Call @"Pause") () `catchExpectedError` errExpiredPermit
 
-    specify "Re-uploading a permit hash resets its `created_at` timestamp" $ do
+    specify "Permits cannot be re-uploaded if they haven't expired" $ do
+      integrationalTestExpectation $ do
+        withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
+          withSender wallet1 $ do
+            callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
+            callPermit stablecoinContract testPauserPK testPauserSK 1 Pause `catchExpectedError` errDupPermit
+
+    specify "Permits can be re-uploaded after they've expired" $ do
+      integrationalTestExpectation $ do
+        let defaultExpiry = 1
+        let originationParams = defaultOriginationParams { opDefaultExpiry = defaultExpiry }
+        withOriginated originate originationParams $ \stablecoinContract -> do
+          withSender wallet1 $ do
+            callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
+            -- Advance enough time for the permit to expire
+            rewindTime 2
+            -- Re-upload permit hash
+            void $ callPermit stablecoinContract testPauserPK testPauserSK 1 Pause
+            lCallEP stablecoinContract (Call @"Pause") ()
+
+
+    specify "Re-uploading an expired permit hash resets its `created_at`/`expiry` settings" $ do
       integrationalTestExpectation $ do
         let defaultExpiry = 5
         let originationParams = defaultOriginationParams { opDefaultExpiry = defaultExpiry }
         withOriginated originate originationParams $ \stablecoinContract -> do
           withSender wallet1 $ do
-            callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
-            assertPermitCount stablecoinContract 1
-            -- Advance 4 seconds, so the permit only has 1 second left until it expires
-            rewindTime 4
-            -- Re-upload permit hash
-            callPermit stablecoinContract testPauserPK testPauserSK 1 Pause
-            assertPermitCount stablecoinContract 1
-            -- If the permit's `created_at` timestamp was reset (as expected),
-            -- we should be able to advance 2 seconds and consume the permit.
-            rewindTime 2
-            lCallEP stablecoinContract (Call @"Pause") ()
-
-    specify "Re-uploading a permit hash resets its `expiry` back to `None`" $ do
-      integrationalTestExpectation $ do
-        let defaultExpiry = 10
-        let originationParams = defaultOriginationParams { opDefaultExpiry = defaultExpiry }
-        withOriginated originate originationParams $ \stablecoinContract -> do
-          withSender wallet1 $ do
             hash <- callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
-            -- Set the permit's expiry to 3
-            lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam 3 (Just (hash, testPauser))
+            lCallEP stablecoinContract (Call @"Set_expiry") $ SetExpiryParam 1 (Just (hash, testPauser))
+
+            -- Advance enough time for the permit to expire
+            rewindTime 2
+
             -- Re-upload permit hash
-            callPermit stablecoinContract testPauserPK testPauserSK 1 Pause
-            assertPermitCount stablecoinContract 1
-            -- If the permit's expiry was reset (as expected),
-            -- we should be able to advance 4 seconds and consume the permit.
-            rewindTime 4
+            void $ callPermit stablecoinContract testPauserPK testPauserSK 1 Pause
+
+            -- If the permit's `created_at`/`expiry` settings were reset (as expected),
+            -- we should be able to advance up to 5 seconds and consume the permit.
+            rewindTime 3
             lCallEP stablecoinContract (Call @"Pause") ()
 
     specify "When a permit is issued, the issuer's expired permits are purged" $
@@ -203,105 +274,6 @@ permitSpec originate = do
             rewindTime (fromIntegral defaultExpiry + 1)
             callPermit stablecoinContract testPauserPK testPauserSK 1 Unpause
             assertPermitCount stablecoinContract 1
-
-    describe "Revoke" $ do
-      specify "a user can revoke their own permits" $ do
-        integrationalTestExpectation $ do
-          withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
-            withSender testPauser $ do
-              hash <- callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
-              lCallEP stablecoinContract (Call @"Revoke") [RevokeParam hash testPauser]
-
-            withSender wallet1 $ do
-              lCallEP stablecoinContract (Call @"Pause") () `catchExpectedError` mgmNotPauser
-
-      specify "a user cannot revoke other users' permits" $ do
-        integrationalTestExpectation $ do
-          withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
-            hash <- withSender testPauser $
-              callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
-
-            withSender wallet1 $
-              lCallEP stablecoinContract (Call @"Revoke") [RevokeParam hash testPauser] `catchExpectedError` errNotPermitIssuer
-
-      specify "a user X can issue a permit allowing others to revoke X's permits" $
-        integrationalTestExpectation $ do
-          withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
-            hash <- withSender testPauser $ do
-              hash <- callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
-              callPermit stablecoinContract testPauserPK testPauserSK 1 (Revoke [RevokeParam hash testPauser])
-              pure hash
-
-            withSender wallet1 $ do
-              lCallEP stablecoinContract (Call @"Revoke") [RevokeParam hash testPauser]
-              lCallEP stablecoinContract (Call @"Pause") () `catchExpectedError` mgmNotPauser
-
-      specify "a user X cannot issue a permit allowing others to revoke Y's permits" $
-        integrationalTestExpectation $ do
-          withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
-            hash <- withSender testPauser $ do
-              callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
-
-            withSender wallet1 $
-              callPermit stablecoinContract wallet1PK wallet1SK 1 (Revoke [RevokeParam hash testPauser])
-
-            withSender wallet2 $ do
-              lCallEP stablecoinContract (Call @"Revoke") [RevokeParam hash testPauser]
-                `catchExpectedError` errNotPermitIssuer
-
-      specify "permits for this entrypoint are consumed upon use" $
-        integrationalTestExpectation $ do
-          withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
-            hash <- withSender testPauser $ do
-              hash <- callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
-              callPermit stablecoinContract testPauserPK testPauserSK 1 (Revoke [RevokeParam hash testPauser])
-              pure hash
-
-            withSender wallet1 $ do
-              assertPermitCount stablecoinContract 2
-              lCallEP stablecoinContract (Call @"Revoke") [RevokeParam hash testPauser]
-              assertPermitCount stablecoinContract 0
-
-      it "can remove multiple permits at once" $ do
-        integrationalTestExpectation $ do
-          withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
-            withSender testPauser $ do
-              hash1 <- callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
-              hash2 <- callPermit stablecoinContract testPauserPK testPauserSK 1 Unpause
-              lCallEP stablecoinContract (Call @"Revoke")
-                [ RevokeParam hash1 testPauser
-                , RevokeParam hash2 testPauser
-                ]
-
-            -- `wallet1` should now be unable to neither pause nor unpause the contract
-            withSender wallet1 $
-              lCallEP stablecoinContract (Call @"Pause") () `catchExpectedError` mgmNotPauser
-
-            withSender testPauser $
-              lCallEP stablecoinContract (Call @"Pause") ()
-
-            withSender wallet1 $
-              lCallEP stablecoinContract (Call @"Unpause") () `catchExpectedError` mgmNotPauser
-
-      it "does nothing if the permit has already been consumed" $ do
-        integrationalTestExpectation $ do
-          withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
-            hash <- withSender testPauser $
-              callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
-
-            withSender wallet1 $ do
-              lCallEP stablecoinContract (Call @"Pause") ()
-
-            withSender testPauser $
-              lCallEP stablecoinContract (Call @"Revoke") [RevokeParam hash testPauser]
-
-      it "does nothing if the permit never existed" $ do
-        integrationalTestExpectation $ do
-          withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
-            let hash = PermitHash (Hash.blake2b "abc")
-
-            withSender testPauser $ do
-              lCallEP stablecoinContract (Call @"Revoke") [RevokeParam hash testPauser]
 
     describe "Set_expiry" $ do
       it "anyone can set the expiry for a specific permit" $ do
@@ -364,31 +336,23 @@ permitSpec originate = do
               rewindTime 4
               lCallEP stablecoinContract (Call @"Pause") () `catchExpectedError` errExpiredPermit
 
-    describe "Get_default_expiry" $
+    describe "GetDefaultExpiry" $
       it "retrieves the contract's default expiry" $
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             let defaultExpiry = opDefaultExpiry defaultOriginationParams
+            checkView stablecoinContract "GetDefaultExpiry" () defaultExpiry
 
-            consumer <- lOriginateEmpty @Expiry contractConsumer "consumer"
-            lCallEP stablecoinContract (Call @"Get_default_expiry") (mkView () consumer)
-
-            lExpectViewConsumerStorage consumer [defaultExpiry]
-
-    describe "Get_counter" $
+    describe "GetCounter" $
       it "retrieves the contract's current counter" $
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
 
-            consumer <- lOriginateEmpty @Natural contractConsumer "consumer"
-
-            lCallEP stablecoinContract (Call @"Get_counter") (mkView () consumer)
+            checkView stablecoinContract "GetCounter" () (0 :: Natural)
             callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
-            lCallEP stablecoinContract (Call @"Get_counter") (mkView () consumer)
-            callPermit stablecoinContract testPauserPK testPauserSK 1 Pause
-            lCallEP stablecoinContract (Call @"Get_counter") (mkView () consumer)
-
-            lExpectViewConsumerStorage consumer [0, 1, 2]
+            checkView stablecoinContract "GetCounter" () (1 :: Natural)
+            callPermit stablecoinContract testPauserPK testPauserSK 1 Unpause
+            checkView stablecoinContract "GetCounter" () (2 :: Natural)
 
     describe "Pause" $ do
       it "can be accessed via a permit" $

@@ -121,10 +121,28 @@ const new_user_permits : user_permits =
   ]
 
 (*
+ * Fails with `"DUP_PERMIT"` if the given permit hash already exists and hasn't expired.
+ *)
+function check_duplicates
+  ( const default_expiry: seconds
+  ; const user_expiry_opt: option(seconds)
+  ; const user_permits: user_permits
+  ; const permit: blake2b_hash
+  ) : unit is
+  case Map.find_opt(permit, user_permits.permits) of
+  | None -> unit
+  | Some(permit_info) ->
+      if (has_expired(default_expiry, user_expiry_opt, permit_info))
+        then unit
+        else failwith("DUP_PERMIT")
+  end
+
+(*
  * Inserts an already validated permit in the permits storage.
  *)
 function insert_permit
-  ( const user: address
+  ( const default_expiry: seconds
+  ; const user: address
   ; const permit: blake2b_hash
   ; const permits: permits
   ) : permits is block {
@@ -134,6 +152,8 @@ function insert_permit
         Some(user_permits) -> user_permits
       | None -> new_user_permits
       end
+
+  ; check_duplicates(default_expiry, user_permits.expiry, user_permits, permit)
 
   // Add a new entry to this user's permits
   ; const updated_user_permits: user_permits =
@@ -147,32 +167,6 @@ function insert_permit
   }
   with
    Big_map.update(user, Some(updated_user_permits), permits)
-
-(*
- * Deletes the given permit.
- * This operation does not fail if the permit is not found.
- *)
-function remove_permit
-  ( const user: address
-  ; const permit: blake2b_hash
-  ; const permits: permits
-  ) : permits is
-  // look for the user's permits
-  case Big_map.find_opt(user, permits) of
-  | None -> permits
-  | Some(user_permits) ->
-      block {
-        // remove this permit from the user's permits
-        const updated_user_permits : user_permits =
-          user_permits with record [
-            permits = Map.remove(
-              permit,
-              user_permits.permits
-            )
-          ]
-      } with
-        Big_map.update(user, Some(updated_user_permits), permits)
-  end
 
 (*
  * Sets the default expiry for a user.

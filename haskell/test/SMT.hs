@@ -17,7 +17,7 @@ import qualified Text.Show
 
 import Hedgehog.Gen.Tezos.Address (genAddress)
 import Lorentz
-  (Address, EntrypointRef(Call), GetEntrypointArgCustom, IsoValue (..), TAddress(TAddress),
+  (Address, EntrypointRef(Call), GetEntrypointArgCustom, IsoValue(..), TAddress(TAddress),
   parameterEntrypointCallCustom)
 import Michelson.Interpret
 import Michelson.Test.Dummy
@@ -534,10 +534,7 @@ callEntrypoint cc st env = case ccParameter cc of
     FA2.Update_operators p -> call (Call @"Update_operators") p
     _ -> error "Unexpected call"
   Permit _ -> error "Unexpected call"
-  Revoke _ -> error "Unexpected call"
   Set_expiry _ -> error "Unexpected call"
-  Get_default_expiry _ -> error "Unexpected call"
-  Get_counter _ -> error "Unexpected call"
   where
     call
       :: IsoValue (GetEntrypointArgCustom Parameter ep)

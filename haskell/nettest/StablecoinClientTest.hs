@@ -13,8 +13,7 @@ import Tezos.Address (Address)
 import Util.Named ((.!))
 
 import Stablecoin.Client
-  (AddressAndAlias(..), Alias, InitialStorageData(..),
-  UpdateOperatorData(AddOperator, RemoveOperator))
+  (AddressAndAlias(..), InitialStorageData(..), UpdateOperatorData(AddOperator, RemoveOperator))
 import Stablecoin.Client.Cleveland
   (StablecoinScenario, acceptOwnership, assertEq, burn, changeMasterMinter, changePauser,
   configureMinter, deploy, getBalanceOf, getContractOwner, getMasterMinter, getMintingAllowance,
@@ -119,15 +118,15 @@ stablecoinClientScenario = do
     tm `assertEq` (#symbol .! "a", #name .! "b", #decimals .! 3)
 
   where
-    createRole :: Alias -> StablecoinScenario m (Alias, Address, AddressOrAlias)
-    createRole alias = do
-      addr <- newAddress alias
+    createRole :: AliasHint -> StablecoinScenario m (Alias, Address, AddressOrAlias)
+    createRole aliasHint = do
+      addr <- newAddress aliasHint
 
       -- Note: `newAddress` prepends the alias with the prefix from the
       -- `MorleyClientConfig`.
       -- So we use `getAlias` to get the actual alias (prefix included)
       -- associated with this address.
-      actualAlias <- getAlias (AddressResolved addr)
+      alias <- getAlias (AddressResolved addr)
 
-      revealKeyUnlessRevealed actualAlias
-      pure (actualAlias, addr, AddressResolved addr)
+      revealKeyUnlessRevealed alias
+      pure (alias, addr, AddressResolved addr)

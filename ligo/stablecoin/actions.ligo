@@ -701,6 +701,8 @@ function set_transferlist
 (*
  * Creates a new permit, allowing any user to act on behalf of the user
  * who signed the permit.
+ *
+ * Fails with `"DUP_PERMIT"` if the same permit hash is re-uploaded before it expires.
  *)
 function add_permit
   ( const parameter: permit_param
@@ -723,7 +725,7 @@ function add_permit
         [ permit_counter = store.permit_counter + 1n
         ; permits =
             delete_expired_permits(store.default_expiry, issuer,
-              insert_permit(issuer, permit, store.permits)
+              insert_permit(store.default_expiry, issuer, permit, store.permits)
             )
         ]
     else block {
@@ -739,44 +741,6 @@ function add_permit
 } with
     ( (nil : list(operation))
     , store
-    )
-
-(*
- * Deletes the given permits.
- *
- * Only the issuer X of a permit can revoke X's permits.
- * Otherwise, X can issue a separate permit allowing other users to revoke X's permits.
- *
- * This operation does not fail if a given permit is not found.
- *
- * Fails with 'NOT_PERMIT_ISSUER' if:
- *   a) the sender is not the issuer of any of the given permits,
- *   b) and the issuer has not issued a permit allowing others to revoke their permits
- *)
-function revoke_permits
-  ( const params: revoke_params
-  ; const store : storage
-  ; const full_param : closed_parameter
-  ) : entrypoint is block
-{ const issuers : list(address) =
-    List.map(function(const p: revoke_param): address is p.1, params)
-
-; const store : storage =
-    case all_equal(issuers, "NOT_PERMIT_ISSUER") of
-    | None -> store
-    | Some(issuer) -> sender_check(issuer, store, full_param, "NOT_PERMIT_ISSUER")
-    end
-
-;  const updated_permits : permits =
-    List.fold
-      ( function(const permits: permits; const param: revoke_param) : permits is
-          remove_permit(param.1, param.0, permits)
-      , params
-      , store.permits
-      )
-} with
-    ( (nil : list(operation))
-    , store with record [ permits = updated_permits ]
     )
 
 (*
@@ -801,32 +765,4 @@ function set_expiry
 } with
     ( (nil : list(operation))
     , store with record [ permits = updated_permits ]
-    )
-
-(*
- * Retrieves the contract's default permit expiry and leaves the storage untouched.
- *)
-function get_default_expiry
-  ( const parameter: get_default_expiry_param
-  ; const store : storage
-  ) : entrypoint is block
-{ const transfer_operation : operation =
-    Tezos.transaction (store.default_expiry, 0mutez, parameter.1)
-} with
-    ( list [transfer_operation]
-    , store
-    )
-
-(*
- * Retrieves the contract's permit counter and leaves the storage untouched.
- *)
-function get_counter
-  ( const parameter: get_counter_param
-  ; const store : storage
-  ) : entrypoint is block
-{ const transfer_operation : operation =
-    Tezos.transaction (store.permit_counter, 0mutez, parameter.1)
-} with
-    ( list [transfer_operation]
-    , store
     )
