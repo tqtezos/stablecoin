@@ -141,11 +141,11 @@ In error scenarios the stablecoin contract fails with a string.
 Here is a summary of all the strings used as error messages.
 We start with standard FA2 errors which are part of the FA2 specification.
 
-| Error                      | Description                                                                 |
-|----------------------------|-----------------------------------------------------------------------------|
-| `FA2_TOKEN_UNDEFINED`      | One of the specified `token_id`s is not defined (i.e. not zero)             |
-| `FA2_INSUFFICIENT_BALANCE` | Cannot debit from a wallet because of excessive amount of tokens            |
-| `FA2_NOT_OPERATOR`         | A transfer is initiated neither by the token owner nor a permitted operator |
+| Error                      | Description                                                                    |
+|----------------------------|--------------------------------------------------------------------------------|
+| `FA2_TOKEN_UNDEFINED`      | One of the specified `token_id`s is not defined (i.e. not zero)                |
+| `FA2_INSUFFICIENT_BALANCE` | Cannot debit from a wallet because of insufficient amount of tokens            |
+| `FA2_NOT_OPERATOR`         | A transfer was initiated by neither the token owner nor a permitted operator   |
 
 The next group consists of the errors that are not part of the FA2 specification.
 
@@ -154,12 +154,12 @@ The next group consists of the errors that are not part of the FA2 specification
 | `XTZ_RECEIVED`               | Contract received a non-zero amount of tokens and should not proceed any further                                               |
 | `NOT_CONTRACT_OWNER`         | Authorized sender is not contract owner                                                                                        |
 | `NOT_PENDING_OWNER`          | Authorized sender is not current contract pending owner                                                                        |
-| `NO_PENDING_OWNER_SET`       | Thrown when trying to authorize as pending owner whilst is not set for a contract                                              |
+| `NO_PENDING_OWNER_SET`       | Thrown when trying to accept a transfer of ownership, but no transfer was initiated beforehand                                 |
 | `NOT_PAUSER`                 | Authorized sender is not contract pauser                                                                                       |
 | `NOT_MASTER_MINTER`          | Authorized sender is not master minter                                                                                         |
 | `NOT_MINTER`                 | Sender is not registered as minter                                                                                             |
 | `CONTRACT_PAUSED`            | Operation cannot be performed during contract pause                                                                            |
-| `CONTRACT_NOT_PAUSED`        | Operation cannot be peformed if the contract is not paused                                                                     |
+| `CONTRACT_NOT_PAUSED`        | Operation cannot be performed if the contract is not paused                                                                    |
 | `NOT_TOKEN_OWNER`            | Trying to configure operators for a different wallet which sender does not own                                                 |
 | `CURRENT_ALLOWANCE_REQUIRED` | In `configure_minter` the caller wrongly expects the address to be not a minter                                                |
 | `ALLOWANCE_MISMATCH`         | In `configure_minter` both allowances are not `None`, but different                                                            |

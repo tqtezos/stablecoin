@@ -170,117 +170,117 @@ expectedMetadataJSON =
     "errors": [
       {
         "error": { "string": "FA2_TOKEN_UNDEFINED" },
-        "expansion": { "string": "One of the specified `token_id`s is not defined (i.e. not zero)" },
+        "expansion": { "string": "All `token_id`s must be 0" },
         "languages": [ "en" ]
       },
       {
         "error": { "string": "FA2_INSUFFICIENT_BALANCE" },
-        "expansion": { "string": "Cannot debit from a wallet because of excessive amount of tokens" },
+        "expansion": { "string": "Cannot debit from a wallet because of insufficient amount of tokens" },
         "languages": [ "en" ]
       },
       {
         "error": { "string": "FA2_NOT_OPERATOR" },
-        "expansion": { "string": "A transfer is initiated neither by the token owner nor a permitted operato" },
+        "expansion": { "string": "You're neither the owner or a permitted operator of one or more wallets from which tokens will be transferred" },
         "languages": [ "en" ]
       },
       {
         "error": { "string": "XTZ_RECEIVED" },
-        "expansion": { "string": "Contract received a non-zero amount of tokens and should not proceed any further" },
+        "expansion": { "string": "Contract received a non-zero amount of tokens" },
         "languages": [ "en" ]
       },
       {
         "error": { "string": "NOT_CONTRACT_OWNER" },
-        "expansion": { "string": "Authorized sender is not contract owner" },
+        "expansion": { "string": "Operation can only be performed by the contract's owner" },
         "languages": [ "en" ]
       },
       {
         "error": { "string": "NOT_PENDING_OWNER" },
-        "expansion": { "string": "Authorized sender is not current contract pending owner" },
+        "expansion": { "string": "Operation can only be performed by the current contract's pending owner" },
         "languages": [ "en" ]
       },
       {
         "error": { "string": "NO_PENDING_OWNER_SET" },
-        "expansion": { "string": "Thrown when trying to authorize as pending owner whilst is not set for a contract" },
+        "expansion": { "string": "There's no pending transfer of ownership" },
         "languages": [ "en" ]
       },
       {
         "error": { "string": "NOT_PAUSER" },
-        "expansion": { "string": "Authorized sender is not contract pauser" },
+        "expansion": { "string": "Operation can only be performed by the contract's pauser" },
         "languages": [ "en" ]
       },
       {
         "error": { "string": "NOT_MASTER_MINTER" },
-        "expansion": { "string": "Authorized sender is not master minter" },
+        "expansion": { "string": "Operation can only be performed by the contract's master minter" },
         "languages": [ "en" ]
       },
       {
         "error": { "string": "NOT_MINTER" },
-        "expansion": { "string": "Sender is not registered as minter" },
+        "expansion": { "string": "Operation can only be performed by registered minters" },
         "languages": [ "en" ]
       },
       {
         "error": { "string": "CONTRACT_PAUSED" },
-        "expansion": { "string": "Operation cannot be performed during contract pause" },
+        "expansion": { "string": "Operation cannot be performed while the contract is paused" },
         "languages": [ "en" ]
       },
       {
         "error": { "string": "CONTRACT_NOT_PAUSED" },
-        "expansion": { "string": "Operation cannot be peformed if the contract is not paused" },
+        "expansion": { "string": "Operation cannot be performed while the contract is not paused" },
         "languages": [ "en" ]
       },
       {
         "error": { "string": "NOT_TOKEN_OWNER" },
-        "expansion": { "string": "Trying to configure operators for a different wallet which sender does not own" },
+        "expansion": { "string": "You cannot configure another user's operators" },
         "languages": [ "en" ]
       },
       {
         "error": { "string": "CURRENT_ALLOWANCE_REQUIRED" },
-        "expansion": { "string": "In `configure_minter` the caller wrongly expects the address to be not a minter" },
+        "expansion": { "string": "The given address is already a minter, you must specify its current minting allowance" },
         "languages": [ "en" ]
       },
       {
         "error": { "string": "ALLOWANCE_MISMATCH" },
-        "expansion": { "string": "In `configure_minter` both allowances are not `None`, but different" },
+        "expansion": { "string": "The given current minting allowance does not match the minter's actual current minting allowance" },
         "languages": [ "en" ]
       },
       {
         "error": { "string": "ADDR_NOT_MINTER" },
-        "expansion": { "string": "An attempt is made to modify minter data of an address that's not a minter" },
+        "expansion": { "string": "This address is not a registered minter" },
         "languages": [ "en" ]
       },
       {
         "error": { "string": "ALLOWANCE_EXCEEDED" },
-        "expansion": { "string": "Thrown when trying to mint tokens more than currently allowed for an address" },
+        "expansion": { "string": "The amount of tokens to be minted exceeds your current minting allowance" },
         "languages": [ "en" ]
       },
       {
         "error": { "string": "BAD_TRANSFERLIST" },
-        "expansion": { "string": "Given address is a not a smart contract complying with the transferlist interface" },
+        "expansion": { "string": "The given address is a not a smart contract complying with the transferlist interface" },
         "languages": [ "en" ]
       },
       {
         "error": { "string": "MINTER_LIMIT_REACHED" },
-        "expansion": { "string": "Cannot add new minter because the number of minters is already at the limit." },
+        "expansion": { "string": "Cannot add new minter because the number of minters is already at the limit" },
         "languages": [ "en" ]
       },
       {
         "error": { "string": "MISSIGNED" },
-        "expansion": { "string": "The signature used to create a permit was invalid." },
+        "expansion": { "string": "This permit's signature is invalid" },
         "languages": [ "en" ]
       },
       {
         "error": { "string": "EXPIRED_PERMIT" },
-        "expansion": { "string": "The sender tried to access an entrypoint for which a permit was found, but it was expired." },
+        "expansion": { "string": "A permit was found, but it has already expired" },
         "languages": [ "en" ]
       },
       {
         "error": { "string": "NOT_PERMIT_ISSUER" },
-        "expansion": { "string": "The sender tried to revoke a permit that wasn't theirs and no permit was issued to allow this call." },
+        "expansion": { "string": "You're not the issuer of the given permit" },
         "languages": [ "en" ]
       },
       {
         "error": { "string": "DUP_PERMIT" },
-        "expansion": { "string": "The sender tried to issue a duplicate permit." },
+        "expansion": { "string": "The given permit already exists" },
         "languages": [ "en" ]
       }
     ]
