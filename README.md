@@ -35,32 +35,22 @@ Please refer to the [`haskell/`](/haskell/) directory for details.
 ## Gas / Transaction costs
 
 The tables below show the gas and transaction costs of both versions (FA1.2 and FA2) of
-the stablecoin contract [v1.3.0](https://github.com/tqtezos/stablecoin/releases/tag/v1.3.0) in both Carthagenet and Delphinet.
-
-### Carthagenet
-
-* [FA1.2 operations](https://better-call.dev/carthagenet/KT1B24iMQq9QLezhXqjXW9R2WUqN2VnHUtei/operations)
-* [FA2 operations](https://better-call.dev/carthagenet/KT1Wg3qi4w9ZNb2EBWTuXjJFPKygVFCXP1S3/operations)
-
-|             | FA1.2 Gas cost | FA2 Gas cost | FA1.2 Tx cost | FA2 Tx cost |
-| ----------- | -------------- | ------------ | ------------- | ----------- |
-| origination | 448089         | 464076       | 12.695322 ꜩ   | 12.273509 ꜩ |
-| transfer    | 412046         | 431839       | 0.041564 ꜩ    | 0.043558 ꜩ  |
+the stablecoin contract [v1.4.0](https://github.com/tqtezos/stablecoin/releases/tag/v1.4.0) in Delphinet.
 
 ### Delphinet
 
-* [FA1.2 operations](https://better-call.dev/delphinet/KT1U9Fumr18CkHR9vXwtTnNbWnw32hYoywzG/operations)
-* [FA2 operations](https://better-call.dev/delphinet/KT1Tu6yYQDfvMXa1miDfR4HUoL4PJ5c17MHx/operations)
+* [FA1.2 operations](https://better-call.dev/delphinet/KT1AMAqrzMQqB6QK724Bagp8LL2JrdXEF3By/operations)
+* [FA2 operations](https://better-call.dev/delphinet/KT1G3n8sDudm1FzCn9JYa5BM2QRaxgKry8My/operations)
 
 |             | FA1.2 Gas cost | FA2 Gas cost | FA1.2 Tx cost | FA2 Tx cost |
 | ----------- | -------------- | ------------ | ------------- | ----------- |
-| origination | 75082          | 71888        | 3.178771 ꜩ    | 3.07229 ꜩ   |
-| transfer    | 77585          | 74804        | 0.008117 ꜩ    | 0.007853 ꜩ  |
+| origination | 75928          | 72689        | 3.942008 ꜩ    | 3.87493 ꜩ   |
+| transfer    | 79196          | 73293        | 0.007978 ꜩ    | 0.007702 ꜩ  |
 
 ### Measuring
 
 To measure and collect these numbers:
-1. Configure your `tezos-client` to use a carthagenet or delphinet node
+1. Configure your `tezos-client` to use a delphinet node
 1. Make sure `tezos-client` has a `nettest` alias with enough ꜩ
     ```
     tezos-client get balance for nettest
@@ -73,6 +63,8 @@ To measure and collect these numbers:
     ```
 1. Search for these addresses in <https://better-call.dev/>, select the "Contracts" tab, you should get 1 search result.
    Select it to see the origination and transfer costs.
+
+Note that we also run these tests nightly as part of our CI, so another way to do this measurement is to wait for CI to run these tests and find 2 addresses in the logs of the latest scheduled CI run.
 
 ## Issue Tracker
 
