@@ -8,6 +8,7 @@ LIGO ?= ligo
 # Recompilation will be triggered only if they are changed.
 sources = stablecoin/**/*.ligo
 
+# Note: if you change the default target, please update `README.md`.
 # Compile LIGO contract into its michelson representation
 stablecoin.tz: $(sources)
 	$(LIGO) compile-contract --syntax pascaligo stablecoin/core.ligo stablecoin_main > stablecoin.tz

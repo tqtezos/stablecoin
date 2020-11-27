@@ -10,26 +10,41 @@ SPDX-License-Identifier: MIT
 Tezos Stablecoin project implements an FA2-compatible token smart contract.
 It draws inspiration from the [CENTRE Fiat Token](https://github.com/centrehq/centre-tokens/blob/78d964a1a8d481ffd8152772d7a66e47df54b3db/doc/tokendesign.md) and other similar contracts.
 The contract is implemented in the [LIGO language](https://ligolang.org/).
-See the [`ligo/`](ligo/) folder.
-Contract specification is [available](/docs/specification.md).
+This reposiory consists of the following:
+1. LIGO source code of the Stablecoin smart contract and auxiliary smart contracts in the [`ligo/`](ligo/) folder.
+1. [Contract specification](/docs/specification.md).
+1. Haskell bindings with data types corresponding to Stablecoin.
+It is based on the [morley framework](https://gitlab.com/morley-framework/morley).
+It allows us to use features of `morley` (such as a testing engine called `cleveland`) with this contract.
+1. `stablecoin-client` executable that allows deploying and interacting with the Stablecoin smart contract.
+
+Please refer to the [`haskell/`](/haskell/) directory for details regarding `stablecoin-client` and Haskell bindings.
 
 The project also includes an alternative FA1.2-compatible smart contract, available in the [`ligo/stablecoin/fa1.2/`](ligo/stablecoin/fa1.2/) folder.
 
-## Stablecoin client
+## How to get
 
-We have a `stablecoin-client` executable that allows deploying and interacting with the stablecoin contract.
-You can download it as a static Linux binary from GitHub [releases](https://github.com/tqtezos/stablecoin/releases).
-Please refer to the [`haskell/`](/haskell/) directory for details.
+You can download Michelson source code of all provided smart contracts in [release assets](https://github.com/tqtezos/stablecoin/releases/latest).
+We also provide static `stablecoin-client` executable that should work on any x86_64 Linux system.
+If you are using a different operating OS or just want to build from sources, see [instructions below](#build-instructions).
 
-## Haskell bindings
+## Usage
 
-Apart from LIGO implementation of the contract we have [a Haskell library](haskell/) with data types corresponding to this contract.
-It is based on the [morley framework](https://gitlab.com/morley-framework/morley).
-It allows us to use features of `morley` (such as testing engine) with this contract.
+The recommended way to deploy and interact with Stablecoin is to use `stablecoin-client`.
+For example, in order to deploy the contract you can run
+```
+./stablecoin-client --user foo deploy --master-minter foo --contract-owner foo --pauser foo --default-expiry 300000
+```
+provided you have [`tezos-client`](http://tezos.gitlab.io/introduction/howtoget.html) in your `$PATH`, it's configured to use an appropriate node and knows `foo` address with sufficient balance to pay for operations.
+
+## Build instructions
+
+* [Smart contracts](/ligo/README.md#build-instructions)
+* [Haskell (including client)](/haskell/README.md#build-instructions)
 
 ## Tests
 
-Tests are implemented in the same Haskell package.
+Tests are implemented in Haskell.
 Please refer to the [`haskell/`](/haskell/) directory for details.
 
 ## Gas / Transaction costs

@@ -7,29 +7,40 @@ SPDX-License-Identifier: MIT
 
 This folder contains:
 
+1. a `stablecoin-client` executable to deploy and interact with the stablecoin contract;
 1. a Haskell library to interact with the stablecoin contract (basically Haskell bindings) and tests for it.
-2. a `stablecoin-client` executable to deploy and interact with the stablecoin contract.
 
-## Install Instructions
+## Client
 
-You can download static `stablecoin-client` binary for Linux from GitHub [releases](https://github.com/tqtezos/stablecoin/releases).
-Alternatively, you can build this package from sources.
+The most important part for a user is `stablecoin-client`.
+If the `stablecoin-client` was downloaded from releases or installed globally with `stack install`, then run `stablecoin-client --help`
+to see a list of the available commands.
+Otherwise, you should prefix all commands with `stack run` and put `--` after `stablecoin-client`, for example: `stack run stablecoin-client -- --help`.
+
+The help message should be sufficiently descriptive, however, there are some caveats:
+1. [`tezos-client`](http://tezos.gitlab.io/introduction/howtoget.html) executable must be available and is assumed to be in `$PATH` by default.
+1. There is a global option `--user` that specifies which user will make operations, it defaults to `stablecoin-user`.
+You should ensure that:
+  * An address with provided alias is known to `tezos-client`.
+  * Its secret key is known.
+  * It has sufficient balance to make operations (pay for storage and fee).
+1. Node data (address, port and whether to use TLS) is taken from `tezos-client` config by default.
+Make sure it points to an active node in the network where you want to submit your operations.
+You can override this data using the respective options of `stablecoin-client`.
+
+## Build Instructions
+
+Note: if you are on Linux and just want to get `stablecoin-client`, we recommend downloading it from the latest [release assets](https://github.com/tqtezos/stablecoin/releases/latest).
 
 You need [Stack](http://haskellstack.org/) to build this package.
 
 To build the library and the executable:
-1. Copy or symlink the stablecoin and metadata contracts to `test/resources/` and then run `stack build`.
-2. Or, alternatively, run `make build`.
+1. Copy or symlink  stablecoin and metadata smart contracts (their Michelson versions) to `test/resources/` and then run `stack build`.
+The contracts are parsed and typechecked at compile-time.
+2. Or, alternatively, run `make build` provided that you have `ligo` in your `$PATH`.
 
 Run `stack install` to install the `stablecoin-client` globally.
-
-## Run Instructions
-
-Pre-requisites: `tezos-client` must be installed.
-
-If the `stablecoin-client` was installed globally with `stack install`, then run `stablecoin-client --help`
-to see a list of the available commands.
-Otherwise, run `stack run stablecoin-client -- --help`.
+The installation path may or may not be in your `$PATH` depending on your system, but it should be printed as part of the output.
 
 ## Tests
 
