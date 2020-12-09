@@ -34,7 +34,13 @@ let
                 "-O0" "-Werror"
               ]);
             postInstall = weeder-hacks.collect-dump-hi-files;
+
+            # enable haddock for local packages
+            doHaddock = true;
         });
+
+        # disable haddock for dependencies
+        doHaddock = false;
       }
     ];
   };
@@ -101,6 +107,7 @@ let
 in
 {
   lib = project.stablecoin.components.library;
+  haddock = project.stablecoin.components.library.haddock;
   test = project.stablecoin.components.tests.stablecoin-test;
   nettest = project.stablecoin.components.tests.stablecoin-nettest;
   stablecoin-client = project.stablecoin.components.exes.stablecoin-client;

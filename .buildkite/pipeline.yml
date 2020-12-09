@@ -47,6 +47,12 @@ steps:
      - eval "$FETCH_CONTRACT"
      - nix build -L -f. lib
 
+ - label: haddock
+   if: *not_scheduled
+   commands:
+     - eval "$FETCH_CONTRACT"
+     - nix build -L -f. haddock
+
  - label: test
    if: *not_scheduled
    commands:
