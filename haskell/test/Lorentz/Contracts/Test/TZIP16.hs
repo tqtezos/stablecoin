@@ -34,9 +34,9 @@ test_TZIP16 =
         let first_ = J.toJSON metadataJSON
 
         parsed <-
-          case J.eitherDecode' @(Metadata (ToT Storage)) (encodeUtf8 expectedMetadataJSON) of
-            Right value -> pure value
-            Left err -> fail err
+          case J.fromJSON @(Metadata (ToT Storage)) first_ of
+            J.Success value -> pure value
+            J.Error err -> fail err
 
         let second_ = J.toJSON parsed
 
