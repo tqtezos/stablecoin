@@ -21,12 +21,12 @@ import Fmt (pretty)
 
 import Lorentz as L
 import qualified Lorentz.Contracts.Spec.ApprovableLedgerInterface as AL
+import Lorentz.Contracts.Spec.TZIP16Interface
+  (Metadata(..), MetadataMap, SomeMichelsonStorageView(..), ViewImplementation(..))
 import Michelson.Runtime (parseExpandContract)
 import qualified Michelson.Untyped as U
+import Morley.Metadata (mkMichelsonStorageView)
 
-import Lorentz.Contracts.Spec.TZIP16Interface
-  (Metadata(..), MetadataMap, SomeMichelsonStorageView(..), ViewImplementation(..),
-  mkMichelsonStorageView)
 import qualified Lorentz.Contracts.Spec.TZIP16Interface as TZ (View(..))
 import qualified Lorentz.Contracts.Stablecoin as S
 import Lorentz.Contracts.StablecoinPath (stablecoinFA1_2Path)
@@ -145,8 +145,8 @@ getDefaultExpiryView =
     , vPure = True
     , vImplementations = one $
         VIMichelsonStorageView $ SomeMichelsonStorageView $
-          mkMichelsonStorageView @Storage @() [] $
-            L.car # L.toField #sDefaultExpiry
+          mkMichelsonStorageView @() @Storage [] $
+            L.cdr # L.toField #sDefaultExpiry
     }
 
 getCounterView :: TZ.View (ToT Storage)
@@ -157,6 +157,6 @@ getCounterView =
     , vPure = True
     , vImplementations = one $
         VIMichelsonStorageView $ SomeMichelsonStorageView $
-          mkMichelsonStorageView @Storage @() [] $
-            L.car # L.toField #sPermitCounter
+          mkMichelsonStorageView @() @Storage [] $
+            L.cdr # L.toField #sPermitCounter
     }

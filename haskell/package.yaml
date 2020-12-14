@@ -29,6 +29,7 @@ library:
     - morley-prelude
     - morley-client
     - morley-ledgers
+    - morley-metadata
     - lorentz
     - morley
     - containers
@@ -41,7 +42,6 @@ library:
     - megaparsec
     - caps
     - text
-    - singletons
     - bytestring
 
 executables:
@@ -65,6 +65,7 @@ tests:
       - morley
       - morley-prelude
       - morley-ledgers-test
+      - morley-metadata
       - lorentz
       - cleveland
       - tasty
