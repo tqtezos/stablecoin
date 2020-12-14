@@ -26,6 +26,12 @@ extra-deps:
     - code/morley
     - code/morley-client
 
+- git:
+    https://gitlab.com/morley-framework/morley-metadata.git
+    # ^ CI cannot use ssh, so we use http clone here
+  commit:
+    abc385928e69b6429595c6169b2494165aae9c77 # master
+
 # Stable parts of morley available from Hackage
 - morley-prelude-0.3.0
 - tasty-hunit-compat-0.2

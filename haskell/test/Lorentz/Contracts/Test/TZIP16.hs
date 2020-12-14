@@ -84,7 +84,7 @@ expectedMetadataJSON =
               "code": [
                 {
                   "args": [],
-                  "prim": "CAR",
+                  "prim": "CDR",
                   "annots": []
                 },
                 {
@@ -133,7 +133,7 @@ expectedMetadataJSON =
               "code": [
                 {
                   "args": [],
-                  "prim": "CAR",
+                  "prim": "CDR",
                   "annots": []
                 },
                 {

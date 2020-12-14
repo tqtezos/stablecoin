@@ -34,8 +34,9 @@ import qualified Tezos.Crypto.Secp256k1 as Secp256k1
 import Tezos.Crypto.Util (deterministic)
 
 import qualified "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
-import qualified Lorentz.Contracts.Spec.TZIP16Interface as TZ
+import qualified Lorentz.Contracts.Spec.TZIP16Interface as MD
 import Lorentz.Contracts.Stablecoin hiding (metadataJSON, stablecoinContract)
+import qualified Morley.Metadata as MD
 
 import Lorentz.Contracts.Test.Common
 import Lorentz.Contracts.Test.FA2 (fa2NotOperator, fa2NotOwner)
@@ -120,14 +121,14 @@ checkView addr viewName viewParam expectedViewVal =
     metadataJSON <-
       first
         (\err -> CustomTestError (toText err)) $
-        J.eitherDecode' @(TZ.Metadata (ToT Storage)) (BSL.fromStrict metadataJSONBytestring)
+        J.eitherDecode' @(MD.Metadata (ToT Storage)) (BSL.fromStrict metadataJSONBytestring)
 
     view_ <-
       maybeToRight (CustomTestError $ "Metadata does not contain view with name" <> viewName) $
-        TZ.getView metadataJSON viewName
+        MD.getView metadataJSON viewName
 
     -- See note below.
-    unless (TZ.vPure view_) $
+    unless (MD.vPure view_) $
       Left $ CustomTestError $ "Expected view '" <> viewName <> "' to be pure, but it isn't."
 
     actualViewVal <-
@@ -136,7 +137,7 @@ checkView addr viewName viewParam expectedViewVal =
         -- NOTE: it's OK to use `dummyContractEnv` here because we now this
         -- contract's views are pure (i.e. don't depend on the contract env).
         -- But, in the general case, this is not safe.
-        TZ.interpretView @_ @_ @viewVal dummyContractEnv view_ st viewParam
+        MD.interpretView @_ @_ @viewVal dummyContractEnv view_ viewParam st
 
     when (actualViewVal /= expectedViewVal) $
       Left $ CustomTestError $ unlines
