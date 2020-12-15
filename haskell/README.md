@@ -19,14 +19,14 @@ Otherwise, you should prefix all commands with `stack run` and put `--` after `s
 
 The help message should be sufficiently descriptive, however, there are some caveats:
 1. [`tezos-client`](http://tezos.gitlab.io/introduction/howtoget.html) executable must be available and is assumed to be in `$PATH` by default.
+1. Node data (address, port and whether to use TLS) is taken from `tezos-client` config by default.
+Make sure it points to an active node in the network where you want to submit your operations.
+You can override this data using the respective options of `stablecoin-client`.
 1. There is a global option `--user` that specifies which user will make operations, it defaults to `stablecoin-user`.
 You should ensure that:
   * An address with provided alias is known to `tezos-client`.
   * Its secret key is known.
   * It has sufficient balance to make operations (pay for storage and fee).
-1. Node data (address, port and whether to use TLS) is taken from `tezos-client` config by default.
-Make sure it points to an active node in the network where you want to submit your operations.
-You can override this data using the respective options of `stablecoin-client`.
 
 ## Build Instructions
 
