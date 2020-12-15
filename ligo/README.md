@@ -19,4 +19,4 @@ You can provide a different name/command to launch `ligo` using `$LIGO` environm
 Since LIGO is an actively developed project, some versions of it may be incompatible with Stablecoin.
 Revision specified in the [sources.json](/nix/sources.json) file is guaranteed to be compatible.
 Use [`Makefile`](/ligo/Makefile) to compile smart contracts.
-For example, running `make` without arguments should produce `stablecoin.tz`.
+For example, running `make` without arguments in this folder should produce `stablecoin.tz`.
