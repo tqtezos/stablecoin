@@ -8,6 +8,10 @@ SPDX-License-Identifier: MIT
 <!-- Prepend new entries here -->
 <!-- Don't forget to update the gas/transaction costs tables in the
 README when a new version is released. -->
+
+* [#144](https://github.com/tqtezos/stablecoin/pull/144)
+  * Add `total_supply` field to the contract.
+
 ## 1.4.0
 
 * [#134](https://github.com/tqtezos/stablecoin/pull/134)

@@ -288,6 +288,7 @@ type storage is record
 ; permits                 : permits
 ; default_expiry          : seconds
 ; metadata                : metadata
+; total_supply            : nat
 end
 
 type entrypoint is list (operation) * storage

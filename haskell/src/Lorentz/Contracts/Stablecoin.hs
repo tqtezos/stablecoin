@@ -275,6 +275,7 @@ data Storage' big_map = Storage
   , sPermits :: big_map Address UserPermits
   , sRoles :: Roles
   , sTokenMetadataRegistry :: Address
+  , sTotalSupply :: Natural
   , sTransferlistContract :: Maybe Address
   }
 
@@ -290,7 +291,8 @@ $(customGeneric "Storage'" $ withDepths
       , fld @4 -- sPermits
       , fld @3 -- sRoles
       , fld @3 -- sTokenMetadataRegistry
-      , fld @2 -- sTransferlistContract
+      , fld @3 -- sTransferlistContract
+      , fld @3 -- sTotalSupply
       ]
     ]
   )

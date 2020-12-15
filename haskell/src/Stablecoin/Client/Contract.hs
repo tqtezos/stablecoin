@@ -49,4 +49,5 @@ mkInitialStorage (InitialStorageData {..}) =
     , sTokenMetadataRegistry = isdTokenMetadataRegistry
     , sTransferlistContract = isdTransferlist
     , sMetadata = metadataMap
+    , sTotalSupply = 0
     }
