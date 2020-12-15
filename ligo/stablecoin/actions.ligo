@@ -517,6 +517,22 @@ function remove_minter
   )
 
 (*
+ * Adds the provided value to the total_supply field and return storage.
+ * The input is an 'int' so that this can be used to increment and decrement
+ * `total_supply` field.
+ *)
+function inc_total_supply
+  ( const count : int
+  ; const store  : storage
+  ) : storage is block
+  { const new_total_supply : int = store.total_supply + count
+  ; const new_total_supply_nat : nat = case is_nat(new_total_supply) of
+      Some (n) -> n
+    | None -> (failwith ("NEGATIVE_TOTAL_SUPPLY") : nat)
+    end
+  } with store with record [ total_supply = new_total_supply_nat ]
+
+(*
  * Produces tokens to a wallet associated with the given address
  *)
 function mint
@@ -545,7 +561,9 @@ function mint
   ; const updated_store : storage = accumulator with record
       [ minting_allowances = updated_allowances
       ]
-  } with credit_to (unwrapped_parameter, updated_store)
+  } with
+      inc_total_supply(int(unwrapped_parameter.amount),
+        credit_to (unwrapped_parameter, updated_store))
 
 ; const receivers : list(address) =
     List.map
@@ -597,7 +615,7 @@ function burn
           ]
       , accumulator
       )
-  } with debited_storage
+  } with inc_total_supply(-burn_amount, debited_storage)
 
 ; const upds : list(operation) = call_assert_receivers
     ( store.transferlist_contract

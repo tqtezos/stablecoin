@@ -83,7 +83,8 @@ generateContractInputs count = do
          gsPauserPool gsTokenOwnerPool
     operatorsMap = Map.fromList $ zip operators $ repeat ()
     startingStorage = SimpleStorage
-      gsMinterPool ledgerBalances owner masterMinter pauser pendingOwner Nothing operatorsMap isPaused
+      gsMinterPool ledgerBalances owner masterMinter pauser pendingOwner Nothing operatorsMap
+      isPaused (sum $ Map.elems ledgerBalances)
   inputs <- runReaderT (mapM generateAction [1..count]) generatorState
   pure (inputs, ContractState startingStorage [])
 
@@ -162,6 +163,7 @@ data SimpleStorage = SimpleStorage
   , ssTransferlistContract :: Maybe Address
   , ssOperators :: Map (Address, Address) ()
   , ssIsPaused :: Bool
+  , ssTotalSupply :: Natural
   } deriving stock (Eq, Generic, Show)
 
 instance Buildable SimpleStorage where
@@ -183,6 +185,7 @@ storageToSs storage = SimpleStorage
   , ssTransferlistContract = sTransferlistContract storage
   , ssOperators = T.unBigMap $ sOperators storage
   , ssIsPaused = sIsPaused storage
+  , ssTotalSupply = sTotalSupply storage
   }
 
 ssToOriginationParams
@@ -643,7 +646,10 @@ reduceMintingAllowance minter amount ss@SimpleStorage {..} =
 
 applySingleMint :: MintParam -> SimpleStorage -> SimpleStorage
 applySingleMint (MintParam to value) storage =
-  storage { ssLedger = Map.alter (\case Nothing -> Just value; Just x -> Just $ x + value) to $ ssLedger storage }
+  storage
+    { ssTotalSupply = ssTotalSupply storage + value
+    , ssLedger = Map.alter
+        (\case Nothing -> Just value; Just x -> Just $ x + value) to $ ssLedger storage }
 
 applyMint :: Address -> SimpleStorage -> MintParams -> Either ModelError SimpleStorage
 applyMint sender cs mintparams = do
@@ -660,18 +666,21 @@ applyBurn ccSender cs burnparams = do
   void $ ensureMinter ccSender cs
   let totalBurn = sum burnparams
   if totalBurn <= (fromMaybe 0 $ Map.lookup ccSender $ ssLedger cs)
-    then let
-      burn value storage =
-        storage { ssLedger = Map.alter (\case
-          Nothing -> if value > 0
-            then error ("Unexpected burn:" <> show value)
-            else Nothing
-                -- As per FA2, burn should follow the tranfer logic, which allows zero transfer
-                -- from non-existant accounts. So here we should do nothing, instead of throwing an
-                -- error.
-          Just x -> let b = x - value
-            in if b > 0 then Just b else Nothing) ccSender $ ssLedger cs }
-      in Right $ foldr burn cs burnparams
+    then if totalBurn > ssTotalSupply cs
+      then error ("Unexpected burn:" <> show totalBurn)
+      else let
+        burn value storage =
+          storage { ssLedger = Map.alter (\case
+            Nothing -> if value > 0
+              then error ("Unexpected burn:" <> show value)
+              else Nothing
+                  -- As per FA2, burn should follow the tranfer logic, which allows zero transfer
+                  -- from non-existant accounts. So here we should do nothing, instead of throwing an
+                  -- error.
+            Just x -> let b = x - value
+              in if b > 0 then Just b else Nothing) ccSender $ ssLedger cs }
+        newStorageAfterBurn = foldr burn cs burnparams
+        in Right $ newStorageAfterBurn { ssTotalSupply = ssTotalSupply cs - totalBurn }
     else Left FA2_INSUFFICIENT_BALANCE
 
 applyTransferOwnership :: Address -> SimpleStorage -> TransferOwnershipParam -> Either ModelError SimpleStorage

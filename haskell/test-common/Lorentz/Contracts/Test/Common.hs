@@ -218,6 +218,7 @@ mkInitialStorage OriginationParams{..} metadataRegistryAddress =
     , sTokenMetadataRegistry = fromMaybe metadataRegistryAddress opTokenMetadataRegistry
     , sTransferlistContract = unTAddress <$> opTransferlistContract
     , sMetadata = metadataMap
+    , sTotalSupply = sum $ Map.elems opBalances
     }
   where
     foldFn

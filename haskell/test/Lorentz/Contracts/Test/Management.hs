@@ -374,7 +374,7 @@ managementSpec originate = do
 
 
   describe "Minting" $ do
-    it "successfully mints tokens" $ integrationalTestExpectation $ do
+    it "successfully mints tokens and updates total_supply" $ integrationalTestExpectation $ do
       let
         originationParams =
             addMinter (wallet1, 30)
@@ -406,6 +406,10 @@ managementSpec originate = do
         lCallEP stablecoinContract (Call @"Balance_of") balanceRequest
 
         lExpectViewConsumerStorage consumer [balanceExpected]
+
+        lExpectStorage @Storage stablecoinContract $ \(sTotalSupply -> ts) ->
+          unless (ts == 30) $ -- Started with 0 tokens and minted 30 tokens so total supply should be 30
+            Left $ CustomTestError "Total supply was not updated as expected"
 
     it "aborts whole transaction if the sum of minting tokens at a given step exceeds current minting allowance" $ integrationalTestExpectation $ do
       let
@@ -443,7 +447,7 @@ managementSpec originate = do
 
 
   describe "Burning" $ do
-    it "burns tokens as expected" $ integrationalTestExpectation $ do
+    it "burns tokens and updates total_supply as expected" $ integrationalTestExpectation $ do
       let
         originationParams =
             addMinter (wallet1, 0)
@@ -471,6 +475,10 @@ managementSpec originate = do
         lCallEP stablecoinContract (Call @"Balance_of") balanceRequest
 
         lExpectViewConsumerStorage consumer [balanceExpected]
+
+        lExpectStorage @Storage stablecoinContract $ \(sTotalSupply -> ts) ->
+          unless (ts == 5) $ -- Started with 35 tokens and burned 30 tokens so total supply should be 5
+            Left $ CustomTestError "Total supply was not updated as expected"
 
     it "removes account if balance after burning is zero" $ integrationalTestExpectation $ do
 

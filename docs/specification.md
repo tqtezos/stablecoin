@@ -172,6 +172,7 @@ The next group consists of the errors that are not part of the FA2 specification
 | `NOT_PERMIT_ISSUER`          | The sender tried to set the expiry on a permit that wasn't theirs and no permit was issued to allow this call.                 |
 | `DUP_PERMIT`                 | The sender tried to issue a duplicate permit.                                                                                  |
 | `EXPIRY_TOO_BIG`             | The `set_expiry` entrypoint was called with an expiry value that is too big.                                                   |
+| `NEGATIVE_TOTAL_SUPPLY`      | The `total_supply` value was found to be less than zero after an operation. This indicates a bug in the contract.              |
 
 # Entrypoints
 
