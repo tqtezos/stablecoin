@@ -9,14 +9,10 @@ module Lorentz.Contracts.StablecoinFA1_2
   , stablecoinFA1_2Contract
 
   -- * TZIP-16
-  , metadataMap
   , metadataJSON
   ) where
 
-import qualified Data.Aeson as J
-import qualified Data.ByteString.Lazy as BSL
 import Data.FileEmbed (embedStringFile)
-import qualified Data.Map as Map
 import Fmt (pretty)
 
 import Lorentz as L
@@ -102,12 +98,6 @@ stablecoinFA1_2Contract =
             $(embedStringFile stablecoinFA1_2Path)
       |]
     )
-
-metadataMap :: MetadataMap BigMap
-metadataMap = BigMap $ Map.fromList
-  [ (mempty, encodeUtf8 @Text "tezos-storage:metadataJSON")
-  , ([mt|metadataJSON|], BSL.toStrict (J.encode metadataJSON))
-  ]
 
 metadataJSON :: Metadata (ToT Storage)
 metadataJSON =

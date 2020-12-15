@@ -12,6 +12,12 @@ README when a new version is released. -->
 * [#144](https://github.com/tqtezos/stablecoin/pull/144)
   * Add `total_supply` field to the contract.
 
+* [142](https://github.com/tqtezos/stablecoin/pull/142)
+  * Deploy TZIP-16 metadata to an external contract by default.
+  * Provide deploy options `--contract-metadata-in-place` and
+    `--contract-metadata-off-chain` to let user to embed the metadata
+    in contract or to use a custom metadata offline uri respectievely.
+
 ## 1.4.0
 
 * [#134](https://github.com/tqtezos/stablecoin/pull/134)

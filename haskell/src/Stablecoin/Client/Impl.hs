@@ -40,6 +40,7 @@ module Stablecoin.Client.Impl
 import qualified Data.Map as M
 import Fmt (Buildable(build), pretty, (+|), (|+))
 import Lorentz (EntrypointRef(Call), HasEntrypointArg, arg, useHasEntrypointArg)
+import Lorentz.Contracts.Spec.TZIP16Interface (Metadata(..))
 import Michelson.Typed (Dict(..), IsoValue, fromVal, toVal)
 import Morley.Client
   (AddressOrAlias(..), Alias, AliasHint(..), MorleyClientM, TezosClientError(UnknownAddress),
@@ -54,27 +55,24 @@ import Util.Named ((:!), (.!))
 
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
-  (ConfigureMinterParam(..), MetadataRegistryStorage, MetadataRegistryStorageView, MintParam(..),
-  Parameter, Roles(..), Storage'(..), StorageView, mkMetadataRegistryStorage, mrsTokenMetadata,
-  registryContract, stablecoinContract)
+  (ConfigureMinterParam(..), MetadataRegistryStorage, MetadataRegistryStorageView, MetadataUri(..),
+  MintParam(..), Parameter, Roles(..), Storage'(..), StorageView, UpdateOperatorData(..),
+  contractMetadataContract, metadataJSON, metadataMap, mkContractMetadataRegistryStorage,
+  mkMetadataRegistryStorage, mrsTokenMetadata, registryContract, stablecoinContract)
 import Stablecoin.Client.Contract (InitialStorageData(..), mkInitialStorage)
+import Stablecoin.Client.Parser (ContractMetadataOptions(..))
 
 -- | An address and an optional alias, if one is found.
 data AddressAndAlias = AddressAndAlias Address (Maybe Alias)
   deriving stock (Show, Eq)
 
--- | Data needed to add or remove an operator.
-data UpdateOperatorData
-  = AddOperator AddressOrAlias
-  | RemoveOperator AddressOrAlias
-  deriving stock Show
-
 -- | Deploy the stablecoin contract.
 -- Returns the operation hash and the contract's new address.
+-- If a new contract is originated to hold stablecoin's metadata, that contract's address is returned too.
 --
 -- Saves the contract with the given alias.
 -- If the given alias already exists, nothing happens.
-deploy :: "sender" :! AddressOrAlias -> AliasHint -> InitialStorageData AddressOrAlias -> MorleyClientM (Text, Address, Address)
+deploy :: "sender" :! AddressOrAlias -> AliasHint -> InitialStorageData AddressOrAlias -> MorleyClientM (Text, Address, Address, Maybe Address)
 deploy (arg #sender -> sender) alias initialStorageData = do
   masterMinter <- resolveAddress (isdMasterMinter initialStorageData)
   contractOwner <- resolveAddress (isdContractOwner initialStorageData)
@@ -97,15 +95,43 @@ deploy (arg #sender -> sender) alias initialStorageData = do
         registryContract
         (toVal registryStorage)
 
+  -- Make the contract metadata bigmap
+  contractMetadataUri  <-
+    case isdContractMetadataStorage initialStorageData of
+      -- User wants to store metadata embedded in the contact
+      OpCurrentContract ->
+        -- We drop some errors from metadata so that the contract will originate within operation
+        -- limits.
+        pure $ CurrentContract (metadataJSON { mErrors = [] }) True
+      -- User have stored metadata somewhere and just wants to put the raw uri in metadata bigmap
+      OpRaw url -> pure $ Raw url
+      -- User wants a new contract with metadata to be deployed.
+      OpRemoteContract -> do
+        let mdrStorage = mkContractMetadataRegistryStorage
+              (metadataMap $ CurrentContract metadataJSON False)
+        contractMetadataRegistryAddress <- snd <$> originateContract
+          False
+          "stablecoin-tzip16-metadata"
+          sender
+          (unsafeMkMutez 0)
+          contractMetadataContract
+          (toVal mdrStorage)
+        pure $ RemoteContract contractMetadataRegistryAddress
+
   let initialStorageData' = initialStorageData
-        { isdMasterMinter = masterMinter
-        , isdContractOwner = contractOwner
-        , isdPauser = pauser
-        , isdTransferlist = transferlist
-        , isdTokenMetadataRegistry = metadataRegistry
-        }
+            { isdMasterMinter = masterMinter
+            , isdContractOwner = contractOwner
+            , isdPauser = pauser
+            , isdTransferlist = transferlist
+            , isdTokenMetadataRegistry = metadataRegistry
+            , isdContractMetadataStorage = metadataMap contractMetadataUri
+            }
 
   let initialStorage = mkInitialStorage initialStorageData'
+
+  let cmdAddress = case contractMetadataUri of
+        RemoteContract addr -> Just addr
+        _ -> Nothing
 
   (cName, cAddr) <- originateContract
     False
@@ -114,7 +140,7 @@ deploy (arg #sender -> sender) alias initialStorageData = do
     (unsafeMkMutez 0)
     stablecoinContract
     (toVal initialStorage)
-  pure (cName, cAddr, metadataRegistry)
+  pure (cName, cAddr, metadataRegistry, cmdAddress)
 
 transfer
   :: "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias

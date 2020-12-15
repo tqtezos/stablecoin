@@ -3,9 +3,6 @@
 
 #include "spec.ligo"
 
-
-type metadata_storage is token_metadata
-
 type metadata_storage is record
    token_metadata : big_map (nat, token_metadata)
 ; dummy_field : unit

@@ -11,6 +11,7 @@ extra-source-files:
 - ChangeLog.md
 - test/resources/stablecoin.tz
 - test/resources/metadata.tz
+- test/resources/tzip16-metadata.tz
 
 synopsis:            FA2-based tezos stablecoin smart contract
 category:            Blockchain
@@ -89,11 +90,12 @@ tests:
       - nettest
 
     dependencies:
+      - aeson
+      - cleveland
       - containers
       - lorentz
       - morley
       - morley-client
-      - cleveland
       - morley-prelude
       - optparse-applicative
       - stablecoin

@@ -17,6 +17,7 @@ build-ligo:
 	$(MAKE_LIGO) stablecoin.tz
 	$(MAKE_LIGO) stablecoin.fa1.2.tz
 	$(MAKE_LIGO) metadata.tz
+	$(MAKE_LIGO) tzip16-metadata.tz
 
 # Compile LIGO contract and then build everything haskell-related (including tests and benchmarks)
 # with development options.

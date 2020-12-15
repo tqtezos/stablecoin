@@ -3,6 +3,7 @@
 
 module Lorentz.Contracts.Stablecoin
   ( ConfigureMinterParam(..)
+  , ContractMetadataRegistryStorage
   , ChangeMasterMinterParam
   , ChangePauserParam
   , GetCounterParam
@@ -11,8 +12,11 @@ module Lorentz.Contracts.Stablecoin
   , MetadataRegistryStorage'(..)
   , MetadataRegistryStorage
   , MetadataRegistryStorageView
+  , MetadataUri(..)
   , mkMetadataRegistryStorage
+  , mkContractMetadataRegistryStorage
   , defaultMetadataRegistryStorage
+  , defaultContractMetadataStorage
   , MintParams
   , MintParam(..)
   , BurnParams
@@ -22,6 +26,7 @@ module Lorentz.Contracts.Stablecoin
   , Storage
   , StorageView
   , UserPermits(..)
+  , UpdateOperatorData(..)
   , PermitInfo(..)
   , Roles(..)
 
@@ -39,6 +44,7 @@ module Lorentz.Contracts.Stablecoin
   , metadataJSON
 
   -- * Embedded LIGO contracts
+  , contractMetadataContract
   , stablecoinContract
   , registryContract
   ) where
@@ -55,20 +61,29 @@ import Lorentz as L
 import Lorentz.Contracts.Spec.TZIP16Interface
   (Error(..), License(..), Metadata(..), MetadataMap, SomeMichelsonStorageView(..), Source(..),
   ViewImplementation(..))
+import Tezos.Address (formatAddress)
 import Michelson.Test.Import (readContract)
 import qualified Michelson.Typed as T
 import Morley.Client (BigMapId(..))
 import Morley.Metadata (mkMichelsonStorageView)
 import Morley.Micheline (ToExpression(toExpression))
+import Morley.Client (AddressOrAlias(..))
 import qualified Tezos.Crypto as Hash
 
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import qualified Lorentz.Contracts.Spec.TZIP16Interface as TZ (View(..))
-import Lorentz.Contracts.StablecoinPath (metadataRegistryContractPath, stablecoinPath)
+import Lorentz.Contracts.StablecoinPath
+  (contractMetadataRegistryContractPath, metadataRegistryContractPath, stablecoinPath)
 import Paths_stablecoin (version)
 
 ------------------------------------------------------------------
 -- Parameter
+
+-- | Data needed to add or remove an operator.
+data UpdateOperatorData
+  = AddOperator AddressOrAlias
+  | RemoveOperator AddressOrAlias
+  deriving stock Show
 
 data ConfigureMinterParam = ConfigureMinterParam
  { cmpMinter :: Address
@@ -316,6 +331,14 @@ deriving anyclass instance IsoValue StorageView
 minterLimit :: Int
 minterLimit = 12
 
+data ContractMetadataRegistryStorage' big_map = ContractMetadataRegistryStorage
+  { cmrsDummyField :: () -- Dummy field to match the ligo contract's storage.
+  , cmrsMetadata:: MetadataMap big_map
+  }
+  deriving stock Generic
+
+type ContractMetadataRegistryStorage = ContractMetadataRegistryStorage' BigMap
+
 data MetadataRegistryStorage' big_map = MetadataRegistryStorage
   { mrsDummyField :: ()
   , mrsTokenMetadata :: big_map FA2.TokenId FA2.TokenMetadata
@@ -325,11 +348,21 @@ data MetadataRegistryStorage' big_map = MetadataRegistryStorage
 type MetadataRegistryStorage = MetadataRegistryStorage' BigMap
 type MetadataRegistryStorageView = MetadataRegistryStorage' BigMapId
 
-deriving stock instance Show (MetadataRegistryStorage)
-deriving stock instance Show (MetadataRegistryStorageView)
+deriving stock instance Show MetadataRegistryStorage
+deriving stock instance Show MetadataRegistryStorageView
 
-deriving anyclass instance IsoValue (MetadataRegistryStorage)
-deriving anyclass instance IsoValue (MetadataRegistryStorageView)
+deriving anyclass instance IsoValue MetadataRegistryStorage
+deriving anyclass instance IsoValue MetadataRegistryStorageView
+deriving anyclass instance IsoValue ContractMetadataRegistryStorage
+
+-- | Construct the storage for the Contract Metadata contract.
+mkContractMetadataRegistryStorage
+  :: MetadataMap BigMap
+  -> ContractMetadataRegistryStorage
+mkContractMetadataRegistryStorage m = ContractMetadataRegistryStorage
+  { cmrsDummyField = ()
+  , cmrsMetadata = m
+  }
 
 -- | Construct the storage for the Metadata Registry contract.
 mkMetadataRegistryStorage :: MText -> MText -> Natural -> MetadataRegistryStorage
@@ -355,6 +388,14 @@ defaultMetadataRegistryStorage =
     [mt|TEST|]
     [mt|Test|]
     8
+
+-- | The default storage for the contract metadata storage
+-- with some hardcoded token metadata.
+-- Useful for testing.
+defaultContractMetadataStorage :: ContractMetadataRegistryStorage
+defaultContractMetadataStorage =
+  mkContractMetadataRegistryStorage
+    (BigMap $ Map.fromList [([mt|TEST|], "TEST"), ([mt|Test|], "Test")])
 
 -- This empty splice lets us workaround the GHC stage restriction, and refer to `Storage`
 -- in the TH splices below.
@@ -415,12 +456,28 @@ registryContract =
         |]
   )
 
+-- | Parse the contract-metadata contract.
+contractMetadataContract :: T.Contract (ToT ()) (ToT ContractMetadataRegistryStorage)
+contractMetadataContract =
+  $(case readContract @(ToT ()) @(ToT ContractMetadataRegistryStorage) contractMetadataRegistryContractPath $(embedStringFile contractMetadataRegistryContractPath) of
+      Left e -> fail (pretty e)
+      Right _ ->
+        [|
+          -- Note: it's ok to use `error` here, because we just proved that the contract
+          -- can be parsed+typechecked.
+          either (error . pretty) snd $
+            readContract
+              contractMetadataRegistryContractPath
+              $(embedStringFile contractMetadataRegistryContractPath)
+        |]
+  )
+
 ----------------------------------------------------------------------------
 -- TZIP-16 Metadata
 ----------------------------------------------------------------------------
 
-metadataMap :: MetadataMap BigMap
-metadataMap = BigMap $ Map.fromList
+metadataMap :: J.ToJSON metadata => MetadataUri metadata -> MetadataMap BigMap
+metadataMap mdata = BigMap $ Map.fromList $
   -- One might reasonable expect that the URI would be stored as packed Michelson strings,
   -- but the TZIP-16 spec is explicit about that not being the case.
   --
@@ -432,9 +489,28 @@ metadataMap = BigMap $ Map.fromList
   -- See: <https://gitlab.com/tzip/tzip/-/blob/eb1da57684599a266334a73babd7ba82dbbbce66/proposals/tzip-16/tzip-16.md#contract-storage>
   --
   -- So, instead, we encode it as UTF-8 byte sequences.
-  [ (mempty, encodeUtf8 @Text "tezos-storage:metadataJSON")
-  , ([mt|metadataJSON|], BSL.toStrict (J.encode metadataJSON))
-  ]
+  let
+    jfield = [mt|"metadataJSON"|]
+    tezosStorageScheme = "tezos-storage"
+  in case mdata of
+    CurrentContract md includeUri ->
+      if includeUri
+          then [ (mempty, encodeUtf8 @Text $ tezosStorageScheme <> ":" <> (toText jfield))
+               , (jfield, BSL.toStrict (J.encode md))
+               ]
+          else [ (jfield, BSL.toStrict (J.encode md)) ]
+    RemoteContract addr ->
+      [ (mempty, encodeUtf8 @Text $
+          tezosStorageScheme <> "://" <> (formatAddress addr) <> "/" <> (toText jfield))
+      ]
+    Raw uri ->
+      [ (mempty, encodeUtf8 uri)
+      ]
+
+data MetadataUri metadata
+  = CurrentContract metadata Bool -- ^ Metadata and a flag to denote if URI should be included
+  | RemoteContract Address
+  | Raw Text
 
 metadataJSON :: Metadata (ToT Storage)
 metadataJSON =
@@ -468,17 +544,16 @@ metadataJSON =
         , mkError [mt|CONTRACT_NOT_PAUSED|]        [mt|Operation cannot be performed while the contract is not paused|]
         , mkError [mt|NOT_TOKEN_OWNER|]            [mt|You cannot configure another user's operators|]
         , mkError [mt|CURRENT_ALLOWANCE_REQUIRED|] [mt|The given address is already a minter, you must specify its current minting allowance|]
-        -- TODO: Enable the following
-        -- , mkError [mt|ALLOWANCE_MISMATCH|]         [mt|The given current minting allowance does not match the minter's actual current minting allowance|]
-        -- , mkError [mt|ADDR_NOT_MINTER|]            [mt|This address is not a registered minter|]
-        -- , mkError [mt|ALLOWANCE_EXCEEDED|]         [mt|The amount of tokens to be minted exceeds your current minting allowance|]
-        -- , mkError [mt|BAD_TRANSFERLIST|]           [mt|The given address is a not a smart contract complying with the transferlist interface|]
-        -- , mkError [mt|MINTER_LIMIT_REACHED|]       [mt|Cannot add new minter because the number of minters is already at the limit|]
-        -- , mkError [mt|MISSIGNED|]                  [mt|This permit's signature is invalid|]
-        -- , mkError [mt|EXPIRED_PERMIT|]             [mt|A permit was found, but it has already expired|]
-        -- , mkError [mt|NOT_PERMIT_ISSUER|]          [mt|You're not the issuer of the given permit|]
-        -- , mkError [mt|DUP_PERMIT|]                 [mt|The given permit already exists|]
-        -- , mkError [mt|EXPIRY_TOO_BIG|]             [mt|The `set_expiry` entrypoint was called with an expiry value that is too big|]
+        , mkError [mt|ALLOWANCE_MISMATCH|]         [mt|The given current minting allowance does not match the minter's actual current minting allowance|]
+        , mkError [mt|ADDR_NOT_MINTER|]            [mt|This address is not a registered minter|]
+        , mkError [mt|ALLOWANCE_EXCEEDED|]         [mt|The amount of tokens to be minted exceeds your current minting allowance|]
+        , mkError [mt|BAD_TRANSFERLIST|]           [mt|The given address is a not a smart contract complying with the transferlist interface|]
+        , mkError [mt|MINTER_LIMIT_REACHED|]       [mt|Cannot add new minter because the number of minters is already at the limit|]
+        , mkError [mt|MISSIGNED|]                  [mt|This permit's signature is invalid|]
+        , mkError [mt|EXPIRED_PERMIT|]             [mt|A permit was found, but it has already expired|]
+        , mkError [mt|NOT_PERMIT_ISSUER|]          [mt|You're not the issuer of the given permit|]
+        , mkError [mt|DUP_PERMIT|]                 [mt|The given permit already exists|]
+        , mkError [mt|EXPIRY_TOO_BIG|]             [mt|The `set_expiry` entrypoint was called with an expiry value that is too big|]
         ]
     , mViews =
         [ getDefaultExpiryView
