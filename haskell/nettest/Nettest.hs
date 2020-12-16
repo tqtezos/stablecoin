@@ -67,11 +67,14 @@ scNettestScenario originateTransferlist transferlistType = uncapsNettest $ do
   comment "Originating metadata registry contract"
   mrAddress <- nettestOriginateMetadataRegistry
 
+  comment "Originating contract metadata contract"
+  cmrAddress <- nettestOriginateContractMetadataContract metadataJSON
+
   comment "Originating stablecoin contract"
   scAddress <-
     originateUntypedSimple
       "nettest.Stablecoin"
-      (untypeValue (toVal (mkInitialStorage originationParams mrAddress)))
+      (untypeValue (toVal (mkInitialStorage originationParams mrAddress (Just cmrAddress))))
       (T.convertContract stablecoinContract)
 
   comment "Originating transferlist contract"
@@ -365,7 +368,7 @@ scNettestScenario originateTransferlist transferlistType = uncapsNettest $ do
 
       -- We originate a new contract to make sure the minters list is empty
       scAddress' <- do
-        let str = mkInitialStorage (originationParams { opMinters = mempty }) mrAddress
+        let str = mkInitialStorage (originationParams { opMinters = mempty }) mrAddress (Just cmrAddress)
         originateUntypedSimple "nettest.Stablecoin_for_minter_test" (untypeValue $ toVal str) (T.convertContract stablecoinContract)
 
       let

@@ -21,6 +21,7 @@ import Stablecoin.Client.Cleveland
   mint, pause, removeMinter, revealKeyUnlessRevealed, setTransferlist, transferOwnership, unpause,
   updateOperators)
 import qualified Stablecoin.Client.Cleveland as SC
+import Stablecoin.Client.Parser (ContractMetadataOptions(..))
 
 -- | Check that all the `stablecoin-client` commands work.
 stablecoinClientScenario :: StablecoinScenario m ()
@@ -46,6 +47,7 @@ stablecoinClientScenario = do
     , isdTokenDecimals = 3
     , isdTokenMetadataRegistry = Just mdRegisty
     , isdDefaultExpiry = 1000
+    , isdContractMetadataStorage = OpRemoteContract
     }
   let contract = #contract .! AddressResolved contractAddr
 

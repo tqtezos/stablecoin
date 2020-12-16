@@ -508,7 +508,7 @@ stablecoinMichelsonModel
   -> ContractState
 stablecoinMichelsonModel mrAddress cc@(ContractCall {..}) cs = let
   contractEnv = dummyContractEnv { ceSender = ccSender, ceAmount = unsafeMkMutez 0 }
-  initSt = mkInitialStorage (ssToOriginationParams $ csStorage cs) mrAddress
+  initSt = mkInitialStorage (ssToOriginationParams $ csStorage cs) mrAddress Nothing
   iResult = callEntrypoint cc initSt contractEnv
   in case iResult of
     Right iRes -> let

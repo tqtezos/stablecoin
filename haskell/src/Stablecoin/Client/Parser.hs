@@ -4,23 +4,24 @@
 {-# LANGUAGE ApplicativeDo #-}
 
 module Stablecoin.Client.Parser
-  ( ClientArgs(..)
-  , GlobalOptions(..)
-  , ClientArgsRaw(..)
-  , DeployContractOptions(..)
-  , TransferOptions(..)
-  , GetBalanceOfOptions(..)
-  , UpdateOperatorsOptions(..)
-  , IsOperatorOptions(..)
-  , ConfigureMinterOptions(..)
-  , RemoveMinterOptions(..)
-  , MintOptions(..)
-  , BurnOptions(..)
-  , TransferOwnershipOptions(..)
+  ( BurnOptions(..)
   , ChangeMasterMinterOptions(..)
   , ChangePauserOptions(..)
-  , SetTransferlistOptions(..)
+  , ClientArgs(..)
+  , ClientArgsRaw(..)
+  , ConfigureMinterOptions(..)
+  , ContractMetadataOptions(..)
+  , DeployContractOptions(..)
+  , GetBalanceOfOptions(..)
   , GetMintingAllowanceOptions(..)
+  , GlobalOptions(..)
+  , IsOperatorOptions(..)
+  , MintOptions(..)
+  , RemoveMinterOptions(..)
+  , SetTransferlistOptions(..)
+  , TransferOptions(..)
+  , TransferOwnershipOptions(..)
+  , UpdateOperatorsOptions(..)
   , stablecoinClientInfo
   ) where
 
@@ -36,8 +37,7 @@ import Paths_stablecoin (version)
 import Util.CLI (mkCLOptionParser)
 import Util.Named ((:!), (.!))
 
-import Lorentz.Contracts.Stablecoin (Expiry)
-import Stablecoin.Client.Impl (UpdateOperatorData(..))
+import Lorentz.Contracts.Stablecoin (Expiry, UpdateOperatorData(..))
 
 data ClientArgs = ClientArgs
   { caMorleyClientConfig :: MorleyClientConfig
@@ -94,6 +94,7 @@ data DeployContractOptions = DeployContractOptions
   , dcoTokenMetadataRegistry :: Maybe AddressOrAlias
   , dcoReplaceAlias :: Bool
   , dcoDefaultExpiry :: Expiry
+  , dcoContractMetadata :: ContractMetadataOptions
   }
   deriving stock Show
 
@@ -168,6 +169,12 @@ data GetMintingAllowanceOptions = GetMintingAllowanceOptions
   }
   deriving stock Show
 
+data ContractMetadataOptions
+  = OpCurrentContract -- ^ Indicate that we should store metadata in the main contract itself.
+  | OpRemoteContract -- ^ Indicate we should originate a dedicated contract to store metadata.
+  | OpRaw Text -- ^ Indicate we should use the URI provided by the user as such.
+  deriving stock Show
+
 clientArgsParser :: Opt.Parser ClientArgs
 clientArgsParser =
   ClientArgs
@@ -220,7 +227,8 @@ clientArgsRawParser = Opt.subparser $
       mkCommandParser
         "deploy"
         (CmdDeployContract <$> deployContractOptions)
-        "Deploy Stablecoin contract to the chain. An alias 'stablecoin' will be created."
+        "Deploy Stablecoin contract to the chain. An alias 'stablecoin' and\
+        \'stablecoin-tzip16-metadata' will be created by default."
 
     deployContractOptions :: Opt.Parser DeployContractOptions
     deployContractOptions = do
@@ -278,7 +286,28 @@ clientArgsRawParser = Opt.subparser $
           Nothing
           (#name .! "default-expiry")
           (#help .! "Number of seconds it takes for a permit to expire")
+
+      -- Where to place contract metadata, while keeping it embedded in
+      -- contract being the default
+      dcoContractMetadata <- fromMaybe OpRemoteContract <$> contractMetadataOptParser
       pure $ DeployContractOptions {..}
+
+    contractMetadataOptParser :: Opt.Parser (Maybe ContractMetadataOptions)
+    contractMetadataOptParser =
+        optional (rawOptParser <|> inplaceOptParser)
+      where
+        rawOptParser :: Opt.Parser ContractMetadataOptions
+        rawOptParser = OpRaw <$> (mkCLOptionParser
+          Nothing
+          (#name .! "contract-metadata-off-chain")
+          (#help .! "Use the provided off-chain URI for contract metadata URI"))
+
+        inplaceOptParser :: Opt.Parser ContractMetadataOptions
+        inplaceOptParser =
+          Opt.flag' OpCurrentContract
+            (Opt.long "contract-metadata-in-place"
+            <> Opt.help
+              "Embed the metadata for the contract in the contract's storage itself.")
 
     transferCmd :: Opt.Mod Opt.CommandFields ClientArgsRaw
     transferCmd =

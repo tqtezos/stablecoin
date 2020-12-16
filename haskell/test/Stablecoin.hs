@@ -30,7 +30,7 @@ origination originationParams = do
   TAddress @SC.Parameter <$> tOriginate
     stablecoinContract
     "Stablecoin contract"
-    (toVal (mkInitialStorage originationParams mrAddress))
+    (toVal (mkInitialStorage originationParams mrAddress Nothing))
     (toMutez 0)
 
 spec_FA2 :: Spec

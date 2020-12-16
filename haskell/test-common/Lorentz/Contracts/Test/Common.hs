@@ -41,6 +41,7 @@ module Lorentz.Contracts.Test.Common
   , mkInitialStorage
   , originateMetadataRegistry
   , nettestOriginateMetadataRegistry
+  , nettestOriginateContractMetadataContract
 
   , lExpectAnyMichelsonFailed
   ) where
@@ -48,6 +49,7 @@ module Lorentz.Contracts.Test.Common
 import Data.List.NonEmpty ((!!))
 import qualified Data.Map as Map
 
+import Data.Aeson (ToJSON)
 import Lorentz (arg)
 import Lorentz.Test
 import Lorentz.Value
@@ -199,8 +201,8 @@ withOriginated
   -> IntegrationalScenario
 withOriginated fn op tests = fn op >>= tests
 
-mkInitialStorage :: OriginationParams -> Address -> Storage
-mkInitialStorage OriginationParams{..} metadataRegistryAddress =
+mkInitialStorage :: OriginationParams -> Address -> Maybe Address -> Storage
+mkInitialStorage OriginationParams{..} metadataRegistryAddress mContractMetadataContractAddress =
   Storage
     { sDefaultExpiry = opDefaultExpiry
     , sLedger = BigMap opBalances
@@ -217,7 +219,9 @@ mkInitialStorage OriginationParams{..} metadataRegistryAddress =
         }
     , sTokenMetadataRegistry = fromMaybe metadataRegistryAddress opTokenMetadataRegistry
     , sTransferlistContract = unTAddress <$> opTransferlistContract
-    , sMetadata = metadataMap
+    , sMetadata = case mContractMetadataContractAddress of
+        Just cAddr -> metadataMap @(()) (RemoteContract cAddr)
+        Nothing -> metadataMap (CurrentContract metadataJSON True)
     , sTotalSupply = sum $ Map.elems opBalances
     }
   where
@@ -245,3 +249,10 @@ nettestOriginateMetadataRegistry =
     "nettest.MetadataRegistry"
     (untypeValue (toVal defaultMetadataRegistryStorage))
     (convertContract registryContract)
+
+nettestOriginateContractMetadataContract :: (ToJSON metadata) => MonadNettest caps base m => metadata -> m Address
+nettestOriginateContractMetadataContract mdata =
+  originateUntypedSimple
+    "nettest.ContractMetadata"
+    (untypeValue (toVal $ mkContractMetadataRegistryStorage $  metadataMap (CurrentContract mdata False)))
+    (convertContract contractMetadataContract)

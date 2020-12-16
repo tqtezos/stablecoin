@@ -65,6 +65,13 @@ let
     buildPhase = "make metadata.tz";
     installPhase = "cp metadata.tz $out";
   };
+  tezos-tzip16-metadata-contract = pkgs.stdenv.mkDerivation {
+    name = "stablecoin.tz";
+    src = ./ligo;
+    nativeBuildInputs = [ ligo ];
+    buildPhase = "make tzip16-metadata.tz";
+    installPhase = "cp tzip16-metadata.tz $out";
+  };
   tezos-client = (import "${sources.tezos-packaging}/nix/build/pkgs.nix" {}).ocamlPackages.tezos-client;
 
   # nixpkgs has weeder 2, but we use weeder 1
@@ -111,5 +118,5 @@ in
   test = project.stablecoin.components.tests.stablecoin-test;
   nettest = project.stablecoin.components.tests.stablecoin-nettest;
   stablecoin-client = project.stablecoin.components.exes.stablecoin-client;
-  inherit tezos-contract tezos-contract-fa1-2 tezos-metadata-contract tezos-client pkgs weeder-script morley;
+  inherit tezos-contract tezos-contract-fa1-2 tezos-metadata-contract tezos-tzip16-metadata-contract tezos-client pkgs weeder-script morley;
 }
