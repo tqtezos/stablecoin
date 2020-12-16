@@ -669,19 +669,21 @@ applyBurn ccSender cs burnparams = do
     then if totalBurn > ssTotalSupply cs
       then error ("Unexpected burn:" <> show totalBurn)
       else let
-        burn value storage =
-          storage { ssLedger = Map.alter (\case
-            Nothing -> if value > 0
-              then error ("Unexpected burn:" <> show value)
-              else Nothing
-                  -- As per FA2, burn should follow the tranfer logic, which allows zero transfer
-                  -- from non-existant accounts. So here we should do nothing, instead of throwing an
-                  -- error.
-            Just x -> let b = x - value
-              in if b > 0 then Just b else Nothing) ccSender $ ssLedger cs }
-        newStorageAfterBurn = foldr burn cs burnparams
+        newStorageAfterBurn = foldr (applySingleBurn ccSender) cs burnparams
         in Right $ newStorageAfterBurn { ssTotalSupply = ssTotalSupply cs - totalBurn }
     else Left FA2_INSUFFICIENT_BALANCE
+
+applySingleBurn :: Address -> Natural -> SimpleStorage -> SimpleStorage
+applySingleBurn src value storage =
+  storage { ssLedger = Map.alter (\case
+    Nothing -> if value > 0
+      then error ("Unexpected burn:" <> show value)
+      else Nothing
+          -- As per FA2, burn should follow the tranfer logic, which allows zero transfer
+          -- from non-existant accounts. So here we should do nothing, instead of throwing an
+          -- error.
+    Just x -> let b = x - value
+      in if b > 0 then Just b else Nothing) src $ ssLedger storage }
 
 applyTransferOwnership :: Address -> SimpleStorage -> TransferOwnershipParam -> Either ModelError SimpleStorage
 applyTransferOwnership sender cs newOwner = do
