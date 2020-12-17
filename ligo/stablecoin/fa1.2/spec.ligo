@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 (*
- * Stablecoin types that are specified in
- * https://github.com/tqtezos/stablecoin/blob/317b9346b287a4f2c2606c4929237d87008fdad4/docs/specification.md
+ * Stablecoin types
  *)
 
 (* ------------------------------------------------------------- *)

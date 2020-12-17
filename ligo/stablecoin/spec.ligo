@@ -3,7 +3,7 @@
 
 (*
  * Stablecoin types that are specified in
- * https://github.com/tqtezos/stablecoin/blob/317b9346b287a4f2c2606c4929237d87008fdad4/docs/specification.md
+ * https://github.com/tqtezos/stablecoin/blob/master/docs/specification.md
  *)
 
 (* ------------------------------------------------------------- *)
@@ -215,12 +215,19 @@ type user_permits is
 
 type permits is big_map (address, user_permits)
 
-type permit_param is (key * (signature * blake2b_hash))
+type permit_signature is michelson_pair(signature, "", blake2b_hash, "permit_hash")
+type permit_param is (key * permit_signature)
 
 type revoke_param is blake2b_hash * address
 type revoke_params is list(revoke_param)
 
-type set_expiry_param is (address * (seconds * option(blake2b_hash)))
+type set_expiry_param is michelson_pair_right_comb(
+  record
+    issuer: address;
+    expiry: seconds;
+    permit_hash: option(blake2b_hash);
+  end
+)
 
 (*
  * A counter that's incremented everytime a permit is created.
