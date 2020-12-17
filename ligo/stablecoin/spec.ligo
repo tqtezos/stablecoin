@@ -21,26 +21,12 @@ const default_token_id : token_id = 0n;
  * default one, restricting all operations to be one-token
  * (that are allowed for `default_token_id`).
  *)
-function validate_token_type
+[@inline] function validate_token_type
   ( const token_id : token_id
   ) : unit is
     if token_id =/= default_token_id
     then failwith ("FA2_TOKEN_UNDEFINED")
     else unit
-
-(*
- * Same as above but for a list of token ids
- *)
-function validate_token_types
-  ( const token_ids : list (token_id)
-  ) : unit is List.fold
-    ( function
-        ( const u        : unit
-        ; const token_id : token_id
-        ) : unit is validate_token_type (token_id)
-    , token_ids
-    , unit
-    )
 
 type transfer_destination_ is record
   to_      : address

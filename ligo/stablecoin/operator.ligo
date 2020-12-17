@@ -12,7 +12,7 @@
  * Validates the operators for the given transfer batch
  * and the operator storage.
  *)
-function is_approved_operator
+[@inline] function is_approved_operator
   ( const transfer_param         : transfer_param
   ; const operators              : operators
   ) : bool is block
