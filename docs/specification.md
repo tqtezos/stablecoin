@@ -442,7 +442,7 @@ Parameter (in Michelson)
 ```
 
 - Adds `minter` to the minter list to allow him to mint tokens (if `minter` is not in the list already).
-  Currently we allow upto 12 minters.
+  Currently we allow up to 12 minters.
 
 - Sets the specified minting allowance (`new_minting_allowance`) for this minter.
 

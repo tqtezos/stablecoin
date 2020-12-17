@@ -25,8 +25,8 @@ The project also includes an alternative FA1.2-compatible smart contract, availa
 ## How to get
 
 You can download Michelson source code of all provided smart contracts in [release assets](https://github.com/tqtezos/stablecoin/releases/latest).
-We also provide static `stablecoin-client` executable that should work on any x86_64 Linux system.
-If you are using a different operating OS or just want to build from sources, see [instructions below](#build-instructions).
+We also provide a static `stablecoin-client` executable that should work on any x86_64 Linux system.
+If you are using a different OS or just want to build from sources, see [instructions below](#build-instructions).
 
 ## Usage
 

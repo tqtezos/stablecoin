@@ -31,7 +31,7 @@ function authorize_contract_owner
   sender_check(store.roles.owner, store, full_param, "NOT_CONTRACT_OWNER")
 
 (*
- * Ensures that sender is current pending contract owner.
+ * Ensures that the sender is the current pending contract owner.
  *)
 function authorize_pending_owner
   ( const store : storage
@@ -45,7 +45,7 @@ function authorize_pending_owner
     end
 
 (*
- * Authorizes contract pauser and fails otherwise.
+ * Authorizes the contract pauser and fails otherwise.
  *)
 function authorize_pauser
   ( const store : storage
@@ -54,7 +54,7 @@ function authorize_pauser
   sender_check(store.roles.pauser, store, full_param, "NOT_PAUSER")
 
 (*
- * Authorizes master_minter and fails otherwise.
+ * Authorizes the master_minter and fails otherwise.
  *)
 function authorize_master_minter
   ( const store : storage
@@ -63,7 +63,7 @@ function authorize_master_minter
   sender_check(store.roles.master_minter, store, full_param, "NOT_MASTER_MINTER")
 
 (*
- * Authorizes minter and fails otherwise.
+ * Authorizes the minter and fails otherwise.
  *)
 function authorize_minter
   ( const store : storage
@@ -73,7 +73,7 @@ function authorize_minter
   end
 
 (*
- * Helper that fails if contract is paused.
+ * Helper that fails if the contract is paused.
  *)
 function ensure_not_paused
   ( const store : storage
@@ -84,7 +84,7 @@ function ensure_not_paused
     )
 
 (*
- * Helper that fails if contract is not paused.
+ * Helper that fails if the contract is not paused.
  *)
 function ensure_is_paused
   ( const store : storage
@@ -96,7 +96,7 @@ function ensure_is_paused
 
 (*
  * Increases the balance of an address associated with it
- * and present in ledger. If not, creates a new address with
+ * if present in the ledger. If not, creates a new address entry with
  * that balance given.
  *)
 function credit_to

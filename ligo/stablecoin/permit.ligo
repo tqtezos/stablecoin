@@ -195,7 +195,7 @@ function set_user_default_expiry
 } with Big_map.update(user, Some(updated_user_permits), permits)
 
 (*
- * Checks if permit has expired, return after setting new expire if not
+ * Checks if the permit has expired, sets a new expiry otherwise.
  *)
 function set_permit_expiry_with_check
   ( const permit_info : permit_info

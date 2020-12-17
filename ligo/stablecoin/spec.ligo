@@ -17,9 +17,9 @@ type token_id is nat
 const default_token_id : token_id = 0n;
 
 (*
- * This function fails if provided token_id is not equal to
+ * This function fails if the provided `token_id` is not equal to the
  * default one, restricting all operations to be one-token
- * (that are allowed for `default_token_id`)
+ * (that are allowed for `default_token_id`).
  *)
 function validate_token_type
   ( const token_id : token_id

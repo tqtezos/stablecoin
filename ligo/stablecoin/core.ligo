@@ -19,7 +19,7 @@ is case action of
 end
 
 (*
- * Root entrypoint of stablecoin smart-contract
+ * Root entrypoint of stablecoin smart-contract.
  *)
 function stablecoin_main
   ( const full_param : closed_parameter
