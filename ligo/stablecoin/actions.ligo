@@ -208,18 +208,6 @@ function call_assert_receivers
       end
   } with operations
 
-
-(*
- * Returns `True` if all booleans in the list are `True`,
- * or `False` otherwise.
- *)
-function all(const xs: list(bool)): bool is
-  List.fold
-    ( function(const acc: bool; const x: bool) is acc and x
-    , xs
-    , True
-    )
-
 (*
  * Assert that all addresses in a list are equal,
  * fails with `err_msg` otherwise.
@@ -265,12 +253,12 @@ function transfer_sender_check
   ) : storage is block
 { // check if the sender is either the owner or an approved operator for all transfers
   const is_approved_operator_for_all : bool =
-    all(
-      List.map(
-        function(const p : transfer_param) : bool is is_approved_operator(p, store.operators),
-        params
+    List.fold
+      ( function(const acc: bool; const p : transfer_param) is
+          acc and is_approved_operator(p, store.operators)
+      , params
+      , True
       )
-    )
 } with
     if is_approved_operator_for_all then
       store
