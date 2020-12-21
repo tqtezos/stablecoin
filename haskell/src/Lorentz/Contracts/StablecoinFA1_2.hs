@@ -8,6 +8,9 @@ module Lorentz.Contracts.StablecoinFA1_2
   , Parameter(..)
   , stablecoinFA1_2Contract
 
+  , GetCounterParam
+  , GetDefaultExpiryParam
+
   -- * TZIP-16
   , metadataJSON
   ) where
@@ -66,8 +69,8 @@ data Parameter
   | Change_master_minter S.ChangeMasterMinterParam
   | Change_pauser S.ChangePauserParam
   | Configure_minter S.ConfigureMinterParam
-  | Get_counter S.GetCounterParam
-  | Get_default_expiry S.GetDefaultExpiryParam
+  | Get_counter GetCounterParam
+  | Get_default_expiry GetDefaultExpiryParam
   | Mint S.MintParams
   | Pause
   | Permit S.PermitParam
@@ -82,6 +85,10 @@ data Parameter
 
 instance ParameterHasEntrypoints Parameter where
   type ParameterEntrypointsDerivation Parameter = EpdRecursive
+
+type GetCounterParam = View () Natural
+
+type GetDefaultExpiryParam = View () S.Expiry
 
 -- | Parse the metadata registry contract.
 stablecoinFA1_2Contract :: U.Contract

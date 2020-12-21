@@ -9,13 +9,8 @@ module Lorentz.Contracts.Spec.FA2Interface
   ( BalanceRequestItem(..)
   , BalanceRequestParams
   , BalanceResponseItem(..)
-  , CustomPermissionPolicy(..)
   , FA2OwnerHook (..)
-  , IsOperatorParam
-  , IsOperatorResponse(..)
   , OperatorParam(..)
-  , OperatorTransferPolicy (..)
-  , OwnerTransferMode (..)
   , Parameter (..)
   , FA2ParameterC
   , TokenId
@@ -51,6 +46,9 @@ data TransferDestination = TransferDestination
  deriving stock (Generic, Show)
  deriving anyclass (IsoValue, HasAnnotation)
 
+instance Buildable TransferDestination where
+  build = genericF
+
 data TransferParam = TransferParam
  { tpFrom :: Address
  , tpTxs :: [TransferDestination]
@@ -84,10 +82,10 @@ data BalanceResponseItem = BalanceResponseItem
   deriving stock (Show, Eq, Generic)
   deriving anyclass (IsoValue, HasAnnotation)
 
-type BalanceRequestParams = View ("requests" :! [BalanceRequestItem]) [BalanceResponseItem]
-
 instance Buildable BalanceResponseItem where
   build = genericF
+
+type BalanceRequestParams = View ("requests" :! [BalanceRequestItem]) [BalanceResponseItem]
 
 -- Token MetaData query
 data TokenMetadata = TokenMetadata
@@ -117,33 +115,6 @@ $(customGeneric "TokenMetadata" $ withDepths
 
 type TokenMetadataRegistryParam = ContractRef Address
 
-data OperatorTransferPolicy
-  = OwnerTransfer ("owner_transfer" :! ())
-  | NoTransfer ("no_transfer" :! ())
-  | OwnerOrOperatorTransfer ("owner_or_operator_transfer" :! ())
-  deriving stock (Eq, Generic, Show)
-  deriving anyclass (IsoValue, HasAnnotation)
-
-instance TypeHasDoc OperatorTransferPolicy where
-  typeDocMdDescription = "Describes if operator can make transfer on behalf of token owner"
-
-data OwnerTransferMode
-  = OwnerNoHook ("owner_no_op" :! ())
-  | OptionalOwnerHook ("optional_owner_hook" :! ())
-  | RequiredOwnerHook ("required_owner_hook" :! ())
-  deriving stock (Generic, Show)
-  deriving anyclass (IsoValue, HasAnnotation)
-
-instance TypeHasDoc OwnerTransferMode where
-  typeDocMdDescription = "Describes if owener hooks are required in sender/receiver addresses"
-
-data CustomPermissionPolicy = CustomPermissionPolicy
-  { cppTag :: MText
-  , cppConfigApi :: Maybe Address
-  }
-  deriving stock (Generic, Show, Eq)
-  deriving anyclass (IsoValue, HasAnnotation)
-
 data OperatorParam = OperatorParam
   { opOwner :: Address
   , opOperator :: Address
@@ -151,6 +122,9 @@ data OperatorParam = OperatorParam
   }
   deriving stock (Generic, Show, Eq)
   deriving anyclass (IsoValue, HasAnnotation)
+
+instance Buildable OperatorParam where
+  build = genericF
 
 data UpdateOperator
   = Add_operator OperatorParam
@@ -162,22 +136,6 @@ instance Buildable UpdateOperator where
   build = genericF
 
 type UpdateOperatorsParam = [UpdateOperator]
-
--- Is operator query
-data IsOperatorResponse = IsOperatorResponse
-  { iorOperator :: OperatorParam
-  , iorIsOperator :: Bool
-  }
-  deriving stock (Generic, Show, Eq)
-  deriving anyclass (IsoValue, HasAnnotation)
-
-instance Buildable OperatorParam where
-  build = genericF
-
-instance Buildable IsOperatorResponse where
-  build = genericF
-
-type IsOperatorParam = View ("operator" :! OperatorParam) IsOperatorResponse
 
 -- | Parameter of an FA2 contract
 data Parameter
@@ -228,12 +186,18 @@ data TransferDestinationDescriptor = TransferDestinationDescriptor
  deriving stock (Generic, Show, Eq)
  deriving anyclass (IsoValue, HasAnnotation)
 
+instance Buildable TransferDestinationDescriptor where
+  build = genericF
+
 data TransferDescriptor = TransferDescriptor
   { tdFrom :: Maybe Address
   , tdTxs :: [TransferDestinationDescriptor]
   }
   deriving stock (Show, Eq, Generic)
   deriving anyclass (IsoValue, HasAnnotation)
+
+instance Buildable TransferDescriptor where
+  build = genericF
 
 data TransferDescriptorParam = TransferDescriptorParam
   { tdpFa2 :: Address
@@ -243,23 +207,14 @@ data TransferDescriptorParam = TransferDescriptorParam
  deriving stock (Generic, Show, Eq)
  deriving anyclass (IsoValue, HasAnnotation)
 
+instance Buildable TransferDescriptorParam where
+  build = genericF
+
 data FA2OwnerHook
   = Tokens_sent TransferDescriptorParam
   | Tokens_received TransferDescriptorParam
   deriving stock (Generic, Eq, Show)
   deriving anyclass (IsoValue, HasAnnotation)
-
-instance Buildable TransferDescriptorParam where
-  build = genericF
-
-instance Buildable TransferDestinationDescriptor where
-  build = genericF
-
-instance Buildable TransferDescriptor where
-  build = genericF
-
-instance Buildable TransferDestination where
-  build = genericF
 
 instance Buildable FA2OwnerHook where
   build = genericF

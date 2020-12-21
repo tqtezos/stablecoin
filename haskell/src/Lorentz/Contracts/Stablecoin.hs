@@ -6,7 +6,6 @@ module Lorentz.Contracts.Stablecoin
   , ContractMetadataRegistryStorage
   , ChangeMasterMinterParam
   , ChangePauserParam
-  , GetCounterParam
   , SetTransferlistParam
   , RemoveMinterParam
   , MetadataRegistryStorage'(..)
@@ -36,7 +35,6 @@ module Lorentz.Contracts.Stablecoin
   , mkPermitHash
   , PermitParam(..)
   , SetExpiryParam(..)
-  , GetDefaultExpiryParam
   , minterLimit
 
   -- * TZIP-16
@@ -148,10 +146,6 @@ deriving anyclass instance IsoValue SetExpiryParam
 deriving anyclass instance HasAnnotation SetExpiryParam
 instance Buildable SetExpiryParam where
   build = genericF
-
-type GetDefaultExpiryParam = View () Expiry
-
-type GetCounterParam = View () Natural
 
 -- | Parameter of Stablecoin contract
 data Parameter
