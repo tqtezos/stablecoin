@@ -16,10 +16,10 @@
 
 (*
  * Helper function used to reduce
- *  `if (condition) then failwith (message) else skip;`
+ *  `if (condition) then failwith (message) else unit;`
  * appearances.
  *)
-function fail_on
+[@inline] function fail_on
   ( const condition : bool
   ; const message   : string
   ) : unit is if condition then failwith (message) else unit
@@ -27,7 +27,7 @@ function fail_on
 (*
  * Authorizes current contract owner and fails otherwise.
  *)
-function authorize_contract_owner
+[@inline] function authorize_contract_owner
   ( const store : storage
   ; const full_param : closed_parameter
   ) : storage is
@@ -50,7 +50,7 @@ function authorize_pending_owner
 (*
  * Authorizes contract pauser and fails otherwise.
  *)
-function authorize_pauser
+[@inline] function authorize_pauser
   ( const store : storage
   ; const full_param : closed_parameter
   ) : storage is
@@ -59,7 +59,7 @@ function authorize_pauser
 (*
  * Authorizes master_minter and fails otherwise.
  *)
-function authorize_master_minter
+[@inline] function authorize_master_minter
   ( const store : storage
   ; const full_param : closed_parameter
   ) : storage is
@@ -68,7 +68,7 @@ function authorize_master_minter
 (*
  * Authorizes minter and fails otherwise.
  *)
-function authorize_minter
+[@inline] function authorize_minter
   ( const store : storage
   ) : unit is case store.minting_allowances[Tezos.sender] of
     Some (u) -> unit
@@ -76,9 +76,9 @@ function authorize_minter
   end
 
 (*
- * Helper that fails if contract is paused.
+ * Helper that fails if the contract is paused.
  *)
-function ensure_not_paused
+[@inline] function ensure_not_paused
   ( const store : storage
   ) : unit is
   fail_on
@@ -87,7 +87,7 @@ function ensure_not_paused
     )
 
 (*
- * Helper that fails if contract is not paused.
+ * Helper that fails if the contract is not paused.
  *)
 function ensure_is_paused
   ( const store : storage
@@ -99,7 +99,7 @@ function ensure_is_paused
 
 (*
  * Increases the balance of an address associated with it
- * and present in ledger. If not, creates a new address with
+ * if present in the ledger. If not, creates a new address entry with
  * that balance given.
  *)
 function credit_to
@@ -123,8 +123,8 @@ end
 
 (*
  * Decreases the balance of an address that is present in
- * ledger. Fails if it's not or given address has not enough
- * tokens to be burn from.
+ * ledger. Fails if it's not or the given address has not enough
+ * tokens to burn from.
  *)
 function debit_from
   ( const parameter : debit_param_
@@ -208,18 +208,6 @@ function call_assert_receivers
       end
   } with operations
 
-
-(*
- * Returns `True` if all booleans in the list are `True`,
- * or `False` otherwise.
- *)
-function all(const xs: list(bool)): bool is
-  List.fold
-    ( function(const acc: bool; const x: bool) is acc and x
-    , xs
-    , True
-    )
-
 (*
  * Assert that all addresses in a list are equal,
  * fails with `err_msg` otherwise.
@@ -237,9 +225,7 @@ function all_equal
       block {
         List.iter
           ( function (const addr : address): unit is
-              if addr =/= first
-                then failwith (err_msg)
-                else Unit
+              fail_on (addr =/= first, err_msg)
           , rest
           )
       } with Some(first)
@@ -252,7 +238,7 @@ function all_equal
  *)
 
 (*
- * Verify the sender of an `transfer` action.
+ * Verify the sender of a `transfer` action.
  *
  * The check is successful if either of these is true:
  * 1) The sender is either the owner or an approved operator for each and every
@@ -267,12 +253,12 @@ function transfer_sender_check
   ) : storage is block
 { // check if the sender is either the owner or an approved operator for all transfers
   const is_approved_operator_for_all : bool =
-    all(
-      List.map(
-        function(const p : transfer_param) : bool is is_approved_operator(p, store.operators),
-        params
+    List.fold
+      ( function(const acc: bool; const p : transfer_param) is
+          acc and is_approved_operator(p, store.operators)
+      , params
+      , True
       )
-    )
 } with
     if is_approved_operator_for_all then
       store
@@ -296,9 +282,9 @@ function transfer_sender_check
 
 (*
  * Initiates transfers from a given list of parameters. Fails
- * if one of the transfer does. Otherwise this function returns
+ * if one of the transfer does. Otherwise this function returns the
  * updated storage and a list of transactions that call transfer
- * hooks if such provided for associated addresses.
+ * hooks if such are provided for associated addresses.
  *)
 function transfer
   ( const params : transfer_params
@@ -348,9 +334,9 @@ function transfer
 
 (*
  * Retrieves a list of `balance_of` items that is specified for multiple
- * token types in FA2 spec and leaves the storage untouched. In reality
+ * token types in the FA2 spec and leaves the storage untouched. In reality
  * we restrict all of them to be of `default_token_id`. Fails if one of
- * the parameters address to non-default token id.
+ * the parameters address to a non-default token id.
  *)
 function balance_of
   ( const parameter : balance_of_params
@@ -373,9 +359,9 @@ function balance_of
 } with (list [transfer_operation], store)
 
 (*
- * Returns address of the contract that holds tokens metadata.
+ * Returns the address of the contract that holds tokens metadata.
  * Since our contract holds its own metadata, then it always
- * returns `SELF` address.
+ * returns the `SELF` address.
  *)
 function token_metadata_registry
   ( const parameter : token_metadata_registry_params
@@ -391,7 +377,7 @@ function token_metadata_registry
   )
 
 (*
- * Add or remove operators for provided owners.
+ * Add or remove operators for the provided owners.
  *)
 function update_operators_action
   ( const params : update_operator_params
@@ -418,7 +404,7 @@ function update_operators_action
   )
 
 (*
- * Pauses whole contract in order to prevent all transferring, burning,
+ * Pauses the whole contract in order to prevent all transferring, burning,
  * minting and allowance operations. All other operations remain
  * unaffected. Fails if the contract is already paused.
  *)
@@ -428,7 +414,7 @@ function pause
   ; const full_param : closed_parameter
   ) : entrypoint is block
 { ensure_not_paused (store)
-; const store: storage = sender_check(store.roles.pauser, store, full_param, "NOT_PAUSER")
+; const store: storage = authorize_pauser(store, full_param)
 } with
   ( (nil : list (operation))
   , store with record [paused = True]
@@ -445,16 +431,16 @@ function unpause
   ; const full_param : closed_parameter
   ) : entrypoint is block
 { ensure_is_paused (store)
-; const store: storage = sender_check(store.roles.pauser, store, full_param, "NOT_PAUSER")
+; const store: storage = authorize_pauser(store, full_param)
 } with
   ( (nil : list (operation))
   , store with record [paused = False]
   )
 
 (*
- * Adds minter to minting allowances map setting its allowance
- * to 0. Resets the allowance if associated address is already
- * present. Fails if sender is not master minter.
+ * Adds the minter to the minting allowances map, setting its allowance
+ * to 0. Resets the allowance if the associated address is already
+ * present. Fails if the sender is not master minter.
  *)
 function configure_minter
   ( const parameter : configure_minter_params
@@ -493,8 +479,8 @@ function configure_minter
   )
 
 (*
- * Removes minter from minting allowances map. Fails if minter
- * is not present. Fails if sender is not master minter.
+ * Removes the minter from the minting allowances map. Fails if the minter
+ * is not present. Fails if the sender is not the master minter.
  *)
 function remove_minter
   ( const parameter : remove_minter_params
@@ -517,9 +503,9 @@ function remove_minter
   )
 
 (*
- * Adds the provided value to the total_supply field and return storage.
+ * Adds the provided value to the total_supply field and returns the storage.
  * The input is an 'int' so that this can be used to increment and decrement
- * `total_supply` field.
+ * the `total_supply` field.
  *)
 function inc_total_supply
   ( const count : int
@@ -533,7 +519,7 @@ function inc_total_supply
   } with store with record [ total_supply = new_total_supply_nat ]
 
 (*
- * Produces tokens to a wallet associated with the given address
+ * Produces tokens to the wallet associated with the given address.
  *)
 function mint
   ( const parameters : mint_params
@@ -595,7 +581,7 @@ function mint
   )
 
 (*
- * Decreases balance of tokens by the given amount
+ * Decreases the balance of tokens by the given amount.
  *)
 function burn
   ( const parameters : burn_params
@@ -628,7 +614,7 @@ function burn
   )
 
 (*
- * Sets contract owner to a new address
+ * Sets the contract owner to a new address.
  *)
 function transfer_ownership
   ( const parameter : transfer_ownership_param
@@ -642,8 +628,8 @@ function transfer_ownership
   )
 
 (*
- * When pending contract owner calls this entrypoint, the address
- * receives owner privileges for contract
+ * When the pending contract owner calls this entrypoint, the address
+ * receives owner privileges for the contract.
  *)
 function accept_ownership
   ( const parameter : accept_ownership_param
@@ -661,7 +647,7 @@ function accept_ownership
 
 (*
  * Moves master minter priveleges to a new address.
- * Fails if sender is not contract owner.
+ * Fails if the sender is not the contract owner.
  *)
 function change_master_minter
   ( const parameter : change_master_minter_param
@@ -676,7 +662,7 @@ function change_master_minter
 
 (*
  * Moves pauser priveleges to a new address.
- * Fails if sender is not contract owner.
+ * Fails if the sender is not the contract owner.
  *)
 function change_pauser
   ( const parameter : change_pauser_param
@@ -690,7 +676,7 @@ function change_pauser
   )
 
 (*
- * Sets transferlist contract address
+ * Sets transferlist contract address.
  *)
 function set_transferlist
   ( const parameter : set_transferlist_param

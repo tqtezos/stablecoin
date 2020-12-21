@@ -3,7 +3,7 @@
 
 .PHONY: all build-ligo build-haskell optimize-ligo test test-dumb-term test-hide-successes nettest clean
 
-# Morley executable, it is used for optimizing Michelsion version
+# Morley executable, it is used for optimizing Michelson version
 # of stablecoin.tz
 MORLEY ?= morley
 

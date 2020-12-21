@@ -51,7 +51,7 @@ CENTRE Fiat Token specification. These roles apply to the whole contract
 (hence "global"):
 
 * **contract owner**
-  - Can assign and re-assign any role of the token.
+  - Can assign and re-assign any role of the token, except `minter`s.
   - There always must be exactly one contract owner.
 
 * **master minter**
@@ -67,7 +67,7 @@ CENTRE Fiat Token specification. These roles apply to the whole contract
   - There can be any number of minters.
 
 * **pauser**
-  - Can pause transferring, burning and minting operations.
+  - Can pause transferring, burning, minting and allowance operations.
     During the pause, these operations cannot be performed
     and fail with an error if the user decides to try them.
   - There always must be exactly one pauser.
@@ -435,14 +435,14 @@ configure_minter =
 
 Parameter (in Michelson)
 ```
-(pair
+(pair %configure_minter
   (address %minter)
-  (pair ((option nat) %current_minting_allowance) (nat %new_minting_allowance))
+  (pair (option %current_minting_allowance nat) (nat %new_minting_allowance))
 )
 ```
 
 - Adds `minter` to the minter list to allow him to mint tokens (if `minter` is not in the list already).
-  Currently we allow upto 12 minters.
+  Currently we allow up to 12 minters.
 
 - Sets the specified minting allowance (`new_minting_allowance`) for this minter.
 
@@ -483,7 +483,7 @@ Types
 ```
 mint_param
   ( address :to_
-  , nat     :value
+  , nat     :amount
   )
 
 mint = list mint_param
@@ -494,7 +494,7 @@ Parameter (in Michelson):
 (list
   (pair
     (address %to_)
-    (nat %value)
+    (nat %amount)
   )
 )
 ```
@@ -608,13 +608,24 @@ Parameter (in Michelson): `option address`.
 
 ### **permit**
 
+Types
+```
+permit_signature
+  ( signature
+  , blake2b_hash :permit_hash
+  )
+
+permit = (key, permit_signature)
+```
+
 Parameter (in Michelson):
 ```
-pair %permit
+(pair %permit
   key
   (pair
     signature
     (bytes %permit_hash))
+)
 ```
 
 - Creates a permit, allowing any user to call this contract with a pre-signed parameter on the signer's behalf.
@@ -638,14 +649,23 @@ pair %permit
 
 ### **set_expiry**
 
-Parameter (in Michelson):
+Types
+```
+set_expiry
+  ( address :issuer
+  , seconds :expiry
+  , (option blake2b_hash) :permit_hash
+  )
 ```
 
-pair
+Parameter (in Michelson):
+```
+(pair %set_expiry
   (address %issuer)
   (pair
     (nat %expiry)
     (option %permit_hash bytes))
+)
 ```
 
 - Only the issuer of permit can set expiry.

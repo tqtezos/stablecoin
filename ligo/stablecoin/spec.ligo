@@ -3,7 +3,7 @@
 
 (*
  * Stablecoin types that are specified in
- * https://github.com/tqtezos/stablecoin/blob/317b9346b287a4f2c2606c4929237d87008fdad4/docs/specification.md
+ * https://github.com/tqtezos/stablecoin/blob/master/docs/specification.md
  *)
 
 (* ------------------------------------------------------------- *)
@@ -17,30 +17,16 @@ type token_id is nat
 const default_token_id : token_id = 0n;
 
 (*
- * This function fails if provided token_id is not equal to
+ * This function fails if the provided `token_id` is not equal to the
  * default one, restricting all operations to be one-token
- * (that are allowed for `default_token_id`)
+ * (that are allowed for `default_token_id`).
  *)
-function validate_token_type
+[@inline] function validate_token_type
   ( const token_id : token_id
   ) : unit is
     if token_id =/= default_token_id
     then failwith ("FA2_TOKEN_UNDEFINED")
     else unit
-
-(*
- * Same as above but for a list of token ids
- *)
-function validate_token_types
-  ( const token_ids : list (token_id)
-  ) : unit is List.fold
-    ( function
-        ( const u        : unit
-        ; const token_id : token_id
-        ) : unit is validate_token_type (token_id)
-    , token_ids
-    , unit
-    )
 
 type transfer_destination_ is record
   to_      : address
@@ -215,12 +201,19 @@ type user_permits is
 
 type permits is big_map (address, user_permits)
 
-type permit_param is (key * (signature * blake2b_hash))
+type permit_signature is michelson_pair(signature, "", blake2b_hash, "permit_hash")
+type permit_param is (key * permit_signature)
 
 type revoke_param is blake2b_hash * address
 type revoke_params is list(revoke_param)
 
-type set_expiry_param is (address * (seconds * option(blake2b_hash)))
+type set_expiry_param is michelson_pair_right_comb(
+  record
+    issuer: address;
+    expiry: seconds;
+    permit_hash: option(blake2b_hash);
+  end
+)
 
 (*
  * A counter that's incremented everytime a permit is created.

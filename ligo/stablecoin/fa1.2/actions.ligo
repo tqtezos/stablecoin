@@ -13,10 +13,10 @@
 
 (*
  * Helper function used to reduce
- *  `if (condition) then failwith (message) else skip;`
+ *  `if (condition) then failwith (message) else unit;`
  * appearances.
  *)
-function fail_on
+[@inline] function fail_on
   ( const condition : bool
   ; const message   : string
   ) : unit is if condition then failwith (message) else unit
@@ -24,14 +24,14 @@ function fail_on
 (*
  * Authorizes current contract owner and fails otherwise.
  *)
-function authorize_contract_owner
+[@inline] function authorize_contract_owner
   ( const store : storage
   ; const full_param : closed_parameter
   ) : storage is
   sender_check(store.roles.owner, store, full_param, "NOT_CONTRACT_OWNER")
 
 (*
- * Ensures that sender is current pending contract owner.
+ * Ensures that the sender is the current pending contract owner.
  *)
 function authorize_pending_owner
   ( const store : storage
@@ -45,27 +45,27 @@ function authorize_pending_owner
     end
 
 (*
- * Authorizes contract pauser and fails otherwise.
+ * Authorizes the contract pauser and fails otherwise.
  *)
-function authorize_pauser
+[@inline] function authorize_pauser
   ( const store : storage
   ; const full_param : closed_parameter
   ) : storage is
   sender_check(store.roles.pauser, store, full_param, "NOT_PAUSER")
 
 (*
- * Authorizes master_minter and fails otherwise.
+ * Authorizes the master_minter and fails otherwise.
  *)
-function authorize_master_minter
+[@inline] function authorize_master_minter
   ( const store : storage
   ; const full_param : closed_parameter
   ) : storage is
   sender_check(store.roles.master_minter, store, full_param, "NOT_MASTER_MINTER")
 
 (*
- * Authorizes minter and fails otherwise.
+ * Authorizes the minter and fails otherwise.
  *)
-function authorize_minter
+[@inline] function authorize_minter
   ( const store : storage
   ) : unit is case store.minting_allowances[Tezos.sender] of
     Some (u) -> unit
@@ -73,9 +73,9 @@ function authorize_minter
   end
 
 (*
- * Helper that fails if contract is paused.
+ * Helper that fails if the contract is paused.
  *)
-function ensure_not_paused
+[@inline] function ensure_not_paused
   ( const store : storage
   ) : unit is
   fail_on
@@ -84,7 +84,7 @@ function ensure_not_paused
     )
 
 (*
- * Helper that fails if contract is not paused.
+ * Helper that fails if the contract is not paused.
  *)
 function ensure_is_paused
   ( const store : storage
@@ -96,7 +96,7 @@ function ensure_is_paused
 
 (*
  * Increases the balance of an address associated with it
- * and present in ledger. If not, creates a new address with
+ * if present in the ledger. If not, creates a new address entry with
  * that balance given.
  *)
 function credit_to
@@ -209,32 +209,6 @@ function call_assert_receivers
       | None -> ops_in
       end
   } with operations
-
-
-(*
- * Assert that all addresses in a list are equal,
- * fails with `err_msg` otherwise.
- *
- * If the list is empty, returns `None`,
- * otherwise returns `Some` with the unique address.
- *)
-function all_equal
-  ( const addrs: list(address)
-  ; const err_msg: string
-  ) : option(address) is
-  case addrs of
-  | nil -> (None : option(address))
-  | first # rest ->
-      block {
-        List.iter
-          ( function (const addr : address): unit is
-              if addr =/= first
-                then failwith (err_msg)
-                else Unit
-          , rest
-          )
-      } with Some(first)
-  end
 
 (* ------------------------------------------------------------- *)
 
@@ -381,7 +355,7 @@ function pause
   ; const full_param : closed_parameter
   ) : entrypoint is block
 { ensure_not_paused (store)
-; const store: storage = sender_check(store.roles.pauser, store, full_param, "NOT_PAUSER")
+; const store: storage = authorize_pauser(store, full_param)
 } with
   ( (nil : list (operation))
   , store with record [paused = True]
@@ -398,7 +372,7 @@ function unpause
   ; const full_param : closed_parameter
   ) : entrypoint is block
 { ensure_is_paused (store)
-; const store: storage = sender_check(store.roles.pauser, store, full_param, "NOT_PAUSER")
+; const store: storage = authorize_pauser(store, full_param)
 } with
   ( (nil : list (operation))
   , store with record [paused = False]

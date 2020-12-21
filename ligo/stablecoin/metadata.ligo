@@ -10,7 +10,7 @@ end
 
 (*
  * Token Metadata storage contract. We use this contract to store the metadata of the
- * Stablecoin contract, and just store address of this contract in its storage.
+ * Stablecoin contract, and just store the address of this contract in its storage.
  *)
 function metadata
   ( const action : unit

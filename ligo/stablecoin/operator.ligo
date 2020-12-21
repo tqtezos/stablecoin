@@ -9,10 +9,10 @@
 #include "permit.ligo"
 
 (*
- * Validates operators for the given transfer batch
- * and operator storage
+ * Validates the operators for the given transfer batch
+ * and the operator storage.
  *)
-function is_approved_operator
+[@inline] function is_approved_operator
   ( const transfer_param         : transfer_param
   ; const operators              : operators
   ) : bool is block
@@ -22,7 +22,7 @@ function is_approved_operator
   then True else False
 
 (*
- * Add operator from the given parameter and operator storage
+ * Add the operator from the given parameter and the operator storage.
  *)
 function add_operator
   ( const param     : operator_param
@@ -33,7 +33,7 @@ function add_operator
 } with Big_map.update (operator_key, Some (unit), operators)
 
 (*
- * Remove operator from the given storage
+ * Remove the operator from the given storage.
  *)
 function remove_operator
   ( const param     : operator_param
@@ -44,8 +44,8 @@ function remove_operator
 } with Big_map.remove (operator_key, operators)
 
 (*
- * Adds or removes operators from a provided list of instructions
- * accordingly for the given storage
+ * Adds or removes the operators from a provided list of instructions
+ * accordingly for the given storage.
  *)
 function update_operators
   ( const params    : update_operator_params

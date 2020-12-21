@@ -17,7 +17,7 @@
  * to be used in a "top-level". It seemed to me that, according to
  * LIGO, a function is top-level, if it is only called from a single
  * location. So the Tezos.self_address can work from function func1
- * so long as func1 is only called from one palace. As soon as you
+ * so long as func1 is only called from one place. As soon as you
  * have a second call site for func1, it ceases to be top level, and
  * will trigger the error..I guess it should be same with the various
  * right/left comb functions...
@@ -38,7 +38,7 @@
 type to_hook is address -> option (contract (transfer_descriptor_param))
 
 (*
- * Helper function that converts `transfer_param` to `transfer_descriptor_param`
+ * Helper function that converts `transfer_param` to `transfer_descriptor_param`.
  *)
 function convert_to_transfer_descriptor
   ( const self_addr      : address
@@ -65,6 +65,9 @@ function convert_to_transfer_descriptor
     ]
 } with Layout.convert_to_right_comb ((transfer_descriptor_param : transfer_descriptor_param_))
 
+(*
+ * Helper function that merges two `operation`s `list`s.
+ *)
 function merge_operations
   ( const fst : list (operation)
   ; const snd : list (operation)

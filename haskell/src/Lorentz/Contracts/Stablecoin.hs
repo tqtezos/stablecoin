@@ -327,7 +327,7 @@ type StorageView = Storage' BigMapId
 deriving stock instance Show StorageView
 deriving anyclass instance IsoValue StorageView
 
--- Currently the contract allows to add upto 12 minters.
+-- Currently the contract allows to add up to 12 minters.
 minterLimit :: Int
 minterLimit = 12
 

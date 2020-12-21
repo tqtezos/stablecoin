@@ -22,9 +22,9 @@ The help message should be sufficiently descriptive, however, there are some cav
 1. Node data (address, port and whether to use TLS) is taken from `tezos-client` config by default.
 Make sure it points to an active node in the network where you want to submit your operations.
 You can override this data using the respective options of `stablecoin-client`.
-1. There is a global option `--user` that specifies which user will make operations, it defaults to `stablecoin-user`.
+1. There is a global option `--user` that specifies which user will make the operations, it defaults to `stablecoin-user`.
 You should ensure that:
-  * An address with provided alias is known to `tezos-client`.
+  * An address with the provided alias is known to `tezos-client`.
   * Its secret key is known.
   * It has sufficient balance to make operations (pay for storage and fee).
 
@@ -35,7 +35,7 @@ Note: if you are on Linux and just want to get `stablecoin-client`, we recommend
 You need [Stack](http://haskellstack.org/) to build this package.
 
 To build the library and the executable:
-1. Copy or symlink  stablecoin and metadata smart contracts (their Michelson versions) to `test/resources/` and then run `stack build`.
+1. Copy or symlink the stablecoin and metadata smart contracts (their Michelson versions) to `test/resources/` and then run `stack build`.
 The contracts are parsed and typechecked at compile-time.
 2. Or, alternatively, run `make build` (from this folder) provided that you have `ligo` and [`morley`](https://gitlab.com/morley-framework/morley) in your `$PATH`.
 
