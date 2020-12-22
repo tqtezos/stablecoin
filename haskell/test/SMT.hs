@@ -1,7 +1,6 @@
 -- SPDX-FileCopyrightText: 2020 TQ Tezos
 -- SPDX-License-Identifier: MIT
 {-# OPTIONS_GHC -Wno-orphans #-}
-{-# LANGUAGE PackageImports #-}
 
 module SMT
   ( smtProperty
@@ -26,7 +25,7 @@ import Michelson.Text
 import qualified Michelson.Typed as T
 import Tezos.Core (unsafeMkMutez)
 
-import qualified "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
+import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
 import Lorentz.Contracts.Test.Common
 
@@ -414,10 +413,10 @@ generateTokenOwnerAction idx = do
       operator <- getRandomOperator
       owner <- getRandomOwner
       updateOperation <- Gen.element
-        [ FA2.Add_operator FA2.OperatorParam { opOwner = owner, opOperator = operator, opTokenId = 0 }
-        , FA2.Add_operator FA2.OperatorParam { opOwner = owner, opOperator = operator, opTokenId = 1 }
-        , FA2.Remove_operator FA2.OperatorParam { opOwner = owner, opOperator = operator, opTokenId = 0 }
-        , FA2.Remove_operator FA2.OperatorParam { opOwner = owner, opOperator = operator, opTokenId = 1 }
+        [ FA2.AddOperator FA2.OperatorParam { opOwner = owner, opOperator = operator, opTokenId = FA2.theTokenId }
+        , FA2.AddOperator FA2.OperatorParam { opOwner = owner, opOperator = operator, opTokenId = oneTokenId }
+        , FA2.RemoveOperator FA2.OperatorParam { opOwner = owner, opOperator = operator, opTokenId = FA2.theTokenId }
+        , FA2.RemoveOperator FA2.OperatorParam { opOwner = owner, opOperator = operator, opTokenId = oneTokenId }
         ]
       pure $ Call_FA2 $ FA2.Update_operators [updateOperation]
 
@@ -427,9 +426,9 @@ generateTransferAction = do
   txs <- replicateM 10 $ do
     to <- getRandomTokenOwner
     amount <- Gen.integral (Range.constant 0 amountRange)
-    pure FA2.TransferDestination { tdTo = to, tdTokenId = 0, tdAmount = amount }
+    pure FA2.TransferDestination { tdTo = to, tdTokenId = FA2.theTokenId, tdAmount = amount }
   stxs <- Gen.subsequence txs
-  let transferItem = FA2.TransferParam { tpFrom = from, tpTxs = stxs }
+  let transferItem = FA2.TransferItem { tiFrom = from, tiTxs = stxs }
   pure $ Call_FA2 $ FA2.Transfer [transferItem]
 
 generateOperatorAction :: Int -> GeneratorM (ContractCall Parameter)
@@ -578,11 +577,11 @@ ensurePaused SimpleStorage {..} = if ssIsPaused then Right () else Left CONTRACT
 
 validateTokenId :: FA2.UpdateOperator -> Either ModelError ()
 validateTokenId = \case
-  FA2.Add_operator op -> validateTokenId' op
-  FA2.Remove_operator op -> validateTokenId' op
+  FA2.AddOperator op -> validateTokenId' op
+  FA2.RemoveOperator op -> validateTokenId' op
   where
     validateTokenId' :: FA2.OperatorParam -> Either ModelError ()
-    validateTokenId' FA2.OperatorParam {..} = if opTokenId == 0 then Right () else Left FA2_TOKEN_UNDEFINED
+    validateTokenId' FA2.OperatorParam {..} = if opTokenId == FA2.theTokenId then Right () else Left FA2_TOKEN_UNDEFINED
 
 ensureMinter :: Address -> SimpleStorage -> Either ModelError Natural
 ensureMinter minter cs = case Map.lookup minter $ ssMintingAllowances cs of
@@ -734,8 +733,8 @@ applyTransfer ccSender storage tis = do
   ensureNotPaused storage
   foldl' (applySingleTransfer ccSender) (Right storage) tis
 
-applySingleTransfer :: Address -> Either ModelError SimpleStorage -> FA2.TransferParam -> Either ModelError SimpleStorage
-applySingleTransfer ccSender estorage (FA2.TransferParam from txs) =
+applySingleTransfer :: Address -> Either ModelError SimpleStorage -> FA2.TransferItem -> Either ModelError SimpleStorage
+applySingleTransfer ccSender estorage (FA2.TransferItem from txs) =
   case estorage of
     Left err -> Left err
     Right storage@(SimpleStorage {..}) ->
@@ -757,13 +756,13 @@ applyUpdateOperator ccSender estorage op = case estorage of
   Right storage -> do
     ensureNotPaused storage
     case op of
-      FA2.Add_operator (FA2.OperatorParam own operator _)
+      FA2.AddOperator (FA2.OperatorParam own operator _)
         -> if own == ccSender -- enforce that sender is owner
           then do
             validateTokenId op
             Right $ storage { ssOperators = Map.insert (own, operator) () $ ssOperators storage }
           else Left NOT_TOKEN_OWNER
-      FA2.Remove_operator (FA2.OperatorParam own operator _)
+      FA2.RemoveOperator (FA2.OperatorParam own operator _)
         -> if own == ccSender
           then do
             validateTokenId op

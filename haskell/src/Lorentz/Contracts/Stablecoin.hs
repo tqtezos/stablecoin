@@ -225,7 +225,7 @@ type PermitEntrypoints =
     ]
 
 type ParameterC param =
-  ( FA2.FA2ParameterC param
+  ( FA2.ParameterC param
   , ParameterContainsEntrypoints param ManagementMichelsonEntrypoints
   , ParameterContainsEntrypoints param PermitEntrypoints
   )
@@ -363,9 +363,9 @@ mkMetadataRegistryStorage :: MText -> MText -> Natural -> MetadataRegistryStorag
 mkMetadataRegistryStorage symbol name decimals =
   MetadataRegistryStorage
     { mrsDummyField = ()
-    , mrsTokenMetadata = BigMap $ Map.singleton 0 $
+    , mrsTokenMetadata = BigMap $ Map.singleton FA2.theTokenId $
         FA2.TokenMetadata
-          { tmTokenId = 0
+          { tmTokenId = FA2.theTokenId
           , tmSymbol = symbol
           , tmName = name
           , tmDecimals = decimals
