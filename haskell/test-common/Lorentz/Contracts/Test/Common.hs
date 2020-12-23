@@ -223,7 +223,6 @@ mkInitialStorage OriginationParams{..} metadataRegistryAddress mContractMetadata
         , rPauser = opPauser
         , rPendingOwner = opPendingOwner
         }
-    , sTokenMetadataRegistry = fromMaybe metadataRegistryAddress opTokenMetadataRegistry
     , sTransferlistContract = unTAddress <$> opTransferlistContract
     , sMetadata = case mContractMetadataContractAddress of
         Just cAddr -> metadataMap @(()) (RemoteContract cAddr)

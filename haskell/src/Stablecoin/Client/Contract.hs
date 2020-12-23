@@ -60,7 +60,6 @@ mkInitialStorage InitialStorageData {..} =
         , rPauser = isdPauser
         , rPendingOwner = Nothing
         }
-    , sTokenMetadataRegistry = isdTokenMetadataRegistry
     , sTransferlistContract = isdTransferlist
     , sMetadata = isdContractMetadataStorage
     , sTotalSupply = 0

@@ -95,13 +95,13 @@ managementSpec originate = do
           (constructTransfersFromSender (#from_ .! wallet1) [])
         mgmXtzReceived err
 
-    it "token metadata registry is present in storage" $ integrationalTestExpectation $ do
-      mrAddress <- originateMetadataRegistry
-      let originationParams = defaultOriginationParams { opTokenMetadataRegistry = Just mrAddress }
-      withOriginated originate originationParams $ \stablecoinContract -> do
-        lExpectStorage @Storage stablecoinContract $ \storage ->
-          unless (sTokenMetadataRegistry storage == mrAddress) $
-            Left $ CustomTestError "Malformed token metadata registry address in contract storage"
+    -- it "token metadata registry is present in storage" $ integrationalTestExpectation $ do
+    --   mrAddress <- originateMetadataRegistry
+    --   let originationParams = defaultOriginationParams { opTokenMetadataRegistry = Just mrAddress }
+    --   withOriginated originate originationParams $ \stablecoinContract -> do
+    --     lExpectStorage @Storage stablecoinContract $ \storage ->
+    --       unless (sTokenMetadataRegistry storage == mrAddress) $
+    --         Left $ CustomTestError "Malformed token metadata registry address in contract storage"
 
   describe "Contract pausing" $ do
     it "pauses contract as expected" $ integrationalTestExpectation $ do

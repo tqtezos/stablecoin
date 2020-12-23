@@ -329,10 +329,10 @@ getMintingAllowance contract minter = do
 
 -- | Get the token metadata of the contract
 getTokenMetadata :: "contract" :! AddressOrAlias -> MorleyClientM FA2.TokenMetadata
-getTokenMetadata contract = do
-  mdRegistry <- sTokenMetadataRegistry <$> getStorage contract
-  bigMapId <- mrsTokenMetadata <$> getRegistryStorage mdRegistry
-  readBigMapValue bigMapId FA2.theTokenId
+getTokenMetadata contract = error "TODO"
+  -- mdRegistry <- sTokenMetadataRegistry <$> getStorage contract
+  -- bigMapId <- mrsTokenMetadata <$> getRegistryStorage mdRegistry
+  -- readBigMapValue bigMapId FA2.theTokenId
 
 -- | Check if there's an alias associated with this address and, if so, return both.
 pairWithAlias :: Address -> MorleyClientM AddressAndAlias

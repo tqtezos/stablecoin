@@ -82,7 +82,6 @@ fa1_2ComparisonScenario = uncapsNettest $ do
         , sRoles = roles
         , sTransferlistContract = Nothing
         , sOperators = mempty
-        , sTokenMetadataRegistry = mrAddress
         , sMetadata = SFA2.metadataMap @(()) (RemoteContract cmrAddress)
         , sTotalSupply = 0
         }

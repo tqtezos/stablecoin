@@ -135,7 +135,6 @@ type change_pauser_param is address
 type parameter is
   Transfer                of transfer_params
 | Balance_of              of balance_of_params
-| Token_metadata_registry of token_metadata_registry_params
 | Update_operators        of update_operator_params
 
 (* ------------------------------------------------------------- *)
@@ -271,7 +270,6 @@ type metadata is big_map (string, bytes)
 
 type storage is record
   ledger                  : ledger
-; token_metadata_registry : address
 ; minting_allowances      : minting_allowances
 ; paused                  : bool
 ; roles                   : roles

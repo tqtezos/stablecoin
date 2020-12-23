@@ -14,7 +14,6 @@ function fa2_main
 is case action of
     Transfer                (params) -> transfer                (params, store, full_param)
   | Balance_of              (params) -> balance_of              (params, store)
-  | Token_metadata_registry (params) -> token_metadata_registry (params, store)
   | Update_operators        (params) -> update_operators_action (params, store, full_param)
 end
 

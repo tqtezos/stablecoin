@@ -359,24 +359,6 @@ function balance_of
 } with (list [transfer_operation], store)
 
 (*
- * Returns the address of the contract that holds tokens metadata.
- * Since our contract holds its own metadata, then it always
- * returns the `SELF` address.
- *)
-function token_metadata_registry
-  ( const parameter : token_metadata_registry_params
-  ; const store     : storage
-  ) : entrypoint is
-  ( list [Tezos.transaction
-    ( store.token_metadata_registry
-    , 0mutez
-    , parameter
-    )
-  ]
-  , store
-  )
-
-(*
  * Add or remove operators for the provided owners.
  *)
 function update_operators_action
