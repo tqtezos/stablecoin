@@ -91,61 +91,6 @@ assertPermitCount contractAddr expectedCount =
       sum $
         permits <&> \userPermits -> length (upPermits userPermits)
 
-checkView
-  :: forall viewParam viewVal
-   . (IsoValue viewParam, IsoValue viewVal, Eq viewVal, Show viewVal)
-  => TAddress Parameter -> Text -> viewParam -> viewVal -> IntegrationalScenario
-checkView addr viewName viewParam expectedViewVal =
-  lExpectStorage @Storage addr $ \st -> do
-    uri <-
-      maybeToRight (CustomTestError "Metadata bigmap did not contain a key with the empty string") $
-        fmap (decodeUtf8 @Text) . Map.lookup mempty . unBigMap $ sMetadata st
-
-    metadataJSONKey <-
-      maybeToRight (CustomTestError $ "Expected 'tezos-storage' uri, but found: " <> uri) $
-        Text.stripPrefix "tezos-storage:" uri
-
-    metadataJSONKeyMText <-
-      first
-        (\err -> CustomTestError $
-            "Expected '" <> metadataJSONKey <> "' to be a valid Michelson string, but it wasn't."
-            <> "\nReason: " <> err
-        ) $
-        mkMText metadataJSONKey
-
-    metadataJSONBytestring <-
-      maybeToRight (CustomTestError $ "Metadata bigmap did not contain the key: " <> metadataJSONKey) $
-        Map.lookup metadataJSONKeyMText . unBigMap $ sMetadata st
-
-    metadataJSON <-
-      first
-        (\err -> CustomTestError (toText err)) $
-        J.eitherDecode' @(MD.Metadata (ToT Storage)) (BSL.fromStrict metadataJSONBytestring)
-
-    view_ <-
-      maybeToRight (CustomTestError $ "Metadata does not contain view with name" <> viewName) $
-        MD.getView metadataJSON viewName
-
-    -- See note below.
-    unless (MD.vPure view_) $
-      Left $ CustomTestError $ "Expected view '" <> viewName <> "' to be pure, but it isn't."
-
-    actualViewVal <-
-      first
-        (CustomTestError . pretty) $
-        -- NOTE: it's OK to use `dummyContractEnv` here because we now this
-        -- contract's views are pure (i.e. don't depend on the contract env).
-        -- But, in the general case, this is not safe.
-        MD.interpretView @_ @_ @viewVal dummyContractEnv view_ viewParam st
-
-    when (actualViewVal /= expectedViewVal) $
-      Left $ CustomTestError $ unlines
-        [ "Expected: "
-        , show expectedViewVal
-        , "Got:"
-        , show actualViewVal
-        ]
-
 permitSpec :: OriginationFn Parameter -> Spec
 permitSpec originate = do
   describe "Permits" $ do

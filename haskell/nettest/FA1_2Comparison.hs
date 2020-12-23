@@ -16,7 +16,7 @@ import Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin as SFA2
 import Lorentz.Contracts.StablecoinFA1_2 as SFA1_2
 
-import Lorentz.Contracts.Test.Common (nettestOriginateContractMetadataContract, nettestOriginateMetadataRegistry)
+import Lorentz.Contracts.Test.Common (nettestOriginateContractMetadataContract)
 
 -- | This test originates both the FA1.2 and FA2 versions of stablecoin,
 -- and performs a single @transfer@ operation.
@@ -49,7 +49,7 @@ fa1_2ComparisonScenario = uncapsNettest $ do
         , rPendingOwner = Nothing
         }
 
-  cmrFA1_2Address <- nettestOriginateContractMetadataContract SFA2.metadataJSON
+  cmrFA1_2Address <- nettestOriginateContractMetadataContract (SFA2.metadataJSON Nothing)
   let fa1_2Storage = SFA1_2.Storage
         { sDefaultExpiry = 1000
         , sLedger = BigMap balances
@@ -70,8 +70,7 @@ fa1_2ComparisonScenario = uncapsNettest $ do
   comment "Calling transfer"
   callFrom (AddressResolved owner1) fa1_2ContractAddr (Call @"Transfer") (#from .! owner1, #to .! owner2, #value .! 2)
 
-  mrAddress <- nettestOriginateMetadataRegistry
-  cmrAddress <- nettestOriginateContractMetadataContract SFA2.metadataJSON
+  cmrAddress <- nettestOriginateContractMetadataContract (SFA2.metadataJSON Nothing)
   let fa2Storage = SFA2.Storage
         { sDefaultExpiry = 1000
         , sLedger = BigMap balances

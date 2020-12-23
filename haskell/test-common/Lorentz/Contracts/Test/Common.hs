@@ -26,6 +26,7 @@ module Lorentz.Contracts.Test.Common
   , wallet5
   , commonOperator
   , commonOperators
+  , checkView
 
   , OriginationFn
   , OriginationParams (..)
@@ -39,9 +40,8 @@ module Lorentz.Contracts.Test.Common
   , withOriginated
   , mgmContractPaused
   , mkInitialStorage
-  , originateMetadataRegistry
-  , nettestOriginateMetadataRegistry
   , nettestOriginateContractMetadataContract
+  , testFA2TokenMetadata
 
   , lExpectAnyMichelsonFailed
   ) where
@@ -49,13 +49,18 @@ module Lorentz.Contracts.Test.Common
 import Data.List.NonEmpty ((!!))
 import qualified Data.Map as Map
 
+import qualified Data.Aeson as J
 import Data.Aeson (ToJSON)
+import qualified Data.ByteString.Lazy as BSL
+import qualified Data.Text as Text
+import Fmt (pretty)
 import Lorentz (arg)
+import qualified Lorentz.Contracts.Spec.TZIP16Interface as MD
 import Lorentz.Test
 import Lorentz.Value
 import Michelson.Runtime (ExecutorError)
 import Michelson.Runtime.GState (genesisSecrets)
-import Michelson.Test (tOriginate)
+import Michelson.Text (mkMText)
 import Michelson.Typed (convertContract, untypeValue)
 import Morley.Nettest as NT
 import Tezos.Crypto (SecretKey, toPublic)
@@ -64,6 +69,7 @@ import Util.Named
 import qualified Indigo.Contracts.Transferlist.Internal as Transferlist
 import Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin as SC
+import qualified Morley.Metadata as MD
 
 -- | A 'TokenId' with the value of `1`.
 -- This is used only for tests because @stablecoin@ only supports a single token
@@ -129,7 +135,7 @@ data OriginationParams = OriginationParams
   , opPaused :: Bool
   , opMinters :: Map Address Natural
   , opPendingOwner :: Maybe Address
-  , opTokenMetadataRegistry :: Maybe Address
+  , opMetadataUri :: MetadataUri (MD.Metadata (ToT Storage))
   , opTransferlistContract :: Maybe (TAddress Transferlist.Parameter)
   , opDefaultExpiry :: Natural
   , opPermits :: Map Address UserPermits
@@ -145,7 +151,7 @@ defaultOriginationParams = OriginationParams
   , opPaused = False
   , opMinters = mempty
   , opPendingOwner = Nothing
-  , opTokenMetadataRegistry = Nothing
+  , opMetadataUri = CurrentContract (metadataJSON $ Just testFA2TokenMetadata) True
   , opTransferlistContract = Nothing
   , opDefaultExpiry = 1000
   , opPermits = mempty
@@ -207,8 +213,8 @@ withOriginated
   -> IntegrationalScenario
 withOriginated fn op tests = fn op >>= tests
 
-mkInitialStorage :: OriginationParams -> Address -> Maybe Address -> Storage
-mkInitialStorage OriginationParams{..} metadataRegistryAddress mContractMetadataContractAddress =
+mkInitialStorage :: OriginationParams -> Storage
+mkInitialStorage OriginationParams{..} =
   Storage
     { sDefaultExpiry = opDefaultExpiry
     , sLedger = BigMap opBalances
@@ -224,9 +230,7 @@ mkInitialStorage OriginationParams{..} metadataRegistryAddress mContractMetadata
         , rPendingOwner = opPendingOwner
         }
     , sTransferlistContract = unTAddress <$> opTransferlistContract
-    , sMetadata = case mContractMetadataContractAddress of
-        Just cAddr -> metadataMap @(()) (RemoteContract cAddr)
-        Nothing -> metadataMap (CurrentContract metadataJSON True)
+    , sMetadata = metadataMap opMetadataUri
     , sTotalSupply = sum $ Map.elems opBalances
     }
   where
@@ -240,24 +244,68 @@ mkInitialStorage OriginationParams{..} metadataRegistryAddress mContractMetadata
 mgmContractPaused :: ExecutorError -> IntegrationalScenario
 mgmContractPaused = lExpectFailWith (== [mt|CONTRACT_PAUSED|])
 
-originateMetadataRegistry :: IntegrationalScenarioM Address
-originateMetadataRegistry =
-  tOriginate
-    registryContract
-    "Metadata Registry contract"
-    (toVal defaultMetadataRegistryStorage)
-    (toMutez 0)
-
-nettestOriginateMetadataRegistry :: MonadNettest caps base m => m Address
-nettestOriginateMetadataRegistry =
-  originateUntypedSimple
-    "nettest.MetadataRegistry"
-    (untypeValue (toVal defaultMetadataRegistryStorage))
-    (convertContract registryContract)
-
 nettestOriginateContractMetadataContract :: (ToJSON metadata) => MonadNettest caps base m => metadata -> m Address
 nettestOriginateContractMetadataContract mdata =
   originateUntypedSimple
     "nettest.ContractMetadata"
     (untypeValue (toVal $ mkContractMetadataRegistryStorage $  metadataMap (CurrentContract mdata False)))
     (convertContract contractMetadataContract)
+
+checkView
+  :: forall viewParam viewVal parameter
+   . (IsoValue viewParam, IsoValue viewVal, Eq viewVal, Show viewVal)
+  => TAddress parameter -> Text -> viewParam -> viewVal -> IntegrationalScenario
+checkView addr viewName viewParam expectedViewVal =
+  lExpectStorage @Storage addr $ \st -> do
+    uri <-
+      maybeToRight (CustomTestError "Metadata bigmap did not contain a key with the empty string") $
+        fmap (decodeUtf8 @Text) . Map.lookup mempty . unBigMap $ sMetadata st
+
+    metadataJSONKey <-
+      maybeToRight (CustomTestError $ "Expected 'tezos-storage' uri, but found: " <> uri) $
+        Text.stripPrefix "tezos-storage:" uri
+
+    metadataJSONKeyMText <-
+      first
+        (\err -> CustomTestError $
+            "Expected '" <> metadataJSONKey <> "' to be a valid Michelson string, but it wasn't."
+            <> "\nReason: " <> err
+        ) $
+        mkMText metadataJSONKey
+
+    metadataJSONBytestring <-
+      maybeToRight (CustomTestError $ "Metadata bigmap did not contain the key: " <> metadataJSONKey) $
+        Map.lookup metadataJSONKeyMText . unBigMap $ sMetadata st
+
+    metadataJSON <-
+      first
+        (\err -> CustomTestError (toText err)) $
+        J.eitherDecode' @(MD.Metadata (ToT Storage)) (BSL.fromStrict metadataJSONBytestring)
+
+    view_ <-
+      maybeToRight (CustomTestError $ "Metadata does not contain view with name:" <> viewName) $
+        MD.getView metadataJSON viewName
+
+    -- See note below.
+    unless (MD.vPure view_) $
+      Left $ CustomTestError $ "Expected view '" <> viewName <> "' to be pure, but it isn't."
+
+    actualViewVal <-
+      first
+        (CustomTestError . pretty) $
+        -- NOTE: it's OK to use `dummyContractEnv` here because we now this
+        -- contract's views are pure (i.e. don't depend on the contract env).
+        -- But, in the general case, this is not safe.
+        MD.interpretView @_ @_ @viewVal dummyContractEnv view_ viewParam st
+
+    when (actualViewVal /= expectedViewVal) $
+      Left $ CustomTestError $ unlines
+        [ "Expected: "
+        , show expectedViewVal
+        , "Got:"
+        , show actualViewVal
+        ]
+
+
+testFA2TokenMetadata :: FA2.TokenMetadata
+testFA2TokenMetadata = mkFA2TokenMetadata "TEST" "TEST" 3

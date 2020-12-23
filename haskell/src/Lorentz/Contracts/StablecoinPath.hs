@@ -7,7 +7,6 @@
 -- to be used inside TemplateHaskell splices.
 module Lorentz.Contracts.StablecoinPath
   ( contractMetadataRegistryContractPath
-  , metadataRegistryContractPath
   , stablecoinFA1_2Path
   , stablecoinPath
   ) where
@@ -19,10 +18,6 @@ stablecoinPath = "./test/resources/stablecoin.tz"
 -- | The path to the compiled stablecoin FA1.2 contract.
 stablecoinFA1_2Path :: FilePath
 stablecoinFA1_2Path = "./test/resources/stablecoin.fa1.2.tz"
-
--- | The path to the compiled metadata registry.
-metadataRegistryContractPath :: FilePath
-metadataRegistryContractPath = "./test/resources/metadata.tz"
 
 -- | The path to the compiled contract metadata registry.
 contractMetadataRegistryContractPath :: FilePath

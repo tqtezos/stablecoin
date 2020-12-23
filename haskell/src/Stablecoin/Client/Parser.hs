@@ -88,8 +88,8 @@ data DeployContractOptions = DeployContractOptions
   , dcoContractOwner :: AddressOrAlias
   , dcoPauser :: AddressOrAlias
   , dcoTransferlist :: Maybe AddressOrAlias
-  , dcoTokenSymbol :: MText
-  , dcoTokenName :: MText
+  , dcoTokenSymbol :: Text
+  , dcoTokenName :: Text
   , dcoTokenDecimals :: Natural
   , dcoTokenMetadataRegistry :: Maybe AddressOrAlias
   , dcoReplaceAlias :: Bool
@@ -253,13 +253,13 @@ clientArgsRawParser = Opt.subparser $
           (#name .! "transferlist")
           (#help .! "Address or alias of the Transferlist contract")
       dcoTokenSymbol <-
-        mTextOption
-          (Just [mt|TEST|])
+        mkCLOptionParser
+          (Just "TEST")
           (#name .! "token-symbol")
           (#help .! "Token symbol")
       dcoTokenName <-
-        mTextOption
-          (Just [mt|Test|])
+        mkCLOptionParser
+          (Just "Test")
           (#name .! "token-name")
           (#help .! "Token name")
       dcoTokenDecimals <-

@@ -108,7 +108,7 @@ stablecoinFA1_2Contract =
 
 metadataJSON :: Metadata (ToT Storage)
 metadataJSON =
-  S.metadataJSON
+  (S.metadataJSON Nothing)
     { mName = Just "stablecoin FA1.2"
     , mInterfaces = [ "TZIP-7", "TZIP-17" ]
     , mViews =

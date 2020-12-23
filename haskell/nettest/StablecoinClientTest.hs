@@ -42,10 +42,9 @@ stablecoinClientScenario = do
     , isdContractOwner = contractOwner
     , isdPauser = pauser
     , isdTransferlist = Just transferlist
-    , isdTokenSymbol = [mt|a|]
-    , isdTokenName = [mt|b|]
+    , isdTokenSymbol = "a"
+    , isdTokenName = "b"
     , isdTokenDecimals = 3
-    , isdTokenMetadataRegistry = Just mdRegisty
     , isdDefaultExpiry = 1000
     , isdContractMetadataStorage = OpRemoteContract
     }

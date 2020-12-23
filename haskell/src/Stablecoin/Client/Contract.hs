@@ -35,10 +35,9 @@ data InitialStorageData addr = InitialStorageData
   , isdContractOwner :: addr
   , isdPauser :: addr
   , isdTransferlist :: Maybe addr
-  , isdTokenSymbol :: MText
-  , isdTokenName :: MText
+  , isdTokenSymbol :: Text
+  , isdTokenName :: Text
   , isdTokenDecimals :: Natural
-  , isdTokenMetadataRegistry :: ComputeRegistryAddressType addr
   , isdContractMetadataStorage :: ComputeContractMetadataStorageType addr
   , isdDefaultExpiry :: Expiry
   }

@@ -99,6 +99,10 @@ tests:
       - morley-client
       - morley-ledgers
       - morley-prelude
+      - morley-metadata
       - optparse-applicative
       - stablecoin
+      - bytestring
       - with-utf8
+      - text
+      - fmt

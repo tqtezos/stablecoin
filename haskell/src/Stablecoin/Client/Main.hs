@@ -49,7 +49,7 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
       -- prefix option was passed in via the CLI.
       aliasAlreadyExists <- checkIfAliasExists (coerce contractAlias)
 
-      (opHash, contractAddr, metadataRegAddr, mCMetadataAddr) <- deploy user (coerce contractAlias) InitialStorageData
+      (opHash, contractAddr, mCMetadataAddr) <- deploy user (coerce contractAlias) InitialStorageData
         { isdMasterMinter = dcoMasterMinter
         , isdContractOwner = dcoContractOwner
         , isdPauser = dcoPauser
@@ -57,7 +57,6 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
         , isdTokenName = dcoTokenName
         , isdTokenSymbol = dcoTokenSymbol
         , isdTokenDecimals = dcoTokenDecimals
-        , isdTokenMetadataRegistry = dcoTokenMetadataRegistry
         , isdDefaultExpiry = dcoDefaultExpiry
         , isdContractMetadataStorage = dcoContractMetadata
         }
@@ -65,7 +64,6 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
       putTextLn "Contract was successfully deployed."
       putTextLn $ "Operation hash: " <> pretty opHash
       putTextLn $ "Contract address: " <> pretty contractAddr
-      putTextLn $ "Metadata registry contract address: " <> pretty metadataRegAddr
       whenJust mCMetadataAddr $ \addr ->
         putTextLn $ "Contract metadata contract address: " <> pretty addr
 
@@ -166,11 +164,11 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
       allowance <- getMintingAllowance contract gmaoMinter
       putTextLn $ "Minting allowance: " <> pretty allowance
 
-    CmdGetTokenMetadata -> do
-      tm <- getTokenMetadata contract
-      putTextLn $ "Token symbol: " <> pretty (tmSymbol tm)
-      putTextLn $ "Token name: " <> pretty (tmName tm)
-      putTextLn $ "Token decimals: " <> pretty (tmDecimals tm)
+    CmdGetTokenMetadata -> error "TODO"
+      -- tm <- getTokenMetadata contract
+      -- putTextLn $ "Token symbol: " <> pretty (tmSymbol tm)
+      -- putTextLn $ "Token name: " <> pretty (tmName tm)
+      -- putTextLn $ "Token decimals: " <> pretty (tmDecimals tm)
 
   where
     user = #sender .! goUser globalOptions

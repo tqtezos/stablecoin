@@ -8,13 +8,8 @@ module Lorentz.Contracts.Stablecoin
   , ChangePauserParam
   , SetTransferlistParam
   , RemoveMinterParam
-  , MetadataRegistryStorage'(..)
-  , MetadataRegistryStorage
-  , MetadataRegistryStorageView
   , MetadataUri(..)
-  , mkMetadataRegistryStorage
   , mkContractMetadataRegistryStorage
-  , defaultMetadataRegistryStorage
   , defaultContractMetadataStorage
   , MintParams
   , MintParam(..)
@@ -38,13 +33,15 @@ module Lorentz.Contracts.Stablecoin
   , minterLimit
 
   -- * TZIP-16
+  , ParsedMetadataUri(..)
   , metadataMap
   , metadataJSON
+  , mkFA2TokenMetadata
+  , parseMetadataUri
 
   -- * Embedded LIGO contracts
   , contractMetadataContract
   , stablecoinContract
-  , registryContract
   ) where
 
 import qualified Data.Aeson as J
@@ -53,25 +50,30 @@ import Data.FileEmbed (embedStringFile)
 import qualified Data.Map as Map
 import Data.Version (showVersion)
 import Fmt
+import qualified Text.Megaparsec as P
 import qualified Text.Show
+import Text.Megaparsec.Char (newline, printChar, string')
+import Text.Megaparsec.Char.Lexer (decimal)
+import Text.Megaparsec.Error (ShowErrorComponent(..))
 
 import Lorentz as L
 import Lorentz.Contracts.Spec.TZIP16Interface
   (Error(..), License(..), Metadata(..), MetadataMap, SomeMichelsonStorageView(..), Source(..),
   ViewImplementation(..))
-import Tezos.Address (formatAddress)
+import Tezos.Address (formatAddress, parseAddress)
 import Michelson.Test.Import (readContract)
 import qualified Michelson.Typed as T
 import Morley.Client (BigMapId(..))
 import Morley.Metadata (mkMichelsonStorageView)
 import Morley.Micheline (ToExpression(toExpression))
 import Morley.Client (AddressOrAlias(..))
+import Michelson.Text (MText(..))
 import qualified Tezos.Crypto as Hash
 
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import qualified Lorentz.Contracts.Spec.TZIP16Interface as TZ (View(..))
 import Lorentz.Contracts.StablecoinPath
-  (contractMetadataRegistryContractPath, metadataRegistryContractPath, stablecoinPath)
+  (contractMetadataRegistryContractPath, stablecoinPath)
 import Paths_stablecoin (version)
 
 ------------------------------------------------------------------
@@ -331,20 +333,6 @@ data ContractMetadataRegistryStorage' big_map = ContractMetadataRegistryStorage
 
 type ContractMetadataRegistryStorage = ContractMetadataRegistryStorage' BigMap
 
-data MetadataRegistryStorage' big_map = MetadataRegistryStorage
-  { mrsDummyField :: ()
-  , mrsTokenMetadata :: big_map FA2.TokenId FA2.TokenMetadata
-  }
-  deriving stock Generic
-
-type MetadataRegistryStorage = MetadataRegistryStorage' BigMap
-type MetadataRegistryStorageView = MetadataRegistryStorage' BigMapId
-
-deriving stock instance Show MetadataRegistryStorage
-deriving stock instance Show MetadataRegistryStorageView
-
-deriving anyclass instance IsoValue MetadataRegistryStorage
-deriving anyclass instance IsoValue MetadataRegistryStorageView
 deriving anyclass instance IsoValue ContractMetadataRegistryStorage
 
 -- | Construct the storage for the Contract Metadata contract.
@@ -356,32 +344,28 @@ mkContractMetadataRegistryStorage m = ContractMetadataRegistryStorage
   , cmrsMetadata = m
   }
 
--- | Construct the storage for the Metadata Registry contract.
-mkMetadataRegistryStorage :: MText -> MText -> Natural -> MetadataRegistryStorage
-mkMetadataRegistryStorage symbol name decimals =
-  MetadataRegistryStorage
-    { mrsDummyField = ()
-    , mrsTokenMetadata = BigMap $ Map.singleton FA2.theTokenId $
-        FA2.TokenMetadata
-          { tmTokenId = FA2.theTokenId
-          , tmSymbol = symbol
-          , tmName = name
-          , tmDecimals = decimals
-          , tmExtras = mempty
-          }
+-- | Construct the FA2 Metadata
+mkFA2TokenMetadata :: Text -> Text -> Natural -> FA2.TokenMetadata
+mkFA2TokenMetadata symbol name decimals =
+  FA2.TokenMetadata
+    { tmTokenId = FA2.theTokenId
+    , tmSymbol = symbol
+    , tmName = name
+    , tmDecimals = decimals
+    , tmExtras = mempty
     }
 
--- | The default storage for the Metadata Registry storage
--- with some hardcoded token metadata.
--- Useful for testing.
-defaultMetadataRegistryStorage :: MetadataRegistryStorage
-defaultMetadataRegistryStorage =
-  mkMetadataRegistryStorage
-    [mt|TEST|]
-    [mt|Test|]
-    8
+-- | Convert metadata from a Map (for example as embedded in TZIP-16
+-- metadata) into FA2 TokenMetadata.
+mapToTokenMetadata :: Map MText ByteString -> Maybe FA2.TokenMetadata
+mapToTokenMetadata m = do
+  name <- decodeUtf8 <$> Map.lookup [mt|name|] m
+  symbol <- decodeUtf8 <$> Map.lookup [mt|symbol|] m
+  decimalsTxt <- decodeUtf8 <$> Map.lookup [mt|decimals|] m
+  decimals <- readMaybe decimalsTxt
+  pure $ FA2.TokenMetadata 0 symbol name decimals mempty
 
--- | The default storage for the contract metadata storage
+-- | The default storage for the metadata storage
 -- with some hardcoded token metadata.
 -- Useful for testing.
 defaultContractMetadataStorage :: ContractMetadataRegistryStorage
@@ -432,22 +416,6 @@ stablecoinContract =
         |]
   )
 
--- | Parse the metadata registry contract.
-registryContract :: T.Contract (ToT ()) (ToT MetadataRegistryStorage)
-registryContract =
-  $(case readContract @(ToT ()) @(ToT MetadataRegistryStorage) metadataRegistryContractPath $(embedStringFile metadataRegistryContractPath) of
-      Left e -> fail (pretty e)
-      Right _ ->
-        [|
-          -- Note: it's ok to use `error` here, because we just proved that the contract
-          -- can be parsed+typechecked.
-          either (error . pretty) snd $
-            readContract
-              metadataRegistryContractPath
-              $(embedStringFile metadataRegistryContractPath)
-        |]
-  )
-
 -- | Parse the contract-metadata contract.
 contractMetadataContract :: T.Contract (ToT ()) (ToT ContractMetadataRegistryStorage)
 contractMetadataContract =
@@ -468,6 +436,12 @@ contractMetadataContract =
 -- TZIP-16 Metadata
 ----------------------------------------------------------------------------
 
+jfield :: MText
+jfield = [mt|metadataJSON|]
+
+tezosStorageScheme :: Text
+tezosStorageScheme = "tezos-storage"
+
 metadataMap :: J.ToJSON metadata => MetadataUri metadata -> MetadataMap BigMap
 metadataMap mdata = BigMap $ Map.fromList $
   -- One might reasonable expect that the URI would be stored as packed Michelson strings,
@@ -481,10 +455,7 @@ metadataMap mdata = BigMap $ Map.fromList $
   -- See: <https://gitlab.com/tzip/tzip/-/blob/eb1da57684599a266334a73babd7ba82dbbbce66/proposals/tzip-16/tzip-16.md#contract-storage>
   --
   -- So, instead, we encode it as UTF-8 byte sequences.
-  let
-    jfield = [mt|"metadataJSON"|]
-    tezosStorageScheme = "tezos-storage"
-  in case mdata of
+  case mdata of
     CurrentContract md includeUri ->
       if includeUri
           then [ (mempty, encodeUtf8 @Text $ tezosStorageScheme <> ":" <> (toText jfield))
@@ -499,13 +470,51 @@ metadataMap mdata = BigMap $ Map.fromList $
       [ (mempty, encodeUtf8 uri)
       ]
 
+
+-- Result after parsing the metadata uri from a TZIP-16 metadata bigmap.
+data ParsedMetadataUri
+  = InCurrentContractUnderKey Text
+  | InRemoteContractUnderKey Address Text
+  | RawUri Text
+  deriving stock (Eq, Show)
+
+parseMetadataUri :: Text -> Maybe ParsedMetadataUri
+parseMetadataUri t = P.parseMaybe metadataUriParser t
+
+metadataUriParser :: P.Parsec Void Text ParsedMetadataUri
+metadataUriParser
+  =   (P.try remoteContractUriParser)
+  <|> (P.try currentContractUriParser)
+  <|> rawUriParser
+
+remoteContractUriParser :: P.Parsec Void Text ParsedMetadataUri
+remoteContractUriParser = do
+  _ <- string' (tezosStorageScheme <> "://")
+  addr <- P.manyTill P.anySingle (string' "/")
+  key <- P.many P.anySingle
+  case parseAddress (toText addr) of
+    Right paddr -> pure $ InRemoteContractUnderKey paddr (toText key)
+    Left err -> fail $ show err
+
+rawUriParser :: P.Parsec Void Text ParsedMetadataUri
+rawUriParser = (RawUri . toText) <$> (P.many (P.satisfy (const True)))
+
+currentContractUriParser :: P.Parsec Void Text ParsedMetadataUri
+currentContractUriParser = do
+  _ <- string' (tezosStorageScheme <>  ":")
+  key_ <- P.many P.anySingle
+  pure $ InCurrentContractUnderKey (toText key_)
+
 data MetadataUri metadata
   = CurrentContract metadata Bool -- ^ Metadata and a flag to denote if URI should be included
   | RemoteContract Address
   | Raw Text
 
-metadataJSON :: Metadata (ToT Storage)
-metadataJSON =
+-- | Make the TZIP-16 Contract metadata. We accept a Maybe FA2.Token metadata
+-- as argument here so that we can use this function to create the metadata of the
+-- FA1.2 Variant as well.
+metadataJSON :: Maybe FA2.TokenMetadata -> Metadata (ToT Storage)
+metadataJSON mtmd  =
   Metadata
     { mName = Just "stablecoin"
     , mDescription = Nothing
@@ -547,10 +556,20 @@ metadataJSON =
         , mkError [mt|DUP_PERMIT|]                 [mt|The given permit already exists|]
         , mkError [mt|EXPIRY_TOO_BIG|]             [mt|The `set_expiry` entrypoint was called with an expiry value that is too big|]
         ]
-    , mViews =
-        [ getDefaultExpiryView
-        , getCounterView
-        ]
+    , mViews = case mtmd of
+        Nothing ->
+          [ getDefaultExpiryView
+          , getCounterView
+          ]
+        Just tmd ->
+          [ getDefaultExpiryView
+          , getCounterView
+          , getBalanceView
+          , getTotalSupplyView
+          , getAllTokensView
+          , isOperatorView
+          , tokenMetadataView tmd
+          ]
     }
   where
     mkError :: MText -> MText -> Error
@@ -560,6 +579,88 @@ metadataJSON =
         , eExpansion = toExpression (toVal expansion)
         , eLanguages = ["en"]
         }
+
+type BalanceViewParam = (Natural, Address)
+
+getBalanceView :: TZ.View (ToT Storage)
+getBalanceView =
+  TZ.View
+    { vName = "GetBalance"
+    , vDescription = Just "Access the balance of an address"
+    , vPure = True
+    , vImplementations = one $
+        VIMichelsonStorageView $ SomeMichelsonStorageView $
+          mkMichelsonStorageView @BalanceViewParam @Storage [] $
+            L.unpair #
+            L.dip (L.toField #sLedger) #
+            L.cdr #
+            L.get #
+            L.whenNone (L.push 0) -- If there is no ledger entry, return zero.
+    }
+
+getTotalSupplyView :: TZ.View (ToT Storage)
+getTotalSupplyView =
+  TZ.View
+    { vName = "GetTotalSupply"
+    , vDescription = Just "Get the total no of tokens available."
+    , vPure = True
+    , vImplementations = one $
+        VIMichelsonStorageView $ SomeMichelsonStorageView $
+          mkMichelsonStorageView @Natural @Storage [] $
+            L.unpair #
+            L.int #
+            L.assertEq0 [mt|Unknown TOKEN ID|] #
+            L.toField #sTotalSupply
+    }
+
+getAllTokensView :: TZ.View (ToT Storage)
+getAllTokensView =
+  TZ.View
+    { vName = "GetAllTokens"
+    , vDescription = Just "Get list of token ids supported."
+    , vPure = True
+    , vImplementations = one $
+        VIMichelsonStorageView $ SomeMichelsonStorageView $
+          mkMichelsonStorageView @() @Storage [] $
+            L.drop # L.nil # L.push (0 :: Natural) # L.cons
+    }
+
+isOperatorView :: TZ.View (ToT Storage)
+isOperatorView =
+  TZ.View
+    { vName = "IsOperator"
+    , vDescription = Just "Check if the given address in an operator"
+    , vPure = True
+    , vImplementations = one $
+        VIMichelsonStorageView $ SomeMichelsonStorageView $
+          mkMichelsonStorageView @(Natural, (Address, Address)) @Storage [] $
+            L.unpair #
+            L.dip (L.toField #sOperators) #
+            L.unpair #
+            L.int #
+            L.assertEq0 [mt|Unknown TOKEN ID|] #
+            L.get #
+            L.ifSome (L.drop # L.push True) (L.push False)
+    }
+
+tokenMetadataView :: FA2.TokenMetadata -> TZ.View (ToT Storage)
+tokenMetadataView FA2.TokenMetadata {..} =
+  TZ.View
+    { vName = "GetTokenMetadata"
+    , vDescription = Just "Get token metadata for the token id"
+    , vPure = True
+    , vImplementations = one $
+        VIMichelsonStorageView $ SomeMichelsonStorageView $
+          mkMichelsonStorageView @Natural @Storage [] $
+            L.car #
+            L.int #
+            L.assertEq0 [mt|Unknown TOKEN ID|] #
+            L.push (0 :: Natural, (Map.fromList
+              [ ([mt|symbol|], encodeUtf8 tmSymbol)
+              , ([mt|name|], encodeUtf8 tmName)
+              , ([mt|decimals|], show tmDecimals)
+              ] :: Map.Map MText ByteString))
+    }
 
 getDefaultExpiryView :: TZ.View (ToT Storage)
 getDefaultExpiryView =
