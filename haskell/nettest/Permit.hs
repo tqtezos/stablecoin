@@ -5,19 +5,19 @@ module Permit
   ( permitScenario
   ) where
 
-import Lorentz (Address, EntrypointRef(Call), TAddress(..), lPackValue, mt, toVal)
+import Lorentz (Address, EntrypointRef(Call), TAddress(..), lPackValue, toVal)
 import Michelson.Typed (convertContract, untypeValue)
 import Morley.Nettest
 
 import Lorentz.Contracts.Spec.FA2Interface (TransferDestination(..), TransferItem(..))
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
-  (ConfigureMinterParam(..), Parameter(..), MetadataUri(..), PermitParam(..), metadataJSON, mkPermitHash,
-  stablecoinContract)
+  (ConfigureMinterParam(..), MetadataUri(..), Parameter(..), PermitParam(..), metadataJSON,
+  mkPermitHash, stablecoinContract)
 
 import Lorentz.Contracts.Test.Common
   (OriginationParams(..), addAccount, defaultOriginationParams, mkInitialStorage,
-  testFA2TokenMetadata, nettestOriginateContractMetadataContract)
+  nettestOriginateContractMetadataContract, testFA2TokenMetadata)
 
 permitScenario :: NettestScenario m
 permitScenario = uncapsNettest $ do

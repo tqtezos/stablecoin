@@ -41,16 +41,19 @@ import qualified Data.Aeson as J
 import qualified Data.Map as M
 import Fmt (Buildable(build), pretty, (+|), (|+))
 import Lorentz (EntrypointRef(Call), HasEntrypointArg, ToT, arg, useHasEntrypointArg)
-import Lorentz.Contracts.Spec.TZIP16Interface (Metadata(..))
+import qualified Lorentz.Contracts.Spec.TZIP16Interface as TZ
 import Michelson.Typed (Dict(..), IsoValue, fromVal, toVal)
 
+import Lorentz.Test (dummyContractEnv)
 import Michelson.Text
 import Morley.Client
-  (AddressOrAlias(..), Alias, AliasHint(..), MorleyClientM, TezosClientError(UnknownAddress),
-  getAlias, getContractScript, lTransfer, originateContract, readBigMapValue, readBigMapValueMaybe)
+  (AddressOrAlias(..), Alias, AliasHint(..), BigMapId, MorleyClientM,
+  TezosClientError(UnknownAddress), getAlias, getContractScript, lTransfer, originateContract,
+  readBigMapValue, readBigMapValueMaybe)
 import qualified Morley.Client as Client
 import Morley.Client.RPC (OriginationScript(OriginationScript))
 import Morley.Client.TezosClient (resolveAddress)
+import qualified Morley.Metadata as MD
 import Morley.Micheline (Expression, FromExpressionError, fromExpression)
 import Tezos.Address (Address)
 import Tezos.Core (Mutez, unsafeMkMutez)
@@ -58,10 +61,10 @@ import Util.Named ((:!), (.!))
 
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
-  (ConfigureMinterParam(..), ParsedMetadataUri(..), MetadataUri(..),
-  MintParam(..), Parameter, Roles(..), Storage'(..), type Storage, StorageView, UpdateOperatorData(..),
-  contractMetadataContract, metadataJSON, metadataMap, parseMetadataUri, mkContractMetadataRegistryStorage,
-  mkFA2TokenMetadata, stablecoinContract)
+  (ConfigureMinterParam(..), MetadataUri(..), MintParam(..), Parameter, ParsedMetadataUri(..),
+  Roles(..), Storage'(..), StorageView, UpdateOperatorData(..), contractMetadataContract,
+  mapToTokenMetadata, metadataJSON, metadataMap, mkContractMetadataRegistryStorage,
+  mkFA2TokenMetadata, parseMetadataUri, stablecoinContract)
 import Stablecoin.Client.Contract (InitialStorageData(..), mkInitialStorage)
 import Stablecoin.Client.Parser (ContractMetadataOptions(..))
 
@@ -89,7 +92,7 @@ deploy (arg #sender -> sender) alias initialStorageData@InitialStorageData {..} 
       OpCurrentContract ->
         -- We drop some errors from metadata so that the contract will originate within operation
         -- limits.
-        pure $ CurrentContract ((metadataJSON Nothing) { mErrors = [] }) True
+        pure $ CurrentContract (TZ.errors [] <> (metadataJSON Nothing)) True
       -- User have stored metadata somewhere and just wants to put the raw uri in metadata bigmap
       OpRaw url -> pure $ Raw url
       -- User wants a new contract with metadata to be deployed.
@@ -316,8 +319,20 @@ getMintingAllowance contract minter = do
 
 getTokenMetadata :: "contract" :! AddressOrAlias -> MorleyClientM FA2.TokenMetadata
 getTokenMetadata contract = do
-  metadata <- getContractMetadata @(Metadata (ToT Storage)) contract
-  error "TODO"
+  metadata <- getContractMetadata @(TZ.Metadata (ToT StorageView)) contract
+  case TZ.getViews metadata of
+    Left err -> throwM $ SCEMetadataError ("Views was not found in metadata:" <> show err)
+    Right views -> case MD.findView @(ToT StorageView) views "GetTokenMetadata" of
+      Nothing -> throwM $ SCEMetadataError "'GetTokenMetadata' view was not found in metadata"
+      Just getTMD -> do
+        storage <- getStorage contract
+        case MD.interpretView @_ @StorageView @(Map MText ByteString)
+            dummyContractEnv getTMD (0 :: Natural) storage of
+          Right md -> case mapToTokenMetadata md of
+            Just m -> pure m
+            Nothing -> throwM $ SCEMetadataError "Token medatadata parsing failed"
+          Left err -> throwM $ SCEMetadataError ("Error while interpreting the contract:" <> show err)
+
 
 -- | Get the token metadata of the contract
 getContractMetadata :: (J.FromJSON metadata) => "contract" :! AddressOrAlias -> MorleyClientM metadata
@@ -333,8 +348,17 @@ getContractMetadata contract = do
           case J.eitherDecodeStrict rawMd of
             Right a -> pure a
             Left err -> throwM $ SCEMetadataError ("Error decoding metadata:" <> show err)
-        Left err -> throwM $ SCEMetadataError ("Unexpected key:" <> key)
-      InRemoteContractUnderKey addr key -> error "TODO"
+        Left _ -> throwM $ SCEMetadataError ("Unexpected key:" <> key)
+      InRemoteContractUnderKey addr key -> do
+        case mkMText key of
+          Right mtKey -> do
+            bigMapId_ <- snd <$> getMetadataRegistryStorage (#contract .! (AddressResolved addr))
+            rawMd <- readBigMapValue bigMapId_ mtKey
+            case J.eitherDecodeStrict rawMd of
+              Right a -> pure a
+              Left err -> throwM $ SCEMetadataError ("Error decoding metadata:" <> show err)
+          Left _ -> throwM $ SCEMetadataError ("Unexpected key:" <> key)
+      RawUri uri_ -> throwM $ SCEMetadataError ("Unsupported metadata URI:" <> uri_)
 
 -- | Check if there's an alias associated with this address and, if so, return both.
 pairWithAlias :: Address -> MorleyClientM AddressAndAlias
@@ -374,6 +398,15 @@ getStorage (arg #contract -> contract) = do
     Right storage -> pure storage
     Left err -> throwM $ SCEExpressionParseError storageExpr err
 
+-- | Get the contract's storage.
+getMetadataRegistryStorage :: "contract" :! AddressOrAlias -> MorleyClientM ((), (BigMapId MText ByteString))
+getMetadataRegistryStorage (arg #contract -> contract) = do
+  contractAddr <- resolveAddress contract
+  OriginationScript _ storageExpr <- getContractScript contractAddr
+  case fromVal @((), BigMapId MText ByteString) <$> fromExpression storageExpr of
+    Right storage -> pure storage
+    Left err -> throwM $ SCEExpressionParseError storageExpr err
+
 ------------------------------------------------------------------
 --- Exceptions
 ------------------------------------------------------------------
@@ -389,6 +422,9 @@ instance Buildable StablecoinClientError where
     "Failed to parse expression:\n" +|
     expr |+ "\n" <>
     "Parse error: " +| err |+ ""
+
+  build (SCEMetadataError err) =
+    "There was an error during the processing of metadata:\n" +| err |+ ""
 
 instance Exception StablecoinClientError where
   displayException = pretty

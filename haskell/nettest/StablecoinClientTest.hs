@@ -7,7 +7,6 @@ module StablecoinClientTest
   ( stablecoinClientScenario
   ) where
 
-import Michelson.Text (mt)
 import Morley.Nettest as NT
 import Tezos.Address (Address)
 import Util.Named ((.!))
@@ -34,7 +33,7 @@ stablecoinClientScenario = do
   (contractOwnerAlias, contractOwnerAddr, contractOwner) <- createRole "contract-owner"
   (_, _, minter) <- createRole "minter"
   (transferlistAlias, transferlistAddr, transferlist) <- createRole "transferlist"
-  (_, _, mdRegisty) <- createRole "metadata-registry"
+  (_, _, _) <- createRole "metadata-registry"
 
   comment "Deploying contract"
   contractAddr <- deploy (#sender.! originator) InitialStorageData
@@ -49,7 +48,6 @@ stablecoinClientScenario = do
     , isdContractMetadataStorage = OpRemoteContract
     }
   let contract = #contract .! AddressResolved contractAddr
-
   comment "Testing get-balance"
   actualBalance <- SC.getBalance contract
   expectedBalance <- NT.getBalance (AddressResolved contractAddr)

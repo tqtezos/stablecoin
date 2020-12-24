@@ -46,14 +46,14 @@ module Lorentz.Contracts.Test.Common
   , lExpectAnyMichelsonFailed
   ) where
 
+import Data.Aeson (ToJSON)
+import qualified Data.Aeson as J
+import qualified Data.ByteString.Lazy as BSL
 import Data.List.NonEmpty ((!!))
 import qualified Data.Map as Map
-
-import qualified Data.Aeson as J
-import Data.Aeson (ToJSON)
-import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Text as Text
 import Fmt (pretty)
+
 import Lorentz (arg)
 import qualified Lorentz.Contracts.Spec.TZIP16Interface as MD
 import Lorentz.Test
@@ -277,14 +277,17 @@ checkView addr viewName viewParam expectedViewVal =
       maybeToRight (CustomTestError $ "Metadata bigmap did not contain the key: " <> metadataJSONKey) $
         Map.lookup metadataJSONKeyMText . unBigMap $ sMetadata st
 
-    metadataJSON <-
+    metadataJSON_ <-
       first
         (\err -> CustomTestError (toText err)) $
         J.eitherDecode' @(MD.Metadata (ToT Storage)) (BSL.fromStrict metadataJSONBytestring)
 
-    view_ <-
+    view_ <- do
+      views <-
+        first
+          (\err -> CustomTestError $ "Views lookup failed: " <> (toText err)) $ MD.getViews metadataJSON_
       maybeToRight (CustomTestError $ "Metadata does not contain view with name:" <> viewName) $
-        MD.getView metadataJSON viewName
+        MD.findView views viewName
 
     -- See note below.
     unless (MD.vPure view_) $

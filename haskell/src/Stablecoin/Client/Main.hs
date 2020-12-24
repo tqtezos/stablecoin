@@ -164,11 +164,11 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
       allowance <- getMintingAllowance contract gmaoMinter
       putTextLn $ "Minting allowance: " <> pretty allowance
 
-    CmdGetTokenMetadata -> error "TODO"
-      -- tm <- getTokenMetadata contract
-      -- putTextLn $ "Token symbol: " <> pretty (tmSymbol tm)
-      -- putTextLn $ "Token name: " <> pretty (tmName tm)
-      -- putTextLn $ "Token decimals: " <> pretty (tmDecimals tm)
+    CmdGetTokenMetadata -> do
+      tm <- getTokenMetadata contract
+      putTextLn $ "Token symbol: " <> pretty (tmSymbol tm)
+      putTextLn $ "Token name: " <> pretty (tmName tm)
+      putTextLn $ "Token decimals: " <> pretty (tmDecimals tm)
 
   where
     user = #sender .! goUser globalOptions

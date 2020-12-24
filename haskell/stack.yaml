@@ -30,7 +30,7 @@ extra-deps:
     https://gitlab.com/morley-framework/morley-metadata.git
     # ^ CI cannot use ssh, so we use http clone here
   commit:
-    abc385928e69b6429595c6169b2494165aae9c77 # master
+    eb8511f671b3ffc9ec098fc827e251a4537c5511 # master
 
 # Stable parts of morley available from Hackage
 - morley-prelude-0.3.0

@@ -12,18 +12,12 @@ module Lorentz.Contracts.Test.Permit
   ( permitSpec
   ) where
 
-import qualified Data.Aeson as J
-import qualified Data.ByteString.Lazy as BSL
-import qualified Data.Map as Map
-import qualified Data.Text as Text
-import Fmt (pretty)
 import Test.Hspec (Spec, describe, it, specify)
 
-import Lorentz (BigMap(..), IsoValue, TAddress, ToT, lPackValue, mt)
+import Lorentz (BigMap(..), TAddress, lPackValue, mt)
 import Lorentz.Test
 import Michelson.Runtime (ExecutorError)
 import Michelson.Runtime.GState (GState(gsChainId), initGState)
-import Michelson.Text (mkMText)
 import Tezos.Address (Address)
 import Tezos.Crypto (PublicKey, SecretKey(..), Signature(..))
 import qualified Tezos.Crypto.Ed25519 as Ed25519
@@ -35,8 +29,6 @@ import Tezos.Crypto.Util (deterministic)
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import qualified Lorentz.Contracts.Spec.TZIP16Interface as MD
 import Lorentz.Contracts.Stablecoin hiding (metadataJSON, stablecoinContract)
-import qualified Morley.Metadata as MD
-
 import Lorentz.Contracts.Test.Common
 import Lorentz.Contracts.Test.FA2 (fa2NotOperator, fa2NotOwner)
 import Lorentz.Contracts.Test.Management

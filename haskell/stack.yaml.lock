@@ -48,12 +48,12 @@ packages:
     version: '0'
     git: https://gitlab.com/morley-framework/morley-metadata.git
     pantry-tree:
-      size: 3104
-      sha256: 131b69146dc474ae5e07e48f616e000cbf079a68139e03343eb582841ad83989
-    commit: abc385928e69b6429595c6169b2494165aae9c77
+      size: 3141
+      sha256: 67a76a207fea9c93238070c30bc821eb886c7e16d7ee51f4dba439fb84773694
+    commit: eb8511f671b3ffc9ec098fc827e251a4537c5511
   original:
     git: https://gitlab.com/morley-framework/morley-metadata.git
-    commit: abc385928e69b6429595c6169b2494165aae9c77
+    commit: eb8511f671b3ffc9ec098fc827e251a4537c5511
 - completed:
     hackage: morley-prelude-0.3.0@sha256:9e9473ac14cfa206adf0a3700764c0251de05042f1fe45daf9cb8556079ae663,2085
     pantry-tree:

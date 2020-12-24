@@ -27,9 +27,6 @@ module Stablecoin.Client.Parser
 
 import qualified Data.List.NonEmpty as NonEmpty
 import Data.Version (showVersion)
-import Lorentz (mt)
-import Michelson.Text (MText)
-import Morley.CLI (mTextOption)
 import Morley.Client (AddressOrAlias(..), Alias(..), MorleyClientConfig, clientConfigParser)
 import qualified Options.Applicative as Opt
 import Options.Applicative.Help.Pretty (Doc, linebreak)

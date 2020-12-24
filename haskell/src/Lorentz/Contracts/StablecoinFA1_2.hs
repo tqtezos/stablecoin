@@ -26,7 +26,7 @@ import Michelson.Runtime (parseExpandContract)
 import qualified Michelson.Untyped as U
 import Morley.Metadata (mkMichelsonStorageView)
 
-import qualified Lorentz.Contracts.Spec.TZIP16Interface as TZ (View(..))
+import qualified Lorentz.Contracts.Spec.TZIP16Interface as TZ
 import qualified Lorentz.Contracts.Stablecoin as S
 import Lorentz.Contracts.StablecoinPath (stablecoinFA1_2Path)
 
@@ -108,31 +108,28 @@ stablecoinFA1_2Contract =
 
 metadataJSON :: Metadata (ToT Storage)
 metadataJSON =
-  (S.metadataJSON Nothing)
-    { mName = Just "stablecoin FA1.2"
-    , mInterfaces = [ "TZIP-7", "TZIP-17" ]
-    , mViews =
-        [ getDefaultExpiryView
-        , getCounterView
-        ]
-
-    -- NOTE: Because we're storing the metadata in the contract's storage,
-    -- the storage may now exceed the storage size limit.
-    -- See: https://buildkite.com/serokell/stablecoin/builds/1150#eb990412-157b-4a96-92d8-3fd39d954369/65-261
-    --
-    -- As a temporary measure, we're removing the "homepage" and "source"
-    -- info to make the storage a little bit smaller, just enough to make it
-    -- possible to originate the contract.
-    --
-    -- TODO: once we move the metadata to its own contract, we can
-    -- add this info back to the metadata.
-    , mHomepage = Nothing
-    , mSource = Nothing
-    -- , mSource = Just Source
-    --     { sLocation = "https://github.com/tqtezos/stablecoin/tree/v" <> toText (showVersion version) <> "/ligo/stablecoin/fa1.2"
-    --     , sTools = [ "ligo " ]
-    --     }
-    }
+  TZ.name "stablecoin FA1.2" <>
+  TZ.interfaces [ TZ.Interface "TZIP-7", TZ.Interface "TZIP-17" ] <>
+  TZ.views
+      [ getDefaultExpiryView
+      , getCounterView
+      ] <>
+  -- NOTE: Because we're storing the metadata in the contract's storage,
+  -- the storage may now exceed the storage size limit.
+  -- See: https://buildkite.com/serokell/stablecoin/builds/1150#eb990412-157b-4a96-92d8-3fd39d954369/65-261
+  --
+  -- As a temporary measure, we're removing the "homepage" and "source"
+  -- info to make the storage a little bit smaller, just enough to make it
+  -- possible to originate the contract.
+  --
+  -- TODO: once we move the metadata to its own contract, we can
+  -- add this info back to the metadata.
+  TZ.source (TZ.Source "" []) <>
+  TZ.homepage ""
+  -- , mSource = Just Source
+  --     { sLocation = "https://github.com/tqtezos/stablecoin/tree/v" <> toText (showVersion version) <> "/ligo/stablecoin/fa1.2"
+  --     , sTools = [ "ligo " ]
+  --     }
 
 getDefaultExpiryView :: TZ.View (ToT Storage)
 getDefaultExpiryView =

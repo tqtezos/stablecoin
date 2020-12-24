@@ -34,8 +34,9 @@ module Lorentz.Contracts.Stablecoin
 
   -- * TZIP-16
   , ParsedMetadataUri(..)
-  , metadataMap
+  , mapToTokenMetadata
   , metadataJSON
+  , metadataMap
   , mkFA2TokenMetadata
   , parseMetadataUri
 
@@ -51,29 +52,24 @@ import qualified Data.Map as Map
 import Data.Version (showVersion)
 import Fmt
 import qualified Text.Megaparsec as P
+import Text.Megaparsec.Char (string')
 import qualified Text.Show
-import Text.Megaparsec.Char (newline, printChar, string')
-import Text.Megaparsec.Char.Lexer (decimal)
-import Text.Megaparsec.Error (ShowErrorComponent(..))
 
 import Lorentz as L
 import Lorentz.Contracts.Spec.TZIP16Interface
   (Error(..), License(..), Metadata(..), MetadataMap, SomeMichelsonStorageView(..), Source(..),
   ViewImplementation(..))
-import Tezos.Address (formatAddress, parseAddress)
 import Michelson.Test.Import (readContract)
 import qualified Michelson.Typed as T
-import Morley.Client (BigMapId(..))
+import Morley.Client (AddressOrAlias(..), BigMapId(..))
 import Morley.Metadata (mkMichelsonStorageView)
 import Morley.Micheline (ToExpression(toExpression))
-import Morley.Client (AddressOrAlias(..))
-import Michelson.Text (MText(..))
+import Tezos.Address (formatAddress, parseAddress)
 import qualified Tezos.Crypto as Hash
 
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
-import qualified Lorentz.Contracts.Spec.TZIP16Interface as TZ (View(..))
-import Lorentz.Contracts.StablecoinPath
-  (metadataRegistryContractPath, stablecoinPath)
+import qualified Lorentz.Contracts.Spec.TZIP16Interface as TZ
+import Lorentz.Contracts.StablecoinPath (metadataRegistryContractPath, stablecoinPath)
 import Paths_stablecoin (version)
 
 ------------------------------------------------------------------
@@ -365,8 +361,7 @@ mapToTokenMetadata m = do
   decimals <- readMaybe decimalsTxt
   pure $ FA2.TokenMetadata 0 symbol name decimals mempty
 
--- | The default storage for the metadata storage
--- with some hardcoded token metadata.
+-- The default storage of metadata contract with some hardcoded token metadata.
 -- Useful for testing.
 defaultContractMetadataStorage :: MetadataRegistryStorage
 defaultContractMetadataStorage =
@@ -515,69 +510,65 @@ data MetadataUri metadata
 -- FA1.2 Variant as well.
 metadataJSON :: Maybe FA2.TokenMetadata -> Metadata (ToT Storage)
 metadataJSON mtmd  =
-  Metadata
-    { mName = Just "stablecoin"
-    , mDescription = Nothing
-    , mVersion = Just (toText $ showVersion version)
-    , mLicense = Just License { lName = "MIT", lDetails = Nothing }
-    , mAuthors =
-        [ "Serokell <https://serokell.io/>"
-        , "TQ Tezos <https://tqtezos.com/>"
-        ]
-    , mHomepage = Just "https://github.com/tqtezos/stablecoin/"
-    , mSource = Just Source
-        { sLocation = "https://github.com/tqtezos/stablecoin/tree/v" <> toText (showVersion version) <> "/ligo/stablecoin"
-        , sTools = [ "ligo " ] -- TODO: add ligo version
-        }
-    , mInterfaces = [ "TZIP-12", "TZIP-17" ]
-    , mErrors =
-        [ mkError [mt|FA2_TOKEN_UNDEFINED|]        [mt|All `token_id`s must be 0|]
-        , mkError [mt|FA2_INSUFFICIENT_BALANCE|]   [mt|Cannot debit from a wallet because of insufficient amount of tokens|]
-        , mkError [mt|FA2_NOT_OPERATOR|]           [mt|You're neither the owner or a permitted operator of one or more wallets from which tokens will be transferred|]
-        , mkError [mt|XTZ_RECEIVED|]               [mt|Contract received a non-zero amount of tokens|]
-        , mkError [mt|NOT_CONTRACT_OWNER|]         [mt|Operation can only be performed by the contract's owner|]
-        , mkError [mt|NOT_PENDING_OWNER|]          [mt|Operation can only be performed by the current contract's pending owner|]
-        , mkError [mt|NO_PENDING_OWNER_SET|]       [mt|There's no pending transfer of ownership|]
-        , mkError [mt|NOT_PAUSER|]                 [mt|Operation can only be performed by the contract's pauser|]
-        , mkError [mt|NOT_MASTER_MINTER|]          [mt|Operation can only be performed by the contract's master minter|]
-        , mkError [mt|NOT_MINTER|]                 [mt|Operation can only be performed by registered minters|]
-        , mkError [mt|CONTRACT_PAUSED|]            [mt|Operation cannot be performed while the contract is paused|]
-        , mkError [mt|CONTRACT_NOT_PAUSED|]        [mt|Operation cannot be performed while the contract is not paused|]
-        , mkError [mt|NOT_TOKEN_OWNER|]            [mt|You cannot configure another user's operators|]
-        , mkError [mt|CURRENT_ALLOWANCE_REQUIRED|] [mt|The given address is already a minter, you must specify its current minting allowance|]
-        , mkError [mt|ALLOWANCE_MISMATCH|]         [mt|The given current minting allowance does not match the minter's actual current minting allowance|]
-        , mkError [mt|ADDR_NOT_MINTER|]            [mt|This address is not a registered minter|]
-        , mkError [mt|ALLOWANCE_EXCEEDED|]         [mt|The amount of tokens to be minted exceeds your current minting allowance|]
-        , mkError [mt|BAD_TRANSFERLIST|]           [mt|The given address is a not a smart contract complying with the transferlist interface|]
-        , mkError [mt|MINTER_LIMIT_REACHED|]       [mt|Cannot add new minter because the number of minters is already at the limit|]
-        , mkError [mt|MISSIGNED|]                  [mt|This permit's signature is invalid|]
-        , mkError [mt|EXPIRED_PERMIT|]             [mt|A permit was found, but it has already expired|]
-        , mkError [mt|NOT_PERMIT_ISSUER|]          [mt|You're not the issuer of the given permit|]
-        , mkError [mt|DUP_PERMIT|]                 [mt|The given permit already exists|]
-        , mkError [mt|EXPIRY_TOO_BIG|]             [mt|The `set_expiry` entrypoint was called with an expiry value that is too big|]
-        ]
-    , mViews = case mtmd of
-        Nothing ->
-          [ getDefaultExpiryView
-          , getCounterView
-          ]
-        Just tmd ->
-          [ getDefaultExpiryView
-          , getCounterView
-          , getBalanceView
-          , getTotalSupplyView
-          , getAllTokensView
-          , isOperatorView
-          , tokenMetadataView tmd
-          ]
-    }
+  TZ.name  "stablecoin" <>
+  TZ.version (toText $ showVersion version) <>
+  TZ.license (License { lName = "MIT", lDetails = Nothing }) <>
+  TZ.authors
+      [ TZ.author "Serokell" "https://serokell.io/"
+      , TZ.author "TQ Tezos" "https://tqtezos.com/"
+      ] <>
+  TZ.homepage "https://github.com/tqtezos/stablecoin/" <>
+  TZ.source Source
+     { sLocation = "https://github.com/tqtezos/stablecoin/tree/v" <> toText (showVersion version) <> "/ligo/stablecoin"
+     , sTools = [ "ligo " ] -- TODO: add ligo version
+     } <>
+  TZ.interfaces [ TZ.Interface "TZIP-12", TZ.Interface "TZIP-17" ] <>
+  TZ.errors [ mkError [mt|FA2_TOKEN_UNDEFINED|]        [mt|All `token_id`s must be 0|]
+            , mkError [mt|FA2_INSUFFICIENT_BALANCE|]   [mt|Cannot debit from a wallet because of insufficient amount of tokens|]
+            , mkError [mt|FA2_NOT_OPERATOR|]           [mt|You're neither the owner or a permitted operator of one or more wallets from which tokens will be transferred|]
+            , mkError [mt|XTZ_RECEIVED|]               [mt|Contract received a non-zero amount of tokens|]
+            , mkError [mt|NOT_CONTRACT_OWNER|]         [mt|Operation can only be performed by the contract's owner|]
+            , mkError [mt|NOT_PENDING_OWNER|]          [mt|Operation can only be performed by the current contract's pending owner|]
+            , mkError [mt|NO_PENDING_OWNER_SET|]       [mt|There's no pending transfer of ownership|]
+            , mkError [mt|NOT_PAUSER|]                 [mt|Operation can only be performed by the contract's pauser|]
+            , mkError [mt|NOT_MASTER_MINTER|]          [mt|Operation can only be performed by the contract's master minter|]
+            , mkError [mt|NOT_MINTER|]                 [mt|Operation can only be performed by registered minters|]
+            , mkError [mt|CONTRACT_PAUSED|]            [mt|Operation cannot be performed while the contract is paused|]
+            , mkError [mt|CONTRACT_NOT_PAUSED|]        [mt|Operation cannot be performed while the contract is not paused|]
+            , mkError [mt|NOT_TOKEN_OWNER|]            [mt|You cannot configure another user's operators|]
+            , mkError [mt|CURRENT_ALLOWANCE_REQUIRED|] [mt|The given address is already a minter, you must specify its current minting allowance|]
+            , mkError [mt|ALLOWANCE_MISMATCH|]         [mt|The given current minting allowance does not match the minter's actual current minting allowance|]
+            , mkError [mt|ADDR_NOT_MINTER|]            [mt|This address is not a registered minter|]
+            , mkError [mt|ALLOWANCE_EXCEEDED|]         [mt|The amount of tokens to be minted exceeds your current minting allowance|]
+            , mkError [mt|BAD_TRANSFERLIST|]           [mt|The given address is a not a smart contract complying with the transferlist interface|]
+            , mkError [mt|MINTER_LIMIT_REACHED|]       [mt|Cannot add new minter because the number of minters is already at the limit|]
+            , mkError [mt|MISSIGNED|]                  [mt|This permit's signature is invalid|]
+            , mkError [mt|EXPIRED_PERMIT|]             [mt|A permit was found, but it has already expired|]
+            , mkError [mt|NOT_PERMIT_ISSUER|]          [mt|You're not the issuer of the given permit|]
+            , mkError [mt|DUP_PERMIT|]                 [mt|The given permit already exists|]
+            , mkError [mt|EXPIRY_TOO_BIG|]             [mt|The `set_expiry` entrypoint was called with an expiry value that is too big|]
+            ] <>
+  TZ.views (case mtmd of
+     Nothing ->
+       [ getDefaultExpiryView
+       , getCounterView
+       ]
+     Just tmd ->
+       [ getDefaultExpiryView
+       , getCounterView
+       , getBalanceView
+       , getTotalSupplyView
+       , getAllTokensView
+       , isOperatorView
+       , tokenMetadataView tmd
+       ])
   where
     mkError :: MText -> MText -> Error
     mkError err expansion =
-      Error
-        { eError = toExpression (toVal err)
-        , eExpansion = toExpression (toVal expansion)
-        , eLanguages = ["en"]
+      TZ.EStatic $ TZ.StaticError
+        { seError = toExpression (toVal err)
+        , seExpansion = toExpression (toVal expansion)
+        , seLanguages = ["en"]
         }
 
 type BalanceViewParam = (Natural, Address)

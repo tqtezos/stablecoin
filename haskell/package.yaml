@@ -62,26 +62,26 @@ tests:
 
     dependencies:
       - aeson
+      - bytestring
+      - cleveland
+      - containers
+      - fmt
+      - hedgehog
+      - hspec
+      - interpolate
+      - lorentz
       - morley
-      - morley-prelude
       - morley-ledgers
       - morley-ledgers-test
       - morley-metadata
-      - lorentz
-      - cleveland
+      - morley-prelude
+      - mtl
+      - stablecoin
       - tasty
+      - tasty-hedgehog
       - tasty-hspec
       - tasty-hunit-compat
-      - tasty-hedgehog
-      - hedgehog
-      - stablecoin
-      - hspec
-      - containers
-      - mtl
-      - fmt
       - text
-      - bytestring
-      - interpolate
 
   stablecoin-nettest:
     <<: *test-common
@@ -91,17 +91,17 @@ tests:
 
     dependencies:
       - aeson
+      - bytestring
       - cleveland
       - containers
+      - fmt
       - lorentz
       - morley
       - morley-client
       - morley-ledgers
-      - morley-prelude
       - morley-metadata
+      - morley-prelude
       - optparse-applicative
       - stablecoin
-      - bytestring
-      - with-utf8
       - text
-      - fmt
+      - with-utf8
