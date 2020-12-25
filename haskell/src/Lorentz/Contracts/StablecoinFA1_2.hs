@@ -18,6 +18,7 @@ module Lorentz.Contracts.StablecoinFA1_2
 import Data.FileEmbed (embedStringFile)
 import Fmt (pretty)
 
+import Data.Version (showVersion)
 import Lorentz as L
 import qualified Lorentz.Contracts.Spec.ApprovableLedgerInterface as AL
 import Lorentz.Contracts.Spec.TZIP16Interface
@@ -29,6 +30,7 @@ import Morley.Metadata (mkMichelsonStorageView)
 import qualified Lorentz.Contracts.Spec.TZIP16Interface as TZ
 import qualified Lorentz.Contracts.Stablecoin as S
 import Lorentz.Contracts.StablecoinPath (stablecoinFA1_2Path)
+import Paths_stablecoin (version)
 
 data Storage = Storage
   { sDefaultExpiry :: S.Expiry
@@ -114,22 +116,11 @@ metadataJSON =
       [ getDefaultExpiryView
       , getCounterView
       ] <>
-  -- NOTE: Because we're storing the metadata in the contract's storage,
-  -- the storage may now exceed the storage size limit.
-  -- See: https://buildkite.com/serokell/stablecoin/builds/1150#eb990412-157b-4a96-92d8-3fd39d954369/65-261
-  --
-  -- As a temporary measure, we're removing the "homepage" and "source"
-  -- info to make the storage a little bit smaller, just enough to make it
-  -- possible to originate the contract.
-  --
-  -- TODO: once we move the metadata to its own contract, we can
-  -- add this info back to the metadata.
-  TZ.source (TZ.Source "" []) <>
-  TZ.homepage ""
-  -- , mSource = Just Source
-  --     { sLocation = "https://github.com/tqtezos/stablecoin/tree/v" <> toText (showVersion version) <> "/ligo/stablecoin/fa1.2"
-  --     , sTools = [ "ligo " ]
-  --     }
+  TZ.source
+    (TZ.Source
+      ("https://github.com/tqtezos/stablecoin/tree/v" <> toText (showVersion version) <> "/ligo/stablecoin/fa1.2")
+      [ "ligo " ]) <>
+  TZ.homepage "https://github.com/tqtezos/stablecoin/"
 
 getDefaultExpiryView :: TZ.View (ToT Storage)
 getDefaultExpiryView =
