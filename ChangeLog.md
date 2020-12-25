@@ -9,6 +9,10 @@ SPDX-License-Identifier: MIT
 <!-- Don't forget to update the gas/transaction costs tables in the
 README when a new version is released. -->
 
+* [#151](https://github.com/tqtezos/stablecoin/pull/151)
+  * Remove `token_metadata_registry` entrypoint.
+  * Add TZIP-16 storage views as required by TZIP-12.
+
 ## 1.5.0
 
 * [#144](https://github.com/tqtezos/stablecoin/pull/144)
