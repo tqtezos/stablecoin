@@ -62,7 +62,7 @@ import Util.Named ((:!), (.!))
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
   (ConfigureMinterParam(..), MetadataUri(..), MintParam(..), Parameter, ParsedMetadataUri(..),
-  Roles(..), Storage'(..), StorageView, UpdateOperatorData(..), contractMetadataContract,
+  Roles(..), Storage'(..), StorageView, type Storage, UpdateOperatorData(..), contractMetadataContract,
   mapToTokenMetadata, metadataJSON, metadataMap, mkContractMetadataRegistryStorage,
   mkFA2TokenMetadata, parseMetadataUri, stablecoinContract)
 import Stablecoin.Client.Contract (InitialStorageData(..), mkInitialStorage)
@@ -319,25 +319,36 @@ getMintingAllowance contract minter = do
 
 getTokenMetadata :: "contract" :! AddressOrAlias -> MorleyClientM FA2.TokenMetadata
 getTokenMetadata contract = do
-  metadata <- getContractMetadata @(TZ.Metadata (ToT StorageView)) contract
+  (metadata, storageView) <- getContractMetadata contract
   case TZ.getViews metadata of
     Left err -> throwM $ SCEMetadataError ("Views was not found in metadata:" <> show err)
-    Right views -> case MD.findView @(ToT StorageView) views "GetTokenMetadata" of
+    Right views -> case MD.findView @(ToT Storage) views "GetTokenMetadata" of
       Nothing -> throwM $ SCEMetadataError "'GetTokenMetadata' view was not found in metadata"
       Just getTMD -> do
-        storage <- getStorage contract
-        case MD.interpretView @_ @StorageView @(Map MText ByteString)
-            dummyContractEnv getTMD (0 :: Natural) storage of
-          Right md -> case mapToTokenMetadata md of
+        let storageWithEmptyBm :: Storage =
+              -- In the below code we convert the `StorageView` to `Storage` by
+              -- replacing all bigmaps with empty counterparts, and this should be fine here since
+              -- the token metadata view does not access any of these big maps.
+              storageView
+                { sLedger = mempty
+                , sMetadata = mempty
+                , sOperators = mempty
+                , sPermits = mempty
+                }
+        case MD.interpretView @_ @_ @(Natural, Map MText ByteString)
+            dummyContractEnv getTMD (0 :: Natural) storageWithEmptyBm of
+          Right (_, md) -> case mapToTokenMetadata md of
             Just m -> pure m
             Nothing -> throwM $ SCEMetadataError "Token medatadata parsing failed"
           Left err -> throwM $ SCEMetadataError ("Error while interpreting the contract:" <> show err)
 
-
--- | Get the token metadata of the contract
-getContractMetadata :: (J.FromJSON metadata) => "contract" :! AddressOrAlias -> MorleyClientM metadata
+-- | Get the metadata of the contract
+getContractMetadata
+  :: "contract" :! AddressOrAlias
+  -> MorleyClientM (TZ.Metadata (ToT Storage), StorageView)
 getContractMetadata contract = do
-  bigMapId <- sMetadata <$> getStorage contract
+  storageView <- getStorage contract
+  let bigMapId = sMetadata storageView
   metadataUri <- decodeUtf8 <$> readBigMapValue bigMapId [mt||]
   case parseMetadataUri metadataUri of
     Nothing -> throwM $ SCEMetadataError ("Unparsable URI:" <> metadataUri)
@@ -346,7 +357,7 @@ getContractMetadata contract = do
         Right mtKey -> do
           rawMd <- readBigMapValue bigMapId mtKey
           case J.eitherDecodeStrict rawMd of
-            Right a -> pure a
+            Right a -> pure (a, storageView)
             Left err -> throwM $ SCEMetadataError ("Error decoding metadata:" <> show err)
         Left _ -> throwM $ SCEMetadataError ("Unexpected key:" <> key)
       InRemoteContractUnderKey addr key -> do
@@ -355,7 +366,7 @@ getContractMetadata contract = do
             bigMapId_ <- snd <$> getMetadataRegistryStorage (#contract .! (AddressResolved addr))
             rawMd <- readBigMapValue bigMapId_ mtKey
             case J.eitherDecodeStrict rawMd of
-              Right a -> pure a
+              Right a -> pure (a, storageView)
               Left err -> throwM $ SCEMetadataError ("Error decoding metadata:" <> show err)
           Left _ -> throwM $ SCEMetadataError ("Unexpected key:" <> key)
       RawUri uri_ -> throwM $ SCEMetadataError ("Unsupported metadata URI:" <> uri_)
