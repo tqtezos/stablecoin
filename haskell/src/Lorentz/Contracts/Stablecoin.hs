@@ -3,7 +3,7 @@
 
 module Lorentz.Contracts.Stablecoin
   ( ConfigureMinterParam(..)
-  , ContractMetadataRegistryStorage
+  , MetadataRegistryStorage
   , ChangeMasterMinterParam
   , ChangePauserParam
   , SetTransferlistParam
@@ -73,7 +73,7 @@ import qualified Tezos.Crypto as Hash
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import qualified Lorentz.Contracts.Spec.TZIP16Interface as TZ (View(..))
 import Lorentz.Contracts.StablecoinPath
-  (contractMetadataRegistryContractPath, stablecoinPath)
+  (metadataRegistryContractPath, stablecoinPath)
 import Paths_stablecoin (version)
 
 ------------------------------------------------------------------
@@ -325,21 +325,21 @@ deriving anyclass instance IsoValue StorageView
 minterLimit :: Int
 minterLimit = 12
 
-data ContractMetadataRegistryStorage' big_map = ContractMetadataRegistryStorage
+data MetadataRegistryStorage' big_map = MetadataRegistryStorage
   { cmrsDummyField :: () -- Dummy field to match the ligo contract's storage.
   , cmrsMetadata:: MetadataMap big_map
   }
   deriving stock Generic
 
-type ContractMetadataRegistryStorage = ContractMetadataRegistryStorage' BigMap
+type MetadataRegistryStorage = MetadataRegistryStorage' BigMap
 
-deriving anyclass instance IsoValue ContractMetadataRegistryStorage
+deriving anyclass instance IsoValue MetadataRegistryStorage
 
--- | Construct the storage for the Contract Metadata contract.
+-- | Construct the storage for the Metadata contract.
 mkContractMetadataRegistryStorage
   :: MetadataMap BigMap
-  -> ContractMetadataRegistryStorage
-mkContractMetadataRegistryStorage m = ContractMetadataRegistryStorage
+  -> MetadataRegistryStorage
+mkContractMetadataRegistryStorage m = MetadataRegistryStorage
   { cmrsDummyField = ()
   , cmrsMetadata = m
   }
@@ -368,7 +368,7 @@ mapToTokenMetadata m = do
 -- | The default storage for the metadata storage
 -- with some hardcoded token metadata.
 -- Useful for testing.
-defaultContractMetadataStorage :: ContractMetadataRegistryStorage
+defaultContractMetadataStorage :: MetadataRegistryStorage
 defaultContractMetadataStorage =
   mkContractMetadataRegistryStorage
     (BigMap $ Map.fromList [([mt|TEST|], "TEST"), ([mt|Test|], "Test")])
@@ -417,9 +417,9 @@ stablecoinContract =
   )
 
 -- | Parse the contract-metadata contract.
-contractMetadataContract :: T.Contract (ToT ()) (ToT ContractMetadataRegistryStorage)
+contractMetadataContract :: T.Contract (ToT ()) (ToT MetadataRegistryStorage)
 contractMetadataContract =
-  $(case readContract @(ToT ()) @(ToT ContractMetadataRegistryStorage) contractMetadataRegistryContractPath $(embedStringFile contractMetadataRegistryContractPath) of
+  $(case readContract @(ToT ()) @(ToT MetadataRegistryStorage) metadataRegistryContractPath $(embedStringFile metadataRegistryContractPath) of
       Left e -> fail (pretty e)
       Right _ ->
         [|
@@ -427,8 +427,8 @@ contractMetadataContract =
           -- can be parsed+typechecked.
           either (error . pretty) snd $
             readContract
-              contractMetadataRegistryContractPath
-              $(embedStringFile contractMetadataRegistryContractPath)
+              metadataRegistryContractPath
+              $(embedStringFile metadataRegistryContractPath)
         |]
   )
 
@@ -510,7 +510,7 @@ data MetadataUri metadata
   | RemoteContract Address
   | Raw Text
 
--- | Make the TZIP-16 Contract metadata. We accept a Maybe FA2.Token metadata
+-- | Make the TZIP-16 metadata. We accept a Maybe FA2.Token metadata
 -- as argument here so that we can use this function to create the metadata of the
 -- FA1.2 Variant as well.
 metadataJSON :: Maybe FA2.TokenMetadata -> Metadata (ToT Storage)

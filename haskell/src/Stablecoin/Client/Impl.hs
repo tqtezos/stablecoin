@@ -82,7 +82,7 @@ deploy (arg #sender -> sender) alias initialStorageData@InitialStorageData {..} 
   pauser <- resolveAddress isdPauser
   transferlist <- traverse resolveAddress isdTransferlist
 
-  -- Make the contract metadata bigmap
+  -- Make the metadata bigmap
   contractMetadataUri  <-
     case isdContractMetadataStorage of
       -- User wants to store metadata embedded in the contact

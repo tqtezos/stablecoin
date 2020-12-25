@@ -287,7 +287,7 @@ clientArgsRawParser = Opt.subparser $
           (#name .! "default-expiry")
           (#help .! "Number of seconds it takes for a permit to expire")
 
-      -- Where to place contract metadata, while keeping it embedded in
+      -- Where to place metadata, while keeping it embedded in
       -- contract being the default
       dcoContractMetadata <- fromMaybe OpRemoteContract <$> contractMetadataOptParser
       pure $ DeployContractOptions {..}
@@ -300,7 +300,7 @@ clientArgsRawParser = Opt.subparser $
         rawOptParser = OpRaw <$> (mkCLOptionParser
           Nothing
           (#name .! "contract-metadata-off-chain")
-          (#help .! "Use the provided off-chain URI for contract metadata URI"))
+          (#help .! "Use the provided off-chain URI for metadata URI"))
 
         inplaceOptParser :: Opt.Parser ContractMetadataOptions
         inplaceOptParser =

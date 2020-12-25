@@ -11,7 +11,6 @@ extra-source-files:
 - ChangeLog.md
 - test/resources/stablecoin.tz
 - test/resources/metadata.tz
-- test/resources/tzip16-metadata.tz
 
 synopsis:            FA2-based tezos stablecoin smart contract
 category:            Blockchain

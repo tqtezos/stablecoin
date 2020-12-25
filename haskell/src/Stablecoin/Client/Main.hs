@@ -65,7 +65,7 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
       putTextLn $ "Operation hash: " <> pretty opHash
       putTextLn $ "Contract address: " <> pretty contractAddr
       whenJust mCMetadataAddr $ \addr ->
-        putTextLn $ "Contract metadata contract address: " <> pretty addr
+        putTextLn $ "Metadata contract address: " <> pretty addr
 
       let printAlias = putTextLn $ "Created alias '" <> pretty contractAlias <> "'."
 
