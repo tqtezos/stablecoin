@@ -106,8 +106,6 @@ type transferlist_transfer_item is michelson_pair(address, "from", list(address)
 
 type transferlist_assert_transfers_param is list(transferlist_transfer_item)
 
-type transferlist_assert_receiver_param is address
-
 type transferlist_assert_receivers_param is list(address)
 
 type set_transferlist_param is option(address)
@@ -131,9 +129,6 @@ type user_permits is
 type permits is big_map (address, user_permits)
 
 type permit_param is (key * (signature * blake2b_hash))
-
-type revoke_param is blake2b_hash * address
-type revoke_params is list(revoke_param)
 
 type set_expiry_param is (seconds * option(blake2b_hash * address))
 
