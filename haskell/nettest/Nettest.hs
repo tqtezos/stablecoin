@@ -147,7 +147,9 @@ scNettestScenario originateTransferlist transferlistType = uncapsNettest $ do
         (AddressResolved from)
         sc
         (Call @"Update_operators")
-        [FA2.Add_operator FA2.OperatorParam { opOwner = from, opOperator = op, opTokenId = 0 }]
+        [ FA2.AddOperator
+            FA2.OperatorParam { opOwner = from, opOperator = op, opTokenId = FA2.theTokenId }
+        ]
 
     removeOperator :: Address -> Address -> capsM ()
     removeOperator from op =
@@ -155,7 +157,9 @@ scNettestScenario originateTransferlist transferlistType = uncapsNettest $ do
         (AddressResolved from)
         sc
         (Call @"Update_operators")
-        [FA2.Remove_operator FA2.OperatorParam { opOwner = from, opOperator = op, opTokenId = 0 }]
+        [ FA2.RemoveOperator
+            FA2.OperatorParam { opOwner = from, opOperator = op, opTokenId = FA2.theTokenId }
+        ]
 
     mint :: Address -> Natural -> capsM ()
     mint to_ value =

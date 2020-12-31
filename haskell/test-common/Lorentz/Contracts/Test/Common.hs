@@ -1,12 +1,12 @@
 -- SPDX-FileCopyrightText: 2020 TQ Tezos
 -- SPDX-License-Identifier: MIT
 
-{-# LANGUAGE PackageImports #-}
-
 -- | Test commons for stablecoin test suite
 
 module Lorentz.Contracts.Test.Common
-  ( testOwner
+  ( oneTokenId
+
+  , testOwner
   , testOwnerPK
   , testOwnerSK
   , testPauser
@@ -62,8 +62,14 @@ import Tezos.Crypto (SecretKey, toPublic)
 import Util.Named
 
 import qualified Indigo.Contracts.Transferlist.Internal as Transferlist
-import "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
+import Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin as SC
+
+-- | A 'TokenId' with the value of `1`.
+-- This is used only for tests because @stablecoin@ only supports a single token
+-- with the value of 0, aka 'theTokenId'.
+oneTokenId :: TokenId
+oneTokenId = TokenId 1
 
 testOwner, testPauser, testMasterMinter, wallet1, wallet2, wallet3, wallet4, wallet5, commonOperator :: Address
 wallet1 = genesisAddress1
@@ -157,7 +163,7 @@ constructDestination
   -> TransferDestination
 constructDestination (arg #to_ -> to, arg #amount -> amount) = TransferDestination
   { tdTo = to
-  , tdTokenId = 0
+  , tdTokenId = FA2.theTokenId
   , tdAmount = amount
   }
 
@@ -171,9 +177,9 @@ constructTransfersFromSender
   -> [("to_" :! Address, "amount" :! Natural)]
   -> TransferParams
 constructTransfersFromSender (arg #from_ -> from) txs =
-  [ TransferParam
-      { tpFrom = from
-      , tpTxs = constructDestination <$> txs
+  [ TransferItem
+      { tiFrom = from
+      , tiTxs  = constructDestination <$> txs
       }
   ]
 
@@ -183,7 +189,7 @@ constructSingleTransfer
   -> "amount" :! Natural
   -> TransferParams
 constructSingleTransfer (arg #from_ -> from) (arg #to_ -> to) (arg #amount -> amount)
-    = [TransferParam from [TransferDestination to 0 amount]]
+    = [TransferItem from [TransferDestination to FA2.theTokenId amount]]
 
 -- | The return value of this function is a Maybe to handle the case where a contract
 -- having hardcoded permission descriptor, and thus unable to initialize with a custom

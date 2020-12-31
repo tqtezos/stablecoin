@@ -5,7 +5,6 @@
 -- https://gitlab.com/morley-framework/morley/-/issues/350
 {-# OPTIONS_GHC -Wno-deprecations #-}
 {-# OPTIONS_GHC -Wno-unused-do-bind #-}
-{-# LANGUAGE PackageImports #-}
 
 -- | Tests for permit functionality of stablecoin smart-contract
 
@@ -33,7 +32,7 @@ import qualified Tezos.Crypto.P256 as P256
 import qualified Tezos.Crypto.Secp256k1 as Secp256k1
 import Tezos.Crypto.Util (deterministic)
 
-import qualified "stablecoin" Lorentz.Contracts.Spec.FA2Interface as FA2
+import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import qualified Lorentz.Contracts.Spec.TZIP16Interface as MD
 import Lorentz.Contracts.Stablecoin hiding (metadataJSON, stablecoinContract)
 import qualified Morley.Metadata as MD
@@ -651,8 +650,8 @@ permitSpec originate = do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             let transferParams =
-                  [ FA2.TransferParam wallet2 []
-                  , FA2.TransferParam wallet2 []
+                  [ FA2.TransferItem wallet2 []
+                  , FA2.TransferItem wallet2 []
                   ]
 
             withSender wallet1 $ do
@@ -666,8 +665,8 @@ permitSpec originate = do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             let transferParams =
-                  [ FA2.TransferParam wallet2 []
-                  , FA2.TransferParam wallet3 []
+                  [ FA2.TransferItem wallet2 []
+                  , FA2.TransferItem wallet3 []
                   ]
 
             withSender wallet1 $ do
@@ -678,8 +677,7 @@ permitSpec originate = do
       specify "transferring from own account does not consume permits" $
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
-            let transferParams =
-                  [ FA2.TransferParam wallet2 [] ]
+            let transferParams = [ FA2.TransferItem wallet2 [] ]
             withSender wallet2 $ do
               callPermit stablecoinContract wallet2PK wallet2SK 0
                 (Call_FA2 $ FA2.Transfer transferParams)
@@ -689,13 +687,12 @@ permitSpec originate = do
       specify "operators do not consume permits" $
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
-            let transferParams =
-                  [ FA2.TransferParam wallet2 [] ]
+            let transferParams = [ FA2.TransferItem wallet2 [] ]
             withSender wallet2 $ do
               callPermit stablecoinContract wallet2PK wallet2SK 0
                 (Call_FA2 $ FA2.Transfer transferParams)
               lCallEP stablecoinContract (Call @"Update_operators")
-                [FA2.Add_operator FA2.OperatorParam { opOwner = wallet2, opOperator = wallet3, opTokenId = 0 }]
+                [FA2.AddOperator FA2.OperatorParam { opOwner = wallet2, opOperator = wallet3, opTokenId = FA2.theTokenId }]
             withSender wallet3 $ do
               lCallEP stablecoinContract (Call @"Transfer") transferParams
               assertPermitCount stablecoinContract 1
@@ -705,8 +702,8 @@ permitSpec originate = do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             let params =
-                  [ FA2.Add_operator FA2.OperatorParam { opOwner = wallet2, opOperator = wallet3, opTokenId = 0 }
-                  , FA2.Remove_operator FA2.OperatorParam { opOwner = wallet2, opOperator = wallet4, opTokenId = 0 }
+                  [ FA2.AddOperator FA2.OperatorParam { opOwner = wallet2, opOperator = wallet3, opTokenId = FA2.theTokenId }
+                  , FA2.RemoveOperator FA2.OperatorParam { opOwner = wallet2, opOperator = wallet4, opTokenId = FA2.theTokenId }
                   ]
 
             withSender wallet1 $ do
@@ -720,8 +717,8 @@ permitSpec originate = do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             let params =
-                  [ FA2.Add_operator FA2.OperatorParam { opOwner = wallet2, opOperator = wallet3, opTokenId = 0 }
-                  , FA2.Remove_operator FA2.OperatorParam { opOwner = wallet3, opOperator = wallet4, opTokenId = 0 }
+                  [ FA2.AddOperator FA2.OperatorParam { opOwner = wallet2, opOperator = wallet3, opTokenId = FA2.theTokenId }
+                  , FA2.RemoveOperator FA2.OperatorParam { opOwner = wallet3, opOperator = wallet4, opTokenId = FA2.theTokenId }
                   ]
 
             withSender wallet1 $ do
@@ -733,7 +730,7 @@ permitSpec originate = do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             let params =
-                  [ FA2.Add_operator FA2.OperatorParam { opOwner = wallet2, opOperator = wallet3, opTokenId = 0 } ]
+                  [ FA2.AddOperator FA2.OperatorParam { opOwner = wallet2, opOperator = wallet3, opTokenId = FA2.theTokenId } ]
 
             withSender wallet2 $ do
               callPermit stablecoinContract wallet2PK wallet2SK 0

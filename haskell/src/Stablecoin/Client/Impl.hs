@@ -149,7 +149,7 @@ transfer sender contract from to amount = do
   fromAddr <- resolveAddress from
   toAddr <- resolveAddress to
   call sender contract (Call @"Transfer")
-    [FA2.TransferParam fromAddr [FA2.TransferDestination toAddr 0 amount]]
+    [FA2.TransferItem fromAddr [FA2.TransferDestination toAddr FA2.theTokenId amount]]
 
 getBalanceOf
   :: "contract" :! AddressOrAlias
@@ -173,12 +173,13 @@ updateOperators (arg #sender -> sender) contract ops = do
   where
     mkUpdateOperator :: Address -> UpdateOperatorData -> MorleyClientM FA2.UpdateOperator
     mkUpdateOperator ownerAddr = \case
-      AddOperator op -> FA2.Add_operator <$> mkOperatorParam ownerAddr op
-      RemoveOperator op -> FA2.Remove_operator <$> mkOperatorParam ownerAddr op
+      AddOperator op -> FA2.AddOperator <$> mkOperatorParam ownerAddr op
+      RemoveOperator op -> FA2.RemoveOperator <$> mkOperatorParam ownerAddr op
 
     mkOperatorParam :: Address -> AddressOrAlias -> MorleyClientM FA2.OperatorParam
     mkOperatorParam ownerAddr operator =
-      resolveAddress operator <&> \operatorAddr -> FA2.OperatorParam ownerAddr operatorAddr 0
+      resolveAddress operator <&> \operatorAddr ->
+        FA2.OperatorParam ownerAddr operatorAddr FA2.theTokenId
 
 isOperator
   :: "contract" :! AddressOrAlias
@@ -331,7 +332,7 @@ getTokenMetadata :: "contract" :! AddressOrAlias -> MorleyClientM FA2.TokenMetad
 getTokenMetadata contract = do
   mdRegistry <- sTokenMetadataRegistry <$> getStorage contract
   bigMapId <- mrsTokenMetadata <$> getRegistryStorage mdRegistry
-  readBigMapValue bigMapId (0 :: FA2.TokenId)
+  readBigMapValue bigMapId FA2.theTokenId
 
 -- | Check if there's an alias associated with this address and, if so, return both.
 pairWithAlias :: Address -> MorleyClientM AddressAndAlias

@@ -92,10 +92,13 @@ fa1_2ComparisonScenario = uncapsNettest $ do
     originateUntypedSimple "Stablecoin FA2" (untypeValue $ toVal fa2Storage) (convertContract stablecoinContract)
 
   comment "Calling transfer"
-  callFrom (AddressResolved owner1) fa2ContractAddr (Call @"Transfer") [FA2.TransferParam
-    { tpFrom = owner1
-    , tpTxs =
-        [ TransferDestination { tdTo = owner2, tdTokenId = 0, tdAmount = 2 }
-
+  callFrom (AddressResolved owner1) fa2ContractAddr (Call @"Transfer") [FA2.TransferItem
+    { tiFrom = owner1
+    , tiTxs =
+        [ TransferDestination
+          { tdTo = owner2
+          , tdTokenId = FA2.theTokenId
+          , tdAmount = 2
+          }
         ]
     }]

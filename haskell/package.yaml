@@ -65,6 +65,7 @@ tests:
       - aeson
       - morley
       - morley-prelude
+      - morley-ledgers
       - morley-ledgers-test
       - morley-metadata
       - lorentz
@@ -96,6 +97,7 @@ tests:
       - lorentz
       - morley
       - morley-client
+      - morley-ledgers
       - morley-prelude
       - optparse-applicative
       - stablecoin

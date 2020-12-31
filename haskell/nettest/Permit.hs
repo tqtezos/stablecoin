@@ -9,7 +9,7 @@ import Lorentz (Address, EntrypointRef(Call), TAddress(..), lPackValue, toVal)
 import Michelson.Typed (convertContract, untypeValue)
 import Morley.Nettest
 
-import Lorentz.Contracts.Spec.FA2Interface (TransferDestination(..), TransferParam(..))
+import Lorentz.Contracts.Spec.FA2Interface (TransferDestination(..), TransferItem(..))
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
   (ConfigureMinterParam(..), Parameter(..), PermitParam(..), metadataJSON, mkPermitHash,
@@ -81,12 +81,16 @@ permitScenario = uncapsNettest $ do
   callFrom (addressResolved user1) contract (Call @"Unpause") ()
 
   comment "Issue a permit for Transfer"
-  let transferParam = [ TransferParam owner1 [TransferDestination user1 0 1] ]
+  let transferParam =
+        [ TransferItem owner1 [TransferDestination user1 FA2.theTokenId 1] ]
   issuePermit 2 owner1Alias (Call_FA2 $ FA2.Transfer transferParam)
   callFrom (addressResolved user1) contract (Call @"Transfer") transferParam
 
   comment "Issue a permit for Update_operators"
-  let param = [ FA2.Add_operator FA2.OperatorParam { opOwner = owner1, opOperator = user1, opTokenId = 0 } ]
+  let param =
+        [ FA2.AddOperator
+            FA2.OperatorParam { opOwner = owner1, opOperator = user1, opTokenId = FA2.theTokenId }
+        ]
   issuePermit 3 owner1Alias (Call_FA2 $ FA2.Update_operators param)
   callFrom (addressResolved user1) contract (Call @"Update_operators") param
 

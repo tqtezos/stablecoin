@@ -6,7 +6,6 @@ module Lorentz.Contracts.Stablecoin
   , ContractMetadataRegistryStorage
   , ChangeMasterMinterParam
   , ChangePauserParam
-  , GetCounterParam
   , SetTransferlistParam
   , RemoveMinterParam
   , MetadataRegistryStorage'(..)
@@ -36,7 +35,6 @@ module Lorentz.Contracts.Stablecoin
   , mkPermitHash
   , PermitParam(..)
   , SetExpiryParam(..)
-  , GetDefaultExpiryParam
   , minterLimit
 
   -- * TZIP-16
@@ -149,10 +147,6 @@ deriving anyclass instance HasAnnotation SetExpiryParam
 instance Buildable SetExpiryParam where
   build = genericF
 
-type GetDefaultExpiryParam = View () Expiry
-
-type GetCounterParam = View () Natural
-
 -- | Parameter of Stablecoin contract
 data Parameter
   = Accept_ownership
@@ -231,7 +225,7 @@ type PermitEntrypoints =
     ]
 
 type ParameterC param =
-  ( FA2.FA2ParameterC param
+  ( FA2.ParameterC param
   , ParameterContainsEntrypoints param ManagementMichelsonEntrypoints
   , ParameterContainsEntrypoints param PermitEntrypoints
   )
@@ -369,9 +363,9 @@ mkMetadataRegistryStorage :: MText -> MText -> Natural -> MetadataRegistryStorag
 mkMetadataRegistryStorage symbol name decimals =
   MetadataRegistryStorage
     { mrsDummyField = ()
-    , mrsTokenMetadata = BigMap $ Map.singleton 0 $
+    , mrsTokenMetadata = BigMap $ Map.singleton FA2.theTokenId $
         FA2.TokenMetadata
-          { tmTokenId = 0
+          { tmTokenId = FA2.theTokenId
           , tmSymbol = symbol
           , tmName = name
           , tmDecimals = decimals
