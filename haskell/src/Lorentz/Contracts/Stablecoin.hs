@@ -1,5 +1,6 @@
 -- SPDX-FileCopyrightText: 2020 TQ Tezos
 -- SPDX-License-Identifier: MIT
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Lorentz.Contracts.Stablecoin
   ( ConfigureMinterParam(..)
@@ -34,10 +35,8 @@ module Lorentz.Contracts.Stablecoin
 
   -- * TZIP-16
   , ParsedMetadataUri(..)
-  , mapToTokenMetadata
   , metadataJSON
   , metadataMap
-  , mkFA2TokenMetadata
   , parseMetadataUri
 
   -- * Embedded LIGO contracts
@@ -56,19 +55,20 @@ import Text.Megaparsec.Char (string')
 import qualified Text.Show
 
 import Lorentz as L
+import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Spec.TZIP16Interface
-  (Error(..), License(..), Metadata(..), MetadataMap, SomeMichelsonStorageView(..), Source(..),
-  ViewImplementation(..))
+  (Error(..), License(..), Metadata(..), MetadataMap, Source(..), ViewImplementation(..))
+import qualified Lorentz.Contracts.Spec.TZIP16Interface as TZ
 import Michelson.Test.Import (readContract)
+import Michelson.Typed (Notes(..))
 import qualified Michelson.Typed as T
+import Michelson.Untyped (noAnn)
 import Morley.Client (AddressOrAlias(..), BigMapId(..))
-import Morley.Metadata (mkMichelsonStorageView)
+import Morley.Metadata (ViewCode(..), mkMichelsonStorageView)
 import Morley.Micheline (ToExpression(toExpression))
 import Tezos.Address (formatAddress, parseAddress)
 import qualified Tezos.Crypto as Hash
 
-import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
-import qualified Lorentz.Contracts.Spec.TZIP16Interface as TZ
 import Lorentz.Contracts.StablecoinPath (metadataRegistryContractPath, stablecoinPath)
 import Paths_stablecoin (version)
 
@@ -144,6 +144,28 @@ deriving anyclass instance IsoValue SetExpiryParam
 deriving anyclass instance HasAnnotation SetExpiryParam
 instance Buildable SetExpiryParam where
   build = genericF
+
+instance HasAnnotation FA2.Parameter where
+  getAnnotation f =
+    NTOr noAnn noAnn noAnn
+      (NTOr noAnn noAnn noAnn
+        (getAnnotation @FA2.BalanceRequestParams f) (getAnnotation @FA2.TransferParams f))
+      (getAnnotation @FA2.UpdateOperatorsParam f)
+
+$(customGeneric "FA2.Parameter" $ withDepths
+    [ cstr @2 [fld @0]
+    , cstr @2 [fld @0]
+    , cstr @1 [fld @0]
+    ]
+  )
+
+deriving anyclass instance IsoValue FA2.Parameter
+
+instance ParameterHasEntrypoints FA2.Parameter where
+  type ParameterEntrypointsDerivation FA2.Parameter = EpdPlain
+
+instance TypeHasDoc FA2.Parameter where
+  typeDocMdDescription = "Describes the FA2 operations."
 
 -- | Parameter of Stablecoin contract
 data Parameter
@@ -340,27 +362,6 @@ mkContractMetadataRegistryStorage m = MetadataRegistryStorage
   , cmrsMetadata = m
   }
 
--- | Construct the FA2 Metadata
-mkFA2TokenMetadata :: Text -> Text -> Natural -> FA2.TokenMetadata
-mkFA2TokenMetadata symbol name decimals =
-  FA2.TokenMetadata
-    { tmTokenId = FA2.theTokenId
-    , tmSymbol = symbol
-    , tmName = name
-    , tmDecimals = decimals
-    , tmExtras = mempty
-    }
-
--- | Convert metadata from a Map (for example as embedded in TZIP-16
--- metadata) into FA2 TokenMetadata.
-mapToTokenMetadata :: Map MText ByteString -> Maybe FA2.TokenMetadata
-mapToTokenMetadata m = do
-  name <- decodeUtf8 <$> Map.lookup [mt|name|] m
-  symbol <- decodeUtf8 <$> Map.lookup [mt|symbol|] m
-  decimalsTxt <- decodeUtf8 <$> Map.lookup [mt|decimals|] m
-  decimals <- readMaybe decimalsTxt
-  pure $ FA2.TokenMetadata 0 symbol name decimals mempty
-
 -- The default storage of metadata contract with some hardcoded token metadata.
 -- Useful for testing.
 defaultContractMetadataStorage :: MetadataRegistryStorage
@@ -385,7 +386,7 @@ stablecoinContract =
   -- The reason they need to match is because of the way permits work.
   -- If we issue a permit for an entrypoint and the tree of `or`s is incorrect,
   -- then the permit will be unusable.
-  -- See TZIP-17 for more info.
+  -- See TZIP-017 for more info.
   --
   -- The splice attempts to parse the stablecoin.tz contract at compile-time.
   -- If, for example, the Michelson representation of Haskell's
@@ -434,9 +435,6 @@ contractMetadataContract =
 jfield :: MText
 jfield = [mt|metadataJSON|]
 
-tezosStorageScheme :: Text
-tezosStorageScheme = "tezos-storage"
-
 metadataMap :: J.ToJSON metadata => MetadataUri metadata -> MetadataMap BigMap
 metadataMap mdata = BigMap $ Map.fromList $
   -- One might reasonable expect that the URI would be stored as packed Michelson strings,
@@ -453,13 +451,12 @@ metadataMap mdata = BigMap $ Map.fromList $
   case mdata of
     CurrentContract md includeUri ->
       if includeUri
-          then [ (mempty, encodeUtf8 @Text $ tezosStorageScheme <> ":" <> (toText jfield))
+          then [ (mempty, TZ.encodeURI $ TZ.tezosStorageUri (TZ.ContractHost Nothing) jfield)
                , (jfield, BSL.toStrict (J.encode md))
                ]
           else [ (jfield, BSL.toStrict (J.encode md)) ]
     RemoteContract addr ->
-      [ (mempty, encodeUtf8 @Text $
-          tezosStorageScheme <> "://" <> (formatAddress addr) <> "/" <> (toText jfield))
+      [ (mempty, TZ.encodeURI $ TZ.tezosStorageUri (TZ.ContractHost (Just $ formatAddress addr)) jfield)
       ]
     Raw uri ->
       [ (mempty, encodeUtf8 uri)
@@ -473,8 +470,8 @@ data ParsedMetadataUri
   | RawUri Text
   deriving stock (Eq, Show)
 
-parseMetadataUri :: Text -> Maybe ParsedMetadataUri
-parseMetadataUri t = P.parseMaybe metadataUriParser t
+parseMetadataUri :: Text -> Either Text ParsedMetadataUri
+parseMetadataUri t = first (fromString . P.errorBundlePretty) $ P.parse metadataUriParser "" t
 
 metadataUriParser :: P.Parsec Void Text ParsedMetadataUri
 metadataUriParser
@@ -484,7 +481,7 @@ metadataUriParser
 
 remoteContractUriParser :: P.Parsec Void Text ParsedMetadataUri
 remoteContractUriParser = do
-  _ <- string' (tezosStorageScheme <> "://")
+  _ <- string' (TZ.tezosStorageScheme <> "://")
   addr <- P.manyTill P.anySingle (string' "/")
   key <- P.many P.anySingle
   case parseAddress (toText addr) of
@@ -496,7 +493,7 @@ rawUriParser = (RawUri . toText) <$> (P.many (P.satisfy (const True)))
 
 currentContractUriParser :: P.Parsec Void Text ParsedMetadataUri
 currentContractUriParser = do
-  _ <- string' (tezosStorageScheme <>  ":")
+  _ <- string' (TZ.tezosStorageScheme <>  ":")
   key_ <- P.many P.anySingle
   pure $ InCurrentContractUnderKey (toText key_)
 
@@ -505,7 +502,7 @@ data MetadataUri metadata
   | RemoteContract Address
   | Raw Text
 
--- | Make the TZIP-16 metadata. We accept a Maybe FA2.Token metadata
+-- | Make the TZIP-16 metadata. We accept a @Maybe@ @FA2.TokenMetadata@
 -- as argument here so that we can use this function to create the metadata of the
 -- FA1.2 Variant as well.
 metadataJSON :: Maybe FA2.TokenMetadata -> Metadata (ToT Storage)
@@ -519,10 +516,10 @@ metadataJSON mtmd  =
       ] <>
   TZ.homepage "https://github.com/tqtezos/stablecoin/" <>
   TZ.source Source
-     { sLocation = "https://github.com/tqtezos/stablecoin/tree/v" <> toText (showVersion version) <> "/ligo/stablecoin"
+     { sLocation = Just $ "https://github.com/tqtezos/stablecoin/tree/v" <> toText (showVersion version) <> "/ligo/stablecoin"
      , sTools = [ "ligo " ] -- TODO: add ligo version
      } <>
-  TZ.interfaces [ TZ.Interface "TZIP-12", TZ.Interface "TZIP-17" ] <>
+  TZ.interfaces [ TZ.Interface "TZIP-012", TZ.Interface "TZIP-017" ] <>
   TZ.errors [ mkError [mt|FA2_TOKEN_UNDEFINED|]        [mt|All `token_id`s must be 0|]
             , mkError [mt|FA2_INSUFFICIENT_BALANCE|]   [mt|Cannot debit from a wallet because of insufficient amount of tokens|]
             , mkError [mt|FA2_NOT_OPERATOR|]           [mt|You're neither the owner or a permitted operator of one or more wallets from which tokens will be transferred|]
@@ -578,11 +575,10 @@ getBalanceView =
   TZ.View
     { vName = "GetBalance"
     , vDescription = Just "Access the balance of an address"
-    , vPure = True
+    , vPure = Just True
     , vImplementations = one $
-        VIMichelsonStorageView $ SomeMichelsonStorageView $
-          mkMichelsonStorageView @BalanceViewParam @Storage [] $
-            L.unpair #
+        VIMichelsonStorageView $
+          mkMichelsonStorageView @Storage @Natural Nothing [] $ WithParam @BalanceViewParam $
             L.dip (L.toField #sLedger) #
             L.cdr #
             L.get #
@@ -594,11 +590,10 @@ getTotalSupplyView =
   TZ.View
     { vName = "GetTotalSupply"
     , vDescription = Just "Get the total no of tokens available."
-    , vPure = True
+    , vPure = Just True
     , vImplementations = one $
-        VIMichelsonStorageView $ SomeMichelsonStorageView $
-          mkMichelsonStorageView @Natural @Storage [] $
-            L.unpair #
+        VIMichelsonStorageView $
+          mkMichelsonStorageView @Storage @Natural Nothing [] $ WithParam $
             L.int #
             L.assertEq0 [mt|Unknown TOKEN ID|] #
             L.toField #sTotalSupply
@@ -609,10 +604,10 @@ getAllTokensView =
   TZ.View
     { vName = "GetAllTokens"
     , vDescription = Just "Get list of token ids supported."
-    , vPure = True
+    , vPure = Just True
     , vImplementations = one $
-        VIMichelsonStorageView $ SomeMichelsonStorageView $
-          mkMichelsonStorageView @() @Storage [] $
+        VIMichelsonStorageView $
+          mkMichelsonStorageView @Storage Nothing [] $ WithoutParam $
             L.drop # L.nil # L.push (0 :: Natural) # L.cons
     }
 
@@ -620,12 +615,11 @@ isOperatorView :: TZ.View (ToT Storage)
 isOperatorView =
   TZ.View
     { vName = "IsOperator"
-    , vDescription = Just "Check if the given address in an operator"
-    , vPure = True
+    , vDescription = Just "Check if the given address is an operator"
+    , vPure = Just True
     , vImplementations = one $
-        VIMichelsonStorageView $ SomeMichelsonStorageView $
-          mkMichelsonStorageView @(Natural, (Address, Address)) @Storage [] $
-            L.unpair #
+        VIMichelsonStorageView $
+          mkMichelsonStorageView @Storage @Bool Nothing [] $ WithParam $
             L.dip (L.toField #sOperators) #
             L.unpair #
             L.int #
@@ -635,22 +629,18 @@ isOperatorView =
     }
 
 tokenMetadataView :: FA2.TokenMetadata -> TZ.View (ToT Storage)
-tokenMetadataView FA2.TokenMetadata {..} =
+tokenMetadataView md =
   TZ.View
     { vName = "GetTokenMetadata"
     , vDescription = Just "Get token metadata for the token id"
-    , vPure = True
+    , vPure = Just True
     , vImplementations = one $
-        VIMichelsonStorageView $ SomeMichelsonStorageView $
-          mkMichelsonStorageView @Natural @Storage [] $
-            L.car #
+        VIMichelsonStorageView $
+          mkMichelsonStorageView @Storage @(Natural, Map.Map MText ByteString) Nothing [] $ WithParam $
+            L.dip L.drop #
             L.int #
             L.assertEq0 [mt|Unknown TOKEN ID|] #
-            L.push (0 :: Natural, (Map.fromList
-              [ ([mt|symbol|], encodeUtf8 tmSymbol)
-              , ([mt|name|], encodeUtf8 tmName)
-              , ([mt|decimals|], show tmDecimals)
-              ] :: Map.Map MText ByteString))
+            L.push (0 :: Natural, md)
     }
 
 getDefaultExpiryView :: TZ.View (ToT Storage)
@@ -658,11 +648,11 @@ getDefaultExpiryView =
   TZ.View
     { vName = "GetDefaultExpiry"
     , vDescription = Just "Access the contract's default expiry in seconds"
-    , vPure = True
+    , vPure = Just True
     , vImplementations = one $
-        VIMichelsonStorageView $ SomeMichelsonStorageView $
-          mkMichelsonStorageView @() @Storage [] $
-            L.cdr # L.toField #sDefaultExpiry
+        VIMichelsonStorageView $
+          mkMichelsonStorageView @Storage  @Natural Nothing [] $ WithoutParam $
+            L.toField #sDefaultExpiry
     }
 
 getCounterView :: TZ.View (ToT Storage)
@@ -670,9 +660,9 @@ getCounterView =
   TZ.View
     { vName = "GetCounter"
     , vDescription = Just "Access the current permit counter"
-    , vPure = True
+    , vPure = Just True
     , vImplementations = one $
-        VIMichelsonStorageView $ SomeMichelsonStorageView $
-          mkMichelsonStorageView @() @Storage [] $
-            L.cdr # L.toField #sPermitCounter
+        VIMichelsonStorageView $
+          mkMichelsonStorageView @Storage @Natural Nothing [] $ WithoutParam $
+            L.toField #sPermitCounter
     }

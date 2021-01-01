@@ -7,7 +7,9 @@ module Stablecoin.Client.Main
   ) where
 
 import Data.Coerce (coerce)
+import Data.Map (lookup)
 import Fmt (pretty)
+import Michelson.Text (mt)
 import Morley.Client
   (AddressOrAlias(AddressAlias), Alias(..), AliasHint(..), MorleyClientM,
   TezosClientError(UnknownAddressAlias), mkMorleyClientEnv, rememberContract, runMorleyClientM)
@@ -16,7 +18,6 @@ import qualified Options.Applicative as Opt
 import Util.Exception (displayUncaughtException)
 import Util.Named ((.!))
 
-import Lorentz.Contracts.Spec.FA2Interface (TokenMetadata(..))
 import Stablecoin.Client.Contract (InitialStorageData(..))
 import Stablecoin.Client.Impl
   (AddressAndAlias(..), acceptOwnership, burn, changeMasterMinter, changePauser, configureMinter,
@@ -166,9 +167,9 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
 
     CmdGetTokenMetadata -> do
       tm <- getTokenMetadata contract
-      putTextLn $ "Token symbol: " <> pretty (tmSymbol tm)
-      putTextLn $ "Token name: " <> pretty (tmName tm)
-      putTextLn $ "Token decimals: " <> pretty (tmDecimals tm)
+      putTextLn $ "Token symbol: " <> (decodeUtf8 $ fromMaybe "" $ lookup [mt|symbol|] tm)
+      putTextLn $ "Token name: " <> (decodeUtf8 $ fromMaybe "" $ lookup [mt|name|] tm)
+      putTextLn $ "Token decimals: " <> (decodeUtf8 $ fromMaybe "" $ lookup [mt|decimals|] tm)
 
   where
     user = #sender .! goUser globalOptions

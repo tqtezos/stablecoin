@@ -22,10 +22,10 @@ import Data.Version (showVersion)
 import Lorentz as L
 import qualified Lorentz.Contracts.Spec.ApprovableLedgerInterface as AL
 import Lorentz.Contracts.Spec.TZIP16Interface
-  (Metadata(..), MetadataMap, SomeMichelsonStorageView(..), ViewImplementation(..))
+  (Metadata(..), MetadataMap, ViewImplementation(..))
 import Michelson.Runtime (parseExpandContract)
 import qualified Michelson.Untyped as U
-import Morley.Metadata (mkMichelsonStorageView)
+import Morley.Metadata (ViewCode(..), mkMichelsonStorageView)
 
 import qualified Lorentz.Contracts.Spec.TZIP16Interface as TZ
 import qualified Lorentz.Contracts.Stablecoin as S
@@ -111,14 +111,14 @@ stablecoinFA1_2Contract =
 metadataJSON :: Metadata (ToT Storage)
 metadataJSON =
   TZ.name "stablecoin FA1.2" <>
-  TZ.interfaces [ TZ.Interface "TZIP-7", TZ.Interface "TZIP-17" ] <>
+  TZ.interfaces [ TZ.Interface "TZIP-007", TZ.Interface "TZIP-017" ] <>
   TZ.views
       [ getDefaultExpiryView
       , getCounterView
       ] <>
   TZ.source
     (TZ.Source
-      ("https://github.com/tqtezos/stablecoin/tree/v" <> toText (showVersion version) <> "/ligo/stablecoin/fa1.2")
+      (Just $ "https://github.com/tqtezos/stablecoin/tree/v" <> toText (showVersion version) <> "/ligo/stablecoin/fa1.2")
       [ "ligo " ]) <>
   TZ.homepage "https://github.com/tqtezos/stablecoin/"
 
@@ -127,11 +127,11 @@ getDefaultExpiryView =
   TZ.View
     { vName = "GetDefaultExpiry"
     , vDescription = Just "Access the contract's default expiry in seconds"
-    , vPure = True
+    , vPure = Just True
     , vImplementations = one $
-        VIMichelsonStorageView $ SomeMichelsonStorageView $
-          mkMichelsonStorageView @() @Storage [] $
-            L.cdr # L.toField #sDefaultExpiry
+        VIMichelsonStorageView $
+          mkMichelsonStorageView @Storage  @Natural Nothing [] $ WithoutParam $
+            L.toField #sDefaultExpiry
     }
 
 getCounterView :: TZ.View (ToT Storage)
@@ -139,9 +139,9 @@ getCounterView =
   TZ.View
     { vName = "GetCounter"
     , vDescription = Just "Access the current permit counter"
-    , vPure = True
+    , vPure = Just True
     , vImplementations = one $
-        VIMichelsonStorageView $ SomeMichelsonStorageView $
-          mkMichelsonStorageView @() @Storage [] $
-            L.cdr # L.toField #sPermitCounter
+        VIMichelsonStorageView $
+          mkMichelsonStorageView @Storage @Natural Nothing [] $ WithoutParam $
+            L.toField #sPermitCounter
     }

@@ -63,8 +63,7 @@ import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
   (ConfigureMinterParam(..), MetadataUri(..), MintParam(..), Parameter, ParsedMetadataUri(..),
   Roles(..), Storage'(..), StorageView, type Storage, UpdateOperatorData(..), contractMetadataContract,
-  mapToTokenMetadata, metadataJSON, metadataMap, mkContractMetadataRegistryStorage,
-  mkFA2TokenMetadata, parseMetadataUri, stablecoinContract)
+  metadataJSON, metadataMap, mkContractMetadataRegistryStorage, parseMetadataUri, stablecoinContract)
 import Stablecoin.Client.Contract (InitialStorageData(..), mkInitialStorage)
 import Stablecoin.Client.Parser (ContractMetadataOptions(..))
 
@@ -97,7 +96,7 @@ deploy (arg #sender -> sender) alias initialStorageData@InitialStorageData {..} 
       OpRaw url -> pure $ Raw url
       -- User wants a new contract with metadata to be deployed.
       OpRemoteContract -> do
-        let fa2TokenMetadata = mkFA2TokenMetadata isdTokenSymbol isdTokenName isdTokenDecimals
+        let fa2TokenMetadata = FA2.mkTokenMetadata isdTokenSymbol isdTokenName (show isdTokenDecimals)
         let mdrStorage = mkContractMetadataRegistryStorage
               (metadataMap $ CurrentContract (metadataJSON $ Just fa2TokenMetadata) False)
         contractMetadataRegistryAddress <- snd <$> originateContract
@@ -320,27 +319,22 @@ getMintingAllowance contract minter = do
 getTokenMetadata :: "contract" :! AddressOrAlias -> MorleyClientM FA2.TokenMetadata
 getTokenMetadata contract = do
   (metadata, storageView) <- getContractMetadata contract
-  case TZ.getViews metadata of
-    Left err -> throwM $ SCEMetadataError ("Views was not found in metadata:" <> show err)
-    Right views -> case MD.findView @(ToT Storage) views "GetTokenMetadata" of
-      Nothing -> throwM $ SCEMetadataError "'GetTokenMetadata' view was not found in metadata"
-      Just getTMD -> do
-        let storageWithEmptyBm :: Storage =
-              -- In the below code we convert the `StorageView` to `Storage` by
-              -- replacing all bigmaps with empty counterparts, and this should be fine here since
-              -- the token metadata view does not access any of these big maps.
-              storageView
-                { sLedger = mempty
-                , sMetadata = mempty
-                , sOperators = mempty
-                , sPermits = mempty
-                }
-        case MD.interpretView @_ @_ @(Natural, Map MText ByteString)
-            dummyContractEnv getTMD (0 :: Natural) storageWithEmptyBm of
-          Right (_, md) -> case mapToTokenMetadata md of
-            Just m -> pure m
-            Nothing -> throwM $ SCEMetadataError "Token medatadata parsing failed"
-          Left err -> throwM $ SCEMetadataError ("Error while interpreting the contract:" <> show err)
+  views <- throwMdErr (\err -> "Views was not found in metadata:" <> show err) $ TZ.getViews metadata
+  getTMD <- throwMdErr id $ maybeToRight "'GetTokenMetadata' view was not found in metadata" $
+    MD.findView @(ToT Storage) views "GetTokenMetadata"
+  let storageWithEmptyBm :: Storage =
+        -- In the below code we convert the `StorageView` to `Storage` by
+        -- replacing all bigmaps with empty counterparts, and this should be fine here since
+        -- the token metadata view does not access any of these big maps.
+        storageView
+          { sLedger = mempty
+          , sMetadata = mempty
+          , sOperators = mempty
+          , sPermits = mempty
+          }
+  snd <$> (throwMdErr (\err -> "Error while interpreting the contract:" <> show err) $
+    MD.interpretView @(Natural, Map MText ByteString)
+      dummyContractEnv getTMD (MD.ViewParam (0 :: Natural)) storageWithEmptyBm)
 
 -- | Get the metadata of the contract
 getContractMetadata
@@ -350,26 +344,22 @@ getContractMetadata contract = do
   storageView <- getStorage contract
   let bigMapId = sMetadata storageView
   metadataUri <- decodeUtf8 <$> readBigMapValue bigMapId [mt||]
-  case parseMetadataUri metadataUri of
-    Nothing -> throwM $ SCEMetadataError ("Unparsable URI:" <> metadataUri)
-    Just uri -> case uri of
-      InCurrentContractUnderKey key -> case mkMText key of
-        Right mtKey -> do
-          rawMd <- readBigMapValue bigMapId mtKey
-          case J.eitherDecodeStrict rawMd of
-            Right a -> pure (a, storageView)
-            Left err -> throwM $ SCEMetadataError ("Error decoding metadata:" <> show err)
-        Left _ -> throwM $ SCEMetadataError ("Unexpected key:" <> key)
-      InRemoteContractUnderKey addr key -> do
-        case mkMText key of
-          Right mtKey -> do
-            bigMapId_ <- snd <$> getMetadataRegistryStorage (#contract .! (AddressResolved addr))
-            rawMd <- readBigMapValue bigMapId_ mtKey
-            case J.eitherDecodeStrict rawMd of
-              Right a -> pure (a, storageView)
-              Left err -> throwM $ SCEMetadataError ("Error decoding metadata:" <> show err)
-          Left _ -> throwM $ SCEMetadataError ("Unexpected key:" <> key)
-      RawUri uri_ -> throwM $ SCEMetadataError ("Unsupported metadata URI:" <> uri_)
+  throwMdErr ("Unparsable URI" <>) (parseMetadataUri metadataUri) >>= \case
+    InCurrentContractUnderKey key -> do
+      mtKey <- throwMdErr (const $ "Unexpected key:" <> key) $ mkMText key
+      rawMd <- readBigMapValue bigMapId mtKey
+      throwMdErr (\err -> "Error decoding metadata:" <> show err)
+        $ (, storageView) <$> J.eitherDecodeStrict rawMd
+    InRemoteContractUnderKey addr key -> do
+      mtKey <- throwMdErr (const $ "Unexpected key:" <> key) $ mkMText key
+      bigMapId_ <- snd <$> getMetadataRegistryStorage (#contract .! (AddressResolved addr))
+      rawMd <- readBigMapValue bigMapId_ mtKey
+      throwMdErr (\err -> "Error decoding metadata:" <> show err)
+        $ (, storageView) <$> J.eitherDecodeStrict rawMd
+    RawUri uri_ -> throwM $ SCEMetadataError ("Unsupported metadata URI:" <> uri_)
+
+throwMdErr :: (a -> Text) -> Either a b -> MorleyClientM b
+throwMdErr toMsg f = either (throwM . SCEMetadataError . toMsg) pure f
 
 -- | Check if there's an alias associated with this address and, if so, return both.
 pairWithAlias :: Address -> MorleyClientM AddressAndAlias

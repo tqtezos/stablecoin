@@ -54,8 +54,8 @@ test_TZIP16_uri_parser =
 
         let actual = InCurrentContractUnderKey "hello"
         expected <- case parseMetadataUri uri of
-          Just parsedUri -> pure parsedUri
-          Nothing -> fail "Parsing metadata uri failed"
+          Right parsedUri -> pure parsedUri
+          _ -> fail "Parsing metadata uri failed"
 
         actual @?= expected
 
@@ -65,8 +65,8 @@ test_TZIP16_uri_parser =
 
         let actual = InRemoteContractUnderKey addr "foo"
         expected <- case parseMetadataUri uri of
-          Just parsedUri -> pure parsedUri
-          Nothing -> fail "Parsing remote metadata uri failed"
+          Right parsedUri -> pure parsedUri
+          _ -> fail "Parsing remote metadata uri failed"
 
         actual @?= expected
     ]
@@ -79,8 +79,8 @@ expectedMetadataJSON =
     "homepage": "https://github.com/tqtezos/stablecoin/",
     "version": "#{showVersion version}",
     "interfaces": [
-      "TZIP-12",
-      "TZIP-17"
+      "TZIP-012",
+      "TZIP-017"
     ],
     "authors": [
       "Serokell <https://serokell.io/>",
@@ -103,18 +103,12 @@ expectedMetadataJSON =
         "implementations": [
           {
             "michelson-storage-view": {
-              "annotations": [],
               "return-type": {
                 "args": [],
                 "prim": "nat",
                 "annots": []
               },
               "code": [
-                {
-                  "args": [],
-                  "prim": "CDR",
-                  "annots": []
-                },
                 {
                   "args": [],
                   "prim": "CAR",
@@ -135,12 +129,7 @@ expectedMetadataJSON =
                   "prim": "CAR",
                   "annots": []
                 }
-              ],
-              "parameter": {
-                "args": [],
-                "prim": "unit",
-                "annots": []
-              }
+              ]
             }
           }
         ]
@@ -152,18 +141,12 @@ expectedMetadataJSON =
         "implementations": [
           {
             "michelson-storage-view": {
-              "annotations": [],
               "return-type": {
                 "args": [],
                 "prim": "nat",
                 "annots": []
               },
               "code": [
-                {
-                  "args": [],
-                  "prim": "CDR",
-                  "annots": []
-                },
                 {
                   "args": [],
                   "prim": "CAR",
@@ -184,12 +167,7 @@ expectedMetadataJSON =
                   "prim": "CAR",
                   "annots": []
                 }
-              ],
-              "parameter": {
-                "args": [],
-                "prim": "unit",
-                "annots": []
-              }
+              ]
             }
           }
         ]

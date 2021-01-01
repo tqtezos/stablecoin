@@ -47,12 +47,8 @@ module Lorentz.Contracts.Test.Common
   ) where
 
 import Data.Aeson (ToJSON)
-import qualified Data.Aeson as J
-import qualified Data.ByteString.Lazy as BSL
 import Data.List.NonEmpty ((!!))
 import qualified Data.Map as Map
-import qualified Data.Text as Text
-import Fmt (pretty)
 
 import Lorentz (arg)
 import qualified Lorentz.Contracts.Spec.TZIP16Interface as MD
@@ -60,7 +56,6 @@ import Lorentz.Test
 import Lorentz.Value
 import Michelson.Runtime (ExecutorError)
 import Michelson.Runtime.GState (genesisSecrets)
-import Michelson.Text (mkMText)
 import Michelson.Typed (convertContract, untypeValue)
 import Morley.Nettest as NT
 import Tezos.Crypto (SecretKey, toPublic)
@@ -70,6 +65,7 @@ import qualified Indigo.Contracts.Transferlist.Internal as Transferlist
 import Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin as SC
 import qualified Morley.Metadata as MD
+import qualified Test.Morley.Metadata as MD
 
 -- | A 'TokenId' with the value of `1`.
 -- This is used only for tests because @stablecoin@ only supports a single token
@@ -252,63 +248,10 @@ nettestOriginateContractMetadataContract mdata =
     (convertContract contractMetadataContract)
 
 checkView
-  :: forall viewParam viewVal parameter
-   . (IsoValue viewParam, IsoValue viewVal, Eq viewVal, Show viewVal)
-  => TAddress parameter -> Text -> viewParam -> viewVal -> IntegrationalScenario
-checkView addr viewName viewParam expectedViewVal =
-  lExpectStorage @Storage addr $ \st -> do
-    uri <-
-      maybeToRight (CustomTestError "Metadata bigmap did not contain a key with the empty string") $
-        fmap (decodeUtf8 @Text) . Map.lookup mempty . unBigMap $ sMetadata st
-
-    metadataJSONKey <-
-      maybeToRight (CustomTestError $ "Expected 'tezos-storage' uri, but found: " <> uri) $
-        Text.stripPrefix "tezos-storage:" uri
-
-    metadataJSONKeyMText <-
-      first
-        (\err -> CustomTestError $
-            "Expected '" <> metadataJSONKey <> "' to be a valid Michelson string, but it wasn't."
-            <> "\nReason: " <> err
-        ) $
-        mkMText metadataJSONKey
-
-    metadataJSONBytestring <-
-      maybeToRight (CustomTestError $ "Metadata bigmap did not contain the key: " <> metadataJSONKey) $
-        Map.lookup metadataJSONKeyMText . unBigMap $ sMetadata st
-
-    metadataJSON_ <-
-      first
-        (\err -> CustomTestError (toText err)) $
-        J.eitherDecode' @(MD.Metadata (ToT Storage)) (BSL.fromStrict metadataJSONBytestring)
-
-    view_ <- do
-      views <-
-        first
-          (\err -> CustomTestError $ "Views lookup failed: " <> (toText err)) $ MD.getViews metadataJSON_
-      maybeToRight (CustomTestError $ "Metadata does not contain view with name:" <> viewName) $
-        MD.findView views viewName
-
-    -- See note below.
-    unless (MD.vPure view_) $
-      Left $ CustomTestError $ "Expected view '" <> viewName <> "' to be pure, but it isn't."
-
-    actualViewVal <-
-      first
-        (CustomTestError . pretty) $
-        -- NOTE: it's OK to use `dummyContractEnv` here because we now this
-        -- contract's views are pure (i.e. don't depend on the contract env).
-        -- But, in the general case, this is not safe.
-        MD.interpretView @_ @_ @viewVal dummyContractEnv view_ viewParam st
-
-    when (actualViewVal /= expectedViewVal) $
-      Left $ CustomTestError $ unlines
-        [ "Expected: "
-        , show expectedViewVal
-        , "Got:"
-        , show actualViewVal
-        ]
-
+  :: forall viewVal parameter
+   . (IsoValue viewVal, Eq viewVal, Show viewVal)
+  => TAddress parameter -> Text -> MD.ViewParam -> viewVal -> IntegrationalScenario
+checkView = MD.checkView sMetadata
 
 testFA2TokenMetadata :: FA2.TokenMetadata
-testFA2TokenMetadata = mkFA2TokenMetadata "TEST" "TEST" 3
+testFA2TokenMetadata = FA2.mkTokenMetadata "TEST" "TEST" "3"

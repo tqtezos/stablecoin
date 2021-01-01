@@ -33,7 +33,6 @@ stablecoinClientScenario = do
   (contractOwnerAlias, contractOwnerAddr, contractOwner) <- createRole "contract-owner"
   (_, _, minter) <- createRole "minter"
   (transferlistAlias, transferlistAddr, transferlist) <- createRole "transferlist"
-  (_, _, _) <- createRole "metadata-registry"
 
   comment "Deploying contract"
   contractAddr <- deploy (#sender.! originator) InitialStorageData

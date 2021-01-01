@@ -30,7 +30,11 @@ extra-deps:
     https://gitlab.com/morley-framework/morley-metadata.git
     # ^ CI cannot use ssh, so we use http clone here
   commit:
-    eb8511f671b3ffc9ec098fc827e251a4537c5511 # master
+    0c7005373dcdf79118def10637ff95c8c9820b10 # master
+  # nix-sha256: "1hi79r320gq9jy617zxikw544gc9ip9s7i6pxx1i1j76yassb1h5"
+  subdirs:
+    - code/morley-metadata
+    - code/morley-metadata-test
 
 # Stable parts of morley available from Hackage
 - morley-prelude-0.3.0
@@ -55,7 +59,8 @@ extra-deps:
     https://gitlab.com/morley-framework/morley-ledgers.git
     # ^ CI cannot use ssh, so we use http clone here
   commit:
-    817ef36927679743409dc7260f1d3a63ed7d8ad5 # master
+    1f53028e0c305854dc3b2745254475e3f32a9744 # master
+  # nix-sha256: "1bfn4h3bkj156rqxixcyl7pmx2yvmz6hks81wfl2kh7zw6q0jnpr"
   subdirs:
     - code/morley-ledgers
     - code/morley-ledgers-test

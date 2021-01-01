@@ -74,6 +74,7 @@ tests:
       - morley-ledgers
       - morley-ledgers-test
       - morley-metadata
+      - morley-metadata-test
       - morley-prelude
       - mtl
       - stablecoin
@@ -91,15 +92,14 @@ tests:
 
     dependencies:
       - aeson
-      - bytestring
       - cleveland
       - containers
-      - fmt
       - lorentz
       - morley
       - morley-client
       - morley-ledgers
       - morley-metadata
+      - morley-metadata-test
       - morley-prelude
       - optparse-applicative
       - stablecoin

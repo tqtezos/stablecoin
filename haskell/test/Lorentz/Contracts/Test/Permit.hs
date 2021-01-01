@@ -18,6 +18,7 @@ import Lorentz (BigMap(..), TAddress, lPackValue, mt)
 import Lorentz.Test
 import Michelson.Runtime (ExecutorError)
 import Michelson.Runtime.GState (GState(gsChainId), initGState)
+import Morley.Metadata (ViewParam(..))
 import Tezos.Address (Address)
 import Tezos.Crypto (PublicKey, SecretKey(..), Signature(..))
 import qualified Tezos.Crypto.Ed25519 as Ed25519
@@ -27,7 +28,6 @@ import qualified Tezos.Crypto.Secp256k1 as Secp256k1
 import Tezos.Crypto.Util (deterministic)
 
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
-import qualified Lorentz.Contracts.Spec.TZIP16Interface as MD
 import Lorentz.Contracts.Stablecoin hiding (metadataJSON, stablecoinContract)
 import Lorentz.Contracts.Test.Common
 import Lorentz.Contracts.Test.FA2 (fa2NotOperator, fa2NotOwner)
@@ -322,18 +322,18 @@ permitSpec originate = do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             let defaultExpiry = opDefaultExpiry defaultOriginationParams
-            checkView stablecoinContract "GetDefaultExpiry" () defaultExpiry
+            checkView stablecoinContract "GetDefaultExpiry" NoParam defaultExpiry
 
     describe "GetCounter" $
       it "retrieves the contract's current counter" $
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
 
-            checkView stablecoinContract "GetCounter" () (0 :: Natural)
+            checkView stablecoinContract "GetCounter" NoParam (0 :: Natural)
             callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
-            checkView stablecoinContract "GetCounter" () (1 :: Natural)
+            checkView stablecoinContract "GetCounter" NoParam (1 :: Natural)
             callPermit stablecoinContract testPauserPK testPauserSK 1 Unpause
-            checkView stablecoinContract "GetCounter" () (2 :: Natural)
+            checkView stablecoinContract "GetCounter" NoParam (2 :: Natural)
 
     describe "Pause" $ do
       it "can be accessed via a permit" $
