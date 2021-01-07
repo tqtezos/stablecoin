@@ -12,18 +12,13 @@ module Lorentz.Contracts.Test.Permit
   ( permitSpec
   ) where
 
-import qualified Data.Aeson as J
-import qualified Data.ByteString.Lazy as BSL
-import qualified Data.Map as Map
-import qualified Data.Text as Text
-import Fmt (pretty)
 import Test.Hspec (Spec, describe, it, specify)
 
-import Lorentz (BigMap(..), IsoValue, TAddress, ToT, lPackValue, mt)
+import Lorentz (BigMap(..), TAddress, lPackValue, mt)
 import Lorentz.Test
 import Michelson.Runtime (ExecutorError)
 import Michelson.Runtime.GState (GState(gsChainId), initGState)
-import Michelson.Text (mkMText)
+import Morley.Metadata (ViewParam(..))
 import Tezos.Address (Address)
 import Tezos.Crypto (PublicKey, SecretKey(..), Signature(..))
 import qualified Tezos.Crypto.Ed25519 as Ed25519
@@ -33,10 +28,7 @@ import qualified Tezos.Crypto.Secp256k1 as Secp256k1
 import Tezos.Crypto.Util (deterministic)
 
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
-import qualified Lorentz.Contracts.Spec.TZIP16Interface as MD
 import Lorentz.Contracts.Stablecoin hiding (metadataJSON, stablecoinContract)
-import qualified Morley.Metadata as MD
-
 import Lorentz.Contracts.Test.Common
 import Lorentz.Contracts.Test.FA2 (fa2NotOperator, fa2NotOwner)
 import Lorentz.Contracts.Test.Management
@@ -90,61 +82,6 @@ assertPermitCount contractAddr expectedCount =
     permitCount (BigMap permits) =
       sum $
         permits <&> \userPermits -> length (upPermits userPermits)
-
-checkView
-  :: forall viewParam viewVal
-   . (IsoValue viewParam, IsoValue viewVal, Eq viewVal, Show viewVal)
-  => TAddress Parameter -> Text -> viewParam -> viewVal -> IntegrationalScenario
-checkView addr viewName viewParam expectedViewVal =
-  lExpectStorage @Storage addr $ \st -> do
-    uri <-
-      maybeToRight (CustomTestError "Metadata bigmap did not contain a key with the empty string") $
-        fmap (decodeUtf8 @Text) . Map.lookup mempty . unBigMap $ sMetadata st
-
-    metadataJSONKey <-
-      maybeToRight (CustomTestError $ "Expected 'tezos-storage' uri, but found: " <> uri) $
-        Text.stripPrefix "tezos-storage:" uri
-
-    metadataJSONKeyMText <-
-      first
-        (\err -> CustomTestError $
-            "Expected '" <> metadataJSONKey <> "' to be a valid Michelson string, but it wasn't."
-            <> "\nReason: " <> err
-        ) $
-        mkMText metadataJSONKey
-
-    metadataJSONBytestring <-
-      maybeToRight (CustomTestError $ "Metadata bigmap did not contain the key: " <> metadataJSONKey) $
-        Map.lookup metadataJSONKeyMText . unBigMap $ sMetadata st
-
-    metadataJSON <-
-      first
-        (\err -> CustomTestError (toText err)) $
-        J.eitherDecode' @(MD.Metadata (ToT Storage)) (BSL.fromStrict metadataJSONBytestring)
-
-    view_ <-
-      maybeToRight (CustomTestError $ "Metadata does not contain view with name" <> viewName) $
-        MD.getView metadataJSON viewName
-
-    -- See note below.
-    unless (MD.vPure view_) $
-      Left $ CustomTestError $ "Expected view '" <> viewName <> "' to be pure, but it isn't."
-
-    actualViewVal <-
-      first
-        (CustomTestError . pretty) $
-        -- NOTE: it's OK to use `dummyContractEnv` here because we now this
-        -- contract's views are pure (i.e. don't depend on the contract env).
-        -- But, in the general case, this is not safe.
-        MD.interpretView @_ @_ @viewVal dummyContractEnv view_ viewParam st
-
-    when (actualViewVal /= expectedViewVal) $
-      Left $ CustomTestError $ unlines
-        [ "Expected: "
-        , show expectedViewVal
-        , "Got:"
-        , show actualViewVal
-        ]
 
 permitSpec :: OriginationFn Parameter -> Spec
 permitSpec originate = do
@@ -385,18 +322,18 @@ permitSpec originate = do
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
             let defaultExpiry = opDefaultExpiry defaultOriginationParams
-            checkView stablecoinContract "GetDefaultExpiry" () defaultExpiry
+            checkView stablecoinContract "GetDefaultExpiry" NoParam defaultExpiry
 
     describe "GetCounter" $
       it "retrieves the contract's current counter" $
         integrationalTestExpectation $ do
           withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
 
-            checkView stablecoinContract "GetCounter" () (0 :: Natural)
+            checkView stablecoinContract "GetCounter" NoParam (0 :: Natural)
             callPermit stablecoinContract testPauserPK testPauserSK 0 Pause
-            checkView stablecoinContract "GetCounter" () (1 :: Natural)
+            checkView stablecoinContract "GetCounter" NoParam (1 :: Natural)
             callPermit stablecoinContract testPauserPK testPauserSK 1 Unpause
-            checkView stablecoinContract "GetCounter" () (2 :: Natural)
+            checkView stablecoinContract "GetCounter" NoParam (2 :: Natural)
 
     describe "Pause" $ do
       it "can be accessed via a permit" $

@@ -26,11 +26,10 @@ import Tezos.Core
 
 origination :: OriginationFn SC.Parameter
 origination originationParams = do
-  mrAddress <- originateMetadataRegistry
   TAddress @SC.Parameter <$> tOriginate
     stablecoinContract
     "Stablecoin contract"
-    (toVal (mkInitialStorage originationParams mrAddress Nothing))
+    (toVal (mkInitialStorage originationParams))
     (toMutez 0)
 
 spec_FA2 :: Spec

@@ -92,8 +92,7 @@ smtProperty :: Property
 smtProperty = property $ do
   PropertyTestInput (inputs, initialState) <- forAll genPropertyTestInput
   integrationalTestProp $ do
-    mrAddress <- originateMetadataRegistry
-    applyBothAndCompare inputs mrAddress initialState
+    applyBothAndCompare inputs initialState
 
 -- | Accept a contract, a list of contract inputs and an initial state.  Then
 -- apply each contract input to each model (haskell and michelson), check if
@@ -103,17 +102,16 @@ smtProperty = property $ do
 -- state diverges.
 applyBothAndCompare
   :: [ContractCall Parameter]
-  -> Address
   -> ContractState
   -> IntegrationalScenario
-applyBothAndCompare [] _ _ = pass
-applyBothAndCompare (cc:ccs) mrAddress cs = let
+applyBothAndCompare [] _ = pass
+applyBothAndCompare (cc:ccs) cs = let
   haskellResult = stablecoinHaskellModel cc cs
-  michelsonResult = stablecoinMichelsonModel mrAddress cc cs
+  michelsonResult = stablecoinMichelsonModel cc cs
   in if haskellResult /= michelsonResult
     then integrationalFail $ CustomTestError $
          "Models differ : " <> show (cc, cs, haskellResult, michelsonResult)
-    else applyBothAndCompare ccs mrAddress haskellResult
+    else applyBothAndCompare ccs haskellResult
 
 -- Size of the random address pool
 poolSize :: Int
@@ -501,13 +499,12 @@ contractErrorToModelError m = let
 -- the final @ContractState@ from Haskell model and this model should
 -- match exactly, including the list of errors.
 stablecoinMichelsonModel
-  :: Address
-  -> ContractCall Parameter
+  :: ContractCall Parameter
   -> ContractState
   -> ContractState
-stablecoinMichelsonModel mrAddress cc@(ContractCall {..}) cs = let
+stablecoinMichelsonModel cc@(ContractCall {..}) cs = let
   contractEnv = dummyContractEnv { ceSender = ccSender, ceAmount = unsafeMkMutez 0 }
-  initSt = mkInitialStorage (ssToOriginationParams $ csStorage cs) mrAddress Nothing
+  initSt = mkInitialStorage (ssToOriginationParams $ csStorage cs)
   iResult = callEntrypoint cc initSt contractEnv
   in case iResult of
     Right iRes -> let

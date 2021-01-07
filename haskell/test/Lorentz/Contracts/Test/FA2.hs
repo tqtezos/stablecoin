@@ -13,7 +13,7 @@ module Lorentz.Contracts.Test.FA2
   , fa2NotOwner
   ) where
 
-import Data.Map as M (lookup)
+import Data.Map as M (fromList, lookup)
 import Test.Hspec (Spec, describe, it)
 
 import Lorentz.Contracts.Spec.FA2Interface as FA2 hiding (ParameterC)
@@ -22,6 +22,7 @@ import Lorentz.Contracts.Test.Common
 import Lorentz.Test
 import Lorentz.Value
 import Michelson.Runtime (ExecutorError)
+import Morley.Metadata (ViewParam(..))
 import Util.Named
 
 -- | Test suite for an FA2-specific entrypoints for stablecoin smart-contract which:
@@ -683,6 +684,54 @@ fa2Spec fa2Originate = do
           withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers
 
           lExpectStorageConst @[FA2OwnerHook] receiverWithHook []
+
+  describe "Off-chain storage view getBalance" $ do
+    it "computes the balance of the address correctly" $ integrationalTestExpectation $ do
+        let originationParams = addAccount (wallet1, (commonOperators, 10))
+              $ addAccount (wallet2, (commonOperators, 0))
+              $ addAccount (wallet3, (commonOperators, 0))
+              $ addAccount (wallet4, (commonOperators, 0)) defaultOriginationParams
+        withOriginated fa2Originate originationParams $ \fa2contract ->
+            checkView fa2contract "GetBalance" (ViewParam (0 :: Natural, wallet1)) (10 :: Natural)
+
+  describe "Off-chain storage view getTotalSupply" $ do
+    it "Returns the total supply value correctly" $ integrationalTestExpectation $ do
+        let originationParams = addAccount (wallet1, (commonOperators, 10))
+              $ addAccount (wallet2, (commonOperators, 25))
+              $ addAccount (wallet3, (commonOperators, 0))
+              $ addAccount (wallet4, (commonOperators, 0)) defaultOriginationParams
+        withOriginated fa2Originate originationParams $ \fa2contract ->
+            checkView fa2contract "GetTotalSupply" (ViewParam (0 :: Natural)) (35 :: Natural)
+
+  describe "Off-chain storage view getAllTokens" $ do
+    it "Returns only token id of Zero" $ integrationalTestExpectation $ do
+        let originationParams = addAccount (wallet1, (commonOperators, 10))
+              $ addAccount (wallet2, (commonOperators, 25))
+              $ addAccount (wallet3, (commonOperators, 0))
+              $ addAccount (wallet4, (commonOperators, 0)) defaultOriginationParams
+        withOriginated fa2Originate originationParams $ \fa2contract ->
+            checkView fa2contract "GetAllTokens" NoParam [0 :: Natural]
+
+  describe "Off-chain storage view isOperator" $ do
+    it "Returns the status of operator" $ integrationalTestExpectation $ do
+        let originationParams = addAccount (wallet1, (commonOperators, 10))
+              $ addAccount (wallet2, ([], 25))
+              $ addAccount (wallet3, ([], 0))
+              $ addAccount (wallet4, (commonOperators, 0)) defaultOriginationParams
+        withOriginated fa2Originate originationParams $ \fa2contract ->
+            checkView fa2contract "IsOperator" (ViewParam (0 :: Natural, (wallet1, commonOperator))) True
+
+  describe "Off-chain storage view GetTokenMetadata" $ do
+    it "Returns the metadata of token" $ integrationalTestExpectation $ do
+        let originationParams = addAccount (wallet1, (commonOperators, 10))
+              $ addAccount (wallet2, ([], 25))
+              $ addAccount (wallet3, ([], 0))
+              $ addAccount (wallet4, (commonOperators, 0)) defaultOriginationParams
+        withOriginated fa2Originate originationParams $ \fa2contract ->
+            checkView fa2contract "GetTokenMetadata" (ViewParam (0 :: Natural))
+              (0 :: Natural,
+                M.fromList [ ([mt|decimals|], "3" :: ByteString)
+                             , ([mt|name|],"TEST"), ([mt|symbol|], "TEST")])
 
 fa2TokenUndefined :: ExecutorError -> IntegrationalScenario
 fa2TokenUndefined = lExpectFailWith (== [mt|FA2_TOKEN_UNDEFINED|])

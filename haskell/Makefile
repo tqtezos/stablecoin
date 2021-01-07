@@ -30,12 +30,10 @@ define build_stablecoin_contract
 	$(MAKE_LIGO) stablecoin.tz
 	$(MAKE_LIGO) stablecoin.fa1.2.tz
 	$(MAKE_LIGO) metadata.tz
-	$(MAKE_LIGO) tzip16-metadata.tz
 	mkdir -p test/resources
 	$(MORLEY) optimize --contract "$(LIGO_DIR)/stablecoin.tz" --output "test/resources/stablecoin.tz"
 	$(MORLEY) optimize --contract "$(LIGO_DIR)/stablecoin.fa1.2.tz" --output "test/resources/stablecoin.fa1.2.tz"
 	cp "$(LIGO_DIR)/metadata.tz" "test/resources/metadata.tz"
-	cp "$(LIGO_DIR)/tzip16-metadata.tz" "test/resources/tzip16-metadata.tz"
 endef
 
 # Build everything haskell-related (including tests and benchmarks) with development options.
@@ -85,4 +83,3 @@ clean:
 	rm -f stablecoin.tz
 	rm -f stablecoin.fa1.2.tz
 	rm -f metadata.tz
-	rm -f tzip16-metadata.tz

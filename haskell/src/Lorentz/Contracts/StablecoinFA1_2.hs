@@ -18,17 +18,19 @@ module Lorentz.Contracts.StablecoinFA1_2
 import Data.FileEmbed (embedStringFile)
 import Fmt (pretty)
 
+import Data.Version (showVersion)
 import Lorentz as L
 import qualified Lorentz.Contracts.Spec.ApprovableLedgerInterface as AL
 import Lorentz.Contracts.Spec.TZIP16Interface
-  (Metadata(..), MetadataMap, SomeMichelsonStorageView(..), ViewImplementation(..))
+  (Metadata(..), MetadataMap, ViewImplementation(..))
 import Michelson.Runtime (parseExpandContract)
 import qualified Michelson.Untyped as U
-import Morley.Metadata (mkMichelsonStorageView)
+import Morley.Metadata (ViewCode(..), mkMichelsonStorageView)
 
-import qualified Lorentz.Contracts.Spec.TZIP16Interface as TZ (View(..))
+import qualified Lorentz.Contracts.Spec.TZIP16Interface as TZ
 import qualified Lorentz.Contracts.Stablecoin as S
 import Lorentz.Contracts.StablecoinPath (stablecoinFA1_2Path)
+import Paths_stablecoin (version)
 
 data Storage = Storage
   { sDefaultExpiry :: S.Expiry
@@ -108,42 +110,28 @@ stablecoinFA1_2Contract =
 
 metadataJSON :: Metadata (ToT Storage)
 metadataJSON =
-  S.metadataJSON
-    { mName = Just "stablecoin FA1.2"
-    , mInterfaces = [ "TZIP-7", "TZIP-17" ]
-    , mViews =
-        [ getDefaultExpiryView
-        , getCounterView
-        ]
-
-    -- NOTE: Because we're storing the metadata in the contract's storage,
-    -- the storage may now exceed the storage size limit.
-    -- See: https://buildkite.com/serokell/stablecoin/builds/1150#eb990412-157b-4a96-92d8-3fd39d954369/65-261
-    --
-    -- As a temporary measure, we're removing the "homepage" and "source"
-    -- info to make the storage a little bit smaller, just enough to make it
-    -- possible to originate the contract.
-    --
-    -- TODO: once we move the metadata to its own contract, we can
-    -- add this info back to the metadata.
-    , mHomepage = Nothing
-    , mSource = Nothing
-    -- , mSource = Just Source
-    --     { sLocation = "https://github.com/tqtezos/stablecoin/tree/v" <> toText (showVersion version) <> "/ligo/stablecoin/fa1.2"
-    --     , sTools = [ "ligo " ]
-    --     }
-    }
+  TZ.name "stablecoin FA1.2" <>
+  TZ.interfaces [ TZ.Interface "TZIP-007", TZ.Interface "TZIP-017" ] <>
+  TZ.views
+      [ getDefaultExpiryView
+      , getCounterView
+      ] <>
+  TZ.source
+    (TZ.Source
+      (Just $ "https://github.com/tqtezos/stablecoin/tree/v" <> toText (showVersion version) <> "/ligo/stablecoin/fa1.2")
+      [ "ligo " ]) <>
+  TZ.homepage "https://github.com/tqtezos/stablecoin/"
 
 getDefaultExpiryView :: TZ.View (ToT Storage)
 getDefaultExpiryView =
   TZ.View
     { vName = "GetDefaultExpiry"
     , vDescription = Just "Access the contract's default expiry in seconds"
-    , vPure = True
+    , vPure = Just True
     , vImplementations = one $
-        VIMichelsonStorageView $ SomeMichelsonStorageView $
-          mkMichelsonStorageView @() @Storage [] $
-            L.cdr # L.toField #sDefaultExpiry
+        VIMichelsonStorageView $
+          mkMichelsonStorageView @Storage  @Natural Nothing [] $ WithoutParam $
+            L.toField #sDefaultExpiry
     }
 
 getCounterView :: TZ.View (ToT Storage)
@@ -151,9 +139,9 @@ getCounterView =
   TZ.View
     { vName = "GetCounter"
     , vDescription = Just "Access the current permit counter"
-    , vPure = True
+    , vPure = Just True
     , vImplementations = one $
-        VIMichelsonStorageView $ SomeMichelsonStorageView $
-          mkMichelsonStorageView @() @Storage [] $
-            L.cdr # L.toField #sPermitCounter
+        VIMichelsonStorageView $
+          mkMichelsonStorageView @Storage @Natural Nothing [] $ WithoutParam $
+            L.toField #sPermitCounter
     }

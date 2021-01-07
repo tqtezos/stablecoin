@@ -7,7 +7,9 @@ module Stablecoin.Client.Main
   ) where
 
 import Data.Coerce (coerce)
+import Data.Map (lookup)
 import Fmt (pretty)
+import Michelson.Text (mt)
 import Morley.Client
   (AddressOrAlias(AddressAlias), Alias(..), AliasHint(..), MorleyClientM,
   TezosClientError(UnknownAddressAlias), mkMorleyClientEnv, rememberContract, runMorleyClientM)
@@ -16,7 +18,6 @@ import qualified Options.Applicative as Opt
 import Util.Exception (displayUncaughtException)
 import Util.Named ((.!))
 
-import Lorentz.Contracts.Spec.FA2Interface (TokenMetadata(..))
 import Stablecoin.Client.Contract (InitialStorageData(..))
 import Stablecoin.Client.Impl
   (AddressAndAlias(..), acceptOwnership, burn, changeMasterMinter, changePauser, configureMinter,
@@ -49,7 +50,7 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
       -- prefix option was passed in via the CLI.
       aliasAlreadyExists <- checkIfAliasExists (coerce contractAlias)
 
-      (opHash, contractAddr, metadataRegAddr, mCMetadataAddr) <- deploy user (coerce contractAlias) InitialStorageData
+      (opHash, contractAddr, mCMetadataAddr) <- deploy user (coerce contractAlias) InitialStorageData
         { isdMasterMinter = dcoMasterMinter
         , isdContractOwner = dcoContractOwner
         , isdPauser = dcoPauser
@@ -57,7 +58,6 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
         , isdTokenName = dcoTokenName
         , isdTokenSymbol = dcoTokenSymbol
         , isdTokenDecimals = dcoTokenDecimals
-        , isdTokenMetadataRegistry = dcoTokenMetadataRegistry
         , isdDefaultExpiry = dcoDefaultExpiry
         , isdContractMetadataStorage = dcoContractMetadata
         }
@@ -65,9 +65,8 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
       putTextLn "Contract was successfully deployed."
       putTextLn $ "Operation hash: " <> pretty opHash
       putTextLn $ "Contract address: " <> pretty contractAddr
-      putTextLn $ "Metadata registry contract address: " <> pretty metadataRegAddr
       whenJust mCMetadataAddr $ \addr ->
-        putTextLn $ "Contract metadata contract address: " <> pretty addr
+        putTextLn $ "Metadata contract address: " <> pretty addr
 
       let printAlias = putTextLn $ "Created alias '" <> pretty contractAlias <> "'."
 
@@ -168,9 +167,9 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
 
     CmdGetTokenMetadata -> do
       tm <- getTokenMetadata contract
-      putTextLn $ "Token symbol: " <> pretty (tmSymbol tm)
-      putTextLn $ "Token name: " <> pretty (tmName tm)
-      putTextLn $ "Token decimals: " <> pretty (tmDecimals tm)
+      putTextLn $ "Token symbol: " <> (decodeUtf8 $ fromMaybe "" $ lookup [mt|symbol|] tm)
+      putTextLn $ "Token name: " <> (decodeUtf8 $ fromMaybe "" $ lookup [mt|name|] tm)
+      putTextLn $ "Token decimals: " <> (decodeUtf8 $ fromMaybe "" $ lookup [mt|decimals|] tm)
 
   where
     user = #sender .! goUser globalOptions

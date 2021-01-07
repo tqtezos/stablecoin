@@ -3,6 +3,7 @@
 
 module Lorentz.Contracts.Test.TZIP16
   ( test_TZIP16
+  , test_TZIP16_uri_parser
   ) where
 
 import qualified Data.Aeson as J
@@ -12,16 +13,18 @@ import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCase, (@?=))
 
 import Michelson.Typed (ToT)
+import Michelson.Runtime.GState (genesisAddress1)
+import Tezos.Address (formatAddress)
 
 import Lorentz.Contracts.Spec.TZIP16Interface (Metadata)
-import Lorentz.Contracts.Stablecoin (Storage, metadataJSON)
+import Lorentz.Contracts.Stablecoin (ParsedMetadataUri(..), Storage, metadataJSON, parseMetadataUri)
 import Paths_stablecoin (version)
 
 test_TZIP16 :: TestTree
 test_TZIP16 =
   testGroup "json serializers/deserializers"
     [ testCase "serializes to the expected json format" $ do
-        let actual = J.toJSON metadataJSON
+        let actual = J.toJSON (metadataJSON Nothing)
 
         expected <-
           case J.eitherDecode' @J.Value (encodeUtf8 expectedMetadataJSON) of
@@ -31,7 +34,7 @@ test_TZIP16 =
         actual @?= expected
 
     , testCase "roundtrip" $ do
-        let first_ = J.toJSON metadataJSON
+        let first_ = J.toJSON (metadataJSON Nothing)
 
         parsed <-
           case J.fromJSON @(Metadata (ToT Storage)) first_ of
@@ -43,6 +46,31 @@ test_TZIP16 =
         first_ @?= second_
     ]
 
+test_TZIP16_uri_parser :: TestTree
+test_TZIP16_uri_parser =
+  testGroup "uri parser"
+    [ testCase "can parse embedded uri" $ do
+        let uri = "tezos-storage:hello"
+
+        let actual = InCurrentContractUnderKey "hello"
+        expected <- case parseMetadataUri uri of
+          Right parsedUri -> pure parsedUri
+          _ -> fail "Parsing metadata uri failed"
+
+        actual @?= expected
+
+    , testCase "can parse remote uri" $ do
+        let addr = genesisAddress1
+        let uri = "tezos-storage://" <> (formatAddress addr) <>"/foo"
+
+        let actual = InRemoteContractUnderKey addr "foo"
+        expected <- case parseMetadataUri uri of
+          Right parsedUri -> pure parsedUri
+          _ -> fail "Parsing remote metadata uri failed"
+
+        actual @?= expected
+    ]
+
 expectedMetadataJSON :: String
 expectedMetadataJSON =
   [i|
@@ -51,8 +79,8 @@ expectedMetadataJSON =
     "homepage": "https://github.com/tqtezos/stablecoin/",
     "version": "#{showVersion version}",
     "interfaces": [
-      "TZIP-12",
-      "TZIP-17"
+      "TZIP-012",
+      "TZIP-017"
     ],
     "authors": [
       "Serokell <https://serokell.io/>",
@@ -75,18 +103,12 @@ expectedMetadataJSON =
         "implementations": [
           {
             "michelson-storage-view": {
-              "annotations": [],
               "return-type": {
                 "args": [],
                 "prim": "nat",
                 "annots": []
               },
               "code": [
-                {
-                  "args": [],
-                  "prim": "CDR",
-                  "annots": []
-                },
                 {
                   "args": [],
                   "prim": "CAR",
@@ -107,12 +129,7 @@ expectedMetadataJSON =
                   "prim": "CAR",
                   "annots": []
                 }
-              ],
-              "parameter": {
-                "args": [],
-                "prim": "unit",
-                "annots": []
-              }
+              ]
             }
           }
         ]
@@ -124,18 +141,12 @@ expectedMetadataJSON =
         "implementations": [
           {
             "michelson-storage-view": {
-              "annotations": [],
               "return-type": {
                 "args": [],
                 "prim": "nat",
                 "annots": []
               },
               "code": [
-                {
-                  "args": [],
-                  "prim": "CDR",
-                  "annots": []
-                },
                 {
                   "args": [],
                   "prim": "CAR",
@@ -156,12 +167,7 @@ expectedMetadataJSON =
                   "prim": "CAR",
                   "annots": []
                 }
-              ],
-              "parameter": {
-                "args": [],
-                "prim": "unit",
-                "annots": []
-              }
+              ]
             }
           }
         ]

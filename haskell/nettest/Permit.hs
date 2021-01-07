@@ -12,12 +12,12 @@ import Morley.Nettest
 import Lorentz.Contracts.Spec.FA2Interface (TransferDestination(..), TransferItem(..))
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
-  (ConfigureMinterParam(..), Parameter(..), PermitParam(..), metadataJSON, mkPermitHash,
-  stablecoinContract)
+  (ConfigureMinterParam(..), MetadataUri(..), Parameter(..), PermitParam(..), metadataJSON,
+  mkPermitHash, stablecoinContract)
 
 import Lorentz.Contracts.Test.Common
   (OriginationParams(..), addAccount, defaultOriginationParams, mkInitialStorage,
-  nettestOriginateContractMetadataContract, nettestOriginateMetadataRegistry)
+  nettestOriginateContractMetadataContract, testFA2TokenMetadata)
 
 permitScenario :: NettestScenario m
 permitScenario = uncapsNettest $ do
@@ -32,16 +32,16 @@ permitScenario = uncapsNettest $ do
   (_, user1) <- createUser "Steve"
 
   comment "Originating contracts"
-  mrAddress <- nettestOriginateMetadataRegistry
-  cmrAddress <- nettestOriginateContractMetadataContract metadataJSON
+  cmrAddress <- nettestOriginateContractMetadataContract (metadataJSON $ Just testFA2TokenMetadata)
   let originationParams =
         addAccount (owner1 , ([], 1000)) $
           defaultOriginationParams
             { opOwner = owner1
             , opPauser = pauser
             , opMasterMinter = masterMinter
+            , opMetadataUri = RemoteContract cmrAddress
             }
-      storage = mkInitialStorage originationParams mrAddress (Just cmrAddress)
+      storage = mkInitialStorage originationParams
   contract <- TAddress @Parameter <$> originateUntypedSimple
     "nettest.Stablecoin"
     (untypeValue (toVal storage))
