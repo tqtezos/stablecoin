@@ -508,6 +508,9 @@ data MetadataUri metadata
 metadataJSON :: Maybe FA2.TokenMetadata -> Metadata (ToT Storage)
 metadataJSON mtmd  =
   TZ.name  "stablecoin" <>
+  TZ.description  "Tezos Stablecoin project implements an FA2-compatible token smart contract.\
+    \ It draws inspiration from popular permissioned asset contracts like CENTRE Fiat Token and other similar contracts.\
+    \ The contract is implemented in the LIGO language." <>
   TZ.version (toText $ showVersion version) <>
   TZ.license (License { lName = "MIT", lDetails = Nothing }) <>
   TZ.authors
@@ -544,6 +547,7 @@ metadataJSON mtmd  =
             , mkError [mt|NOT_PERMIT_ISSUER|]          [mt|You're not the issuer of the given permit|]
             , mkError [mt|DUP_PERMIT|]                 [mt|The given permit already exists|]
             , mkError [mt|EXPIRY_TOO_BIG|]             [mt|The `set_expiry` entrypoint was called with an expiry value that is too big|]
+            , mkError [mt|NEGATIVE_TOTAL_SUPPLY|]      [mt|The total_supply value was found to be less than zero after an operation. This indicates a bug in the contract.|]
             ] <>
   TZ.views (case mtmd of
      Nothing ->
