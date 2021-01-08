@@ -71,6 +71,13 @@ To measure and collect these numbers:
     tezos-client get balance for nettest
     ```
 1. Run `cd haskell && stack test stablecoin:test:stablecoin-nettest`
+
+   This deploys the FA2 and FA1.2 contracts along with the corresponding
+   metadata contracts. So metadata is deployed to separate contracts and linked
+   from the main contracts via the TZIP-016 metadata URI. After this some tests
+   on the deployed contracts. (The origination costs in the table above does
+   not include origination costs of these metadata contracts).
+
 1. The logs should show these two messages, with two addresses:
     ```
     Originated smart contract Stablecoin FA1.2 with address <...>
