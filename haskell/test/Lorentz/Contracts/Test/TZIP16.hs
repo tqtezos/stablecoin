@@ -76,12 +76,13 @@ expectedMetadataJSON =
   [i|
   {
     "name": "stablecoin",
-    "homepage": "https://github.com/tqtezos/stablecoin/",
+    "description": "Tezos Stablecoin project implements an FA2-compatible token smart contract. It draws inspiration from popular permissioned asset contracts like CENTRE Fiat Token and other similar contracts. The contract is implemented in the LIGO language.",
     "version": "#{showVersion version}",
     "interfaces": [
       "TZIP-012",
       "TZIP-017"
     ],
+    "homepage": "https://github.com/tqtezos/stablecoin/",
     "authors": [
       "Serokell <https://serokell.io/>",
       "TQ Tezos <https://tqtezos.com/>"
@@ -292,6 +293,11 @@ expectedMetadataJSON =
       {
         "error": { "string": "EXPIRY_TOO_BIG" },
         "expansion": { "string": "The `set_expiry` entrypoint was called with an expiry value that is too big" },
+        "languages": [ "en" ]
+      },
+      {
+        "error": { "string": "NEGATIVE_TOTAL_SUPPLY" },
+        "expansion": { "string": "The total_supply value was found to be less than zero after an operation. This indicates a bug in the contract." },
         "languages": [ "en" ]
       }
     ]
