@@ -43,6 +43,8 @@ library:
     - caps
     - text
     - bytestring
+    - uncaught-exception
+    - servant-client
 
 executables:
   stablecoin-client:
@@ -68,7 +70,6 @@ tests:
       - fmt
       - hedgehog
       - hspec
-      - interpolate
       - lorentz
       - morley
       - morley-ledgers
@@ -94,6 +95,7 @@ tests:
       - aeson
       - cleveland
       - containers
+      - fmt
       - lorentz
       - morley
       - morley-client

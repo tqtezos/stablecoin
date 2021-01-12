@@ -5,7 +5,9 @@ module Permit
   ( permitScenario
   ) where
 
-import Lorentz (Address, EntrypointRef(Call), TAddress(..), lPackValue, toVal)
+import Fmt (build)
+
+import Lorentz (Address, EntrypointRef(Call), Packed(..), TAddress(..), lPackValue, toVal)
 import Michelson.Typed (convertContract, untypeValue)
 import Morley.Nettest
 
@@ -32,7 +34,8 @@ permitScenario = uncapsNettest $ do
   (_, user1) <- createUser "Steve"
 
   comment "Originating contracts"
-  cmrAddress <- nettestOriginateContractMetadataContract (metadataJSON $ Just testFA2TokenMetadata)
+  metadata <- either (failure . build) pure $ metadataJSON (Just testFA2TokenMetadata)
+  cmrAddress <- nettestOriginateContractMetadataContract metadata
   let originationParams =
         addAccount (owner1 , ([], 1000)) $
           defaultOriginationParams
@@ -67,7 +70,7 @@ permitScenario = uncapsNettest $ do
       -- counter <- getCounter
 
       let permitHash = mkPermitHash param
-      let bytes = lPackValue ((contract, chainId), (counter, permitHash))
+      let Packed bytes = lPackValue ((contract, chainId), (counter, permitHash))
       sig <- signBytes bytes alias
       pk <- getPublicKey (AddressAlias alias)
       call contract (Call @"Permit") (PermitParam pk sig permitHash)

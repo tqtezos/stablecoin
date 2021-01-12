@@ -13,36 +13,29 @@ extra-deps:
     https://gitlab.com/morley-framework/morley.git
     # ^ CI cannot use ssh, so we use http clone here
   commit:
-    9433a4df02b90a98cbba9b699db28901ba2e7119
+    9e69d52741e456bd0976a1ec4c45cc4c43a11722 # master, morley-1.11.1
   subdirs:
     - code/cleveland
-
-- git:
-    https://gitlab.com/morley-framework/morley.git
-    # ^ CI cannot use ssh, so we use http clone here
-  commit:
-    bdf6fe2f2ef7833dbe7ee65d61cf4b2e4691f365
-  subdirs:
-    - code/morley
     - code/morley-client
 
 - git:
     https://gitlab.com/morley-framework/morley-metadata.git
     # ^ CI cannot use ssh, so we use http clone here
   commit:
-    0c7005373dcdf79118def10637ff95c8c9820b10 # master
-  # nix-sha256: "1hi79r320gq9jy617zxikw544gc9ip9s7i6pxx1i1j76yassb1h5"
+    f5a3ab4845626ab77c0bd3eb3bfd4d656b25bde3 # master
   subdirs:
     - code/morley-metadata
     - code/morley-metadata-test
 
 # Stable parts of morley available from Hackage
+- morley-1.11.1
 - morley-prelude-0.3.0
-- tasty-hunit-compat-0.2
-- lorentz-0.6.2
-- indigo-0.3.0
+- lorentz-0.9.0
+- indigo-0.5.0
 
 # Required by morley
+- tasty-hunit-compat-0.2
+- uncaught-exception-0.1.0
 - base58-bytestring-0.1.0
 - hex-text-0.1.0.0
 - pretty-terminal-0.1.0.0

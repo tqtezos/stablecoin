@@ -545,7 +545,7 @@ callEntrypoint cc st env = case ccParameter cc of
     call epRef param =
       handleContractReturn $
         interpret
-          (T.cCode stablecoinContract)
+          stablecoinContract
           (parameterEntrypointCallCustom @Parameter epRef)
           (toVal param)
           (toVal st)

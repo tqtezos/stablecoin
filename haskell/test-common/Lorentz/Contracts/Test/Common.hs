@@ -49,6 +49,7 @@ module Lorentz.Contracts.Test.Common
 import Data.Aeson (ToJSON)
 import Data.List.NonEmpty ((!!))
 import qualified Data.Map as Map
+import Fmt (pretty)
 
 import Lorentz (arg)
 import qualified Lorentz.Contracts.Spec.TZIP16Interface as MD
@@ -147,11 +148,14 @@ defaultOriginationParams = OriginationParams
   , opPaused = False
   , opMinters = mempty
   , opPendingOwner = Nothing
-  , opMetadataUri = CurrentContract (metadataJSON $ Just testFA2TokenMetadata) True
+  , opMetadataUri = CurrentContract metadata True
   , opTransferlistContract = Nothing
   , opDefaultExpiry = 1000
   , opPermits = mempty
   }
+  where
+    metadata = either (error . pretty) id $ metadataJSON (Just testFA2TokenMetadata)
+
 
 addMinter
   :: (Address, Natural)

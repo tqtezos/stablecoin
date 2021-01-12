@@ -14,7 +14,7 @@ module Lorentz.Contracts.Test.Permit
 
 import Test.Hspec (Spec, describe, it, specify)
 
-import Lorentz (BigMap(..), TAddress, lPackValue, mt)
+import Lorentz (BigMap(..), Packed(..), TAddress, lPackValue, mt)
 import Lorentz.Test
 import Michelson.Runtime (ExecutorError)
 import Michelson.Runtime.GState (GState(gsChainId), initGState)
@@ -46,7 +46,7 @@ sign sk bs =
 mkPermit :: TAddress Parameter -> SecretKey -> Natural -> Parameter -> (PermitHash, ByteString, Signature)
 mkPermit contractAddr sk counter param =
   let permitHash = mkPermitHash param
-      toSign = lPackValue ((contractAddr, gsChainId initGState), (counter, permitHash))
+      Packed toSign = lPackValue ((contractAddr, gsChainId initGState), (counter, permitHash))
       sig = sign sk toSign
   in  (permitHash, toSign, sig)
 
@@ -92,7 +92,7 @@ permitSpec originate = do
           withSender testPauser $
             let
               (permitHash, _signedBytes, sig) = mkPermit stablecoinContract testPauserSK 999 Pause
-              expectedSignedBytes = lPackValue ((stablecoinContract, gsChainId initGState), (0 :: Natural, permitHash))
+              Packed expectedSignedBytes = lPackValue ((stablecoinContract, gsChainId initGState), (0 :: Natural, permitHash))
             in
               lCallEP stablecoinContract (Call @"Permit") (PermitParam testPauserPK sig permitHash)
                 `catchExpectedError` errMissignedPermit expectedSignedBytes
