@@ -159,7 +159,7 @@ data SimpleStorage = SimpleStorage
   , ssPendingOwner :: Maybe Address
   , ssTransferlistContract :: Maybe Address
   , ssOperators :: Map (Address, Address) ()
-  , ssIsPaused :: Bool
+  , ssPaused :: Bool
   , ssTotalSupply :: Natural
   } deriving stock (Eq, Generic, Show)
 
@@ -181,7 +181,7 @@ storageToSs storage = SimpleStorage
   , ssPendingOwner = rPendingOwner $ sRoles storage
   , ssTransferlistContract = sTransferlistContract storage
   , ssOperators = T.unBigMap $ sOperators storage
-  , ssIsPaused = sIsPaused storage
+  , ssPaused = sPaused storage
   , ssTotalSupply = sTotalSupply storage
   }
 
@@ -196,7 +196,7 @@ ssToOriginationParams SimpleStorage {..} = let
     , opOwnerToOperators = mkOwnerToOperator ssOperators
     , opMasterMinter = ssMasterMinter
     , opPauser = ssPauser
-    , opPaused = ssIsPaused
+    , opPaused = ssPaused
     , opMinters = minters
     , opPendingOwner = ssPendingOwner
     , opTransferlistContract = TAddress <$> ssTransferlistContract
@@ -567,10 +567,10 @@ ensurePendingOwner addr SimpleStorage {..} = case ssPendingOwner of
   Nothing -> Left CONTRACT_NOT_IN_TRANSFER
 
 ensureNotPaused :: SimpleStorage -> Either ModelError ()
-ensureNotPaused SimpleStorage {..} = if not ssIsPaused then Right () else Left CONTRACT_PAUSED
+ensureNotPaused SimpleStorage {..} = if not ssPaused then Right () else Left CONTRACT_PAUSED
 
 ensurePaused :: SimpleStorage -> Either ModelError ()
-ensurePaused SimpleStorage {..} = if ssIsPaused then Right () else Left CONTRACT_NOT_PAUSED
+ensurePaused SimpleStorage {..} = if ssPaused then Right () else Left CONTRACT_NOT_PAUSED
 
 validateTokenId :: FA2.UpdateOperator -> Either ModelError ()
 validateTokenId = \case
@@ -594,13 +594,13 @@ applyPause :: Address -> SimpleStorage -> Either ModelError SimpleStorage
 applyPause sender ss = do
   ensureNotPaused ss
   ensurePauser sender ss
-  Right ss { ssIsPaused = True }
+  Right ss { ssPaused = True }
 
 applyUnpause :: Address -> SimpleStorage -> Either ModelError SimpleStorage
 applyUnpause sender ss = do
   ensurePaused ss
   ensurePauser sender ss
-  Right ss { ssIsPaused = False }
+  Right ss { ssPaused = False }
 
 applyConfigureMinter :: Address -> SimpleStorage -> ConfigureMinterParam -> Either ModelError SimpleStorage
 applyConfigureMinter sender cs (ConfigureMinterParam minter mbCurrent new) = do

@@ -29,7 +29,7 @@ data Storage = Storage
   , sLedger :: BigMap Address Natural
   , sMetadata :: MetadataMap BigMap
   , sMintingAllowances :: Map Address Natural
-  , sIsPaused :: Bool
+  , sPaused :: Bool
   , sPermitCounter :: Natural
   , sPermits :: BigMap Address S.UserPermits
   , sRoles :: S.Roles
@@ -40,22 +40,7 @@ data Storage = Storage
 
 deriving anyclass instance IsoValue Storage
 deriving anyclass instance HasAnnotation Storage
-$(customGeneric "Storage" $ withDepths
-    [ cstr @0
-      [ fld @4 -- sDefaultExpiry
-      , fld @4 -- sLedger
-      , fld @4 -- sMetadata
-      , fld @4 -- sMintingAllowances
-      , fld @4 -- sIsPaused
-      , fld @4 -- sPermitCounter
-      , fld @4 -- sPermits
-      , fld @4 -- sRoles
-      , fld @3 -- sSpenderAllowances
-      , fld @3 -- sTotalSupply
-      , fld @2 -- sTransferlistContract
-      ]
-    ]
-  )
+customGeneric "Storage" ligoLayout
 
 data Parameter
   = Accept_ownership
