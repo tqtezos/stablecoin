@@ -89,7 +89,7 @@ fa1_2ComparisonScenario = uncapsNettest $ do
         }
 
   comment "Originating Stablecoin FA2 contract"
-  fa2ContractAddr <- TAddress @FA2.Parameter <$>
+  fa2ContractAddr <- TAddress @SFA2.FA2Parameter <$>
     originateUntypedSimple "Stablecoin FA2" (untypeValue $ toVal fa2Storage) (convertContract stablecoinContract)
 
   comment "Calling transfer"

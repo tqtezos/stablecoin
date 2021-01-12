@@ -1,6 +1,5 @@
 -- SPDX-FileCopyrightText: 2020 TQ Tezos
 -- SPDX-License-Identifier: MIT
-{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Lorentz.Contracts.Stablecoin.Types
   ( ConfigureMinterParam(..)
@@ -14,6 +13,7 @@ module Lorentz.Contracts.Stablecoin.Types
   , MintParams
   , MintParam(..)
   , BurnParams
+  , FA2Parameter(..)
   , ParameterC
   , Parameter (..)
   , Storage'(..)
@@ -127,33 +127,47 @@ deriving anyclass instance HasAnnotation SetExpiryParam
 instance Buildable SetExpiryParam where
   build = genericF
 
-instance HasAnnotation FA2.Parameter where
+-- | Similar to 'FA2.Parameter' from @morley-ledgers@, but with a layout compatible with
+-- the ligo implementation
+data FA2Parameter
+  = Balance_of FA2.BalanceRequestParams
+  | Transfer FA2.TransferParams
+  | Update_operators FA2.UpdateOperatorsParam
+  deriving stock (Eq, Show)
+
+instance Buildable FA2Parameter where
+  build = \case
+    Balance_of p -> "<Balance_of:" +| build p |+ ">"
+    Transfer p -> "<Transfer:" +| build p |+ ">"
+    Update_operators p -> "<Update_operators:" +| build p |+ ">"
+
+instance HasAnnotation FA2Parameter where
   getAnnotation f =
     NTOr noAnn noAnn noAnn
       (NTOr noAnn noAnn noAnn
         (getAnnotation @FA2.BalanceRequestParams f) (getAnnotation @FA2.TransferParams f))
       (getAnnotation @FA2.UpdateOperatorsParam f)
 
-$(customGeneric "FA2.Parameter" $ withDepths
+$(customGeneric "FA2Parameter" $ withDepths
     [ cstr @2 [fld @0]
     , cstr @2 [fld @0]
     , cstr @1 [fld @0]
     ]
   )
 
-deriving anyclass instance IsoValue FA2.Parameter
+deriving anyclass instance IsoValue FA2Parameter
 
-instance ParameterHasEntrypoints FA2.Parameter where
-  type ParameterEntrypointsDerivation FA2.Parameter = EpdPlain
+instance ParameterHasEntrypoints FA2Parameter where
+  type ParameterEntrypointsDerivation FA2Parameter = EpdPlain
 
-instance TypeHasDoc FA2.Parameter where
+instance TypeHasDoc FA2Parameter where
   typeDocMdDescription = "Describes the FA2 operations."
 
 -- | Parameter of Stablecoin contract
 data Parameter
   = Accept_ownership
   | Burn BurnParams
-  | Call_FA2 FA2.Parameter
+  | Call_FA2 FA2Parameter
   | Change_master_minter ChangeMasterMinterParam
   | Change_pauser ChangePauserParam
   | Configure_minter ConfigureMinterParam

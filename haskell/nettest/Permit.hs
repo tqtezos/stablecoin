@@ -14,8 +14,8 @@ import Morley.Nettest
 import Lorentz.Contracts.Spec.FA2Interface (TransferDestination(..), TransferItem(..))
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
-  (ConfigureMinterParam(..), MetadataUri(..), Parameter(..), PermitParam(..), metadataJSON,
-  mkPermitHash, stablecoinContract)
+  (ConfigureMinterParam(..), FA2Parameter(..), MetadataUri(..), Parameter(..), PermitParam(..),
+  metadataJSON, mkPermitHash, stablecoinContract)
 
 import Lorentz.Contracts.Test.Common
   (OriginationParams(..), addAccount, defaultOriginationParams, mkInitialStorage,
@@ -86,7 +86,7 @@ permitScenario = uncapsNettest $ do
   comment "Issue a permit for Transfer"
   let transferParam =
         [ TransferItem owner1 [TransferDestination user1 FA2.theTokenId 1] ]
-  issuePermit 2 owner1Alias (Call_FA2 $ FA2.Transfer transferParam)
+  issuePermit 2 owner1Alias (Call_FA2 $ Transfer transferParam)
   callFrom (addressResolved user1) contract (Call @"Transfer") transferParam
 
   comment "Issue a permit for Update_operators"
@@ -94,7 +94,7 @@ permitScenario = uncapsNettest $ do
         [ FA2.AddOperator
             FA2.OperatorParam { opOwner = owner1, opOperator = user1, opTokenId = FA2.theTokenId }
         ]
-  issuePermit 3 owner1Alias (Call_FA2 $ FA2.Update_operators param)
+  issuePermit 3 owner1Alias (Call_FA2 $ Update_operators param)
   callFrom (addressResolved user1) contract (Call @"Update_operators") param
 
   comment "Issue a permit for Configure_minter"
