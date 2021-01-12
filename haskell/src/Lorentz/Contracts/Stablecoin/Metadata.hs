@@ -182,7 +182,7 @@ metadataJSON mtmd = do
         , seLanguages = ["en"]
         }
 
-type BalanceViewParam = (Natural, Address)
+type BalanceViewParam = (Address, Natural)
 
 getBalanceView :: TZ.View (ToT Storage)
 getBalanceView =
@@ -195,7 +195,7 @@ getBalanceView =
           mkMichelsonStorageView @Storage @Natural Nothing [] $
             $$(compileViewCodeTH $ WithParam @BalanceViewParam $
               L.dip (L.toField #sLedger) #
-              L.cdr #
+              L.car #
               L.get #
               L.whenNone (L.push 0) -- If there is no ledger entry, return zero.
             )
@@ -240,11 +240,16 @@ isOperatorView =
     , vImplementations = one $
         VIMichelsonStorageView $
           mkMichelsonStorageView @Storage @Bool Nothing [] $
-            $$(compileViewCodeTH $ WithParam $
+            $$(compileViewCodeTH $ WithParam @FA2.OperatorParam $
               L.dip (L.toField #sOperators) #
-              L.unpair #
+
+              L.getField #opTokenId # forcedCoerce_ #
               L.int #
               L.assertEq0 [mt|Unknown TOKEN ID|] #
+
+              L.getField #opOwner #
+              L.dip (L.toField #opOperator) #
+              L.pair #
               L.get #
               L.ifSome (L.drop # L.push True) (L.push False)
             )
