@@ -45,6 +45,8 @@ library:
     - bytestring
     - uncaught-exception
     - servant-client
+    - template-haskell
+    - directory
 
 executables:
   stablecoin-client:

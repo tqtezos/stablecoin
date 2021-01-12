@@ -34,6 +34,7 @@ define build_stablecoin_contract
 	$(MORLEY) optimize --contract "$(LIGO_DIR)/stablecoin.tz" --output "test/resources/stablecoin.tz"
 	$(MORLEY) optimize --contract "$(LIGO_DIR)/stablecoin.fa1.2.tz" --output "test/resources/stablecoin.fa1.2.tz"
 	cp "$(LIGO_DIR)/metadata.tz" "test/resources/metadata.tz"
+	cp "../nix/sources.json" "test/resources/sources.json"
 endef
 
 # Build everything haskell-related (including tests and benchmarks) with development options.

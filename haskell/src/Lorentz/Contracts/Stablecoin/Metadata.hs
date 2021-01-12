@@ -30,6 +30,7 @@ import Tezos.Address (formatAddress, parseAddress)
 
 import Lorentz.Contracts.Stablecoin.Types
 import Paths_stablecoin (version)
+import Stablecoin.Util (ligoVersion)
 
 jfield :: MText
 jfield = [mt|metadataJSON|]
@@ -121,7 +122,7 @@ metadataJSON mtmd = do
     TZ.homepage "https://github.com/tqtezos/stablecoin/" <>
     TZ.source Source
       { sLocation = Just $ "https://github.com/tqtezos/stablecoin/tree/v" <> toText (showVersion version) <> "/ligo/stablecoin"
-      , sTools = [ "ligo " ] -- TODO: add ligo version
+      , sTools = [ "ligo " <> $ligoVersion ]
       } <>
     TZ.interfaces [ TZ.Interface "TZIP-012", TZ.Interface "TZIP-017" ] <>
     TZ.errors [ mkError [mt|FA2_TOKEN_UNDEFINED|]        [mt|All `token_id`s must be 0|]

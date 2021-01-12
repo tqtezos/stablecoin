@@ -62,8 +62,9 @@ import Util.Named ((:!), (.!))
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
   (ConfigureMinterParam(..), MetadataUri(..), MintParam(..), Parameter, ParsedMetadataUri(..),
-  Roles(..), Storage'(..), StorageView, type Storage, UpdateOperatorData(..), contractMetadataContract,
-  metadataJSON, metadataMap, mkContractMetadataRegistryStorage, parseMetadataUri, stablecoinContract)
+  Roles(..), Storage, Storage'(..), StorageView, UpdateOperatorData(..), contractMetadataContract,
+  metadataJSON, metadataMap, mkContractMetadataRegistryStorage, parseMetadataUri,
+  stablecoinContract)
 import Stablecoin.Client.Contract (InitialStorageData(..), mkInitialStorage)
 import Stablecoin.Client.Parser (ContractMetadataOptions(..))
 
