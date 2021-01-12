@@ -325,8 +325,8 @@ getTokenMetadata :: "contract" :! AddressOrAlias -> MorleyClientM FA2.TokenMetad
 getTokenMetadata contract = do
   (metadata, storageView) <- getContractMetadata contract
   views <- throwMdErr (\err -> "Views was not found in metadata:" <> show err) $ TZ.getViews metadata
-  getTMD <- throwMdErr id $ maybeToRight "'GetTokenMetadata' view was not found in metadata" $
-    MD.findView @(ToT Storage) views "GetTokenMetadata"
+  getTMD <- throwMdErr id $ maybeToRight "'token_metadata' view was not found in metadata" $
+    MD.findView @(ToT Storage) views "token_metadata"
   let storageWithEmptyBm :: Storage =
         -- In the below code we convert the `StorageView` to `Storage` by
         -- replacing all bigmaps with empty counterparts, and this should be fine here since

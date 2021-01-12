@@ -187,7 +187,7 @@ type BalanceViewParam = (Address, Natural)
 getBalanceView :: TZ.View (ToT Storage)
 getBalanceView =
   TZ.View
-    { vName = "GetBalance"
+    { vName = "get_balance"
     , vDescription = Just "Access the balance of an address"
     , vPure = Just True
     , vImplementations = one $
@@ -204,7 +204,7 @@ getBalanceView =
 getTotalSupplyView :: TZ.View (ToT Storage)
 getTotalSupplyView =
   TZ.View
-    { vName = "GetTotalSupply"
+    { vName = "total_supply"
     , vDescription = Just "Get the total no of tokens available."
     , vPure = Just True
     , vImplementations = one $
@@ -220,7 +220,7 @@ getTotalSupplyView =
 getAllTokensView :: TZ.View (ToT Storage)
 getAllTokensView =
   TZ.View
-    { vName = "GetAllTokens"
+    { vName = "all_tokens"
     , vDescription = Just "Get list of token ids supported."
     , vPure = Just True
     , vImplementations = one $
@@ -234,7 +234,7 @@ getAllTokensView =
 isOperatorView :: TZ.View (ToT Storage)
 isOperatorView =
   TZ.View
-    { vName = "IsOperator"
+    { vName = "is_operator"
     , vDescription = Just "Check if the given address is an operator"
     , vPure = Just True
     , vImplementations = one $
@@ -263,7 +263,7 @@ mkTokenMetadataView md = do
           L.assertEq0 [mt|Unknown TOKEN ID|] #
           L.push (0 :: Natural, md)
   pure $ TZ.View
-    { vName = "GetTokenMetadata"
+    { vName = "token_metadata"
     , vDescription = Just "Get token metadata for the token id"
     , vPure = Just True
     , vImplementations = one $
