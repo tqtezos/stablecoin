@@ -105,14 +105,12 @@ data MetadataUri metadata
 -- | Make the TZIP-16 metadata. We accept a @Maybe@ @FA2.TokenMetadata@
 -- as argument here so that we can use this function to create the metadata of the
 -- FA1.2 Variant as well.
-metadataJSON :: Maybe FA2.TokenMetadata -> Either ViewCodeError (Metadata (ToT Storage))
-metadataJSON mtmd = do
+metadataJSON :: Maybe FA2.TokenMetadata -> Maybe Text -> Either ViewCodeError (Metadata (ToT Storage))
+metadataJSON mtmd mbDescription = do
   views <- mkViews
   pure $
     TZ.name  "stablecoin" <>
-    TZ.description  "Tezos Stablecoin project implements an FA2-compatible token smart contract.\
-      \ It draws inspiration from popular permissioned asset contracts like CENTRE Fiat Token and other similar contracts.\
-      \ The contract is implemented in the LIGO language." <>
+    TZ.description (fromMaybe defaultDescription mbDescription) <>
     TZ.version (toText $ showVersion version) <>
     TZ.license (License { lName = "MIT", lDetails = Nothing }) <>
     TZ.authors
@@ -154,6 +152,12 @@ metadataJSON mtmd = do
     TZ.views views
 
   where
+    defaultDescription :: Text
+    defaultDescription =
+      "Tezos Stablecoin project implements an FA2-compatible token smart contract.\
+      \ It draws inspiration from popular permissioned asset contracts like CENTRE Fiat Token and other similar contracts.\
+      \ The contract is implemented in the LIGO language."
+
     mkViews :: Either ViewCodeError [TZ.View (ToT Storage)]
     mkViews =
       case mtmd of

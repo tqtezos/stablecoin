@@ -52,7 +52,7 @@ scNettestScenario originateTransferlist transferlistType = uncapsNettest $ do
   otherOperator <- newAddress "Other operator"
 
   comment "Originating metadata contract"
-  metadata <- either (failure . build) pure $ metadataJSON Nothing
+  metadata <- either (failure . build) pure $ metadataJSON Nothing Nothing
   cmrAddress <- nettestOriginateContractMetadataContract metadata
   let
     originationParams =

@@ -44,7 +44,7 @@ stablecoinClientScenario = do
     , isdTokenName = "b"
     , isdTokenDecimals = 3
     , isdDefaultExpiry = 1000
-    , isdContractMetadataStorage = OpRemoteContract
+    , isdContractMetadataStorage = OpRemoteContract Nothing
     }
   let contract = #contract .! AddressResolved contractAddr
   comment "Testing get-balance"

@@ -19,6 +19,7 @@ _definitions:
     - &default-extensions
         - AllowAmbiguousTypes
         - BangPatterns
+        - BlockArguments
         - ConstraintKinds
         - DataKinds
         - DefaultSignatures

@@ -50,7 +50,7 @@ fa1_2ComparisonScenario = uncapsNettest $ do
         , rPendingOwner = Nothing
         }
 
-  metadata <- either (failure . build) pure $ SFA2.metadataJSON Nothing
+  metadata <- either (failure . build) pure $ SFA2.metadataJSON Nothing Nothing
 
   cmrFA1_2Address <- nettestOriginateContractMetadataContract metadata
   let fa1_2Storage = SFA1_2.Storage

@@ -34,7 +34,7 @@ permitScenario = uncapsNettest $ do
   (_, user1) <- createUser "Steve"
 
   comment "Originating contracts"
-  metadata <- either (failure . build) pure $ metadataJSON (Just testFA2TokenMetadata)
+  metadata <- either (failure . build) pure $ metadataJSON (Just testFA2TokenMetadata) Nothing
   cmrAddress <- nettestOriginateContractMetadataContract metadata
   let originationParams =
         addAccount (owner1 , ([], 1000)) $
