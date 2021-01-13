@@ -9,6 +9,16 @@ SPDX-License-Identifier: MIT
 <!-- Don't forget to update the gas/transaction costs tables in the
 README when a new version is released. -->
 
+* [#155](https://github.com/tqtezos/stablecoin/pull/155)
+  * Added `--description` option to `stablecoin-client`
+  * Fixed names of FA2 views (e.g. `GetBalance` is now named `get_balance`)
+  * Contract metadata now contains the version of the ligo compiler used
+    to compile the contract.
+  * Update the types of the `is_operator` and `get_balance` views to reflect
+    the [recent changes to TZIP-012](https://gitlab.com/tzip/tzip/-/merge_requests/126).
+  * Update the names of the metadata keys to use the camelCase naming scheme to reflect
+    the [recent changes to TZIP-016](https://gitlab.com/tzip/tzip/-/merge_requests/115).
+
 ## 1.6.0
 
 * [#151](https://github.com/tqtezos/stablecoin/pull/151)
