@@ -19,6 +19,7 @@ Otherwise, you should prefix all commands with `stack run` and put `--` after `s
 
 The help message should be sufficiently descriptive, however, there are some caveats:
 1. [`tezos-client`](http://tezos.gitlab.io/introduction/howtoget.html) executable must be available and is assumed to be in `$PATH` by default.
+   Note that only `tezos-client` versions v8.0 or above are supported.
 1. Node data (address, port and whether to use TLS) is taken from `tezos-client` config by default.
 Make sure it points to an active node in the network where you want to submit your operations.
 You can override this data using the respective options of `stablecoin-client`.

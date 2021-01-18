@@ -77,17 +77,17 @@ permitScenario = uncapsNettest $ do
 
   comment "Issue a permit for Pause"
   issuePermit 0 pauserAlias Pause
-  callFrom (addressResolved user1) contract (Call @"Pause") ()
+  withSender (addressResolved user1) $ call contract (Call @"Pause") ()
 
   comment "Issue a permit for Unpause"
   issuePermit 1 pauserAlias Unpause
-  callFrom (addressResolved user1) contract (Call @"Unpause") ()
+  withSender (addressResolved user1) $ call contract (Call @"Unpause") ()
 
   comment "Issue a permit for Transfer"
   let transferParam =
         [ TransferItem owner1 [TransferDestination user1 FA2.theTokenId 1] ]
   issuePermit 2 owner1Alias (Call_FA2 $ Transfer transferParam)
-  callFrom (addressResolved user1) contract (Call @"Transfer") transferParam
+  withSender (addressResolved user1) $ call contract (Call @"Transfer") transferParam
 
   comment "Issue a permit for Update_operators"
   let param =
@@ -95,37 +95,37 @@ permitScenario = uncapsNettest $ do
             FA2.OperatorParam { opOwner = owner1, opOperator = user1, opTokenId = FA2.theTokenId }
         ]
   issuePermit 3 owner1Alias (Call_FA2 $ Update_operators param)
-  callFrom (addressResolved user1) contract (Call @"Update_operators") param
+  withSender (addressResolved user1) $ call contract (Call @"Update_operators") param
 
   comment "Issue a permit for Configure_minter"
   let configureMinterParam = ConfigureMinterParam user1 Nothing 30
   issuePermit 4 masterMinterAlias (Configure_minter configureMinterParam)
-  callFrom (addressResolved user1) contract (Call @"Configure_minter") configureMinterParam
+  withSender (addressResolved user1) $ call contract (Call @"Configure_minter") configureMinterParam
 
   comment "Issue a permit for Remove_minter"
   let removeMinterParam = user1
   issuePermit 5 masterMinterAlias (Remove_minter removeMinterParam)
-  callFrom (addressResolved user1) contract (Call @"Remove_minter") removeMinterParam
+  withSender (addressResolved user1) $ call contract (Call @"Remove_minter") removeMinterParam
 
   comment "Issue a permit for Set_transferlist"
   issuePermit 6 owner1Alias (Set_transferlist Nothing)
-  callFrom (addressResolved user1) contract (Call @"Set_transferlist") Nothing
+  withSender (addressResolved user1) $ call contract (Call @"Set_transferlist") Nothing
 
   comment "Issue a permit for Change_pauser"
   issuePermit 7 owner1Alias (Change_pauser owner2)
-  callFrom (addressResolved user1) contract (Call @"Change_pauser") owner2
+  withSender (addressResolved user1) $ call contract (Call @"Change_pauser") owner2
 
   comment "Issue a permit for Change_master_minter"
   issuePermit 8 owner1Alias (Change_master_minter owner2)
-  callFrom (addressResolved user1) contract (Call @"Change_master_minter") owner2
+  withSender (addressResolved user1) $ call contract (Call @"Change_master_minter") owner2
 
   comment "Issue a permit for Transfer_ownership"
   issuePermit 9 owner1Alias (Transfer_ownership owner2)
-  callFrom (addressResolved user1) contract (Call @"Transfer_ownership") owner2
+  withSender (addressResolved user1) $ call contract (Call @"Transfer_ownership") owner2
 
   comment "Issue a permit for Accept_ownership"
   issuePermit 10 owner2Alias Accept_ownership
-  callFrom (addressResolved user1) contract (Call @"Accept_ownership") ()
+  withSender (addressResolved user1) $ call contract (Call @"Accept_ownership") ()
 
   where
     createUser :: MonadNettest caps base m => AliasHint -> m (Alias, Address)

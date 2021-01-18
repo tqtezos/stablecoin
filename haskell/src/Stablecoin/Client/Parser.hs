@@ -35,6 +35,7 @@ import Util.CLI (mkCLOptionParser)
 import Util.Named ((:!), (.!))
 
 import Lorentz.Contracts.Stablecoin (Expiry, UpdateOperatorData(..))
+import Morley.Client.Parser (addressOrAliasOption)
 
 data ClientArgs = ClientArgs
   { caMorleyClientConfig :: MorleyClientConfig
@@ -691,10 +692,6 @@ stablecoinClientInfo =
       , "  This command will produce the given amounts of tokens to", linebreak
       , "  the wallets associated with the given address.", linebreak
       ]
-
-addressOrAliasOption ::
-  Maybe AddressOrAlias -> "name" :! String -> "help" :! String -> Opt.Parser AddressOrAlias
-addressOrAliasOption = mkCLOptionParser
 
 naturalOption ::
   Maybe Natural -> "name" :! String -> "help" :! String -> Opt.Parser Natural

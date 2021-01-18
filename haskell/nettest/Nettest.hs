@@ -107,7 +107,7 @@ scNettestScenario originateTransferlist transferlistType = uncapsNettest $ do
       (#amount .! value)
 
     callTransferWithOperator op from to value =
-      callFrom (AddressResolved op) sc (Call @"Transfer") (tp from to value)
+      withSender (AddressResolved op) $ call sc (Call @"Transfer") (tp from to value)
 
     callTransfer = join callTransferWithOperator
 
@@ -115,130 +115,87 @@ scNettestScenario originateTransferlist transferlistType = uncapsNettest $ do
       :: [("from_" :! Address, [("to_" :! Address, "amount" :! Natural)])]
       -> capsM ()
     callTransfers = mapM_ $ \(from@(arg #from_ -> from_), destinations) ->
-      callFrom
-        (AddressResolved from_)
-        sc
-        (Call @"Transfer")
-        (constructTransfersFromSender from destinations)
+      withSender (AddressResolved from_) $
+        call sc (Call @"Transfer") (constructTransfersFromSender from destinations)
 
     configureMinter :: Address -> Address -> Maybe Natural -> Natural -> capsM ()
     configureMinter = configureMinter' sc
 
     configureMinter' :: TAddress Parameter -> Address -> Address -> Maybe Natural -> Natural -> capsM ()
     configureMinter' sc' from for expectedAllowance newAllowance =
-      callFrom
-        (AddressResolved from)
-        sc'
-        (Call @"Configure_minter")
-        (ConfigureMinterParam for expectedAllowance newAllowance)
+      withSender (AddressResolved from) $
+        call sc' (Call @"Configure_minter") (ConfigureMinterParam for expectedAllowance newAllowance)
 
     removeMinter :: Address -> Address -> capsM ()
     removeMinter from whom =
-      callFrom
-        (AddressResolved from)
-        sc
-        (Call @"Remove_minter")
-        whom
+      withSender (AddressResolved from) $
+        call sc (Call @"Remove_minter") whom
 
     addOperatorNettest :: Address -> Address -> capsM ()
     addOperatorNettest from op =
-      callFrom
-        (AddressResolved from)
-        sc
-        (Call @"Update_operators")
-        [ FA2.AddOperator
+      withSender (AddressResolved from) $
+        call sc (Call @"Update_operators")
+          [ FA2.AddOperator
             FA2.OperatorParam { opOwner = from, opOperator = op, opTokenId = FA2.theTokenId }
-        ]
+          ]
 
     removeOperator :: Address -> Address -> capsM ()
     removeOperator from op =
-      callFrom
-        (AddressResolved from)
-        sc
-        (Call @"Update_operators")
-        [ FA2.RemoveOperator
+      withSender (AddressResolved from) $
+        call sc (Call @"Update_operators")
+          [ FA2.RemoveOperator
             FA2.OperatorParam { opOwner = from, opOperator = op, opTokenId = FA2.theTokenId }
-        ]
+          ]
 
     mint :: Address -> Natural -> capsM ()
     mint to_ value =
-      callFrom
-        (AddressResolved to_)
-        sc
-        (Call @"Mint")
-        [MintParam to_ value]
+      withSender (AddressResolved to_) $
+        call sc (Call @"Mint") [MintParam to_ value]
 
     burn :: Address -> Natural -> capsM ()
     burn from amount_ =
-      callFrom
-        (AddressResolved from)
-        sc
-        (Call @"Burn")
-        [amount_]
+      withSender (AddressResolved from) $
+        call sc (Call @"Burn") [amount_]
 
     pause :: Address -> capsM ()
     pause from =
-      callFrom
-        (AddressResolved from)
-        sc
-        (Call @"Pause")
-        ()
+      withSender (AddressResolved from) $
+        call sc (Call @"Pause") ()
 
     unpause :: Address -> capsM ()
     unpause from =
-      callFrom
-        (AddressResolved from)
-        sc
-        (Call @"Unpause")
-        ()
+      withSender (AddressResolved from) $
+        call sc (Call @"Unpause") ()
 
     transferOwnership :: Address -> Address -> capsM ()
     transferOwnership from to =
-      callFrom
-        (AddressResolved from)
-        sc
-        (Call @"Transfer_ownership")
-        to
+      withSender (AddressResolved from) $
+        call sc (Call @"Transfer_ownership") to
 
     acceptOwnership :: Address -> capsM ()
     acceptOwnership from =
-      callFrom
-        (AddressResolved from)
-        sc
-        (Call @"Accept_ownership")
-        ()
+      withSender (AddressResolved from) $
+        call sc (Call @"Accept_ownership") ()
 
     changeMasterMinter :: Address -> Address -> capsM ()
     changeMasterMinter from to =
-      callFrom
-        (AddressResolved from)
-        sc
-        (Call @"Change_master_minter")
-        to
+      withSender (AddressResolved from) $
+        call sc (Call @"Change_master_minter") to
 
     changePauser :: Address -> Address -> capsM ()
     changePauser from to =
-      callFrom
-        (AddressResolved from)
-        sc
-        (Call @"Change_pauser")
-        to
+      withSender (AddressResolved from) $
+        call sc (Call @"Change_pauser") to
 
     setTransferlist :: Address -> Address -> capsM ()
     setTransferlist from transferlistAddress =
-      callFrom
-        (AddressResolved from)
-        sc
-        (Call @"Set_transferlist")
-        (Just transferlistAddress)
+      withSender (AddressResolved from) $
+        call sc (Call @"Set_transferlist") (Just transferlistAddress)
 
     unsetTransferlist :: Address -> capsM ()
     unsetTransferlist from =
-      callFrom
-        (AddressResolved from)
-        sc
-        (Call @"Set_transferlist")
-        (Nothing :: Maybe Address)
+      withSender (AddressResolved from) $
+        call sc (Call @"Set_transferlist") (Nothing :: Maybe Address)
 
   let
     transferScenario = do
@@ -379,10 +336,9 @@ scNettestScenario originateTransferlist transferlistType = uncapsNettest $ do
         addMinter' ma = configureMinter' sc' nettestMasterMinter ma Nothing 100
 
       comment "Send some tez to master minter"
-      transfer $
+      withSender (AddressResolved superuser) $ transfer $
         TransferData
-          { tdFrom = AddressResolved superuser
-          , tdTo = AddressResolved nettestMasterMinter
+          { tdTo = AddressResolved nettestMasterMinter
           , tdAmount = toMutez 100000000
           , tdEntrypoint = DefEpName
           , tdParameter = ()

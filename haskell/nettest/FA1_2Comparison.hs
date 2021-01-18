@@ -71,7 +71,8 @@ fa1_2ComparisonScenario = uncapsNettest $ do
     originateUntypedSimple "Stablecoin FA1.2" (untypeValue $ toVal fa1_2Storage) stablecoinFA1_2Contract
 
   comment "Calling transfer"
-  callFrom (AddressResolved owner1) fa1_2ContractAddr (Call @"Transfer") (#from .! owner1, #to .! owner2, #value .! 2)
+  withSender (AddressResolved owner1) $
+    call fa1_2ContractAddr (Call @"Transfer") (#from .! owner1, #to .! owner2, #value .! 2)
 
   cmrAddress <- nettestOriginateContractMetadataContract metadata
   let fa2Storage = SFA2.Storage
@@ -93,7 +94,7 @@ fa1_2ComparisonScenario = uncapsNettest $ do
     originateUntypedSimple "Stablecoin FA2" (untypeValue $ toVal fa2Storage) (convertContract stablecoinContract)
 
   comment "Calling transfer"
-  callFrom (AddressResolved owner1) fa2ContractAddr (Call @"Transfer") [FA2.TransferItem
+  withSender (AddressResolved owner1) $ call fa2ContractAddr (Call @"Transfer") [FA2.TransferItem
     { tiFrom = owner1
     , tiTxs =
         [ TransferDestination
