@@ -9,6 +9,9 @@ env:
     && buildkite-agent artifact download metadata.tz haskell/test/resources/ --step "LIGO-contract"
     && cp "./nix/sources.json" "./haskell/test/resources/"
   TEZOS_CLIENT_UNSAFE_DISABLE_DISCLAIMER: "Y"
+  # this key is defined in local-chain bootstrap accounts list in
+  # https://github.com/serokell/aquarius-infra/blob/master/servers/albali/chain.nix
+  MONEYBAG: "unencrypted:edsk3GjD83F7oj2LrnRGYQer99Fj69U2QLyjWGiJ4UoBZNQwS38J4v"
 
 steps:
  - label: hlint
@@ -70,7 +73,6 @@ steps:
    env:
      NETTEST_NODE_ADDR: "localhost"
      NETTEST_NODE_PORT: "8735"
-     MONEYBAG: "unencrypted:edsk3GjD83F7oj2LrnRGYQer99Fj69U2QLyjWGiJ4UoBZNQwS38J4v"
    commands: &run-nettest
      - eval "$FETCH_CONTRACT"
      - cd haskell/
@@ -80,6 +82,15 @@ steps:
       automatic:
         limit: 1
 
+ - label: nettest-local-chain-008
+   if: *not_scheduled
+   env:
+     NETTEST_NODE_ADDR: "localhost"
+     NETTEST_NODE_PORT: "8734"
+   commands: *run-nettest
+   retry: *retry-nettest
+
+
  - label: nettest-scheduled-delphinet
    if: build.source == "schedule"
    # use another agent for long scheduled jobs
@@ -87,6 +98,21 @@ steps:
     queue: "scheduled"
    env:
      NETTEST_NODE_ADDR: "delphi.testnet.tezos.serokell.team"
+     NETTEST_NODE_PORT: "8732"
+     # Note that testnet moneybag can run out of tz. If this happened, someone should transfer it some
+     # more tz, its address: tz1ij8gUYbMRUXa4xX3mNvKguhaWG9GGbURn
+     MONEYBAG: "unencrypted:edsk4EYgVvKVKppJXAyeoqxJrNeyoktNqmcx5op1CFht9P1p8pPxp7"
+   commands: *run-nettest
+   retry: *retry-nettest
+   timeout_in_minutes: 180
+
+ - label: nettest-scheduled-edonet
+   if: build.source == "schedule"
+   # use another agent for long scheduled jobs
+   agents:
+    queue: "scheduled"
+   env:
+     NETTEST_NODE_ADDR: "edo.testnet.tezos.serokell.team"
      NETTEST_NODE_PORT: "8732"
      # Note that testnet moneybag can run out of tz. If this happened, someone should transfer it some
      # more tz, its address: tz1ij8gUYbMRUXa4xX3mNvKguhaWG9GGbURn
