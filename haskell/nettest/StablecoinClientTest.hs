@@ -7,10 +7,12 @@ module StablecoinClientTest
   ( stablecoinClientScenario
   ) where
 
+import Lorentz (fromVal)
 import Morley.Nettest as NT
 import Tezos.Address (Address)
 import Util.Named ((.!))
 
+import Lorentz.Contracts.Stablecoin (Storage'(..), StorageView)
 import Stablecoin.Client
   (AddressAndAlias(..), InitialStorageData(..), UpdateOperatorData(AddOperator, RemoveOperator))
 import Stablecoin.Client.Cleveland
@@ -44,13 +46,19 @@ stablecoinClientScenario = do
     , isdTokenName = "b"
     , isdTokenDecimals = 3
     , isdDefaultExpiry = 1000
-    , isdContractMetadataStorage = OpRemoteContract Nothing
+    , isdContractMetadataStorage = OpRemoteContract (Just "some description")
     }
   let contract = #contract .! AddressResolved contractAddr
   comment "Testing get-balance"
   actualBalance <- SC.getBalance contract
   expectedBalance <- NT.getBalance (AddressResolved contractAddr)
   actualBalance `assertEq` expectedBalance
+
+  comment "Testing contract metadata"
+  storage <- fromVal @StorageView <$> getStorage (AddressResolved contractAddr)
+  let _metadataBigMapID = sMetadata storage
+  -- TODO: find the key "" in the bigmap with id 'metadataBigMapID'.
+  -- Check that the metadata contains the correct description
 
   comment "Testing set/get-transferlist"
   getTransferlist contract >>= \tl ->

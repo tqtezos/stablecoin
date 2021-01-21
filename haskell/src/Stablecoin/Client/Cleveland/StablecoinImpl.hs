@@ -7,10 +7,10 @@ module Stablecoin.Client.Cleveland.StablecoinImpl
   ) where
 
 import Data.Text (isInfixOf)
-import Fmt (Buildable(build), pretty)
+import Fmt (Buildable(build), pretty, unlinesF)
 import Lorentz (arg)
 import Morley.Client (Alias, MorleyClientConfig)
-import Morley.Nettest (AddressOrAlias, MorleyClientEnv)
+import Morley.Nettest (AddressOrAlias, MorleyClientEnv, NettestImpl(niFailure))
 import Morley.Nettest.Client (revealKeyUnlessRevealed)
 import Tezos.Address (Address)
 import Tezos.Core (Mutez)
@@ -21,6 +21,7 @@ import Stablecoin.Client
 import Stablecoin.Client.Cleveland.IO
   (OutputParseError(..), addressAndAliasParser, addressParser, callStablecoinClient,
   encodeMaybeOption, labelled, mutezParser, naturalParser, runParser, textParser)
+import Stablecoin.Client.Parser (ContractMetadataOptions(OpRemoteContract))
 
 data StablecoinTestError where
   STEDiff :: forall a. Show a => a -> a -> StablecoinTestError
@@ -95,22 +96,30 @@ data StablecoinImpl m = StablecoinImpl
   }
 
 -- | Implementation of `StablecoinImpl` that defers to `stablecoin-client`.
-stablecoinImplClient :: MorleyClientConfig -> MorleyClientEnv -> StablecoinImpl IO
-stablecoinImplClient conf env = StablecoinImpl
+stablecoinImplClient :: MorleyClientConfig -> MorleyClientEnv -> NettestImpl IO -> StablecoinImpl IO
+stablecoinImplClient conf env nettestImpl = StablecoinImpl
   { siDeploy = \sender (InitialStorageData {..}) -> do
-      output <- callStablecoinClient conf $
-        [ "deploy"
-        , "--master-minter", pretty isdMasterMinter
-        , "--contract-owner", pretty isdContractOwner
-        , "--pauser", pretty isdPauser
-        , "--transferlist", pretty isdTransferlist
-        , "--token-name", pretty isdTokenName
-        , "--token-symbol", pretty isdTokenSymbol
-        , "--token-decimals", pretty isdTokenDecimals
-        , "--default-expiry", pretty isdDefaultExpiry
-        , "--replace-alias"
-        ] <> mkUserOpt sender
-      runParser output (labelled "Contract address" addressParser)
+      case isdContractMetadataStorage of
+        OpRemoteContract mbDesc -> do
+          output <- callStablecoinClient conf $
+            [ "deploy"
+            , "--master-minter", pretty isdMasterMinter
+            , "--contract-owner", pretty isdContractOwner
+            , "--pauser", pretty isdPauser
+            , "--transferlist", pretty isdTransferlist
+            , "--token-name", pretty isdTokenName
+            , "--token-symbol", pretty isdTokenSymbol
+            , "--token-decimals", pretty isdTokenDecimals
+            , "--default-expiry", pretty isdDefaultExpiry
+            , "--replace-alias"
+            ]
+            <> maybe [] (\desc -> ["--description", toString desc]) mbDesc
+            <> mkUserOpt sender
+          runParser output (labelled "Contract address" addressParser)
+        _ -> niFailure nettestImpl $ unlinesF
+              [ "StablecoinImpl only supports storing the contract's metadata in a separate dedicated."
+              , "Got: " <> show @Text isdContractMetadataStorage
+              ]
   , siTransfer = \sender contract from to amount ->
       void $ callStablecoinClient conf $
         [ "transfer"

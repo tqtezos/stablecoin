@@ -59,7 +59,8 @@ runStablecoinClient :: MorleyClientConfig -> MorleyClientEnv -> StablecoinScenar
 runStablecoinClient conf env scenario =
   displayUncaughtException $ do
     disableAlphanetWarning
-    uncapsStablecoin scenario (stablecoinImplClient conf env) (nettestImplClient env)
+    let nettestImpl = nettestImplClient env
+    uncapsStablecoin scenario (stablecoinImplClient conf env nettestImpl) nettestImpl
   where
     uncapsStablecoin :: forall m a. Monad m => StablecoinScenario m a -> StablecoinImpl m -> NettestImpl m -> m a
     uncapsStablecoin action stablecoinImpl nettestImpl =
