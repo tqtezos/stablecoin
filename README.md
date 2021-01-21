@@ -50,17 +50,17 @@ Please refer to the [`haskell/`](/haskell/) directory for details.
 ## Gas / Transaction costs
 
 The tables below show the gas and transaction costs of both versions (FA1.2 and FA2) of
-the stablecoin contract [v1.6.0](https://github.com/tqtezos/stablecoin/releases/tag/v1.6.0) in Delphinet.
+the stablecoin contract [v1.7.0](https://github.com/tqtezos/stablecoin/releases/tag/v1.7.0) in Delphinet.
 
 ### Delphinet
 
-* [FA1.2 operations](https://better-call.dev/delphinet/KT19DJHmmtzDXNM2P85rNW9tvzJA81FixmZg/operations)
-* [FA2 operations](https://better-call.dev/delphinet/KT1EPZpTPzZjZ1gkVgxcBdyGPL2wGXbZQUtw/operations)
+* [FA1.2 operations](https://better-call.dev/delphinet/KT1XTHGszzN9C2yVzUQqRUd9huEtvGcZEcUZ/operations)
+* [FA2 operations](https://better-call.dev/delphinet/KT1J1S1Fo6bYip25t99Nke2u7Wgid4SWNiEb/operations)
 
 |             | FA1.2 Gas cost | FA2 Gas cost | FA1.2 Tx cost | FA2 Tx cost |
 | ----------- | -------------- | ------------ | ------------- | ----------- |
-| origination | 65562          | 62794        | 2.867005 ꜩ    | 2.816774 ꜩ  |
-| transfer    | 67566          | 65206        | 0.007115 ꜩ    | 0.006893 ꜩ  |
+| origination | 65562          | 62794        | 2.866679 ꜩ    | 2.816453 ꜩ  |
+| transfer    | 67566          | 65206        | 0.007092 ꜩ    | 0.006870 ꜩ  |
 
 ### Measuring
 

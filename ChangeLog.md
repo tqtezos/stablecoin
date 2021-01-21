@@ -9,6 +9,8 @@ SPDX-License-Identifier: MIT
 <!-- Don't forget to update the gas/transaction costs tables in the
 README when a new version is released. -->
 
+## 1.7.0
+
 * [#155](https://github.com/tqtezos/stablecoin/pull/155)
   * Added `--description` option to `stablecoin-client`
   * Fixed names of FA2 views (e.g. `GetBalance` is now named `get_balance`)
