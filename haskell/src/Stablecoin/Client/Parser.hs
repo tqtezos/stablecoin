@@ -88,7 +88,6 @@ data DeployContractOptions = DeployContractOptions
   , dcoTokenSymbol :: Text
   , dcoTokenName :: Text
   , dcoTokenDecimals :: Natural
-  , dcoTokenMetadataRegistry :: Maybe AddressOrAlias
   , dcoReplaceAlias :: Bool
   , dcoDefaultExpiry :: Expiry
   , dcoContractMetadata :: ContractMetadataOptions
@@ -269,11 +268,6 @@ clientArgsRawParser = Opt.subparser $
           (#name .! "token-decimals")
           (#help .! ("Number of digits to use after the decimal point " <>
                      "when displaying the token amounts"))
-      dcoTokenMetadataRegistry <-
-        optional $ addressOrAliasOption
-          Nothing
-          (#name .! "token-metadata-registry")
-          (#help .! "Address or alias of the metadata registry contract")
       dcoReplaceAlias <-
         Opt.switch $
           Opt.long "replace-alias" <>
