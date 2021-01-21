@@ -22,6 +22,7 @@ import Data.Char (isAlpha, isDigit)
 import Fmt (Buildable, pretty, (+|), (|+))
 import Morley.Client (Alias(..), MorleyClientConfig(..))
 import qualified Morley.Client as MorleyClient
+import Servant.Client (showBaseUrl)
 import System.Exit (ExitCode(..))
 import System.Process (readProcessWithExitCode)
 import qualified Text.Megaparsec as P
@@ -53,12 +54,10 @@ putErrLn :: Print a => a -> IO ()
 putErrLn = hPutStrLn stderr
 
 morleyClientOpts :: MorleyClientConfig -> [String]
-morleyClientOpts (MorleyClientConfig _ap addr port tzPath dataDir useHttps verb key) =
-  encodeMaybeOption "--node-addr" addr
-  <> encodeMaybeOption "--node-port" port
+morleyClientOpts (MorleyClientConfig _ap endpoint tzPath dataDir verb key) =
+  encodeMaybeOption "--endpoint" (showBaseUrl <$> endpoint)
   <> ["--client-path", tzPath]
   <> encodeMaybeOption "--data-dir" dataDir
-  <> if useHttps then ["--use-https"] else []
   <> replicate (fromIntegral verb) "-V"
   <> encodeMaybeOption "--secret-key" key
 

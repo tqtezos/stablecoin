@@ -17,3 +17,10 @@ TAGS
 /haskell/test/resources/stablecoin.tz
 /haskell/test/resources/stablecoin.fa1.2.tz
 /haskell/test/resources/metadata.tz
+
+# The haskell project needs to read some info from `./nix/sources.json` at compile-time.
+# However, when using `nix build`, the project cannot access any file outside
+# the `./haskell folder`, so we copy the `./nix/sources.json` file
+# to `./haskell/test/resources`.
+# We can safely ignore this copy.
+/haskell/test/resources/sources.json

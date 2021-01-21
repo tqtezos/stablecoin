@@ -14,7 +14,7 @@ module Lorentz.Contracts.Test.Permit
 
 import Test.Hspec (Spec, describe, it, specify)
 
-import Lorentz (BigMap(..), TAddress, lPackValue, mt)
+import Lorentz (BigMap(..), Packed(..), TAddress, lPackValue, mt)
 import Lorentz.Test
 import Michelson.Runtime (ExecutorError)
 import Michelson.Runtime.GState (GState(gsChainId), initGState)
@@ -46,7 +46,7 @@ sign sk bs =
 mkPermit :: TAddress Parameter -> SecretKey -> Natural -> Parameter -> (PermitHash, ByteString, Signature)
 mkPermit contractAddr sk counter param =
   let permitHash = mkPermitHash param
-      toSign = lPackValue ((contractAddr, gsChainId initGState), (counter, permitHash))
+      Packed toSign = lPackValue ((contractAddr, gsChainId initGState), (counter, permitHash))
       sig = sign sk toSign
   in  (permitHash, toSign, sig)
 
@@ -92,7 +92,7 @@ permitSpec originate = do
           withSender testPauser $
             let
               (permitHash, _signedBytes, sig) = mkPermit stablecoinContract testPauserSK 999 Pause
-              expectedSignedBytes = lPackValue ((stablecoinContract, gsChainId initGState), (0 :: Natural, permitHash))
+              Packed expectedSignedBytes = lPackValue ((stablecoinContract, gsChainId initGState), (0 :: Natural, permitHash))
             in
               lCallEP stablecoinContract (Call @"Permit") (PermitParam testPauserPK sig permitHash)
                 `catchExpectedError` errMissignedPermit expectedSignedBytes
@@ -594,7 +594,7 @@ permitSpec originate = do
             withSender wallet1 $ do
               lCallEP stablecoinContract (Call @"Transfer") transferParams `catchExpectedError` fa2NotOperator
               callPermit stablecoinContract wallet2PK wallet2SK 0
-                (Call_FA2 $ FA2.Transfer transferParams)
+                (Call_FA2 $ Transfer transferParams)
               lCallEP stablecoinContract (Call @"Transfer") transferParams
               assertPermitCount stablecoinContract 0
 
@@ -608,7 +608,7 @@ permitSpec originate = do
 
             withSender wallet1 $ do
               callPermit stablecoinContract wallet2PK wallet2SK 0
-                (Call_FA2 $ FA2.Transfer transferParams)
+                (Call_FA2 $ Transfer transferParams)
               lCallEP stablecoinContract (Call @"Transfer") transferParams `catchExpectedError` fa2NotOperator
 
       specify "transferring from own account does not consume permits" $
@@ -617,7 +617,7 @@ permitSpec originate = do
             let transferParams = [ FA2.TransferItem wallet2 [] ]
             withSender wallet2 $ do
               callPermit stablecoinContract wallet2PK wallet2SK 0
-                (Call_FA2 $ FA2.Transfer transferParams)
+                (Call_FA2 $ Transfer transferParams)
               lCallEP stablecoinContract (Call @"Transfer") transferParams
               assertPermitCount stablecoinContract 1
 
@@ -627,7 +627,7 @@ permitSpec originate = do
             let transferParams = [ FA2.TransferItem wallet2 [] ]
             withSender wallet2 $ do
               callPermit stablecoinContract wallet2PK wallet2SK 0
-                (Call_FA2 $ FA2.Transfer transferParams)
+                (Call_FA2 $ Transfer transferParams)
               lCallEP stablecoinContract (Call @"Update_operators")
                 [FA2.AddOperator FA2.OperatorParam { opOwner = wallet2, opOperator = wallet3, opTokenId = FA2.theTokenId }]
             withSender wallet3 $ do
@@ -646,7 +646,7 @@ permitSpec originate = do
             withSender wallet1 $ do
               lCallEP stablecoinContract (Call @"Update_operators") params `catchExpectedError` fa2NotOwner
               callPermit stablecoinContract wallet2PK wallet2SK 0
-                (Call_FA2 $ FA2.Update_operators params)
+                (Call_FA2 $ Update_operators params)
               lCallEP stablecoinContract (Call @"Update_operators") params
               assertPermitCount stablecoinContract 0
 
@@ -660,7 +660,7 @@ permitSpec originate = do
 
             withSender wallet1 $ do
               callPermit stablecoinContract wallet2PK wallet2SK 0
-                (Call_FA2 $ FA2.Update_operators params)
+                (Call_FA2 $ Update_operators params)
               lCallEP stablecoinContract (Call @"Update_operators") params `catchExpectedError` fa2NotOwner
 
       specify "updating own operators does not consume permits" $
@@ -671,6 +671,6 @@ permitSpec originate = do
 
             withSender wallet2 $ do
               callPermit stablecoinContract wallet2PK wallet2SK 0
-                (Call_FA2 $ FA2.Update_operators params)
+                (Call_FA2 $ Update_operators params)
               lCallEP stablecoinContract (Call @"Update_operators") params
               assertPermitCount stablecoinContract 1

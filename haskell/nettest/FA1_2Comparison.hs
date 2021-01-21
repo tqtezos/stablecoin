@@ -6,6 +6,7 @@ module FA1_2Comparison
   ) where
 
 import qualified Data.Map as Map
+import Fmt (build)
 
 import Lorentz (BigMap(..), EntrypointRef(Call), TAddress(..), toVal)
 import Michelson.Typed (convertContract, untypeValue)
@@ -49,12 +50,14 @@ fa1_2ComparisonScenario = uncapsNettest $ do
         , rPendingOwner = Nothing
         }
 
-  cmrFA1_2Address <- nettestOriginateContractMetadataContract (SFA2.metadataJSON Nothing)
+  metadata <- either (failure . build) pure $ SFA2.metadataJSON Nothing Nothing
+
+  cmrFA1_2Address <- nettestOriginateContractMetadataContract metadata
   let fa1_2Storage = SFA1_2.Storage
         { sDefaultExpiry = 1000
         , sLedger = BigMap balances
         , sMintingAllowances = mempty
-        , sIsPaused = False
+        , sPaused = False
         , sPermitCounter = 0
         , sPermits = mempty
         , sRoles = roles
@@ -70,12 +73,12 @@ fa1_2ComparisonScenario = uncapsNettest $ do
   comment "Calling transfer"
   callFrom (AddressResolved owner1) fa1_2ContractAddr (Call @"Transfer") (#from .! owner1, #to .! owner2, #value .! 2)
 
-  cmrAddress <- nettestOriginateContractMetadataContract (SFA2.metadataJSON Nothing)
+  cmrAddress <- nettestOriginateContractMetadataContract metadata
   let fa2Storage = SFA2.Storage
         { sDefaultExpiry = 1000
         , sLedger = BigMap balances
         , sMintingAllowances = mempty
-        , sIsPaused = False
+        , sPaused = False
         , sPermitCounter = 0
         , sPermits = mempty
         , sRoles = roles
@@ -86,7 +89,7 @@ fa1_2ComparisonScenario = uncapsNettest $ do
         }
 
   comment "Originating Stablecoin FA2 contract"
-  fa2ContractAddr <- TAddress @FA2.Parameter <$>
+  fa2ContractAddr <- TAddress @SFA2.FA2Parameter <$>
     originateUntypedSimple "Stablecoin FA2" (untypeValue $ toVal fa2Storage) (convertContract stablecoinContract)
 
   comment "Calling transfer"

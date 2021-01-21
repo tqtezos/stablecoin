@@ -19,7 +19,7 @@ import Michelson.Typed.Convert (convertContract)
 import Morley.Client (parserInfo)
 import Morley.Nettest
 import Morley.Nettest.Parser (NettestConfig(..), mkNettestEnv, nettestConfigParser)
-import Morley.Nettest.Pure (runNettestViaIntegrational)
+import Morley.Nettest.Pure (scenarioToIO)
 import Tezos.Address
 import Util.Named
 
@@ -81,9 +81,9 @@ main = do
         impl
 
   env <- mkNettestEnv parsedConfig
-  runNettestViaIntegrational scenarioWithInternalTransferlist
-  runNettestViaIntegrational scenarioWithExternalTransferlist
-  runNettestViaIntegrational permitScenario
+  scenarioToIO scenarioWithInternalTransferlist
+  scenarioToIO scenarioWithExternalTransferlist
+  scenarioToIO permitScenario
 
   runNettestClient env scenarioWithInternalTransferlist
   runNettestClient env scenarioWithExternalTransferlist

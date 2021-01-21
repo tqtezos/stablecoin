@@ -26,23 +26,27 @@ library:
   dependencies:
     - aeson
     - aeson-casing
-    - morley-prelude
+    - bytestring
+    - caps
+    - cleveland
+    - containers
+    - directory
+    - file-embed
+    - fmt
+    - indigo
+    - lorentz
+    - megaparsec
+    - morley
     - morley-client
     - morley-ledgers
     - morley-metadata
-    - lorentz
-    - morley
-    - containers
-    - indigo
-    - fmt
+    - morley-prelude
     - optparse-applicative
-    - file-embed
-    - cleveland
     - process
-    - megaparsec
-    - caps
+    - servant-client
+    - template-haskell
     - text
-    - bytestring
+    - uncaught-exception
 
 executables:
   stablecoin-client:
@@ -68,7 +72,6 @@ tests:
       - fmt
       - hedgehog
       - hspec
-      - interpolate
       - lorentz
       - morley
       - morley-ledgers
@@ -77,6 +80,7 @@ tests:
       - morley-metadata-test
       - morley-prelude
       - mtl
+      - optparse-applicative
       - stablecoin
       - tasty
       - tasty-hedgehog
@@ -94,6 +98,7 @@ tests:
       - aeson
       - cleveland
       - containers
+      - fmt
       - lorentz
       - morley
       - morley-client

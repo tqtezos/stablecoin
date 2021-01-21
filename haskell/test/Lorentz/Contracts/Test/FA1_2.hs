@@ -16,7 +16,7 @@ import Lorentz.Contracts.Test.ApprovableLedger (AlSettings(..), approvableLedger
 import Michelson.Test.Integrational
 import Michelson.Typed (untypeValue)
 
-import Lorentz.Contracts.Stablecoin (Roles(..), MetadataUri(..), metadataMap)
+import Lorentz.Contracts.Stablecoin (MetadataUri(..), Roles(..), metadataMap)
 import Lorentz.Contracts.StablecoinFA1_2
   (Parameter, Storage(..), metadataJSON, stablecoinFA1_2Contract)
 
@@ -27,7 +27,7 @@ alOriginationFunction adminAddr (AlInitAddresses addrBalances) = do
         , sLedger = BigMap $ Map.filter (/= 0) $ Map.fromList $ addrBalances
         , sMintingAllowances = mempty
         , sSpenderAllowances = mempty
-        , sIsPaused = False
+        , sPaused = False
         , sPermitCounter = 0
         , sPermits = mempty
         , sRoles = Roles

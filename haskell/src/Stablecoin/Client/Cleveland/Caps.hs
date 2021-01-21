@@ -38,13 +38,13 @@ module Stablecoin.Client.Cleveland.Caps
   , revealKeyUnlessRevealed
   ) where
 
+import Control.Exception.Uncaught (displayUncaughtException)
 import qualified Monad.Capabilities as Caps
 import Morley.Client (Alias, MorleyClientConfig, disableAlphanetWarning)
 import Morley.Nettest (AddressOrAlias, MorleyClientEnv, NettestImpl(..), nettestImplClient)
 import Morley.Nettest.Caps (actionToCaps, nettestCapImpl)
 import Tezos.Address (Address)
 import Tezos.Core (Mutez)
-import Util.Exception (displayUncaughtException)
 import Util.Named ((:!))
 
 import Stablecoin.Client (AddressAndAlias(..), InitialStorageData(..), UpdateOperatorData)

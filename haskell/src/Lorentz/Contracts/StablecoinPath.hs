@@ -9,6 +9,7 @@ module Lorentz.Contracts.StablecoinPath
   ( metadataRegistryContractPath
   , stablecoinFA1_2Path
   , stablecoinPath
+  , sourcesJsonPath
   ) where
 
 -- | The path to the compiled stablecoin contract.
@@ -22,3 +23,7 @@ stablecoinFA1_2Path = "./test/resources/stablecoin.fa1.2.tz"
 -- | The path to the compiled metadata registry.
 metadataRegistryContractPath :: FilePath
 metadataRegistryContractPath = "./test/resources/metadata.tz"
+
+-- | The path to nix's sources.json file.
+sourcesJsonPath :: FilePath
+sourcesJsonPath = "./test/resources/sources.json"

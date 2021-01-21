@@ -62,8 +62,9 @@ import Util.Named ((:!), (.!))
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
   (ConfigureMinterParam(..), MetadataUri(..), MintParam(..), Parameter, ParsedMetadataUri(..),
-  Roles(..), Storage'(..), StorageView, type Storage, UpdateOperatorData(..), contractMetadataContract,
-  metadataJSON, metadataMap, mkContractMetadataRegistryStorage, parseMetadataUri, stablecoinContract)
+  Roles(..), Storage, Storage'(..), StorageView, UpdateOperatorData(..), contractMetadataContract,
+  metadataJSON, metadataMap, mkContractMetadataRegistryStorage, parseMetadataUri,
+  stablecoinContract)
 import Stablecoin.Client.Contract (InitialStorageData(..), mkInitialStorage)
 import Stablecoin.Client.Parser (ContractMetadataOptions(..))
 
@@ -88,17 +89,19 @@ deploy (arg #sender -> sender) alias initialStorageData@InitialStorageData {..} 
   contractMetadataUri  <-
     case isdContractMetadataStorage of
       -- User wants to store metadata embedded in the contact
-      OpCurrentContract ->
+      OpCurrentContract mbDesc -> do
+        metadata <- either throwM pure $ metadataJSON Nothing mbDesc
         -- We drop some errors from metadata so that the contract will originate within operation
         -- limits.
-        pure $ CurrentContract (TZ.errors [] <> (metadataJSON Nothing)) True
+        pure $ CurrentContract (TZ.errors [] <> metadata) True
       -- User have stored metadata somewhere and just wants to put the raw uri in metadata bigmap
       OpRaw url -> pure $ Raw url
       -- User wants a new contract with metadata to be deployed.
-      OpRemoteContract -> do
+      OpRemoteContract mbDesc -> do
         let fa2TokenMetadata = FA2.mkTokenMetadata isdTokenSymbol isdTokenName (show isdTokenDecimals)
+        metadata <- either throwM pure $ metadataJSON (Just fa2TokenMetadata) mbDesc
         let mdrStorage = mkContractMetadataRegistryStorage
-              (metadataMap $ CurrentContract (metadataJSON $ Just fa2TokenMetadata) False)
+              (metadataMap $ CurrentContract metadata False)
         contractMetadataRegistryAddress <- snd <$> originateContract
           False
           "stablecoin-tzip16-metadata"
@@ -106,6 +109,7 @@ deploy (arg #sender -> sender) alias initialStorageData@InitialStorageData {..} 
           (unsafeMkMutez 0)
           contractMetadataContract
           (toVal mdrStorage)
+          Nothing
         pure $ RemoteContract contractMetadataRegistryAddress
 
   let initialStorageData' = initialStorageData
@@ -129,6 +133,7 @@ deploy (arg #sender -> sender) alias initialStorageData@InitialStorageData {..} 
     (unsafeMkMutez 0)
     stablecoinContract
     (toVal initialStorage)
+    Nothing
   pure (cName, cAddr, cmdAddress)
 
 transfer
@@ -275,7 +280,7 @@ getBalance (arg #contract -> contract) = do
 -- | Check whether the contract has been paused.
 getPaused :: "contract" :! AddressOrAlias -> MorleyClientM Bool
 getPaused contract =
-  sIsPaused <$> getStorage contract
+  sPaused <$> getStorage contract
 
 -- | Get the address and optional alias of the current contract owner.
 getContractOwner :: "contract" :! AddressOrAlias -> MorleyClientM AddressAndAlias
@@ -320,8 +325,8 @@ getTokenMetadata :: "contract" :! AddressOrAlias -> MorleyClientM FA2.TokenMetad
 getTokenMetadata contract = do
   (metadata, storageView) <- getContractMetadata contract
   views <- throwMdErr (\err -> "Views was not found in metadata:" <> show err) $ TZ.getViews metadata
-  getTMD <- throwMdErr id $ maybeToRight "'GetTokenMetadata' view was not found in metadata" $
-    MD.findView @(ToT Storage) views "GetTokenMetadata"
+  getTMD <- throwMdErr id $ maybeToRight "'token_metadata' view was not found in metadata" $
+    MD.findView @(ToT Storage) views "token_metadata"
   let storageWithEmptyBm :: Storage =
         -- In the below code we convert the `StorageView` to `Storage` by
         -- replacing all bigmaps with empty counterparts, and this should be fine here since
@@ -343,7 +348,7 @@ getContractMetadata
 getContractMetadata contract = do
   storageView <- getStorage contract
   let bigMapId = sMetadata storageView
-  metadataUri <- decodeUtf8 <$> readBigMapValue bigMapId [mt||]
+  metadataUri <- decodeUtf8 <$> readBigMapValue bigMapId mempty
   throwMdErr ("Unparsable URI" <>) (parseMetadataUri metadataUri) >>= \case
     InCurrentContractUnderKey key -> do
       mtKey <- throwMdErr (const $ "Unexpected key:" <> key) $ mkMText key
@@ -389,6 +394,7 @@ call (arg #sender -> sender) (arg #contract -> contract) epRef epArg =
         (unsafeMkMutez 0)
         epName
         epArg
+        Nothing
 
 -- | Get the contract's storage.
 getStorage :: "contract" :! AddressOrAlias -> MorleyClientM StorageView

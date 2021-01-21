@@ -7,6 +7,7 @@ module Nettest
   ) where
 
 import qualified Data.Set as Set
+import Fmt (build)
 
 import Lorentz hiding (comment, (>>))
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
@@ -51,7 +52,8 @@ scNettestScenario originateTransferlist transferlistType = uncapsNettest $ do
   otherOperator <- newAddress "Other operator"
 
   comment "Originating metadata contract"
-  cmrAddress <- nettestOriginateContractMetadataContract (metadataJSON Nothing)
+  metadata <- either (failure . build) pure $ metadataJSON Nothing Nothing
+  cmrAddress <- nettestOriginateContractMetadataContract metadata
   let
     originationParams =
         addAccount (superuser , ([operator], 1110000))

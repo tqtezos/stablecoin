@@ -159,7 +159,7 @@ data SimpleStorage = SimpleStorage
   , ssPendingOwner :: Maybe Address
   , ssTransferlistContract :: Maybe Address
   , ssOperators :: Map (Address, Address) ()
-  , ssIsPaused :: Bool
+  , ssPaused :: Bool
   , ssTotalSupply :: Natural
   } deriving stock (Eq, Generic, Show)
 
@@ -181,7 +181,7 @@ storageToSs storage = SimpleStorage
   , ssPendingOwner = rPendingOwner $ sRoles storage
   , ssTransferlistContract = sTransferlistContract storage
   , ssOperators = T.unBigMap $ sOperators storage
-  , ssIsPaused = sIsPaused storage
+  , ssPaused = sPaused storage
   , ssTotalSupply = sTotalSupply storage
   }
 
@@ -196,7 +196,7 @@ ssToOriginationParams SimpleStorage {..} = let
     , opOwnerToOperators = mkOwnerToOperator ssOperators
     , opMasterMinter = ssMasterMinter
     , opPauser = ssPauser
-    , opPaused = ssIsPaused
+    , opPaused = ssPaused
     , opMinters = minters
     , opPendingOwner = ssPendingOwner
     , opTransferlistContract = TAddress <$> ssTransferlistContract
@@ -416,7 +416,7 @@ generateTokenOwnerAction idx = do
         , FA2.RemoveOperator FA2.OperatorParam { opOwner = owner, opOperator = operator, opTokenId = FA2.theTokenId }
         , FA2.RemoveOperator FA2.OperatorParam { opOwner = owner, opOperator = operator, opTokenId = oneTokenId }
         ]
-      pure $ Call_FA2 $ FA2.Update_operators [updateOperation]
+      pure $ Call_FA2 $ Update_operators [updateOperation]
 
 generateTransferAction :: GeneratorM Parameter
 generateTransferAction = do
@@ -427,7 +427,7 @@ generateTransferAction = do
     pure FA2.TransferDestination { tdTo = to, tdTokenId = FA2.theTokenId, tdAmount = amount }
   stxs <- Gen.subsequence txs
   let transferItem = FA2.TransferItem { tiFrom = from, tiTxs = stxs }
-  pure $ Call_FA2 $ FA2.Transfer [transferItem]
+  pure $ Call_FA2 $ Transfer [transferItem]
 
 generateOperatorAction :: Int -> GeneratorM (ContractCall Parameter)
 generateOperatorAction idx = do
@@ -531,8 +531,8 @@ callEntrypoint cc st env = case ccParameter cc of
   Change_pauser p -> call (Call @"Change_pauser") p
   Set_transferlist p -> call (Call @"Set_transferlist") p
   Call_FA2 fa2Param -> case fa2Param of
-    FA2.Transfer p -> call (Call @"Transfer") p
-    FA2.Update_operators p -> call (Call @"Update_operators") p
+    Transfer p -> call (Call @"Transfer") p
+    Update_operators p -> call (Call @"Update_operators") p
     _ -> error "Unexpected call"
   Permit _ -> error "Unexpected call"
   Set_expiry _ -> error "Unexpected call"
@@ -545,7 +545,7 @@ callEntrypoint cc st env = case ccParameter cc of
     call epRef param =
       handleContractReturn $
         interpret
-          (T.cCode stablecoinContract)
+          stablecoinContract
           (parameterEntrypointCallCustom @Parameter epRef)
           (toVal param)
           (toVal st)
@@ -567,10 +567,10 @@ ensurePendingOwner addr SimpleStorage {..} = case ssPendingOwner of
   Nothing -> Left CONTRACT_NOT_IN_TRANSFER
 
 ensureNotPaused :: SimpleStorage -> Either ModelError ()
-ensureNotPaused SimpleStorage {..} = if not ssIsPaused then Right () else Left CONTRACT_PAUSED
+ensureNotPaused SimpleStorage {..} = if not ssPaused then Right () else Left CONTRACT_PAUSED
 
 ensurePaused :: SimpleStorage -> Either ModelError ()
-ensurePaused SimpleStorage {..} = if ssIsPaused then Right () else Left CONTRACT_NOT_PAUSED
+ensurePaused SimpleStorage {..} = if ssPaused then Right () else Left CONTRACT_NOT_PAUSED
 
 validateTokenId :: FA2.UpdateOperator -> Either ModelError ()
 validateTokenId = \case
@@ -594,13 +594,13 @@ applyPause :: Address -> SimpleStorage -> Either ModelError SimpleStorage
 applyPause sender ss = do
   ensureNotPaused ss
   ensurePauser sender ss
-  Right ss { ssIsPaused = True }
+  Right ss { ssPaused = True }
 
 applyUnpause :: Address -> SimpleStorage -> Either ModelError SimpleStorage
 applyUnpause sender ss = do
   ensurePaused ss
   ensurePauser sender ss
-  Right ss { ssIsPaused = False }
+  Right ss { ssPaused = False }
 
 applyConfigureMinter :: Address -> SimpleStorage -> ConfigureMinterParam -> Either ModelError SimpleStorage
 applyConfigureMinter sender cs (ConfigureMinterParam minter mbCurrent new) = do
@@ -766,11 +766,11 @@ applyUpdateOperator ccSender estorage op = case estorage of
             Right $ storage { ssOperators = Map.delete (own, operator) $ ssOperators storage }
           else Left NOT_TOKEN_OWNER
 
-applyFA2Parameter :: ContractCall FA2.Parameter -> SimpleStorage -> Either ModelError SimpleStorage
+applyFA2Parameter :: ContractCall FA2Parameter -> SimpleStorage -> Either ModelError SimpleStorage
 applyFA2Parameter ContractCall {..} cs = do
   case ccParameter of
-    FA2.Transfer tis -> applyTransfer ccSender cs tis
-    FA2.Update_operators ops -> foldl' (applyUpdateOperator ccSender) (Right cs) ops
+    Transfer tis -> applyTransfer ccSender cs tis
+    Update_operators ops -> foldl' (applyUpdateOperator ccSender) (Right cs) ops
     _ -> error "Unexpected param"
 
 -- | Generate a list of items using given generator of a single item.

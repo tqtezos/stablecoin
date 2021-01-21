@@ -100,7 +100,7 @@ managementSpec originate = do
       withOriginated originate defaultOriginationParams $ \stablecoinContract -> do
         withSender testPauser $ lCallEP stablecoinContract (Call @"Pause") ()
         lExpectStorage @Storage stablecoinContract $ \storage ->
-          unless (sIsPaused storage) $
+          unless (sPaused storage) $
             Left $ CustomTestError "Contract is not paused as was expected"
 
     it "cannot pause if sender does not have corresponding permissions" $ integrationalTestExpectation $ do
@@ -120,7 +120,7 @@ managementSpec originate = do
       withOriginated originate originationParams $ \stablecoinContract -> do
         withSender testPauser $ lCallEP stablecoinContract (Call @"Unpause") ()
         lExpectStorage @Storage stablecoinContract $ \storage ->
-          when (sIsPaused storage) $
+          when (sPaused storage) $
             Left $ CustomTestError "Contract is paused which wasn't expected"
 
     it "cannot unpause if sender does not have corresponding permissions" $ integrationalTestExpectation $ do
