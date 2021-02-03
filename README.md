@@ -50,17 +50,27 @@ Please refer to the [`haskell/`](/haskell/) directory for details.
 ## Gas / Transaction costs
 
 The tables below show the gas and transaction costs of both versions (FA1.2 and FA2) of
-the stablecoin contract [v1.7.0](https://github.com/tqtezos/stablecoin/releases/tag/v1.7.0) in Delphinet.
+the stablecoin contract [v1.7.1](https://github.com/tqtezos/stablecoin/releases/tag/v1.7.1) in Delphinet.
 
 ### Delphinet
 
-* [FA1.2 operations](https://better-call.dev/delphinet/KT1XTHGszzN9C2yVzUQqRUd9huEtvGcZEcUZ/operations)
-* [FA2 operations](https://better-call.dev/delphinet/KT1J1S1Fo6bYip25t99Nke2u7Wgid4SWNiEb/operations)
+* [FA1.2 operations](https://delphi.tzstats.com/KT1JoPqNTPwdxgvu4dtykSPuj9qECRpWfxuF)
+* [FA2 operations](https://delphi.tzstats.com/KT1AokQQnJxNyi4FbUHN7evkfYvaEnmTy6Ry)
 
 |             | FA1.2 Gas cost | FA2 Gas cost | FA1.2 Tx cost | FA2 Tx cost |
 | ----------- | -------------- | ------------ | ------------- | ----------- |
-| origination | 65562          | 62794        | 2.866679 ꜩ    | 2.816453 ꜩ  |
-| transfer    | 67566          | 65206        | 0.007092 ꜩ    | 0.006870 ꜩ  |
+| origination | 63003          | 61250        | 2.794888 ꜩ    | 2.778397 ꜩ  |
+| transfer    | 65006          | 63661        | 0.006836 ꜩ    | 0.006716 ꜩ  |
+
+### Edonet
+
+* [FA1.2 operations](https://edo.tzstats.com/KT1Cfwhgp4W9t3mQKu2nxu5KsHTKwhRFwGRj)
+* [FA2 operations](https://edo.tzstats.com/KT1N8PMWmc5qEmBBEB4hrSnhtrjPVQeVD2hk)
+
+|             | FA1.2 Gas cost | FA2 Gas cost | FA1.2 Tx cost | FA2 Tx cost |
+| ----------- | -------------- | ------------ | ------------- | ----------- |
+| origination | 65090          | 63320        | 2.792846 ꜩ    | 2.777354 ꜩ  |
+| transfer    | 66986          | 65600        | 0.007034 ꜩ    | 0.006909 ꜩ  |
 
 ### Measuring
 
