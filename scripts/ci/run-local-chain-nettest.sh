@@ -11,10 +11,9 @@ set -euo pipefail
 
 nettest_scenario="$1"
 
-node_addr="$NETTEST_NODE_ADDR"
-node_port="$NETTEST_NODE_PORT"
+node_endpoint="$NETTEST_NODE_ENDPOINT"
 TEMPDIR="$(mktemp -d --tmpdir="$PWD")"
-tezos_client_args=(-A "$node_addr" -P "$node_port" -d "$TEMPDIR")
+tezos_client_args=(-E "$node_endpoint" -d "$TEMPDIR")
 
 tezos-client "${tezos_client_args[@]}" import secret key nettest \
              "$MONEYBAG" --force
