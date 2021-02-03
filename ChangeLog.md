@@ -9,6 +9,12 @@ SPDX-License-Identifier: MIT
 <!-- Don't forget to update the gas/transaction costs tables in the
 README when a new version is released. -->
 
+## 1.7.1
+
+* [#160](https://github.com/tqtezos/stablecoin/pull/160)
+  * Add network tests on `008` local-chain and `edonet`.
+  * Bump `morley`, `lorentz` and other dependencies to run `008` network tests.
+
 ## 1.7.0
 
 * [#155](https://github.com/tqtezos/stablecoin/pull/155)
