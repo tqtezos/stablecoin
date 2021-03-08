@@ -28,11 +28,10 @@ let
     modules = [
       {
         packages = pkgs.lib.genAttrs local-packages-names (packageName: {
-            package.ghcOptions = with pkgs.lib;
-              concatStringsSep " " ([
-                "-ddump-to-file" "-ddump-hi"
-                "-O0" "-Werror"
-              ]);
+            ghcOptions = [
+              "-ddump-to-file" "-ddump-hi"
+              "-O0" "-Werror"
+            ];
             postInstall = weeder-hacks.collect-dump-hi-files;
 
             # enable haddock for local packages
