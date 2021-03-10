@@ -7,7 +7,7 @@ module Permit
 
 import Fmt (build)
 
-import Lorentz (Address, EntrypointRef(Call), Packed(..), TAddress(..), lPackValue, toVal)
+import Lorentz (Address, Packed(..), TAddress(..), lPackValue, toVal)
 import Michelson.Typed (convertContract, untypeValue)
 import Morley.Nettest
 

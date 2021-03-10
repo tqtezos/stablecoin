@@ -734,7 +734,7 @@ applySingleTransfer :: Address -> Either ModelError SimpleStorage -> FA2.Transfe
 applySingleTransfer ccSender estorage (FA2.TransferItem from txs) =
   case estorage of
     Left err -> Left err
-    Right storage@(SimpleStorage {..}) ->
+    Right storage@(SimpleStorage {}) ->
       if ccSender == from || isOperatorOf storage ccSender from
         then foldl' singleTranferTx (Right storage) txs
         else Left FA2_NOT_OPERATOR

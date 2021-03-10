@@ -8,7 +8,7 @@ module FA1_2Comparison
 import qualified Data.Map as Map
 import Fmt (build)
 
-import Lorentz (BigMap(..), EntrypointRef(Call), TAddress(..), toVal)
+import Lorentz (BigMap(..), TAddress(..), toVal)
 import Michelson.Typed (convertContract, untypeValue)
 import Morley.Nettest
 import Util.Named ((.!))
