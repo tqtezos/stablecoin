@@ -40,35 +40,52 @@ module Stablecoin.Client.Cleveland.Caps
 
 import Control.Exception.Uncaught (displayUncaughtException)
 import qualified Monad.Capabilities as Caps
-import Morley.Client (Alias, MorleyClientConfig, disableAlphanetWarning)
-import Morley.Nettest (AddressOrAlias, MorleyClientEnv, NettestImpl(..), nettestImplClient)
-import Morley.Nettest.Abstract (initSender)
-import Morley.Nettest.Caps (SenderCap, implActionToCaps, nettestCapImpl, senderCapImpl)
-import Tezos.Address (Address)
+import Morley.Client (AddressOrAlias(..), Alias, disableAlphanetWarning, importKey, resolveAddressMaybe, runMorleyClientM)
+import Morley.Nettest (NettestEnv(..), NettestImpl(..), nettestImplClient)
+import Morley.Nettest.Abstract (DefaultAliasCounter(..), NettestMiscImpl, nettestAddressAlias)
+import Morley.Nettest.Caps (MoneybagCap, NettestOpsCap, SenderCap, implActionToCaps, moneybagCapImpl, nettestOpsCapImpl, nettestMiscCapImpl, senderCapImpl)
+import Morley.Nettest.Client (ClientM(..), NettestConfigurationException(..))
+import Tezos.Address (Address, mkKeyAddress)
 import Tezos.Core (Mutez)
+import Tezos.Crypto (toPublic)
 import Util.Named ((:!))
 
 import Stablecoin.Client (AddressAndAlias(..), InitialStorageData(..), UpdateOperatorData)
 import Stablecoin.Client.Cleveland.StablecoinImpl (StablecoinImpl(..), stablecoinImplClient)
 
-type StablecoinScenario m a = Monad m => Caps.CapsT '[ NettestImpl, StablecoinImpl, SenderCap ] m a
+type StablecoinScenario m a = Monad m => Caps.CapsT '[ NettestOpsCap, NettestMiscImpl, StablecoinImpl, SenderCap, MoneybagCap ] m a
 
 type MonadStablecoin caps base m =
   (Monad base, m ~ Caps.CapsT caps base, Caps.HasCaps '[ StablecoinImpl, SenderCap ] caps)
 
-runStablecoinClient :: MorleyClientConfig -> MorleyClientEnv -> StablecoinScenario IO () -> IO ()
-runStablecoinClient conf env scenario =
-  displayUncaughtException $ do
-    disableAlphanetWarning
-    uncapsStablecoin scenario (stablecoinImplClient conf env) (nettestImplClient env)
+runStablecoinClient :: NettestEnv -> StablecoinScenario ClientM () -> IO ()
+runStablecoinClient (NettestEnv env envKey) scenario = displayUncaughtException $ do
+  disableAlphanetWarning
+  storageAddress <- runMorleyClientM env $
+    resolveAddressMaybe (AddressAlias nettestAddressAlias)
+  nettestAddr <- case (envKey, storageAddress) of
+    (Nothing, Just addr) -> pure addr
+    (Nothing, Nothing) -> throwM NoNettestAddress
+    (Just ek, Just sa)
+      | mkKeyAddress (toPublic ek) == sa -> pure sa
+      | otherwise -> throwM $ TwoNettestKeys ek
+    (Just ek, Nothing) -> do
+      runMorleyClientM env (importKey False "nettest" ek)
+      return $ mkKeyAddress (toPublic ek)
+  counter <- newIORef $ DefaultAliasCounter 0
+  runReaderT (unClientM $ uncapsStablecoin scenario (stablecoinImplClient env) (nettestImplClient env) nettestAddr) counter
   where
-    uncapsStablecoin :: forall m a. Monad m => StablecoinScenario m a -> StablecoinImpl m -> NettestImpl m -> m a
-    uncapsStablecoin action stablecoinImpl nettestImpl =
+    uncapsStablecoin
+      :: forall m a. Monad m => StablecoinScenario m a -> StablecoinImpl m -> NettestImpl m -> Address
+      -> m a
+    uncapsStablecoin action stablecoinImpl NettestImpl{..} nettestAddr =
       runReaderT action $
         Caps.buildCaps $
-          Caps.AddCap (nettestCapImpl nettestImpl) $
+          Caps.AddCap (nettestOpsCapImpl niOpsImpl) $
+          Caps.AddCap (nettestMiscCapImpl niMiscImpl) $
           Caps.AddCap (stablecoinCapImpl stablecoinImpl) $
-          Caps.AddCap (senderCapImpl initSender) $
+          Caps.AddCap (senderCapImpl nettestAddr) $
+          Caps.AddCap (moneybagCapImpl nettestAddr) $
           Caps.BaseCaps Caps.emptyCaps
 
 stablecoinCapImpl :: Monad m => StablecoinImpl m -> Caps.CapImpl StablecoinImpl '[] m

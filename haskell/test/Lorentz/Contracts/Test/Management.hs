@@ -16,7 +16,7 @@ import Data.Map.Strict as M (size)
 import qualified Data.Set as Set
 import Test.Hspec (Spec, describe, it)
 
-import Lorentz (mt, unBigMap)
+import Lorentz (BigMap(..), mt)
 import Lorentz.Address
 import Lorentz.Test
 import Michelson.Runtime (ExecutorError)
@@ -506,7 +506,7 @@ managementSpec originate = do
         withSender wallet1 $ lCallEP stablecoinContract (Call @"Burn") [ 35 ]
 
         lExpectStorage @Storage stablecoinContract $ \storage ->
-          unless (M.lookup wallet1 (unBigMap $ sLedger storage) == Nothing) $
+          unless (M.lookup wallet1 (bmMap $ sLedger storage) == Nothing) $
             Left $ CustomTestError "Zero balance account was not removed after burning"
 
     it "fails to burn tokens if sender is not minter" $ integrationalTestExpectation $ do
@@ -679,7 +679,7 @@ managementSpec originate = do
             }
       it "can set transferlist contract address in storage" $ integrationalTestExpectation $ do
         let originationParams = defaultOriginationParams
-        transferlistContract <- unTAddress <$> lOriginate Transferlist.transferlistContract "Transferlist test dummy" transferlistStorage (unsafeMkMutez 0)
+        transferlistContract <- chAddress <$> lOriginate Transferlist.transferlistContract "Transferlist test dummy" transferlistStorage (unsafeMkMutez 0)
         withOriginated originate originationParams $ \stablecoinContract -> do
           withSender (opOwner originationParams) $
             lCallEP stablecoinContract (Call @"Set_transferlist") (Just transferlistContract)
@@ -693,7 +693,7 @@ managementSpec originate = do
                 Left $ CustomTestError "Transferlist contract address was not set"
 
       it "can unset transferlist contract address in storage" $ integrationalTestExpectation $ do
-        transferlistContract <- lOriginate Transferlist.transferlistContract "Transferlist test dummy" transferlistStorage (unsafeMkMutez 0)
+        transferlistContract <- toTAddress <$> lOriginate Transferlist.transferlistContract "Transferlist test dummy" transferlistStorage (unsafeMkMutez 0)
         let originationParams = defaultOriginationParams {
               opTransferlistContract = Just transferlistContract
               }
@@ -719,7 +719,7 @@ managementSpec originate = do
             , sReceivers = Set.empty
             }
       it "can make the transfer fail" $ integrationalTestExpectation $ do
-        transferlistContract <- lOriginate Transferlist.transferlistContract "Transferlist test dummy" transferlistStorage (unsafeMkMutez 0)
+        transferlistContract <- toTAddress <$> lOriginate Transferlist.transferlistContract "Transferlist test dummy" transferlistStorage (unsafeMkMutez 0)
         let
           originationParams = addAccount (wallet1, (commonOperators, 10))
               $ defaultOriginationParams { opTransferlistContract = Just transferlistContract }
@@ -734,7 +734,7 @@ managementSpec originate = do
           lExpectAnyMichelsonFailed transferlistContract err
 
       it "can make mint operation fail" $ integrationalTestExpectation $ do
-        transferlistContract <- lOriginate Transferlist.transferlistContract "Transferlist test dummy" transferlistStorage (unsafeMkMutez 0)
+        transferlistContract <- toTAddress <$> lOriginate Transferlist.transferlistContract "Transferlist test dummy" transferlistStorage (unsafeMkMutez 0)
         let
           originationParams = addAccount (wallet1, (commonOperators, 10))
               $ addMinter (wallet1, 30)
@@ -747,7 +747,7 @@ managementSpec originate = do
           lExpectAnyMichelsonFailed transferlistContract err
 
       it "can make burn operation fail" $ integrationalTestExpectation $ do
-        transferlistContract <- lOriginate Transferlist.transferlistContract "Transferlist test dummy" transferlistStorage (unsafeMkMutez 0)
+        transferlistContract <- toTAddress <$> lOriginate Transferlist.transferlistContract "Transferlist test dummy" transferlistStorage (unsafeMkMutez 0)
         let
           originationParams =
               addMinter (wallet1, 0)
@@ -764,7 +764,7 @@ managementSpec originate = do
             , sReceivers = Set.fromList [wallet1, wallet2]
             }
       it "can approve transfers" $ integrationalTestExpectation $ do
-        transferlistContract <- lOriginate Transferlist.transferlistContract "Transferlist test dummy" transferlistStorage (unsafeMkMutez 0)
+        transferlistContract <- toTAddress <$> lOriginate Transferlist.transferlistContract "Transferlist test dummy" transferlistStorage (unsafeMkMutez 0)
         let
           originationParams = addAccount (wallet1, (commonOperators, 10))
               $ defaultOriginationParams { opTransferlistContract = Just transferlistContract }
@@ -780,7 +780,7 @@ managementSpec originate = do
           withSender commonOperator $ lCallEP stablecoinContract (Call @"Transfer") transfers
 
       it "can approve mint operation" $ integrationalTestExpectation $ do
-        transferlistContract <- lOriginate Transferlist.transferlistContract "Transferlist test dummy" transferlistStorage (unsafeMkMutez 0)
+        transferlistContract <- toTAddress <$> lOriginate Transferlist.transferlistContract "Transferlist test dummy" transferlistStorage (unsafeMkMutez 0)
         let
           originationParams = addAccount (wallet1, (commonOperators, 10))
               $ addMinter (wallet1, 30)
@@ -791,7 +791,7 @@ managementSpec originate = do
           withSender wallet1 $ lCallEP stablecoinContract (Call @"Mint") mintings
 
       it "can approve burn operation" $ integrationalTestExpectation $ do
-        transferlistContract <- lOriginate Transferlist.transferlistContract "Transferlist test dummy" transferlistStorage (unsafeMkMutez 0)
+        transferlistContract <- toTAddress <$> lOriginate Transferlist.transferlistContract "Transferlist test dummy" transferlistStorage (unsafeMkMutez 0)
         let
           originationParams =
               addMinter (wallet1, 0)

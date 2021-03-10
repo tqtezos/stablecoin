@@ -79,9 +79,9 @@ assertPermitCount contractAddr expectedCount =
                 <> show count
   where
     permitCount :: BigMap Address UserPermits -> Int
-    permitCount (BigMap permits) =
+    permitCount permits =
       sum $
-        permits <&> \userPermits -> length (upPermits userPermits)
+        (bmMap permits) <&> \userPermits -> length (upPermits userPermits)
 
 permitSpec :: OriginationFn Parameter -> Spec
 permitSpec originate = do

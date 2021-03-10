@@ -14,6 +14,7 @@ import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Test.Common
 import Michelson.Typed (untypeValue)
 import qualified Michelson.Typed as T
+import Morley.Nettest.Abstract (nettestAddressAlias)
 import Morley.Nettest
 import Util.Named
 
@@ -28,28 +29,27 @@ data TransferlistType = External | Internal
 
 scNettestScenario
   :: forall m capsM.
-     (Monad m, capsM ~ NettestT m)
+     (capsM ~ NettestT m)
   => (Set (Address, Address) -> Set Address -> capsM Address)
   -> TransferlistType
-  -> NettestImpl m
-  -> m ()
+  -> NettestScenario m
 scNettestScenario originateTransferlist transferlistType = uncapsNettest $ do
   comment "Resolving contract managers"
 
-  superuser <- resolveNettestAddress
+  superuser <- resolveAddress nettestAddressAlias
 
-  nettestOwner <- newAddress "nettestOwner"
-  nettestPauser <- newAddress "nettestPauser"
-  nettestMasterMinter <- newAddress "nettestMasterMinter"
+  nettestOwner <- newAddress auto
+  nettestPauser <- newAddress auto
+  nettestMasterMinter <- newAddress auto
 
   comment "Resolving owners and operators"
 
-  owner1 <- newAddress "Steve"
-  owner2 <- newAddress "Megan"
-  owner3 <- newAddress "Karen"
+  owner1 <- newAddress auto
+  owner2 <- newAddress auto
+  owner3 <- newAddress auto
 
-  operator <- newAddress "Some operator"
-  otherOperator <- newAddress "Other operator"
+  operator <- newAddress auto
+  otherOperator <- newAddress auto
 
   comment "Originating metadata contract"
   metadata <- either (failure . build) pure $ metadataJSON Nothing Nothing
@@ -91,12 +91,6 @@ scNettestScenario originateTransferlist transferlistType = uncapsNettest $ do
   sfAddress <- originateTransferlist transfers receivers
 
   let
-    expectFailed :: NiceUnpackedValue t => t -> capsM a -> capsM ()
-    expectFailed val = flip expectFailure (NettestFailedWith scAddress val)
-
-    expectTransferlistFailed :: NiceUnpackedValue t => t -> capsM a -> capsM ()
-    expectTransferlistFailed val = flip expectFailure (NettestFailedWith sfAddress val)
-
     sc :: TAddress Parameter
     sc = TAddress scAddress
 
@@ -107,7 +101,7 @@ scNettestScenario originateTransferlist transferlistType = uncapsNettest $ do
       (#amount .! value)
 
     callTransferWithOperator op from to value =
-      withSender (AddressResolved op) $ call sc (Call @"Transfer") (tp from to value)
+      withSender op $ call sc (Call @"Transfer") (tp from to value)
 
     callTransfer = join callTransferWithOperator
 
@@ -115,25 +109,25 @@ scNettestScenario originateTransferlist transferlistType = uncapsNettest $ do
       :: [("from_" :! Address, [("to_" :! Address, "amount" :! Natural)])]
       -> capsM ()
     callTransfers = mapM_ $ \(from@(arg #from_ -> from_), destinations) ->
-      withSender (AddressResolved from_) $
+      withSender from_ $
         call sc (Call @"Transfer") (constructTransfersFromSender from destinations)
 
     configureMinter :: Address -> Address -> Maybe Natural -> Natural -> capsM ()
     configureMinter = configureMinter' sc
 
     configureMinter' :: TAddress Parameter -> Address -> Address -> Maybe Natural -> Natural -> capsM ()
-    configureMinter' sc' from for expectedAllowance newAllowance =
-      withSender (AddressResolved from) $
-        call sc' (Call @"Configure_minter") (ConfigureMinterParam for expectedAllowance newAllowance)
+    configureMinter' sc' from for' expectedAllowance newAllowance =
+      withSender from $
+        call sc' (Call @"Configure_minter") (ConfigureMinterParam for' expectedAllowance newAllowance)
 
     removeMinter :: Address -> Address -> capsM ()
     removeMinter from whom =
-      withSender (AddressResolved from) $
+      withSender from $
         call sc (Call @"Remove_minter") whom
 
     addOperatorNettest :: Address -> Address -> capsM ()
     addOperatorNettest from op =
-      withSender (AddressResolved from) $
+      withSender from $
         call sc (Call @"Update_operators")
           [ FA2.AddOperator
             FA2.OperatorParam { opOwner = from, opOperator = op, opTokenId = FA2.theTokenId }
@@ -141,7 +135,7 @@ scNettestScenario originateTransferlist transferlistType = uncapsNettest $ do
 
     removeOperator :: Address -> Address -> capsM ()
     removeOperator from op =
-      withSender (AddressResolved from) $
+      withSender from $
         call sc (Call @"Update_operators")
           [ FA2.RemoveOperator
             FA2.OperatorParam { opOwner = from, opOperator = op, opTokenId = FA2.theTokenId }
@@ -149,52 +143,52 @@ scNettestScenario originateTransferlist transferlistType = uncapsNettest $ do
 
     mint :: Address -> Natural -> capsM ()
     mint to_ value =
-      withSender (AddressResolved to_) $
+      withSender to_ $
         call sc (Call @"Mint") [MintParam to_ value]
 
     burn :: Address -> Natural -> capsM ()
     burn from amount_ =
-      withSender (AddressResolved from) $
+      withSender from $
         call sc (Call @"Burn") [amount_]
 
     pause :: Address -> capsM ()
     pause from =
-      withSender (AddressResolved from) $
+      withSender from $
         call sc (Call @"Pause") ()
 
     unpause :: Address -> capsM ()
     unpause from =
-      withSender (AddressResolved from) $
+      withSender from $
         call sc (Call @"Unpause") ()
 
     transferOwnership :: Address -> Address -> capsM ()
     transferOwnership from to =
-      withSender (AddressResolved from) $
+      withSender from $
         call sc (Call @"Transfer_ownership") to
 
     acceptOwnership :: Address -> capsM ()
     acceptOwnership from =
-      withSender (AddressResolved from) $
+      withSender from $
         call sc (Call @"Accept_ownership") ()
 
     changeMasterMinter :: Address -> Address -> capsM ()
     changeMasterMinter from to =
-      withSender (AddressResolved from) $
+      withSender from $
         call sc (Call @"Change_master_minter") to
 
     changePauser :: Address -> Address -> capsM ()
     changePauser from to =
-      withSender (AddressResolved from) $
+      withSender from $
         call sc (Call @"Change_pauser") to
 
     setTransferlist :: Address -> Address -> capsM ()
     setTransferlist from transferlistAddress =
-      withSender (AddressResolved from) $
+      withSender from $
         call sc (Call @"Set_transferlist") (Just transferlistAddress)
 
     unsetTransferlist :: Address -> capsM ()
     unsetTransferlist from =
-      withSender (AddressResolved from) $
+      withSender from $
         call sc (Call @"Set_transferlist") (Nothing :: Maybe Address)
 
   let
@@ -212,16 +206,16 @@ scNettestScenario originateTransferlist transferlistType = uncapsNettest $ do
 
       comment "Pausing contract for transfers"
       callTransfer superuser nettestPauser 600000 -- storage fee
-      expectFailed [mt|NOT_PAUSER|] $ pause owner1 -- Not enough permissions
+      expectError [mt|NOT_PAUSER|] $ pause owner1 -- Not enough permissions
       pause nettestPauser
-      expectFailed [mt|CONTRACT_PAUSED|] $ pause nettestPauser -- Cannot be called multiple times
+      expectError [mt|CONTRACT_PAUSED|] $ pause nettestPauser -- Cannot be called multiple times
 
-      expectFailed [mt|CONTRACT_PAUSED|] $ callTransfer owner3 owner2 10
+      expectError [mt|CONTRACT_PAUSED|] $ callTransfer owner3 owner2 10
 
       comment "Unpausing contract for transfers"
-      expectFailed [mt|NOT_PAUSER|] $ unpause owner3 -- Not enough permissions
+      expectError [mt|NOT_PAUSER|] $ unpause owner3 -- Not enough permissions
       unpause nettestPauser
-      expectFailed [mt|CONTRACT_NOT_PAUSED|] $ unpause nettestPauser -- Cannot be called multiple times
+      expectError [mt|CONTRACT_NOT_PAUSED|] $ unpause nettestPauser -- Cannot be called multiple times
 
       callTransfer owner1 owner2 10
       callTransfer owner2 owner1 10
@@ -230,9 +224,9 @@ scNettestScenario originateTransferlist transferlistType = uncapsNettest $ do
       callTransfer superuser owner1 10
       addOperatorNettest owner1 otherOperator
       callTransferWithOperator otherOperator owner1 owner2 10
-      expectFailed [mt|FA2_NOT_OPERATOR|] $ callTransferWithOperator otherOperator owner2 owner1 10
+      expectError [mt|FA2_NOT_OPERATOR|] $ callTransferWithOperator otherOperator owner2 owner1 10
       removeOperator owner1 otherOperator
-      expectFailed [mt|FA2_NOT_OPERATOR|] $ callTransferWithOperator otherOperator owner1 owner2 10
+      expectError [mt|FA2_NOT_OPERATOR|] $ callTransferWithOperator otherOperator owner1 owner2 10
 
       callTransfer owner2 owner1 10
 
@@ -243,15 +237,15 @@ scNettestScenario originateTransferlist transferlistType = uncapsNettest $ do
 
       comment "Configuring minter for owner1 and owner2"
       configureMinter nettestMasterMinter owner1 Nothing 100
-      expectFailed [mt|ALLOWANCE_MISMATCH|] $ configureMinter nettestMasterMinter owner1 (Just 20) 10 -- Mismatched expected allowance
+      expectError [mt|ALLOWANCE_MISMATCH|] $ configureMinter nettestMasterMinter owner1 (Just 20) 10 -- Mismatched expected allowance
       configureMinter nettestMasterMinter owner1 (Just 100) 50
-      expectFailed [mt|ADDR_NOT_MINTER|] $ configureMinter nettestMasterMinter owner2 (Just 20) 10 -- Not a minter
+      expectError [mt|ADDR_NOT_MINTER|] $ configureMinter nettestMasterMinter owner2 (Just 20) 10 -- Not a minter
       configureMinter nettestMasterMinter owner2 Nothing 10
 
       comment $ "Minting for owner1 and owner2"
       callTransfer superuser owner1 10 -- Needed to pay transfer fee
       mint owner1 20
-      expectFailed [mt|ALLOWANCE_EXCEEDED|] $ mint owner1 200 -- Allowance exceeded
+      expectError [mt|ALLOWANCE_EXCEEDED|] $ mint owner1 200 -- Allowance exceeded
 
       comment "Transfer between owner1 and owner2"
       callTransfer superuser owner1 10 -- Needed to pay transfer fee
@@ -262,7 +256,7 @@ scNettestScenario originateTransferlist transferlistType = uncapsNettest $ do
 
       comment "Remove owner1 and owner2 from minters"
       removeMinter nettestMasterMinter owner2
-      expectFailed [mt|ADDR_NOT_MINTER|] $ removeMinter nettestMasterMinter owner2 -- Already removed
+      expectError [mt|ADDR_NOT_MINTER|] $ removeMinter nettestMasterMinter owner2 -- Already removed
       removeMinter nettestMasterMinter owner1
 
     burnScenario = do
@@ -272,7 +266,7 @@ scNettestScenario originateTransferlist transferlistType = uncapsNettest $ do
       configureMinter nettestMasterMinter owner1 Nothing 100
       mint owner1 100
       burn owner1 20
-      expectFailed [mt|FA2_INSUFFICIENT_BALANCE|] $ burn owner1 2000 -- Not enough tokens to burn
+      expectError [mt|FA2_INSUFFICIENT_BALANCE|] $ burn owner1 2000 -- Not enough tokens to burn
       comment "Transfer rest of the tokens after burn from owner1"
       callTransfer owner1 owner2 80
       removeMinter nettestMasterMinter owner1
@@ -281,7 +275,7 @@ scNettestScenario originateTransferlist transferlistType = uncapsNettest $ do
       comment "Transferring contract ownership"
       transferOwnership nettestOwner owner1
       transferOwnership nettestOwner owner2
-      expectFailed [mt|NOT_PENDING_OWNER|] $ acceptOwnership owner1 -- Pending owner is changed
+      expectError [mt|NOT_PENDING_OWNER|] $ acceptOwnership owner1 -- Pending owner is changed
       acceptOwnership owner2
       transferOwnership owner2 nettestOwner
       acceptOwnership nettestOwner
@@ -296,7 +290,7 @@ scNettestScenario originateTransferlist transferlistType = uncapsNettest $ do
       comment "Changing contract pauser"
       changePauser nettestOwner owner1
       pause owner1
-      expectFailed [mt|NOT_PAUSER|] $ unpause nettestPauser -- nettestPauser is not pauser
+      expectError [mt|NOT_PAUSER|] $ unpause nettestPauser -- nettestPauser is not pauser
       unpause owner1
       changePauser nettestOwner nettestPauser
 
@@ -311,14 +305,14 @@ scNettestScenario originateTransferlist transferlistType = uncapsNettest $ do
       -- transfer is not in transferlist
       let action = callTransfer owner3 owner2 9
       case transferlistType of
-        Internal -> expectTransferlistFailed ([mt|AssertionFailure|], ()) action
-        External -> expectTransferlistFailed [mt|outbound not transferlisted|] action
+        Internal -> expectCustomError_ #assertionFailure action
+        External -> expectError [mt|outbound not transferlisted|] action
 
       configureMinter nettestMasterMinter owner1 Nothing 100
       configureMinter nettestMasterMinter owner2 Nothing 100
 
       mint owner2 20
-      expectFailed [mt|NOT_MINTER|] $ mint owner3 20 -- Minter is not set in transferlist
+      expectError [mt|NOT_MINTER|] $ mint owner3 20 -- Minter is not set in transferlist
 
       comment "Unsetting transferlist"
       unsetTransferlist nettestOwner
@@ -336,15 +330,14 @@ scNettestScenario originateTransferlist transferlistType = uncapsNettest $ do
         addMinter' ma = configureMinter' sc' nettestMasterMinter ma Nothing 100
 
       comment "Send some tez to master minter"
-      withSender (AddressResolved superuser) $ transfer $
+      withSender superuser $ transfer $
         TransferData
-          { tdTo = AddressResolved nettestMasterMinter
+          { tdTo = nettestMasterMinter
           , tdAmount = toMutez 100000000
           , tdEntrypoint = DefEpName
           , tdParameter = ()
           }
-
-      mapM_ (\i -> newAddress  ("minter" <> show i) >>= addMinter') [1..minterLimit]
+      replicateM_ minterLimit (newAddress auto >>= addMinter')
 
   transferScenario
   mintScenario

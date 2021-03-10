@@ -8,8 +8,9 @@ module FA1_2Comparison
 import qualified Data.Map as Map
 import Fmt (build)
 
-import Lorentz (BigMap(..), EntrypointRef(Call), TAddress(..), toVal)
-import Michelson.Typed (convertContract, untypeValue)
+import Lorentz (TAddress(..), toVal)
+import Michelson.Typed (convertContract, mkBigMap, untypeValue)
+import Morley.Nettest.Abstract (nettestAddressAlias)
 import Morley.Nettest
 import Util.Named ((.!))
 
@@ -34,12 +35,12 @@ fa1_2ComparisonScenario = uncapsNettest $ do
   comment "-- FA1.2 vs FA2 comparison tests --"
 
   comment "Creating accounts"
-  nettest <- resolveNettestAddress
-  owner1 <- newAddress "Steve"
-  owner2 <- newAddress "Megan"
+  nettest <- resolveAddress nettestAddressAlias
+  owner1 <- newAddress auto
+  owner2 <- newAddress auto
 
   comment "Originating Stablecoin FA1.2 contract"
-  let balances = Map.fromList
+  let balances =
         [ (owner1, 10)
         , (owner2, 10)
         ]
@@ -55,14 +56,14 @@ fa1_2ComparisonScenario = uncapsNettest $ do
   cmrFA1_2Address <- nettestOriginateContractMetadataContract metadata
   let fa1_2Storage = SFA1_2.Storage
         { sDefaultExpiry = 1000
-        , sLedger = BigMap balances
+        , sLedger = mkBigMap balances
         , sMintingAllowances = mempty
         , sPaused = False
         , sPermitCounter = 0
         , sPermits = mempty
         , sRoles = roles
         , sTransferlistContract = Nothing
-        , sTotalSupply = sum balances
+        , sTotalSupply = sum $ Map.fromList balances
         , sSpenderAllowances = mempty
         , sMetadata = metadataMap @(()) (RemoteContract cmrFA1_2Address)
         }
@@ -71,13 +72,13 @@ fa1_2ComparisonScenario = uncapsNettest $ do
     originateUntypedSimple "Stablecoin FA1.2" (untypeValue $ toVal fa1_2Storage) stablecoinFA1_2Contract
 
   comment "Calling transfer"
-  withSender (AddressResolved owner1) $
+  withSender owner1 $
     call fa1_2ContractAddr (Call @"Transfer") (#from .! owner1, #to .! owner2, #value .! 2)
 
   cmrAddress <- nettestOriginateContractMetadataContract metadata
   let fa2Storage = SFA2.Storage
         { sDefaultExpiry = 1000
-        , sLedger = BigMap balances
+        , sLedger = mkBigMap balances
         , sMintingAllowances = mempty
         , sPaused = False
         , sPermitCounter = 0
@@ -94,7 +95,7 @@ fa1_2ComparisonScenario = uncapsNettest $ do
     originateUntypedSimple "Stablecoin FA2" (untypeValue $ toVal fa2Storage) (convertContract stablecoinContract)
 
   comment "Calling transfer"
-  withSender (AddressResolved owner1) $ call fa2ContractAddr (Call @"Transfer") [FA2.TransferItem
+  withSender owner1 $ call fa2ContractAddr (Call @"Transfer") [FA2.TransferItem
     { tiFrom = owner1
     , tiTxs =
         [ TransferDestination

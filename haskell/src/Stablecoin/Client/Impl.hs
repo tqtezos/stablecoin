@@ -42,19 +42,20 @@ import qualified Data.Map as M
 import Fmt (Buildable(build), pretty, (+|), (|+))
 import Lorentz (EntrypointRef(Call), HasEntrypointArg, ToT, arg, useHasEntrypointArg)
 import qualified Lorentz.Contracts.Spec.TZIP16Interface as TZ
-import Michelson.Typed (Dict(..), IsoValue, fromVal, toVal)
+import Michelson.Typed (BigMapId (..), Dict(..), IsoValue, fromVal, mkBigMap, toVal)
 
 import Lorentz.Test (dummyContractEnv)
 import Michelson.Text
 import Morley.Client
-  (AddressOrAlias(..), Alias, AliasHint(..), BigMapId, MorleyClientM,
+  (AddressOrAlias(..), Alias, AliasHint(..), MorleyClientM,
   TezosClientError(UnknownAddress), getAlias, getContractScript, lTransfer, originateContract,
   readBigMapValue, readBigMapValueMaybe)
 import qualified Morley.Client as Client
-import Morley.Client.RPC (OriginationScript(OriginationScript))
+import Morley.Client.RPC (OriginationScript(OriginationScript), OperationHash)
 import Morley.Client.TezosClient (resolveAddress)
 import qualified Morley.Metadata as MD
 import Morley.Micheline (Expression, FromExpressionError, fromExpression)
+import Morley.Nettest.Client (revealKeyUnlessRevealed)
 import Tezos.Address (Address)
 import Tezos.Core (Mutez, unsafeMkMutez)
 import Util.Named ((:!), (.!))
@@ -78,7 +79,7 @@ data AddressAndAlias = AddressAndAlias Address (Maybe Alias)
 --
 -- Saves the contract with the given alias.
 -- If the given alias already exists, nothing happens.
-deploy :: "sender" :! AddressOrAlias -> AliasHint -> InitialStorageData AddressOrAlias -> MorleyClientM (Text, Address, Maybe Address)
+deploy :: "sender" :! AddressOrAlias -> AliasHint -> InitialStorageData AddressOrAlias -> MorleyClientM (OperationHash, Address, Maybe Address)
 deploy (arg #sender -> sender) alias initialStorageData@InitialStorageData {..} = do
   masterMinter <- resolveAddress isdMasterMinter
   contractOwner <- resolveAddress isdContractOwner
@@ -332,10 +333,10 @@ getTokenMetadata contract = do
         -- replacing all bigmaps with empty counterparts, and this should be fine here since
         -- the token metadata view does not access any of these big maps.
         storageView
-          { sLedger = mempty
-          , sMetadata = mempty
-          , sOperators = mempty
-          , sPermits = mempty
+          { sLedger = mkBigMap mempty
+          , sMetadata = mkBigMap mempty
+          , sOperators = mkBigMap mempty
+          , sPermits = mkBigMap mempty
           }
   snd <$> (throwMdErr (\err -> "Error while interpreting the contract:" <> show err) $
     MD.interpretView @(Natural, Map MText ByteString)
@@ -387,6 +388,9 @@ call (arg #sender -> sender) (arg #contract -> contract) epRef epArg =
   case useHasEntrypointArg @Parameter @epRef @epArg epRef of
     (Dict, epName) -> do
       senderAddr <- resolveAddress sender
+      senderAlias <- getAlias sender
+      env <- ask
+      liftIO $ revealKeyUnlessRevealed env senderAlias
       contractAddr <- resolveAddress contract
       void $ lTransfer
         senderAddr

@@ -5,8 +5,10 @@ module Main
   ( main
   ) where
 
-import Test.Tasty (defaultMain)
+import Cleveland.Ingredients (ourIngredients)
+import Morley.Nettest.Tasty (nettestMainWithIngredients)
+
 import Tree (tests)
 
 main :: IO ()
-main = tests >>= defaultMain
+main = tests >>= nettestMainWithIngredients ourIngredients

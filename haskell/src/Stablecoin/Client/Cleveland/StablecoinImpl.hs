@@ -9,9 +9,9 @@ module Stablecoin.Client.Cleveland.StablecoinImpl
 import Data.Text (isInfixOf)
 import Fmt (Buildable(build), pretty)
 import Lorentz (arg)
-import Morley.Client (Alias, MorleyClientConfig)
-import Morley.Nettest (AddressOrAlias, MorleyClientEnv)
-import Morley.Nettest.Client (revealKeyUnlessRevealed)
+import Morley.Client (AddressOrAlias, Alias)
+import Morley.Nettest (MorleyClientEnv)
+import Morley.Nettest.Client (ClientM, revealKeyUnlessRevealed)
 import Tezos.Address (Address)
 import Tezos.Core (Mutez)
 import Util.Named ((:!), (.!))
@@ -95,10 +95,10 @@ data StablecoinImpl m = StablecoinImpl
   }
 
 -- | Implementation of `StablecoinImpl` that defers to `stablecoin-client`.
-stablecoinImplClient :: MorleyClientConfig -> MorleyClientEnv -> StablecoinImpl IO
-stablecoinImplClient conf env = StablecoinImpl
-  { siDeploy = \sender (InitialStorageData {..}) -> do
-      output <- callStablecoinClient conf $
+stablecoinImplClient :: MorleyClientEnv -> StablecoinImpl ClientM
+stablecoinImplClient env = StablecoinImpl
+  { siDeploy = \sender (InitialStorageData {..}) -> liftIO $ do
+      output <- liftIO $ callStablecoinClient env $
         [ "deploy"
         , "--master-minter", pretty isdMasterMinter
         , "--contract-owner", pretty isdContractOwner
@@ -111,29 +111,29 @@ stablecoinImplClient conf env = StablecoinImpl
         , "--replace-alias"
         ] <> mkUserOpt sender
       runParser output (labelled "Contract address" addressParser)
-  , siTransfer = \sender contract from to amount ->
-      void $ callStablecoinClient conf $
+  , siTransfer = \sender contract from to amount -> liftIO $
+      void $ callStablecoinClient env $
         [ "transfer"
         , "--from", pretty from
         , "--to", pretty to
         , "--amount", pretty amount
         ] <> mkUserOpt sender <> mkContractOpt contract
-  , siGetBalanceOf = \contract owner -> do
-      output <- callStablecoinClient conf $
+  , siGetBalanceOf = \contract owner -> liftIO $ do
+      output <- callStablecoinClient env $
         [ "get-balance-of"
         , "--owner", pretty owner
         ] <> mkContractOpt contract
       runParser output (labelled "Current balance" naturalParser)
-  , siUpdateOperators = \sender contract updateOperators ->
-      void $ callStablecoinClient conf $
+  , siUpdateOperators = \sender contract updateOperators -> liftIO $
+      void $ callStablecoinClient env $
         [ "update-operators" ]
         <> (toList updateOperators >>= \case
               AddOperator operator -> ["--add", pretty operator]
               RemoveOperator operator -> ["--remove", pretty operator]
            )
         <> mkUserOpt sender <> mkContractOpt contract
-  , siIsOperator = \contract owner operator -> do
-      output <- callStablecoinClient conf $
+  , siIsOperator = \contract owner operator -> liftIO $ do
+      output <- callStablecoinClient env $
         [ "is-operator"
         , "--owner", pretty owner
         , "--operator", pretty operator
@@ -143,98 +143,98 @@ stablecoinImplClient conf env = StablecoinImpl
          | otherwise ->
               throwM $ OutputParseError "is-operator" $
                 "Unexpected stablecoin-client output: " <> pretty output
-  , siPause = \sender contract ->
-      void $ callStablecoinClient conf $
+  , siPause = \sender contract -> liftIO $
+      void $ callStablecoinClient env $
         [ "pause" ]
         <> mkUserOpt sender <> mkContractOpt contract
-  , siUnpause = \sender contract ->
-      void $ callStablecoinClient conf $
+  , siUnpause = \sender contract -> liftIO $
+      void $ callStablecoinClient env $
         [ "unpause" ]
         <> mkUserOpt sender <> mkContractOpt contract
   , siConfigureMinter = \sender contract minter currentAllowance newAllowance ->
-      void $ callStablecoinClient conf $
+      liftIO $ void $ callStablecoinClient env $
         [ "configure-minter"
         , "--minter", pretty minter
         , "--new-minting-allowance", pretty newAllowance
         ] <> encodeMaybeOption "--current-minting-allowance" currentAllowance
           <> mkUserOpt sender <> mkContractOpt contract
-  , siRemoveMinter = \sender contract minter ->
-      void $ callStablecoinClient conf $
+  , siRemoveMinter = \sender contract minter -> liftIO $
+      void $ callStablecoinClient env $
         [ "remove-minter"
         , "--minter", pretty minter
         ] <> mkUserOpt sender <> mkContractOpt contract
-  , siMint = \sender contract to amount ->
-      void $ callStablecoinClient conf $
+  , siMint = \sender contract to amount -> liftIO $
+      void $ callStablecoinClient env $
         [ "mint"
         , "--to", pretty to
         , "--amount", pretty amount
         ] <> mkUserOpt sender <> mkContractOpt contract
-  , siBurn = \sender contract amounts ->
-      void $ callStablecoinClient conf $
+  , siBurn = \sender contract amounts -> liftIO $
+      void $ callStablecoinClient env $
         [ "burn" ]
         <> (toList amounts >>= \amount -> ["--amount", pretty amount])
         <> mkUserOpt sender <> mkContractOpt contract
-  , siTransferOwnership = \sender contract to ->
-      void $ callStablecoinClient conf $
+  , siTransferOwnership = \sender contract to -> liftIO $
+      void $ callStablecoinClient env $
         [ "transfer-ownership"
         , "--to", pretty to
         ] <> mkUserOpt sender <> mkContractOpt contract
-  , siAcceptOwnership = \sender contract ->
-      void $ callStablecoinClient conf $
+  , siAcceptOwnership = \sender contract -> liftIO $
+      void $ callStablecoinClient env $
         [ "accept-ownership"
         ] <> mkUserOpt sender <> mkContractOpt contract
-  , siChangeMasterMinter = \sender contract to ->
-      void $ callStablecoinClient conf $
+  , siChangeMasterMinter = \sender contract to -> liftIO $
+      void $ callStablecoinClient env $
         [ "change-master-minter"
         , "--to", pretty to
         ] <> mkUserOpt sender <> mkContractOpt contract
-  , siChangePauser = \sender contract to ->
-      void $ callStablecoinClient conf $
+  , siChangePauser = \sender contract to -> liftIO $
+      void $ callStablecoinClient env $
         [ "change-pauser"
         , "--to", pretty to
         ] <> mkUserOpt sender <> mkContractOpt contract
-  , siSetTransferlist = \sender contract transferlist ->
-      void $ callStablecoinClient conf $
+  , siSetTransferlist = \sender contract transferlist -> liftIO $
+      void $ callStablecoinClient env $
         [ "set-transferlist"]
         <> encodeMaybeOption "--transferlist" transferlist
         <> mkUserOpt sender <> mkContractOpt contract
-  , siGetBalance = \contract -> do
-      output <- callStablecoinClient conf $ [ "get-balance" ] <> mkContractOpt contract
+  , siGetBalance = \contract -> liftIO $ do
+      output <- callStablecoinClient env $ [ "get-balance" ] <> mkContractOpt contract
       runParser output (labelled "Current balance" mutezParser)
-  , siGetPaused = \contract -> do
-      output <- callStablecoinClient conf $ [ "get-paused" ] <> mkContractOpt contract
+  , siGetPaused = \contract -> liftIO $ do
+      output <- callStablecoinClient env $ [ "get-paused" ] <> mkContractOpt contract
       if | "Contract is paused" `isInfixOf` output -> pure True
          | "Contract is not paused" `isInfixOf` output -> pure False
          | otherwise ->
               throwM $ OutputParseError "get-paused" $
                 "Unexpected stablecoin-client output: " <> pretty output
-  , siGetContractOwner = \contract -> do
-      output <- callStablecoinClient conf $ [ "get-contract-owner" ] <> mkContractOpt contract
+  , siGetContractOwner = \contract -> liftIO $ do
+      output <- callStablecoinClient env $ [ "get-contract-owner" ] <> mkContractOpt contract
       runParser output (addressAndAliasParser "Contract owner")
-  , siGetPendingContractOwner = \contract -> do
-      output <- callStablecoinClient conf $ [ "get-pending-contract-owner" ] <> mkContractOpt contract
+  , siGetPendingContractOwner = \contract -> liftIO $ do
+      output <- callStablecoinClient env $ [ "get-pending-contract-owner" ] <> mkContractOpt contract
       if "There is no pending contract owner" `isInfixOf` output
         then pure Nothing
         else Just <$> runParser output (addressAndAliasParser "Pending contract owner")
-  , siGetMasterMinter = \contract -> do
-      output <- callStablecoinClient conf $ [ "get-master-minter" ] <> mkContractOpt contract
+  , siGetMasterMinter = \contract -> liftIO $ do
+      output <- callStablecoinClient env $ [ "get-master-minter" ] <> mkContractOpt contract
       runParser output (addressAndAliasParser "Master minter")
-  , siGetPauser = \contract -> do
-      output <- callStablecoinClient conf $ [ "get-pauser" ] <> mkContractOpt contract
+  , siGetPauser = \contract -> liftIO $ do
+      output <- callStablecoinClient env $ [ "get-pauser" ] <> mkContractOpt contract
       runParser output (addressAndAliasParser "Pauser")
-  , siGetTransferlist = \contract -> do
-      output <- callStablecoinClient conf $ [ "get-transferlist" ] <> mkContractOpt contract
+  , siGetTransferlist = \contract -> liftIO $ do
+      output <- callStablecoinClient env $ [ "get-transferlist" ] <> mkContractOpt contract
       if "Transferlist contract is not set" `isInfixOf` output
         then pure Nothing
         else Just <$> runParser output (addressAndAliasParser "Transferlist contract")
-  , siGetMintingAllowance = \contract minter -> do
-      output <- callStablecoinClient conf $
+  , siGetMintingAllowance = \contract minter -> liftIO $ do
+      output <- callStablecoinClient env $
         [ "get-minting-allowance"
         , "--minter", pretty minter
         ] <> mkContractOpt contract
       runParser output (labelled "Minting allowance" naturalParser)
-  , siGetTokenMetadata = \contract -> do
-      output <- callStablecoinClient conf $ [ "get-token-metadata" ] <> mkContractOpt contract
+  , siGetTokenMetadata = \contract -> liftIO $ do
+      output <- callStablecoinClient env $ [ "get-token-metadata" ] <> mkContractOpt contract
       runParser output $
         (,,)
         <$> ((#symbol .!) <$> labelled "Token symbol" textParser)
@@ -244,7 +244,7 @@ stablecoinImplClient conf env = StablecoinImpl
       if actual == expected
         then pass
         else throwM $ STEDiff actual expected
-  , siRevealKeyUnlessRevealed = revealKeyUnlessRevealed env
+  , siRevealKeyUnlessRevealed = liftIO . revealKeyUnlessRevealed env
   }
   where
     mkUserOpt :: "sender" :! AddressOrAlias -> [String]

@@ -47,12 +47,12 @@ mkInitialStorage :: InitialStorageData Address -> Storage
 mkInitialStorage InitialStorageData {..} =
   Storage
     { sDefaultExpiry = isdDefaultExpiry
-    , sLedger =  mempty
+    , sLedger = mkBigMap mempty
     , sMintingAllowances = mempty
-    , sOperators = mempty
+    , sOperators = mkBigMap mempty
     , sPaused = False
     , sPermitCounter = 0
-    , sPermits = mempty
+    , sPermits = mkBigMap mempty
     , sRoles = Roles
         { rMasterMinter = isdMasterMinter
         , rOwner = isdContractOwner

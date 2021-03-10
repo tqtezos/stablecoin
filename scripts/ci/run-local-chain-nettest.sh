@@ -11,10 +11,10 @@ set -euo pipefail
 
 nettest_scenario="$1"
 
-node_endpoint="$NETTEST_NODE_ENDPOINT"
+node_endpoint="$TASTY_NETTEST_NODE_ENDPOINT"
 TEMPDIR="$(mktemp -d --tmpdir="$PWD")"
 tezos_client_args=(-E "$node_endpoint" -d "$TEMPDIR")
 
 tezos-client "${tezos_client_args[@]}" import secret key nettest \
-             "$MONEYBAG" --force
+             "$TASTY_NETTEST_MONEYBAG_SECRET_KEY" --force
 "$nettest_scenario" "${tezos_client_args[@]}"
