@@ -83,9 +83,6 @@ steps:
 
  - label: nettest-scheduled-edonet
    if: build.source == "schedule"
-   # use another agent for long scheduled jobs
-   agents:
-    queue: "scheduled"
    env:
      NETTEST_NODE_ENDPOINT: "http://edo.testnet.tezos.serokell.team:8732"
      # Note that testnet moneybag can run out of tz. If this happened, someone should transfer it some
