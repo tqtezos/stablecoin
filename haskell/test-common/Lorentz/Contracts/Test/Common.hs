@@ -154,7 +154,7 @@ defaultOriginationParams = OriginationParams
   , opPermits = mempty
   }
   where
-    metadata = either (error . pretty) id $ metadataJSON (Just testFA2TokenMetadata) Nothing
+    metadata = metadataJSON (Just testFA2TokenMetadata) Nothing
 
 
 addMinter
