@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2020 TQ Tezos
+# SPDX-FileCopyrightText: 2021 TQ Tezos
 # SPDX-License-Identifier: MIT
 
 env:
@@ -46,6 +46,7 @@ steps:
  - wait
 
  - label: build library
+   key: build_library
    if: *not_scheduled
    commands:
      - eval "$FETCH_CONTRACT"
@@ -53,12 +54,15 @@ steps:
 
  - label: haddock
    if: *not_scheduled
+   depends_on: build_library
    commands:
      - eval "$FETCH_CONTRACT"
      - nix build -L -f. haddock
 
  - label: test
+   key: test
    if: *not_scheduled
+   depends_on: build_library
    commands:
      - eval "$FETCH_CONTRACT"
      - cd haskell
@@ -66,7 +70,9 @@ steps:
      - ./result/bin/stablecoin-test
 
  - label: nettest-local-chain-008
+   key: nettest-local-chain-008
    if: *not_scheduled
+   depends_on: build_library
    env:
      NETTEST_NODE_ENDPOINT: "http://localhost:8733"
      # this key is defined in local-chain bootstrap accounts list in
@@ -82,7 +88,9 @@ steps:
         limit: 1
 
  - label: nettest-scheduled-edonet
+   key: nettest-scheduled-edonet
    if: build.source == "schedule"
+   depends_on: build_library
    env:
      NETTEST_NODE_ENDPOINT: "http://edo.testnet.tezos.serokell.team:8732"
      # Note that testnet moneybag can run out of tz. If this happened, someone should transfer it some
@@ -93,7 +101,9 @@ steps:
    timeout_in_minutes: 180
 
  - label: weeder
+   key: weeder
    if: *not_scheduled
+   depends_on: build_library
    commands:
      - eval "$FETCH_CONTRACT"
      - cd haskell
@@ -104,6 +114,11 @@ steps:
 
  - label: packaging
    if: *not_scheduled
+   depends_on:
+     - test
+     - nettest-local-chain-008
+     - nettest-scheduled-edonet
+     - weeder
    commands:
      - eval "$FETCH_CONTRACT"
      - nix-build -A stablecoin-client -o stablecoin-static
