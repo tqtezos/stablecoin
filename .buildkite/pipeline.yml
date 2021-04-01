@@ -31,6 +31,7 @@ steps:
    soft_fail: true
 
  - label: LIGO-contract
+   key: LIGO-contract
    commands:
      - nix-build -A tezos-contract -o stablecoin_raw.tz
      - nix run -f. morley -c morley optimize --contract stablecoin_raw.tz --output stablecoin.tz
@@ -90,7 +91,9 @@ steps:
  - label: nettest-scheduled-edonet
    key: nettest-scheduled-edonet
    if: build.source == "schedule"
-   depends_on: build_library
+   depends_on:
+     - build_library
+     - LIGO-contract
    env:
      NETTEST_NODE_ENDPOINT: "http://edo.testnet.tezos.serokell.team:8732"
      # Note that testnet moneybag can run out of tz. If this happened, someone should transfer it some
