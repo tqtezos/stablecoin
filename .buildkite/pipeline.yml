@@ -122,7 +122,7 @@ steps:
      - build_library
      - LIGO-contract
    env:
-     NETTEST_NODE_ENDPOINT: "http://granadanet.testnet.tezos.serokell.team:8732"
+     NETTEST_NODE_ENDPOINT: "http://granada.testnet.tezos.serokell.team:8732"
      # Note that testnet moneybag can run out of tz. If this happened, someone should transfer it some
      # more tz, its address: tz1ij8gUYbMRUXa4xX3mNvKguhaWG9GGbURn
      MONEYBAG: "unencrypted:edsk4EYgVvKVKppJXAyeoqxJrNeyoktNqmcx5op1CFht9P1p8pPxp7"
