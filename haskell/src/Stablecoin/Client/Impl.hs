@@ -90,7 +90,7 @@ deploy (arg #sender -> sender) alias initialStorageData@InitialStorageData {..} 
     case isdContractMetadataStorage of
       -- User wants to store metadata embedded in the contact
       OpCurrentContract mbDesc -> do
-        metadata <- either throwM pure $ metadataJSON Nothing mbDesc
+        metadata <- pure $ metadataJSON Nothing mbDesc
         -- We drop some errors from metadata so that the contract will originate within operation
         -- limits.
         pure $ CurrentContract (TZ.errors [] <> metadata) True
@@ -99,7 +99,7 @@ deploy (arg #sender -> sender) alias initialStorageData@InitialStorageData {..} 
       -- User wants a new contract with metadata to be deployed.
       OpRemoteContract mbDesc -> do
         let fa2TokenMetadata = FA2.mkTokenMetadata isdTokenSymbol isdTokenName (show isdTokenDecimals)
-        metadata <- either throwM pure $ metadataJSON (Just fa2TokenMetadata) mbDesc
+        metadata <- pure $ metadataJSON (Just fa2TokenMetadata) mbDesc
         let mdrStorage = mkContractMetadataRegistryStorage
               (metadataMap $ CurrentContract metadata False)
         contractMetadataRegistryAddress <- snd <$> originateContract

@@ -24,7 +24,7 @@ import Lorentz.Contracts.Spec.TZIP16Interface
   (Error(..), License(..), Metadata(..), MetadataMap, Source(..), ViewImplementation(..))
 import qualified Lorentz.Contracts.Spec.TZIP16Interface as TZ
 import Morley.Metadata
-  (ViewCode(..), ViewCodeError, compileViewCode, compileViewCodeTH, mkMichelsonStorageView)
+  (ViewCode(..), unsafeCompileViewCode, compileViewCodeTH, mkMichelsonStorageView)
 import Morley.Micheline (ToExpression(toExpression))
 import Tezos.Address (formatAddress, parseAddress)
 
@@ -105,10 +105,10 @@ data MetadataUri metadata
 -- | Make the TZIP-16 metadata. We accept a @Maybe@ @FA2.TokenMetadata@
 -- as argument here so that we can use this function to create the metadata of the
 -- FA1.2 Variant as well.
-metadataJSON :: Maybe FA2.TokenMetadata -> Maybe Text -> Either ViewCodeError (Metadata (ToT Storage))
-metadataJSON mtmd mbDescription = do
-  views <- mkViews
-  pure $
+metadataJSON :: Maybe FA2.TokenMetadata -> Maybe Text -> Metadata (ToT Storage)
+metadataJSON mtmd mbDescription =
+  let views = mkViews
+  in
     TZ.name  "stablecoin" <>
     TZ.description (fromMaybe defaultDescription mbDescription) <>
     TZ.version (toText $ showVersion version) <>
@@ -158,18 +158,16 @@ metadataJSON mtmd mbDescription = do
       \ It draws inspiration from popular permissioned asset contracts like CENTRE Fiat Token and other similar contracts.\
       \ The contract is implemented in the LIGO language."
 
-    mkViews :: Either ViewCodeError [TZ.View (ToT Storage)]
+    mkViews :: [TZ.View (ToT Storage)]
     mkViews =
       case mtmd of
         Nothing ->
-          pure
             [ getDefaultExpiryView
             , getCounterView
             ]
-        Just tmd -> do
-          tokenMetadataView <- mkTokenMetadataView tmd
-          pure
-            [ getDefaultExpiryView
+        Just tmd ->
+          let tokenMetadataView = mkTokenMetadataView tmd
+          in [ getDefaultExpiryView
             , getCounterView
             , getBalanceView
             , getTotalSupplyView
@@ -259,14 +257,14 @@ isOperatorView =
             )
     }
 
-mkTokenMetadataView :: FA2.TokenMetadata -> Either ViewCodeError (TZ.View (ToT Storage))
-mkTokenMetadataView md = do
-  vc <- compileViewCode $ WithParam $
+mkTokenMetadataView :: FA2.TokenMetadata -> TZ.View (ToT Storage)
+mkTokenMetadataView md =
+  let vc = unsafeCompileViewCode $ WithParam $
           L.dip L.drop #
           L.int #
           L.assertEq0 [mt|Unknown TOKEN ID|] #
           L.push (0 :: Natural, md)
-  pure $ TZ.View
+  in TZ.View
     { vName = "token_metadata"
     , vDescription = Just "Get token metadata for the token id"
     , vPure = Just True
