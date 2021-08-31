@@ -70,12 +70,12 @@ steps:
      - nix build -L -f .. test
      - ./result/bin/stablecoin-test
 
- - label: nettest-local-chain-009
-   key: nettest-local-chain-009
+ - label: nettest-local-chain-010
+   key: nettest-local-chain-010
    if: *not_scheduled
    depends_on: build_library
    env:
-     NETTEST_NODE_ENDPOINT: "http://localhost:8734"
+     NETTEST_NODE_ENDPOINT: "http://localhost:8733"
      # this key is defined in local-chain bootstrap accounts list in
      # https://github.com/serokell/aquarius-infra/blob/master/servers/albali/chain.nix
      MONEYBAG: "unencrypted:edsk3GjD83F7oj2LrnRGYQer99Fj69U2QLyjWGiJ4UoBZNQwS38J4v"
@@ -87,33 +87,6 @@ steps:
    retry: &retry-nettest
       automatic:
         limit: 1
-
- - label: nettest-local-chain-010
-   key: nettest-local-chain-010
-   if: *not_scheduled
-   depends_on: build_library
-   env:
-     NETTEST_NODE_ENDPOINT: "http://localhost:8733"
-     # this key is defined in local-chain bootstrap accounts list in
-     # https://github.com/serokell/aquarius-infra/blob/master/servers/albali/chain.nix
-     MONEYBAG: "unencrypted:edsk3GjD83F7oj2LrnRGYQer99Fj69U2QLyjWGiJ4UoBZNQwS38J4v"
-   commands: *run-nettest
-   retry: *retry-nettest
-
- - label: nettest-scheduled-florencenet
-   key: nettest-scheduled-florencenet
-   if: build.source == "schedule"
-   depends_on:
-     - build_library
-     - LIGO-contract
-   env:
-     NETTEST_NODE_ENDPOINT: "http://florence.testnet.tezos.serokell.team:8732"
-     # Note that testnet moneybag can run out of tz. If this happened, someone should transfer it some
-     # more tz, its address: tz1ij8gUYbMRUXa4xX3mNvKguhaWG9GGbURn
-     MONEYBAG: "unencrypted:edsk4EYgVvKVKppJXAyeoqxJrNeyoktNqmcx5op1CFht9P1p8pPxp7"
-   commands: *run-nettest
-   retry: *retry-nettest
-   timeout_in_minutes: 360
 
  - label: nettest-scheduled-granadanet
    key: nettest-scheduled-granadanet
@@ -146,8 +119,8 @@ steps:
    if: *not_scheduled
    depends_on:
      - test
-     - nettest-local-chain-009
-     - nettest-scheduled-florencenet
+     - nettest-local-chain-010
+     - nettest-scheduled-granadanet
      - weeder
    commands:
      - eval "$FETCH_CONTRACT"
