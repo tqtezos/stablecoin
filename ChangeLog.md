@@ -5,6 +5,8 @@ SPDX-License-Identifier: MIT
 # Changelog for stablecoin
 
 ## Unreleased changes
+* [#165](https://github.com/tqtezos/stablecoin/pull/165)
+  * Bump `morley`, `lorentz` and other dependencies.
 <!-- Prepend new entries here -->
 <!-- Don't forget to update the gas/transaction costs tables in the
 README when a new version is released. -->
