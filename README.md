@@ -50,17 +50,7 @@ Please refer to the [`haskell/`](/haskell/) directory for details.
 ## Gas / Transaction costs
 
 The tables below show the gas and transaction costs of both versions (FA1.2 and FA2) of
-the stablecoin contract [v1.7.1](https://github.com/tqtezos/stablecoin/releases/tag/v1.7.1) in Delphinet.
-
-### Delphinet
-
-* [FA1.2 operations](https://delphi.tzstats.com/KT1JoPqNTPwdxgvu4dtykSPuj9qECRpWfxuF)
-* [FA2 operations](https://delphi.tzstats.com/KT1AokQQnJxNyi4FbUHN7evkfYvaEnmTy6Ry)
-
-|             | FA1.2 Gas cost | FA2 Gas cost | FA1.2 Tx cost | FA2 Tx cost |
-| ----------- | -------------- | ------------ | ------------- | ----------- |
-| origination | 63003          | 61250        | 2.794888 ꜩ    | 2.778397 ꜩ  |
-| transfer    | 65006          | 63661        | 0.006836 ꜩ    | 0.006716 ꜩ  |
+the stablecoin contract [v1.7.1](https://github.com/tqtezos/stablecoin/releases/tag/v1.7.1) in Edonet.
 
 ### Edonet
 
@@ -75,7 +65,7 @@ the stablecoin contract [v1.7.1](https://github.com/tqtezos/stablecoin/releases/
 ### Measuring
 
 To measure and collect these numbers:
-1. Configure your `tezos-client` to use a delphinet node
+1. Configure your `tezos-client` to use a current testnet node
 1. Make sure `tezos-client` has a `nettest` alias with enough ꜩ
     ```
     tezos-client get balance for nettest
