@@ -20,8 +20,10 @@ module Stablecoin.Client.Cleveland.IO
 
 import Data.Char (isAlpha, isDigit)
 import Fmt (Buildable, pretty, (+|), (|+))
-import Morley.Client (Alias(..), MorleyClientConfig(..))
+import Morley.Client
+  (Alias(..), MorleyClientEnv, MorleyClientEnv'(..))
 import qualified Morley.Client as MorleyClient
+import Morley.Client.TezosClient (TezosClientEnv(..))
 import Servant.Client (showBaseUrl)
 import System.Exit (ExitCode(..))
 import System.Process (readProcessWithExitCode)
@@ -39,7 +41,7 @@ import Stablecoin.Client (AddressAndAlias(..))
 -- CLI
 ----------------------------------------------------------------------------
 
-callStablecoinClient :: MorleyClientConfig -> [String] -> IO Text
+callStablecoinClient :: MorleyClientEnv -> [String] -> IO Text
 callStablecoinClient conf args = toText <$> do
   let allArgs = args <> morleyClientOpts conf
   readProcessWithExitCode "stablecoin-client" allArgs "N" >>=
@@ -53,13 +55,12 @@ callStablecoinClient conf args = toText <$> do
 putErrLn :: Print a => a -> IO ()
 putErrLn = hPutStrLn stderr
 
-morleyClientOpts :: MorleyClientConfig -> [String]
-morleyClientOpts (MorleyClientConfig _ap endpoint tzPath dataDir verb key) =
-  encodeMaybeOption "--endpoint" (showBaseUrl <$> endpoint)
-  <> ["--client-path", tzPath]
-  <> encodeMaybeOption "--data-dir" dataDir
-  <> replicate (fromIntegral verb) "-V"
-  <> encodeMaybeOption "--secret-key" key
+morleyClientOpts :: MorleyClientEnv -> [String]
+morleyClientOpts (MorleyClientEnv tcEnv _ mbSk _) =
+  ["--endpoint", showBaseUrl $ tceEndpointUrl tcEnv]
+  <> ["--client-path", tceTezosClientPath tcEnv]
+  <> encodeMaybeOption "--data-dir" (tceMbTezosClientDataDir tcEnv)
+  <> encodeMaybeOption "--secret-key" mbSk
 
 encodeMaybeOption :: Buildable a => String -> Maybe a -> [String]
 encodeMaybeOption _ Nothing = []

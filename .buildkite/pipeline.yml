@@ -68,52 +68,27 @@ steps:
      - eval "$FETCH_CONTRACT"
      - cd haskell
      - nix build -L -f .. test
-     - ./result/bin/stablecoin-test
-
- - label: nettest-local-chain-009
-   key: nettest-local-chain-009
-   if: *not_scheduled
-   depends_on: build_library
-   env:
-     NETTEST_NODE_ENDPOINT: "http://localhost:8734"
-     # this key is defined in local-chain bootstrap accounts list in
-     # https://github.com/serokell/aquarius-infra/blob/master/servers/albali/chain.nix
-     MONEYBAG: "unencrypted:edsk3GjD83F7oj2LrnRGYQer99Fj69U2QLyjWGiJ4UoBZNQwS38J4v"
-   commands: &run-nettest
-     - eval "$FETCH_CONTRACT"
-     - cd haskell/
-     - nix build -L -f ../ nettest
-     - nix run -f ../ tezos-client stablecoin-client -c ../scripts/ci/run-local-chain-nettest.sh ./result/bin/stablecoin-nettest
-   retry: &retry-nettest
-      automatic:
-        limit: 1
+     - ./result/bin/stablecoin-test --nettest-mode=disable-network
 
  - label: nettest-local-chain-010
    key: nettest-local-chain-010
    if: *not_scheduled
    depends_on: build_library
    env:
-     NETTEST_NODE_ENDPOINT: "http://localhost:8733"
+     TASTY_NETTEST_NODE_ENDPOINT: "http://localhost:8733"
      # this key is defined in local-chain bootstrap accounts list in
      # https://github.com/serokell/aquarius-infra/blob/master/servers/albali/chain.nix
-     MONEYBAG: "unencrypted:edsk3GjD83F7oj2LrnRGYQer99Fj69U2QLyjWGiJ4UoBZNQwS38J4v"
-   commands: *run-nettest
-   retry: *retry-nettest
-
- - label: nettest-scheduled-florencenet
-   key: nettest-scheduled-florencenet
-   if: build.source == "schedule"
-   depends_on:
-     - build_library
-     - LIGO-contract
-   env:
-     NETTEST_NODE_ENDPOINT: "http://florence.testnet.tezos.serokell.team:8732"
-     # Note that testnet moneybag can run out of tz. If this happened, someone should transfer it some
-     # more tz, its address: tz1ij8gUYbMRUXa4xX3mNvKguhaWG9GGbURn
-     MONEYBAG: "unencrypted:edsk4EYgVvKVKppJXAyeoqxJrNeyoktNqmcx5op1CFht9P1p8pPxp7"
-   commands: *run-nettest
-   retry: *retry-nettest
-   timeout_in_minutes: 360
+     TASTY_NETTEST_MONEYBAG_SECRET_KEY: "unencrypted:edsk3GjD83F7oj2LrnRGYQer99Fj69U2QLyjWGiJ4UoBZNQwS38J4v"
+   commands: &run-nettest
+     - eval "$FETCH_CONTRACT"
+     - cd haskell/
+     - nix build -L -f ../ nettest
+     - nix run -f ../ tezos-client stablecoin-client -c ../scripts/ci/run-local-chain-nettest.sh ./result/bin/stablecoin-nettest
+     - nix build -L -f .. test
+     - nix run -f ../ tezos-client -c ./result/bin/stablecoin-test --nettest-mode=only-network
+   retry: &retry-nettest
+      automatic:
+        limit: 1
 
  - label: nettest-scheduled-granadanet
    key: nettest-scheduled-granadanet
@@ -122,10 +97,10 @@ steps:
      - build_library
      - LIGO-contract
    env:
-     NETTEST_NODE_ENDPOINT: "http://granada.testnet.tezos.serokell.team:8732"
+     TASTY_NETTEST_NODE_ENDPOINT: "http://granada.testnet.tezos.serokell.team:8732"
      # Note that testnet moneybag can run out of tz. If this happened, someone should transfer it some
      # more tz, its address: tz1ij8gUYbMRUXa4xX3mNvKguhaWG9GGbURn
-     MONEYBAG: "unencrypted:edsk4EYgVvKVKppJXAyeoqxJrNeyoktNqmcx5op1CFht9P1p8pPxp7"
+     TASTY_NETTEST_MONEYBAG_SECRET_KEY: "unencrypted:edsk4EYgVvKVKppJXAyeoqxJrNeyoktNqmcx5op1CFht9P1p8pPxp7"
    commands: *run-nettest
    retry: *retry-nettest
    timeout_in_minutes: 360
@@ -146,8 +121,8 @@ steps:
    if: *not_scheduled
    depends_on:
      - test
-     - nettest-local-chain-009
-     - nettest-scheduled-florencenet
+     - nettest-local-chain-010
+     - nettest-scheduled-granadanet
      - weeder
    commands:
      - eval "$FETCH_CONTRACT"

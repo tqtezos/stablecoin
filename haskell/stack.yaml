@@ -3,7 +3,7 @@
 
 # To update hackage and stackage indexes used by CI run:
 # $ niv update hackage.nix; niv update stackage.nix
-resolver: lts-16.5
+resolver: lts-17.3
 
 packages:
 - .
@@ -11,48 +11,63 @@ packages:
 extra-deps:
 - git:
     https://gitlab.com/morley-framework/morley.git
-    # ^ CI cannot use ssh, so we use http clone here
+  # ^ CI cannot use ssh, so we use http clone here
   commit:
-    0cc70793711af3a1cf65ec0fac2a2c147695c1d3 # master
+    a726d42f89f83aa794f381b5332a542b634ba057 # morley-1.15.1
   subdirs:
     - code/cleveland
     - code/morley-client
+
 
 - git:
     https://gitlab.com/morley-framework/morley-metadata.git
     # ^ CI cannot use ssh, so we use http clone here
   commit:
-    34342cf86e51190b541a68f795899a4328a3db01 # master
+    fecdf4db63a49412a750564119f2f94aa04afd80 # master
   subdirs:
     - code/morley-metadata
     - code/morley-metadata-test
 
+- git:
+    https://gitlab.com/morley-framework/indigo.git
+  commit:
+    3812248243e58ed7eae4579c777751fbe32f897a # master
+  subdirs:
+    - .
+
 # Stable parts of morley available from Hackage
-- morley-1.12.0
-- morley-prelude-0.3.0
-- lorentz-0.9.1
-- indigo-0.5.0
+- morley-prelude-0.4.2
+- morley-1.15.1
+- lorentz-0.12.1
 
 # Required by morley
 - tasty-hunit-compat-0.2
-- uncaught-exception-0.1.0
-- base58-bytestring-0.1.0
 - hex-text-0.1.0.0
-- pretty-terminal-0.1.0.0
+- named-0.3.0.1
 - show-type-0.1.1
+- summoner-2.0.1.1
+- generic-data-0.8.3.0
+- neat-interpolation-0.3.2.6
+- megaparsec-8.0.0
+- git: https://github.com/serokell/base-noprelude.git
+  commit: 87df0899801dcdffd08ef7c3efd3c63e67e623c2
+- git: https://github.com/serokell/galois-field.git
+  commit: 576ba98ec947370835a1f308895037c7aa7f8b71
 - git: https://github.com/int-index/caps.git
   commit: c5d61837eb358989b581ed82b1e79158c4823b1b
-- base-noprelude-4.13.0.0@sha256:3cccbfda38e1422ca5cc436d58858ba51ff9114d2ed87915a6569be11e4e5a90,6842
-- fmt-0.6.1.2@sha256:405a1bfc0ba0fd99f6eb1ee71f100045223f79204f961593012f28fd99cd1237,5319
-- named-0.3.0.1@sha256:69b9722301201f8ed8abc89c4595e22c746e944bf4cdfafa8b21b14d336b26d1,2233
-- vinyl-0.12.1@sha256:43456d4b3009646eee63953cbe539f1f4d0caf8bc3c25e841117e712836508f3,3790
-- cryptonite-0.27
+- git: https://github.com/serokell/elliptic-curve.git
+  commit: b8a3d0cf8f7bacfed77dc3b697f5d08bd33396a8
+- git: https://github.com/serokell/pairing.git
+  commit: cf86cf1f6b03f478a439703b050c520a9d455353
+# we need https://github.com/feuerbach/tasty/pull/279 which is included in tasty-1.4
+- tasty-1.4
+- tasty-ant-xml-1.1.8
 
 - git:
     https://gitlab.com/morley-framework/morley-ledgers.git
     # ^ CI cannot use ssh, so we use http clone here
   commit:
-    f4e3fffca1d877e404b38c54d8e1b411641c3548 # master
+    2c9c23d50b5cef62d71572573ea760a01b44d7cf # master
   subdirs:
     - code/morley-ledgers
     - code/morley-ledgers-test

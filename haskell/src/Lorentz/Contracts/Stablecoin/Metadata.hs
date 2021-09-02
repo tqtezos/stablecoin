@@ -36,7 +36,7 @@ jfield :: MText
 jfield = [mt|metadataJSON|]
 
 metadataMap :: J.ToJSON metadata => MetadataUri metadata -> MetadataMap BigMap
-metadataMap mdata = BigMap $ Map.fromList $
+metadataMap mdata = mkBigMap $
   -- One might reasonable expect that the URI would be stored as packed Michelson strings,
   -- but the TZIP-16 spec is explicit about that not being the case.
   --
@@ -214,7 +214,7 @@ getTotalSupplyView =
     , vImplementations = one $
         VIMichelsonStorageView $
           mkMichelsonStorageView @Storage @Natural Nothing [] $
-            $$(compileViewCodeTH $ WithParam $
+            $$(compileViewCodeTH $ WithParam @Natural $
               L.int #
               L.assertEq0 [mt|Unknown TOKEN ID|] #
               L.toField #sTotalSupply
@@ -247,7 +247,7 @@ isOperatorView =
             $$(compileViewCodeTH $ WithParam @FA2.OperatorParam $
               L.dip (L.toField #sOperators) #
 
-              L.getField #opTokenId # forcedCoerce_ #
+              L.getField #opTokenId # forcedCoerce_ @FA2.TokenId @Natural #
               L.int #
               L.assertEq0 [mt|Unknown TOKEN ID|] #
 
@@ -261,7 +261,7 @@ isOperatorView =
 
 mkTokenMetadataView :: FA2.TokenMetadata -> Either ViewCodeError (TZ.View (ToT Storage))
 mkTokenMetadataView md = do
-  vc <- compileViewCode $ WithParam $
+  vc <- compileViewCode $ WithParam @Natural $
           L.dip L.drop #
           L.int #
           L.assertEq0 [mt|Unknown TOKEN ID|] #

@@ -217,12 +217,12 @@ mkInitialStorage :: OriginationParams -> Storage
 mkInitialStorage OriginationParams{..} =
   Storage
     { sDefaultExpiry = opDefaultExpiry
-    , sLedger = BigMap opBalances
+    , sLedger = BigMap Nothing opBalances
     , sMintingAllowances = opMinters
-    , sOperators = BigMap (Map.foldrWithKey foldFn mempty opOwnerToOperators)
+    , sOperators = BigMap Nothing (Map.foldrWithKey foldFn mempty opOwnerToOperators)
     , sPaused = opPaused
     , sPermitCounter = 0
-    , sPermits = BigMap opPermits
+    , sPermits = BigMap Nothing opPermits
     , sRoles = Roles
         { rMasterMinter = opMasterMinter
         , rOwner = opOwner

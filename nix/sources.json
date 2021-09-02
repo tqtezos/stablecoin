@@ -5,10 +5,10 @@
         "homepage": "",
         "owner": "input-output-hk",
         "repo": "hackage.nix",
-        "rev": "a083148b7e4f085e433eacf160dedcb8c3483293",
-        "sha256": "0cir7iznygasb2a3b1q80sb01d3mg68ainy8w1fgfb0h16k7z8nz",
+        "rev": "68554fd66556aa2f23854541cb36745ce99866ca",
+        "sha256": "1xaswqmrlli7g7ghmvqwilrhv8fykw6f9yw9liiiz2g607ij5d0m",
         "type": "tarball",
-        "url": "https://github.com/input-output-hk/hackage.nix/archive/a083148b7e4f085e433eacf160dedcb8c3483293.tar.gz",
+        "url": "https://github.com/input-output-hk/hackage.nix/archive/68554fd66556aa2f23854541cb36745ce99866ca.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "haskell-nix-weeder": {
@@ -42,10 +42,10 @@
         "type": "git"
     },
     "morley": {
-        "rev": "1.13.0",
-        "sha256": "0g9mdqb7l85z8qa931lxmcqrzhscq6451plz1k18v738ylx4dxmj",
+        "rev": "1.15.1",
+        "sha256": "1kc0zp8lsri3dzmrflk2knxq826dm4pgpgk05pk7kd8kq7y0b5bd",
         "type": "tarball",
-        "url": "https://gitlab.com/morley-framework/morley/-/archive/morley-1.13.0/morley-morley-1.13.0.tar.gz",
+        "url": "https://gitlab.com/morley-framework/morley/-/archive/morley-1.15.1/morley-morley-1.15.1.tar.gz",
         "url_template": "https://gitlab.com/morley-framework/morley/-/archive/morley-<rev>/morley-morley-<rev>.tar.gz"
     },
     "nixpkgs": {
@@ -66,10 +66,10 @@
         "homepage": "",
         "owner": "input-output-hk",
         "repo": "stackage.nix",
-        "rev": "5e095b5a139ea53a4758717ba7fa8382e36f6cce",
-        "sha256": "0d2iq90xfgvl1dl98fq3kvccqnkjkq9lr2kzplmqkjrbg0yapb7j",
+        "rev": "abd2c88e2b9db8f59aac89eba30ee763811f6722",
+        "sha256": "0mrybfykarvzwnqn8r5ndz5z5n411lcg4x34ly78a0xrn119mhiz",
         "type": "tarball",
-        "url": "https://github.com/input-output-hk/stackage.nix/archive/5e095b5a139ea53a4758717ba7fa8382e36f6cce.tar.gz",
+        "url": "https://github.com/input-output-hk/stackage.nix/archive/abd2c88e2b9db8f59aac89eba30ee763811f6722.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "tezos-packaging": {

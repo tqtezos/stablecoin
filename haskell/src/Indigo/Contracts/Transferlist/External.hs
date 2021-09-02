@@ -46,12 +46,12 @@ convertToExternalStorage :: Internal.Storage -> Address -> Address -> Storage
 convertToExternalStorage Internal.Storage {..} issuer admin = Storage {..}
   where
     users :: BigMap Address TransferlistId
-    users = BigMap uniqueUsers
+    users = BigMap Nothing uniqueUsers
 
     transferlists :: BigMap TransferlistId OutboundTransferlists
     transferlists
-      | null grouped = BigMap Map.empty -- Check for `head` call in `translate`
-      | otherwise = BigMap $ Map.fromList (translate <$> grouped)
+      | null grouped = mkBigMap mempty -- Check for `head` call in `translate`
+      | otherwise = mkBigMap (translate <$> grouped)
 
     -- Construct a map of all unique addresses and their ids participating in transfers
     uniqueUsers :: Map Address TransferlistId

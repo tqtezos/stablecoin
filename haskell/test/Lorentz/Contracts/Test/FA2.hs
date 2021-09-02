@@ -260,7 +260,7 @@ fa2Spec fa2Originate = do
         withSender commonOperator $ lCallEP stablecoinContract (Call @"Transfer") transfer1
 
         lExpectStorage stablecoinContract $ \storage ->
-          unless (M.lookup wallet1 (unBigMap $ sLedger storage) == Nothing) $
+          unless (M.lookup wallet1 (bmMap $ sLedger storage) == Nothing) $
             Left $ CustomTestError "Zero balance account was not removed"
 
   describe "Self transfer" $ do
@@ -487,7 +487,7 @@ fa2Spec fa2Originate = do
   let
     checkForOperator stablecoinContract owner operator expectation =
       lExpectStorage stablecoinContract $ \storage -> do
-        let found = isJust $ M.lookup (owner, operator) (unBigMap $ sOperators storage)
+        let found = isJust $ M.lookup (owner, operator) (bmMap $ sOperators storage)
         if found /= expectation
             then Left $ CustomTestError $ "Unexpected operator status. Expected: "
               <> show expectation <> " Found: " <> show found
@@ -656,13 +656,13 @@ fa2Spec fa2Originate = do
   ---- call the hooks in either sender or receiver addresses.
   describe "Owner hook behavior on transfer" $ do
     it "does not call sender's transfer hook on transfer" $ integrationalTestExpectation $ do
-        senderWithHook <- lOriginateEmpty @FA2OwnerHook contractConsumer "Sender hook consumer"
+        senderWithHook <- chAddress <$> lOriginateEmpty @FA2OwnerHook contractConsumer "Sender hook consumer"
         let originationParams =
-              addAccount (unTAddress senderWithHook, (commonOperators, 10)) defaultOriginationParams
+              addAccount (senderWithHook, (commonOperators, 10)) defaultOriginationParams
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
             transfers = constructSingleTransfer
-              (#from_ .! unTAddress senderWithHook)
+              (#from_ .! senderWithHook)
               (#to_ .! wallet2)
               (#amount .! 10)
 
@@ -672,13 +672,13 @@ fa2Spec fa2Originate = do
 
     it "does not call receiver's transfer hook on transfer" $
       integrationalTestExpectation $ do
-        receiverWithHook <- lOriginateEmpty @FA2OwnerHook contractConsumer "Receiver hook consumer"
+        receiverWithHook <- chAddress <$> lOriginateEmpty @FA2OwnerHook contractConsumer "Receiver hook consumer"
         let originationParams = addAccount (wallet1, (commonOperators, 10)) defaultOriginationParams
         withOriginated fa2Originate originationParams $ \fa2contract -> do
           let
             transfers = constructSingleTransfer
               (#from_ .! wallet1)
-              (#to_ .! unTAddress receiverWithHook)
+              (#to_ .! receiverWithHook)
               (#amount .! 10)
 
           withSender commonOperator $ lCallEP fa2contract (Call @"Transfer") transfers

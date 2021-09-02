@@ -7,7 +7,6 @@ module SMT
   ) where
 
 import qualified Data.Map as Map
-import Data.Typeable (cast)
 import Fmt
 import Hedgehog
 import qualified Hedgehog.Gen as Gen
@@ -19,6 +18,7 @@ import Lorentz
   (Address, EntrypointRef(Call), GetEntrypointArgCustom, IsoValue(..), TAddress(TAddress),
   parameterEntrypointCallCustom)
 import Michelson.Interpret
+import Michelson.Runtime.GState (BigMapCounter(..))
 import Michelson.Test.Dummy
 import Michelson.Test.Integrational
 import Michelson.Text
@@ -166,21 +166,20 @@ data SimpleStorage = SimpleStorage
 instance Buildable SimpleStorage where
   build = genericF
 
-resultToSs :: InterpretResult -> SimpleStorage
-resultToSs InterpretResult {..} = case cast iurNewStorage of
-  (Just (sval :: T.Value (T.ToT Storage))) -> storageToSs (fromVal @Storage sval)
-  Nothing -> error "Impossible"
+resultToSs :: T.Value (ToT Storage) -> SimpleStorage
+resultToSs sval =
+  storageToSs (fromVal @Storage sval)
 
 storageToSs :: Storage -> SimpleStorage
 storageToSs storage = SimpleStorage
   { ssMintingAllowances = sMintingAllowances storage
-  , ssLedger = T.unBigMap $ sLedger storage
+  , ssLedger = T.bmMap $ sLedger storage
   , ssOwner = rOwner $ sRoles storage
   , ssMasterMinter = rMasterMinter $ sRoles storage
   , ssPauser = rPauser $ sRoles storage
   , ssPendingOwner = rPendingOwner $ sRoles storage
   , ssTransferlistContract = sTransferlistContract storage
-  , ssOperators = T.unBigMap $ sOperators storage
+  , ssOperators = T.bmMap $ sOperators storage
   , ssPaused = sPaused storage
   , ssTotalSupply = sTotalSupply storage
   }
@@ -221,9 +220,6 @@ instance (Buildable p) => Buildable (ContractCall p) where
 
 instance (Buildable p) => Show (ContractCall p) where
   show = pretty
-
-instance Buildable (Address, Natural) where
-  build  = genericF
 
 instance Buildable (Map Address Natural) where
   build = pretty . Map.assocs
@@ -517,7 +513,7 @@ callEntrypoint
   :: ContractCall Parameter
   -> Storage
   -> ContractEnv
-  -> Either InterpretError InterpretResult
+  -> Either InterpretError (T.Value (ToT Storage))
 callEntrypoint cc st env = case ccParameter cc of
   Pause -> call (Call @"Pause") ()
   Unpause -> call (Call @"Unpause") ()
@@ -541,15 +537,19 @@ callEntrypoint cc st env = case ccParameter cc of
       :: IsoValue (GetEntrypointArgCustom Parameter ep)
       => EntrypointRef ep
       -> GetEntrypointArgCustom Parameter ep
-      -> Either InterpretError InterpretResult
+      -> Either InterpretError (T.Value (ToT Storage))
     call epRef param =
-      handleContractReturn $
+      case
         interpret
           stablecoinContract
           (parameterEntrypointCallCustom @Parameter epRef)
           (toVal param)
           (toVal st)
-          env
+          (BigMapCounter 0)
+          env of
+        (Left e, s) -> Left $ InterpretError (e, isMorleyLogs s)
+        (Right (_, newSt), _) -> Right newSt
+
 
 ensureOwner :: Address -> SimpleStorage -> Either ModelError ()
 ensureOwner addr SimpleStorage {..} = if addr == ssOwner then Right () else Left NOT_CONTRACT_OWNER
@@ -734,7 +734,7 @@ applySingleTransfer :: Address -> Either ModelError SimpleStorage -> FA2.Transfe
 applySingleTransfer ccSender estorage (FA2.TransferItem from txs) =
   case estorage of
     Left err -> Left err
-    Right storage@(SimpleStorage {..}) ->
+    Right storage@(SimpleStorage {}) ->
       if ccSender == from || isOperatorOf storage ccSender from
         then foldl' singleTranferTx (Right storage) txs
         else Left FA2_NOT_OPERATOR

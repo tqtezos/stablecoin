@@ -38,7 +38,6 @@ module Lorentz.Contracts.Stablecoin.Types
   ) where
 
 import Data.FileEmbed (embedStringFile)
-import qualified Data.Map as Map
 import Fmt
 import qualified Text.Show
 
@@ -49,7 +48,7 @@ import Michelson.Test.Import (readContract)
 import Michelson.Typed (Notes(..))
 import qualified Michelson.Typed as T
 import Michelson.Untyped (noAnn)
-import Morley.Client (AddressOrAlias(..), BigMapId(..))
+import Morley.Client (AddressOrAlias(..))
 import qualified Tezos.Crypto as Hash
 
 import Lorentz.Contracts.StablecoinPath (metadataRegistryContractPath, stablecoinPath)
@@ -307,7 +306,7 @@ mkContractMetadataRegistryStorage m = MetadataRegistryStorage
 defaultContractMetadataStorage :: MetadataRegistryStorage
 defaultContractMetadataStorage =
   mkContractMetadataRegistryStorage
-    (BigMap $ Map.fromList [([mt|TEST|], "TEST"), ([mt|Test|], "Test")])
+    (mkBigMap [([mt|TEST|], "TEST"), ([mt|Test|], "Test")])
 
 -- This empty splice lets us workaround the GHC stage restriction, and refer to `Storage`
 -- in the TH splices below.
@@ -345,7 +344,7 @@ stablecoinContract =
         [|
           -- Note: it's ok to use `error` here, because we just proved that the contract
           -- can be parsed+typechecked.
-          either (error . pretty) snd $
+          either (error . pretty) id $
             readContract
               stablecoinPath
               $(embedStringFile stablecoinPath)
@@ -361,7 +360,7 @@ contractMetadataContract =
         [|
           -- Note: it's ok to use `error` here, because we just proved that the contract
           -- can be parsed+typechecked.
-          either (error . pretty) snd $
+          either (error . pretty) id $
             readContract
               metadataRegistryContractPath
               $(embedStringFile metadataRegistryContractPath)

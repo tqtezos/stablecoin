@@ -7,7 +7,9 @@ module StablecoinClientTest
   ( stablecoinClientScenario
   ) where
 
+import Morley.Client.TezosClient (AddressOrAlias(..))
 import Morley.Nettest as NT
+import Morley.Nettest.Abstract (SpecificOrDefaultAliasHint, nettestAddressAlias)
 import Tezos.Address (Address)
 import Util.Named ((.!))
 
@@ -17,22 +19,29 @@ import Stablecoin.Client.Cleveland
   (StablecoinScenario, acceptOwnership, assertEq, burn, changeMasterMinter, changePauser,
   configureMinter, deploy, getBalanceOf, getContractOwner, getMasterMinter, getMintingAllowance,
   getPaused, getPauser, getPendingContractOwner, getTokenMetadata, getTransferlist, isOperator,
-  mint, pause, removeMinter, revealKeyUnlessRevealed, setTransferlist, transferOwnership, unpause,
+  mint, pause, removeMinter, setTransferlist, transferOwnership, unpause,
   updateOperators)
 import qualified Stablecoin.Client.Cleveland as SC
 import Stablecoin.Client.Parser (ContractMetadataOptions(..))
 
 -- | Check that all the `stablecoin-client` commands work.
+
+createRole :: SpecificOrDefaultAliasHint -> StablecoinScenario m (Address, AddressOrAlias)
+createRole alias = do
+  addr <- newAddress alias
+  return (addr, AddressResolved addr)
+
 stablecoinClientScenario :: StablecoinScenario m ()
 stablecoinClientScenario = do
-  let originator = nettestAddress
+  nettestAddress <- resolveAddress nettestAddressAlias
+  let originator = AddressResolved nettestAddress
 
   comment "Creating roles"
-  (masterMinterAlias, masterMinterAddr, masterMinter) <- createRole "master-minter"
-  (pauserAlias, pauserAddr, pauser) <- createRole "pauser"
-  (contractOwnerAlias, contractOwnerAddr, contractOwner) <- createRole "contract-owner"
-  (_, _, minter) <- createRole "minter"
-  (transferlistAlias, transferlistAddr, transferlist) <- createRole "transferlist"
+  (masterMinterAddr, masterMinter) <- createRole "master-minter"
+  (pauserAddr, pauser) <- createRole "pauser"
+  (contractOwnerAddr, contractOwner) <- createRole "contract-owner"
+  (_, minter) <- createRole "minter"
+  (transferlistAddr, transferlist) <- createRole "transferlist"
 
   comment "Deploying contract"
   contractAddr <- deploy (#sender.! originator) InitialStorageData
@@ -49,12 +58,12 @@ stablecoinClientScenario = do
   let contract = #contract .! AddressResolved contractAddr
   comment "Testing get-balance"
   actualBalance <- SC.getBalance contract
-  expectedBalance <- NT.getBalance (AddressResolved contractAddr)
+  expectedBalance <- NT.getBalance contractAddr
   actualBalance `assertEq` expectedBalance
 
   comment "Testing set/get-transferlist"
   getTransferlist contract >>= \tl ->
-    tl `assertEq` Just (AddressAndAlias transferlistAddr (Just transferlistAlias))
+    fmap getAddress tl `assertEq` Just transferlistAddr
   setTransferlist (#sender .! contractOwner) contract Nothing
   getTransferlist contract >>= \tl ->
     tl `assertEq` Nothing
@@ -92,23 +101,23 @@ stablecoinClientScenario = do
   isOperator contract minter pauser >>= (`assertEq` False)
 
   comment "Testing change-master-minter"
-  getMasterMinter contract >>= \mm ->
-    mm `assertEq` AddressAndAlias masterMinterAddr (Just masterMinterAlias)
-  changeMasterMinter (#sender .! contractOwner) contract nettestAddress
+  getMasterMinter contract >>= \(AddressAndAlias mm _) ->
+    mm `assertEq` masterMinterAddr
+  changeMasterMinter (#sender .! contractOwner) contract $ AddressResolved nettestAddress
 
   comment "Testing change-pauser"
-  getPauser contract >>= \p ->
-    p `assertEq` AddressAndAlias pauserAddr (Just pauserAlias)
-  changePauser (#sender .! contractOwner) contract nettestAddress
+  getPauser contract >>= \(AddressAndAlias p _) ->
+    p `assertEq` pauserAddr
+  changePauser (#sender .! contractOwner) contract $ AddressResolved nettestAddress
 
   comment "Testing transfer/accept-ownership"
-  getContractOwner contract >>= \owner ->
-    owner `assertEq` AddressAndAlias contractOwnerAddr (Just contractOwnerAlias)
+  getContractOwner contract >>= \(AddressAndAlias owner _) ->
+    owner `assertEq` contractOwnerAddr
   getPendingContractOwner contract >>= \po ->
     po `assertEq` Nothing
   transferOwnership (#sender .! contractOwner) contract pauser
   getPendingContractOwner contract >>= \po ->
-    po `assertEq` Just (AddressAndAlias pauserAddr (Just pauserAlias))
+    fmap getAddress po `assertEq` Just pauserAddr
   acceptOwnership (#sender .! pauser) contract
 
   comment "Testing token metadata"
@@ -116,15 +125,5 @@ stablecoinClientScenario = do
     tm `assertEq` (#symbol .! "a", #name .! "b", #decimals .! 3)
 
   where
-    createRole :: AliasHint -> StablecoinScenario m (Alias, Address, AddressOrAlias)
-    createRole aliasHint = do
-      addr <- newAddress aliasHint
-
-      -- Note: `newAddress` prepends the alias with the prefix from the
-      -- `MorleyClientConfig`.
-      -- So we use `getAlias` to get the actual alias (prefix included)
-      -- associated with this address.
-      alias <- getAlias (AddressResolved addr)
-
-      revealKeyUnlessRevealed alias
-      pure (alias, addr, AddressResolved addr)
+    getAddress :: AddressAndAlias -> Address
+    getAddress (AddressAndAlias addr _) = addr
