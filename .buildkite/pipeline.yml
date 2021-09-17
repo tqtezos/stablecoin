@@ -97,7 +97,7 @@ steps:
      - build_library
      - LIGO-contract
    env:
-     TASTY_NETTEST_NODE_ENDPOINT: "http://granada.testnet.tezos.serokell.team:8732"
+     TASTY_NETTEST_NODE_ENDPOINT: "https://granada.testnet.tezos.serokell.team"
      # Note that testnet moneybag can run out of tz. If this happened, someone should transfer it some
      # more tz, its address: tz1ij8gUYbMRUXa4xX3mNvKguhaWG9GGbURn
      TASTY_NETTEST_MONEYBAG_SECRET_KEY: "unencrypted:edsk4EYgVvKVKppJXAyeoqxJrNeyoktNqmcx5op1CFht9P1p8pPxp7"
