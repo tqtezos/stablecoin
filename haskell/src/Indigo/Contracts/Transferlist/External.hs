@@ -59,8 +59,7 @@ convertToExternalStorage Internal.Storage {..} issuer admin = Storage {..}
                 & Set.toList
                 & fmap (\(a, b) -> [a, b])
                 & mconcat
-                & Set.fromList
-                & Set.toList
+                & sortNub
                 & flip zip [0..]
                 & Map.fromList
 

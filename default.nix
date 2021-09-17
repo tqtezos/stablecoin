@@ -21,11 +21,24 @@ let
       subdirectory = ".";
   }];
   local-packages-names = map (p: p.name) local-packages;
+
+  projectSrc = haskell-nix.haskellLib.cleanGit {
+    name = "stablecoin";
+    src = ./haskell;
+  };
+
+  # haskell.nix does not support 'include' in package.yaml, we have to generate .cabal ourselves
+  cabalFile = pkgs.runCommand "stablecoin.cabal" {} ''
+    ${pkgs.haskellPackages.hpack}/bin/hpack ${projectSrc} - > $out
+  '';
+
   project = haskell-nix.stackProject {
-    src = haskell-nix.haskellLib.cleanGit {
-      name = "stablecoin";
-      src = ./haskell;
-    };
+    # project src with .cabal file added
+    src = pkgs.runCommand "src-with-cabal" {} ''
+      cp -r --no-preserve=mode ${projectSrc} $out
+      cp ${cabalFile} $out/stablecoin.cabal
+    '';
+    ignorePackageYaml = true;
     modules = [
       {
         packages = pkgs.lib.genAttrs local-packages-names (packageName: {
