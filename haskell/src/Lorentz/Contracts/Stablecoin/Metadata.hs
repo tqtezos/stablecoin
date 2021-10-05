@@ -24,7 +24,7 @@ import Lorentz.Contracts.Spec.TZIP16Interface
   (Error(..), License(..), Metadata(..), MetadataMap, Source(..), ViewImplementation(..))
 import qualified Lorentz.Contracts.Spec.TZIP16Interface as TZ
 import Morley.Metadata
-  (ViewCode(..), ViewCodeError, compileViewCode, compileViewCodeTH, mkMichelsonStorageView)
+  (ViewCode(..), compileViewCodeTH, mkMichelsonStorageView, unsafeCompileViewCode)
 import Morley.Micheline (ToExpression(toExpression))
 import Tezos.Address (formatAddress, parseAddress)
 
@@ -105,51 +105,49 @@ data MetadataUri metadata
 -- | Make the TZIP-16 metadata. We accept a @Maybe@ @FA2.TokenMetadata@
 -- as argument here so that we can use this function to create the metadata of the
 -- FA1.2 Variant as well.
-metadataJSON :: Maybe FA2.TokenMetadata -> Maybe Text -> Either ViewCodeError (Metadata (ToT Storage))
-metadataJSON mtmd mbDescription = do
-  views <- mkViews
-  pure $
-    TZ.name  "stablecoin" <>
-    TZ.description (fromMaybe defaultDescription mbDescription) <>
-    TZ.version (toText $ showVersion version) <>
-    TZ.license (License { lName = "MIT", lDetails = Nothing }) <>
-    TZ.authors
-        [ TZ.author "Serokell" "https://serokell.io/"
-        , TZ.author "TQ Tezos" "https://tqtezos.com/"
-        ] <>
-    TZ.homepage "https://github.com/tqtezos/stablecoin/" <>
-    TZ.source Source
-      { sLocation = Just $ "https://github.com/tqtezos/stablecoin/tree/v" <> toText (showVersion version) <> "/ligo/stablecoin"
-      , sTools = [ "ligo " <> $ligoVersion ]
-      } <>
-    TZ.interfaces [ TZ.Interface "TZIP-012", TZ.Interface "TZIP-017" ] <>
-    TZ.errors [ mkError [mt|FA2_TOKEN_UNDEFINED|]        [mt|All `token_id`s must be 0|]
-              , mkError [mt|FA2_INSUFFICIENT_BALANCE|]   [mt|Cannot debit from a wallet because of insufficient amount of tokens|]
-              , mkError [mt|FA2_NOT_OPERATOR|]           [mt|You're neither the owner or a permitted operator of one or more wallets from which tokens will be transferred|]
-              , mkError [mt|XTZ_RECEIVED|]               [mt|Contract received a non-zero amount of tokens|]
-              , mkError [mt|NOT_CONTRACT_OWNER|]         [mt|Operation can only be performed by the contract's owner|]
-              , mkError [mt|NOT_PENDING_OWNER|]          [mt|Operation can only be performed by the current contract's pending owner|]
-              , mkError [mt|NO_PENDING_OWNER_SET|]       [mt|There's no pending transfer of ownership|]
-              , mkError [mt|NOT_PAUSER|]                 [mt|Operation can only be performed by the contract's pauser|]
-              , mkError [mt|NOT_MASTER_MINTER|]          [mt|Operation can only be performed by the contract's master minter|]
-              , mkError [mt|NOT_MINTER|]                 [mt|Operation can only be performed by registered minters|]
-              , mkError [mt|CONTRACT_PAUSED|]            [mt|Operation cannot be performed while the contract is paused|]
-              , mkError [mt|CONTRACT_NOT_PAUSED|]        [mt|Operation cannot be performed while the contract is not paused|]
-              , mkError [mt|NOT_TOKEN_OWNER|]            [mt|You cannot configure another user's operators|]
-              , mkError [mt|CURRENT_ALLOWANCE_REQUIRED|] [mt|The given address is already a minter, you must specify its current minting allowance|]
-              , mkError [mt|ALLOWANCE_MISMATCH|]         [mt|The given current minting allowance does not match the minter's actual current minting allowance|]
-              , mkError [mt|ADDR_NOT_MINTER|]            [mt|This address is not a registered minter|]
-              , mkError [mt|ALLOWANCE_EXCEEDED|]         [mt|The amount of tokens to be minted exceeds your current minting allowance|]
-              , mkError [mt|BAD_TRANSFERLIST|]           [mt|The given address is a not a smart contract complying with the transferlist interface|]
-              , mkError [mt|MINTER_LIMIT_REACHED|]       [mt|Cannot add new minter because the number of minters is already at the limit|]
-              , mkError [mt|MISSIGNED|]                  [mt|This permit's signature is invalid|]
-              , mkError [mt|EXPIRED_PERMIT|]             [mt|A permit was found, but it has already expired|]
-              , mkError [mt|NOT_PERMIT_ISSUER|]          [mt|You're not the issuer of the given permit|]
-              , mkError [mt|DUP_PERMIT|]                 [mt|The given permit already exists|]
-              , mkError [mt|EXPIRY_TOO_BIG|]             [mt|The `set_expiry` entrypoint was called with an expiry value that is too big|]
-              , mkError [mt|NEGATIVE_TOTAL_SUPPLY|]      [mt|The total_supply value was found to be less than zero after an operation. This indicates a bug in the contract.|]
-              ] <>
-    TZ.views views
+metadataJSON :: Maybe FA2.TokenMetadata -> Maybe Text -> Metadata (ToT Storage)
+metadataJSON mtmd mbDescription =
+  TZ.name  "stablecoin" <>
+  TZ.description (fromMaybe defaultDescription mbDescription) <>
+  TZ.version (toText $ showVersion version) <>
+  TZ.license (License { lName = "MIT", lDetails = Nothing }) <>
+  TZ.authors
+      [ TZ.author "Serokell" "https://serokell.io/"
+      , TZ.author "TQ Tezos" "https://tqtezos.com/"
+      ] <>
+  TZ.homepage "https://github.com/tqtezos/stablecoin/" <>
+  TZ.source Source
+    { sLocation = Just $ "https://github.com/tqtezos/stablecoin/tree/v" <> toText (showVersion version) <> "/ligo/stablecoin"
+    , sTools = [ "ligo " <> $ligoVersion ]
+    } <>
+  TZ.interfaces [ TZ.Interface "TZIP-012", TZ.Interface "TZIP-017" ] <>
+  TZ.errors [ mkError [mt|FA2_TOKEN_UNDEFINED|]        [mt|All `token_id`s must be 0|]
+            , mkError [mt|FA2_INSUFFICIENT_BALANCE|]   [mt|Cannot debit from a wallet because of insufficient amount of tokens|]
+            , mkError [mt|FA2_NOT_OPERATOR|]           [mt|You're neither the owner or a permitted operator of one or more wallets from which tokens will be transferred|]
+            , mkError [mt|XTZ_RECEIVED|]               [mt|Contract received a non-zero amount of tokens|]
+            , mkError [mt|NOT_CONTRACT_OWNER|]         [mt|Operation can only be performed by the contract's owner|]
+            , mkError [mt|NOT_PENDING_OWNER|]          [mt|Operation can only be performed by the current contract's pending owner|]
+            , mkError [mt|NO_PENDING_OWNER_SET|]       [mt|There's no pending transfer of ownership|]
+            , mkError [mt|NOT_PAUSER|]                 [mt|Operation can only be performed by the contract's pauser|]
+            , mkError [mt|NOT_MASTER_MINTER|]          [mt|Operation can only be performed by the contract's master minter|]
+            , mkError [mt|NOT_MINTER|]                 [mt|Operation can only be performed by registered minters|]
+            , mkError [mt|CONTRACT_PAUSED|]            [mt|Operation cannot be performed while the contract is paused|]
+            , mkError [mt|CONTRACT_NOT_PAUSED|]        [mt|Operation cannot be performed while the contract is not paused|]
+            , mkError [mt|NOT_TOKEN_OWNER|]            [mt|You cannot configure another user's operators|]
+            , mkError [mt|CURRENT_ALLOWANCE_REQUIRED|] [mt|The given address is already a minter, you must specify its current minting allowance|]
+            , mkError [mt|ALLOWANCE_MISMATCH|]         [mt|The given current minting allowance does not match the minter's actual current minting allowance|]
+            , mkError [mt|ADDR_NOT_MINTER|]            [mt|This address is not a registered minter|]
+            , mkError [mt|ALLOWANCE_EXCEEDED|]         [mt|The amount of tokens to be minted exceeds your current minting allowance|]
+            , mkError [mt|BAD_TRANSFERLIST|]           [mt|The given address is a not a smart contract complying with the transferlist interface|]
+            , mkError [mt|MINTER_LIMIT_REACHED|]       [mt|Cannot add new minter because the number of minters is already at the limit|]
+            , mkError [mt|MISSIGNED|]                  [mt|This permit's signature is invalid|]
+            , mkError [mt|EXPIRED_PERMIT|]             [mt|A permit was found, but it has already expired|]
+            , mkError [mt|NOT_PERMIT_ISSUER|]          [mt|You're not the issuer of the given permit|]
+            , mkError [mt|DUP_PERMIT|]                 [mt|The given permit already exists|]
+            , mkError [mt|EXPIRY_TOO_BIG|]             [mt|The `set_expiry` entrypoint was called with an expiry value that is too big|]
+            , mkError [mt|NEGATIVE_TOTAL_SUPPLY|]      [mt|The total_supply value was found to be less than zero after an operation. This indicates a bug in the contract.|]
+            ] <>
+  TZ.views mkViews
 
   where
     defaultDescription :: Text
@@ -158,25 +156,22 @@ metadataJSON mtmd mbDescription = do
       \ It draws inspiration from popular permissioned asset contracts like CENTRE Fiat Token and other similar contracts.\
       \ The contract is implemented in the LIGO language."
 
-    mkViews :: Either ViewCodeError [TZ.View (ToT Storage)]
+    mkViews :: [TZ.View (ToT Storage)]
     mkViews =
       case mtmd of
         Nothing ->
-          pure
-            [ getDefaultExpiryView
-            , getCounterView
-            ]
-        Just tmd -> do
-          tokenMetadataView <- mkTokenMetadataView tmd
-          pure
-            [ getDefaultExpiryView
-            , getCounterView
-            , getBalanceView
-            , getTotalSupplyView
-            , getAllTokensView
-            , isOperatorView
-            , tokenMetadataView
-            ]
+          [ getDefaultExpiryView
+          , getCounterView
+          ]
+        Just tmd ->
+          [ getDefaultExpiryView
+          , getCounterView
+          , getBalanceView
+          , getTotalSupplyView
+          , getAllTokensView
+          , isOperatorView
+          , mkTokenMetadataView tmd
+          ]
 
     mkError :: MText -> MText -> Error
     mkError err expansion =
@@ -259,14 +254,14 @@ isOperatorView =
             )
     }
 
-mkTokenMetadataView :: FA2.TokenMetadata -> Either ViewCodeError (TZ.View (ToT Storage))
-mkTokenMetadataView md = do
-  vc <- compileViewCode $ WithParam @Natural $
+mkTokenMetadataView :: FA2.TokenMetadata -> TZ.View (ToT Storage)
+mkTokenMetadataView md =
+  let vc = unsafeCompileViewCode $ WithParam @Natural $
           L.dip L.drop #
           L.int #
           L.assertEq0 [mt|Unknown TOKEN ID|] #
           L.push (0 :: Natural, md)
-  pure $ TZ.View
+  in TZ.View
     { vName = "token_metadata"
     , vDescription = Just "Get token metadata for the token id"
     , vPure = Just True

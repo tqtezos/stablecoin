@@ -98,7 +98,6 @@ tests:
       - aeson
       - cleveland
       - containers
-      - fmt
       - lorentz
       - morley
       - morley-client

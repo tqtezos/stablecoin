@@ -5,8 +5,6 @@ module Permit
   ( permitScenario
   ) where
 
-import Fmt (build)
-
 import Lorentz (Address, Packed(..), TAddress(..), lPackValue, toVal)
 import Michelson.Typed (convertContract, untypeValue)
 import Morley.Nettest
@@ -34,7 +32,7 @@ permitScenario = uncapsNettest $ do
   user1 <- newAddress auto
 
   comment "Originating contracts"
-  metadata <- either (failure . build) pure $ metadataJSON (Just testFA2TokenMetadata) Nothing
+  let metadata = metadataJSON (Just testFA2TokenMetadata) Nothing
   cmrAddress <- nettestOriginateContractMetadataContract metadata
   let originationParams =
         addAccount (owner1 , ([], 1000)) $

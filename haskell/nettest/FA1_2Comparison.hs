@@ -6,7 +6,6 @@ module FA1_2Comparison
   ) where
 
 import qualified Data.Map as Map
-import Fmt (build)
 
 import Lorentz (TAddress(..), toVal)
 import Michelson.Typed (convertContract, mkBigMap, untypeValue)
@@ -51,7 +50,7 @@ fa1_2ComparisonScenario = uncapsNettest $ do
         , rPendingOwner = Nothing
         }
 
-  metadata <- either (failure . build) pure $ SFA2.metadataJSON Nothing Nothing
+  let metadata = SFA2.metadataJSON Nothing Nothing
 
   cmrFA1_2Address <- nettestOriginateContractMetadataContract metadata
   let fa1_2Storage = SFA1_2.Storage
