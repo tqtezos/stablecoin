@@ -7,7 +7,6 @@ module Stablecoin.Client.Main
   ) where
 
 import Control.Exception.Uncaught (displayUncaughtException)
-import Data.Coerce (coerce)
 import Data.Map (lookup)
 import Fmt (pretty)
 import Michelson.Text (mt)
@@ -15,6 +14,8 @@ import Morley.Client
   (AddressOrAlias(AddressAlias), Alias(..), AliasHint(..), MorleyClientM,
   TezosClientError(UnknownAddressAlias), mkMorleyClientEnv, rememberContract, runMorleyClientM)
 import Morley.Client.TezosClient (resolveAddress)
+import Morley.Client.TezosClient.Impl (prefixName)
+import Morley.Client.TezosClient.Types (HasTezosClientEnv(..), TezosClientEnv(..))
 import qualified Options.Applicative as Opt
 import Util.Named ((.!))
 
@@ -44,13 +45,14 @@ mainProgram :: ClientArgs -> MorleyClientM ()
 mainProgram (ClientArgs _ globalOptions cmd) = do
   case cmd of
     CmdDeployContract DeployContractOptions {..} -> do
-      let contractAlias = AliasHint "stablecoin"
-      -- TODO: we're using coerce in a few places to convert `AliasHint` to `Alias`
-      -- where necessary, but we shouldn't be doing this because it assumes no alias
-      -- prefix option was passed in via the CLI.
-      aliasAlreadyExists <- checkIfAliasExists (coerce contractAlias)
+      -- TODO morley/#680: use `prefixNameM` there
+      prefix <- tceAliasPrefix <$> view tezosClientEnvL
+      let
+        contractAliasHint = AliasHint "stablecoin"
+        contractAlias = prefixName prefix contractAliasHint
+      aliasAlreadyExists <- checkIfAliasExists contractAlias
 
-      (opHash, contractAddr, mCMetadataAddr) <- deploy user (coerce contractAlias) InitialStorageData
+      (opHash, contractAddr, mCMetadataAddr) <- deploy user contractAliasHint InitialStorageData
         { isdMasterMinter = dcoMasterMinter
         , isdContractOwner = dcoContractOwner
         , isdPauser = dcoPauser
@@ -74,7 +76,7 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
         then if dcoReplaceAlias
           then do
             -- silently replace existing alias
-            rememberContract True contractAddr (coerce contractAlias)
+            rememberContract True contractAddr contractAliasHint
             printAlias
           else do
             -- ask the user whether they want to replace the existing alias
@@ -83,7 +85,7 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
             confirmAction "Would you like to replace it with the newly deployed contract?" >>= \case
               Canceled -> pass
               Confirmed -> do
-                rememberContract True contractAddr (coerce contractAlias)
+                rememberContract True contractAddr contractAliasHint
                 printAlias
         else
           printAlias

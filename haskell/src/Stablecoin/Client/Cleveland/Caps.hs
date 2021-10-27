@@ -63,6 +63,7 @@ runStablecoinClient (NettestEnv env envKey) scenario = displayUncaughtException 
   disableAlphanetWarning
   storageAddress <- runMorleyClientM env $
     resolveAddressMaybe (AddressAlias nettestAddressAlias)
+  -- TODO morley/#667 replace this with `setupMoneybagAddress`
   nettestAddr <- case (envKey, storageAddress) of
     (Nothing, Just addr) -> pure addr
     (Nothing, Nothing) -> throwM NoNettestAddress
