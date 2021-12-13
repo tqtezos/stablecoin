@@ -5,11 +5,32 @@ SPDX-License-Identifier: MIT
 # Changelog for stablecoin
 
 ## Unreleased changes
-* [#165](https://github.com/tqtezos/stablecoin/pull/165)
-  * Bump `morley`, `lorentz` and other dependencies.
 <!-- Prepend new entries here -->
 <!-- Don't forget to update the gas/transaction costs tables in the
 README when a new version is released. -->
+
+## 1.7.2
+
+* [#181](https://github.com/tqtezos/stablecoin/pull/181)
+  * Remove network tests on `010` local-chain and `granadanet`.
+* [#180](https://github.com/tqtezos/stablecoin/pull/180)
+  * Add network tests on `011` local-chain and `hangzhounet`.
+* [#168](https://github.com/tqtezos/stablecoin/pull/168)
+  * Remove coercions between 'Alias' and 'AliasHint'
+* [#167](https://github.com/tqtezos/stablecoin/pull/167)
+  * Add unsafe way to compile view code from morley-metadata
+* [#165](https://github.com/tqtezos/stablecoin/pull/165)
+  * Bump `morley`, `lorentz` and other dependencies.
+* [#173](https://github.com/tqtezos/stablecoin/pull/173)
+  * Add network tests on `010` local-chain and `granadanet`.
+* [#172](https://github.com/tqtezos/stablecoin/pull/172)
+  * Remove network tests on `008` local-chain and `edo2net`.
+* [#170](https://github.com/tqtezos/stablecoin/pull/170)
+  * Add network tests on `009` local-chain and `florencenet`.
+* [#170](https://github.com/tqtezos/stablecoin/pull/170)
+  * Add network tests on `009` local-chain and `florencenet`.
+* [#163](https://github.com/tqtezos/stablecoin/pull/163)
+  * Remove network tests on `007` local-chain and `delphinet`.
 
 ## 1.7.1
 

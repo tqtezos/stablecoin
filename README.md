@@ -50,17 +50,17 @@ Please refer to the [`haskell/`](/haskell/) directory for details.
 ## Gas / Transaction costs
 
 The tables below show the gas and transaction costs of both versions (FA1.2 and FA2) of
-the stablecoin contract [v1.7.1](https://github.com/tqtezos/stablecoin/releases/tag/v1.7.1) in Edonet.
+the stablecoin contract [v1.7.2](https://github.com/tqtezos/stablecoin/releases/tag/v1.7.2) in hangzhounet.
 
-### Edonet
+### hangzhounet
 
-* [FA1.2 operations](https://edo.tzstats.com/KT1Cfwhgp4W9t3mQKu2nxu5KsHTKwhRFwGRj)
-* [FA2 operations](https://edo.tzstats.com/KT1N8PMWmc5qEmBBEB4hrSnhtrjPVQeVD2hk)
+* [FA1.2 operations](https://hangzhou.tzstats.com/KT1PoKKx4LZUE23EAoX416dzN8TWZXu8fF8k)
+* [FA2 operations](https://hangzhou.tzstats.com/KT197sCXNP8q1tFmqzQxyJHaXrTQBaa9Qcbo)
 
 |             | FA1.2 Gas cost | FA2 Gas cost | FA1.2 Tx cost | FA2 Tx cost |
 | ----------- | -------------- | ------------ | ------------- | ----------- |
-| origination | 65090          | 63320        | 2.792846 ꜩ    | 2.777354 ꜩ  |
-| transfer    | 66986          | 65600        | 0.007034 ꜩ    | 0.006909 ꜩ  |
+| origination | 7477           | 8410         | 2.89527 ꜩ     | 2.874531 ꜩ  |
+| transfer    | 9573           | 10737        | 0.001294 ꜩ    | 0.001427 ꜩ  |
 
 ### Measuring
 
