@@ -121,8 +121,8 @@ steps:
    if: *not_scheduled
    depends_on:
      - test
-     - nettest-local-chain-010
-     - nettest-scheduled-granadanet
+     - nettest-local-chain-011
+     - nettest-scheduled-hangzhounet
      - weeder
    commands:
      - eval "$FETCH_CONTRACT"
