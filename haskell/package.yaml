@@ -4,7 +4,7 @@
 <<: !include "./hpack/module.yaml"
 
 name:                stablecoin
-version:             1.7.1
+version:             1.7.2
 
 extra-source-files:
 - README.md
