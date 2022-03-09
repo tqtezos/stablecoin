@@ -70,12 +70,12 @@ steps:
      - nix build -L -f .. test
      - ./result/bin/stablecoin-test --cleveland-mode=disable-network
 
- - label: nettest-local-chain-011
-   key: nettest-local-chain-011
+ - label: nettest-local-chain-012
+   key: nettest-local-chain-012
    if: *not_scheduled
    depends_on: build_library
    env:
-     TASTY_CLEVELAND_NODE_ENDPOINT: "http://localhost:8734"
+     TASTY_CLEVELAND_NODE_ENDPOINT: "http://localhost:8733"
      # this key is defined in local-chain bootstrap accounts list in
      # https://github.com/serokell/aquarius-infra/blob/master/servers/albali/chain.nix
      TASTY_CLEVELAND_MONEYBAG_SECRET_KEY: "unencrypted:edsk3GjD83F7oj2LrnRGYQer99Fj69U2QLyjWGiJ4UoBZNQwS38J4v"
@@ -88,14 +88,14 @@ steps:
       automatic:
         limit: 1
 
- - label: nettest-scheduled-hangzhounet
-   key: nettest-scheduled-hangzhounet
+ - label: nettest-scheduled-ithacanet
+   key: nettest-scheduled-ithacanet
    if: build.source == "schedule"
    depends_on:
      - build_library
      - LIGO-contract
    env:
-     TASTY_CLEVELAND_NODE_ENDPOINT: "https://hangzhou.testnet.tezos.serokell.team"
+     TASTY_CLEVELAND_NODE_ENDPOINT: "https://ithaca.testnet.tezos.serokell.team"
      # Note that testnet moneybag can run out of tz. If this happened, someone should transfer it some
      # more tz, its address: tz1ij8gUYbMRUXa4xX3mNvKguhaWG9GGbURn
      TASTY_CLEVELAND_MONEYBAG_SECRET_KEY: "unencrypted:edsk4EYgVvKVKppJXAyeoqxJrNeyoktNqmcx5op1CFht9P1p8pPxp7"
@@ -121,8 +121,8 @@ steps:
    if: *not_scheduled
    depends_on:
      - test
-     - nettest-local-chain-011
-     - nettest-scheduled-hangzhounet
+     - nettest-local-chain-012
+     - nettest-scheduled-ithacanet
      - weeder
    commands:
      - eval "$FETCH_CONTRACT"
