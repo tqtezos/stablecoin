@@ -8,12 +8,6 @@
 # This script expects 'tezos-client' to be in PATH.
 set -euo pipefail
 
-nettest_scenario="$1"
-
-node_endpoint="$TASTY_NETTEST_NODE_ENDPOINT"
-TEMPDIR="$(mktemp -d --tmpdir="$PWD")"
-tezos_client_args=(-E "$node_endpoint" -d "$TEMPDIR")
-
-tezos-client "${tezos_client_args[@]}" import secret key nettest \
-             "$TASTY_NETTEST_MONEYBAG_SECRET_KEY" --force
-"$nettest_scenario" "${tezos_client_args[@]}"
+export TASTY_CLEVELAND_DATA_DIR="$(mktemp -d --tmpdir="$PWD")"
+export TASTY_CLEVELAND_MODE="only-network"
+exec "$1"

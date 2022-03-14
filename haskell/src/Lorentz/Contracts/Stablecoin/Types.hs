@@ -37,19 +37,18 @@ module Lorentz.Contracts.Stablecoin.Types
   , stablecoinContract
   ) where
 
-import Data.FileEmbed (embedStringFile)
 import Fmt
 import qualified Text.Show
 
 import Lorentz as L
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Spec.TZIP16Interface (MetadataMap)
-import Michelson.Test.Import (readContract)
-import Michelson.Typed (Notes(..))
-import qualified Michelson.Typed as T
-import Michelson.Untyped (noAnn)
 import Morley.Client (AddressOrAlias(..))
-import qualified Tezos.Crypto as Hash
+import Test.Cleveland.Michelson.Import (embedContract)
+import Morley.Michelson.Typed (Notes(..))
+import qualified Morley.Michelson.Typed as T
+import Morley.Michelson.Untyped (noAnn)
+import qualified Morley.Tezos.Crypto as Hash
 
 import Lorentz.Contracts.StablecoinPath (metadataRegistryContractPath, stablecoinPath)
 
@@ -335,34 +334,9 @@ stablecoinContract =
   -- This can usually be fixed by writing a custom instance of Generic using `customGeneric`,
   -- and making sure the data type's layout matches the layout in stablecoin.tz.
   -- See examples in this module.
-  $(case readContract @(ToT Parameter) @(ToT Storage) stablecoinPath $(embedStringFile stablecoinPath) of
-      Left e ->
-        -- Emit a compiler error if the contract cannot be read.
-        fail (pretty e)
-      Right _ ->
-        -- Emit a haskell expression that reads the contract.
-        [|
-          -- Note: it's ok to use `error` here, because we just proved that the contract
-          -- can be parsed+typechecked.
-          either (error . pretty) id $
-            readContract
-              stablecoinPath
-              $(embedStringFile stablecoinPath)
-        |]
-  )
+  $$(embedContract @(ToT Parameter) @(ToT Storage) stablecoinPath)
 
 -- | Parse the contract-metadata contract.
 contractMetadataContract :: T.Contract (ToT ()) (ToT MetadataRegistryStorage)
 contractMetadataContract =
-  $(case readContract @(ToT ()) @(ToT MetadataRegistryStorage) metadataRegistryContractPath $(embedStringFile metadataRegistryContractPath) of
-      Left e -> fail (pretty e)
-      Right _ ->
-        [|
-          -- Note: it's ok to use `error` here, because we just proved that the contract
-          -- can be parsed+typechecked.
-          either (error . pretty) id $
-            readContract
-              metadataRegistryContractPath
-              $(embedStringFile metadataRegistryContractPath)
-        |]
-  )
+  $$(embedContract @(ToT ()) @(ToT MetadataRegistryStorage) metadataRegistryContractPath)

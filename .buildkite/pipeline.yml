@@ -68,24 +68,24 @@ steps:
      - eval "$FETCH_CONTRACT"
      - cd haskell
      - nix build -L -f .. test
-     - ./result/bin/stablecoin-test --nettest-mode=disable-network
+     - ./result/bin/stablecoin-test --cleveland-mode=disable-network
 
  - label: nettest-local-chain-011
    key: nettest-local-chain-011
    if: *not_scheduled
    depends_on: build_library
    env:
-     TASTY_NETTEST_NODE_ENDPOINT: "http://localhost:8734"
+     TASTY_CLEVELAND_NODE_ENDPOINT: "http://localhost:8734"
      # this key is defined in local-chain bootstrap accounts list in
      # https://github.com/serokell/aquarius-infra/blob/master/servers/albali/chain.nix
-     TASTY_NETTEST_MONEYBAG_SECRET_KEY: "unencrypted:edsk3GjD83F7oj2LrnRGYQer99Fj69U2QLyjWGiJ4UoBZNQwS38J4v"
+     TASTY_CLEVELAND_MONEYBAG_SECRET_KEY: "unencrypted:edsk3GjD83F7oj2LrnRGYQer99Fj69U2QLyjWGiJ4UoBZNQwS38J4v"
    commands: &run-nettest
      - eval "$FETCH_CONTRACT"
      - cd haskell/
      - nix build -L -f ../ nettest
      - nix run -f ../ tezos-client stablecoin-client -c ../scripts/ci/run-local-chain-nettest.sh ./result/bin/stablecoin-nettest
      - nix build -L -f .. test
-     - nix run -f ../ tezos-client -c ./result/bin/stablecoin-test --nettest-mode=only-network
+     - nix run -f ../ tezos-client -c ./result/bin/stablecoin-test --cleveland-mode=only-network
    retry: &retry-nettest
       automatic:
         limit: 1
@@ -97,11 +97,18 @@ steps:
      - build_library
      - LIGO-contract
    env:
-     TASTY_NETTEST_NODE_ENDPOINT: "https://hangzhou.testnet.tezos.serokell.team"
+     TASTY_CLEVELAND_NODE_ENDPOINT: "https://hangzhou.testnet.tezos.serokell.team"
      # Note that testnet moneybag can run out of tz. If this happened, someone should transfer it some
      # more tz, its address: tz1ij8gUYbMRUXa4xX3mNvKguhaWG9GGbURn
-     TASTY_NETTEST_MONEYBAG_SECRET_KEY: "unencrypted:edsk4EYgVvKVKppJXAyeoqxJrNeyoktNqmcx5op1CFht9P1p8pPxp7"
-   commands: *run-nettest
+     TASTY_CLEVELAND_MONEYBAG_SECRET_KEY: "unencrypted:edsk4EYgVvKVKppJXAyeoqxJrNeyoktNqmcx5op1CFht9P1p8pPxp7"
+   commands:
+     - eval "$FETCH_CONTRACT"
+     - cd haskell/
+     - nix build -L -f ../ nettest
+     - nix run -f ../ tezos-client stablecoin-client -c ../scripts/ci/run-local-chain-nettest.sh ./result/bin/stablecoin-nettest
+     - nix build -L -f .. test
+     # Running all of the tests on network will end up draining the moneybag; for now, only FA1.2 tests are run
+     - nix run -f ../ tezos-client -c ./result/bin/stablecoin-test --cleveland-mode=only-network -p /FA1_2/
    retry: *retry-nettest
    timeout_in_minutes: 360
 

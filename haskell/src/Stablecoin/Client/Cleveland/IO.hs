@@ -20,10 +20,11 @@ module Stablecoin.Client.Cleveland.IO
 
 import Data.Char (isAlpha, isDigit)
 import Fmt (Buildable, pretty, (+|), (|+))
-import Morley.Client
-  (Alias(..), MorleyClientEnv, MorleyClientEnv'(..))
+import Morley.Client (Alias, mkAlias, MorleyClientEnv, MorleyClientEnv'(..))
 import qualified Morley.Client as MorleyClient
 import Morley.Client.TezosClient (TezosClientEnv(..))
+import Morley.Tezos.Address (Address, parseAddress)
+import Morley.Tezos.Core (Mutez, unsafeMkMutez)
 import Servant.Client (showBaseUrl)
 import System.Exit (ExitCode(..))
 import System.Process (readProcessWithExitCode)
@@ -32,8 +33,6 @@ import qualified Text.Megaparsec as P
 import Text.Megaparsec.Char (newline, printChar, string)
 import Text.Megaparsec.Char.Lexer (decimal)
 import Text.Megaparsec.Error (ShowErrorComponent(..))
-import Tezos.Address (Address, parseAddress)
-import Tezos.Core (Mutez, unsafeMkMutez)
 
 import Stablecoin.Client (AddressAndAlias(..))
 
@@ -120,7 +119,7 @@ addressParser = do
       (isDigit c && c /= '0') || (isAlpha c && c /= 'O' && c /= 'I' && c /= 'l')
 
 aliasParser :: Parser Alias
-aliasParser = Alias <$> textParser
+aliasParser = mkAlias <$> textParser
 
 addressAndAliasParser :: Text -> Parser AddressAndAlias
 addressAndAliasParser label =

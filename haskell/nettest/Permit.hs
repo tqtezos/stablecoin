@@ -6,8 +6,9 @@ module Permit
   ) where
 
 import Lorentz (Address, Packed(..), TAddress(..), lPackValue, toVal)
-import Michelson.Typed (convertContract, untypeValue)
-import Morley.Nettest
+import Morley.Michelson.Typed (convertContract, untypeValue)
+import Test.Cleveland
+import Morley.Util.Named (pattern (:!))
 
 import Lorentz.Contracts.Spec.FA2Interface (TransferDestination(..), TransferItem(..))
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
@@ -19,8 +20,8 @@ import Lorentz.Contracts.Test.Common
   (OriginationParams(..), addAccount, defaultOriginationParams, mkInitialStorage,
   nettestOriginateContractMetadataContract, testFA2TokenMetadata)
 
-permitScenario :: NettestScenario m
-permitScenario = uncapsNettest $ do
+permitScenario :: Monad m => Scenario m
+permitScenario = scenario do
   comment "-- Permits tests --"
   comment "Creating accounts"
   owner1 <- newAddress "nettestOwner1"
@@ -36,21 +37,21 @@ permitScenario = uncapsNettest $ do
   cmrAddress <- nettestOriginateContractMetadataContract metadata
   let originationParams =
         addAccount (owner1 , ([], 1000)) $
-          defaultOriginationParams
-            { opOwner = owner1
-            , opPauser = pauser
-            , opMasterMinter = masterMinter
-            , opMetadataUri = RemoteContract cmrAddress
+          (defaultOriginationParams
+            (#owner :! owner1)
+            (#pauser :! pauser)
+            (#masterMinter :! masterMinter))
+            { opMetadataUri = RemoteContract cmrAddress
             }
       storage = mkInitialStorage originationParams
-  contract <- TAddress @Parameter <$> originateUntypedSimple
+  contract <- TAddress @Parameter @() <$> originateUntypedSimple
     "nettest.Stablecoin"
     (untypeValue (toVal storage))
     (convertContract stablecoinContract)
   chainId <- getChainId
 
   let
-    issuePermit :: MonadNettest caps base m => Natural -> Address -> Parameter -> m ()
+    issuePermit :: MonadCleveland caps m => Natural -> Address -> Parameter -> m ()
     issuePermit counter addr param = do
       -- NOTE: A couples of changes were introduced in #124. Crucially:
       --

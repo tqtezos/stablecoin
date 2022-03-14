@@ -47,7 +47,7 @@ instance CustomErrorHasDoc "assertionFailure" where
   customErrDocMdCause =
     "Assertion failed."
 
-transferlistContract :: Contract Parameter Storage
+transferlistContract :: Contract Parameter Storage ()
 transferlistContract = defaultContract $ compileIndigoContract transferlistIndigo
 
 transferlistIndigo

@@ -8,22 +8,24 @@ module SMT
 
 import qualified Data.Map as Map
 import Fmt
-import Hedgehog
+import Hedgehog hiding (failure)
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 import qualified Text.Show
 
 import Hedgehog.Gen.Tezos.Address (genAddress)
 import Lorentz
-  (Address, EntrypointRef(Call), GetEntrypointArgCustom, IsoValue(..), TAddress(TAddress),
-  parameterEntrypointCallCustom)
-import Michelson.Interpret
-import Michelson.Runtime.GState (BigMapCounter(..))
-import Michelson.Test.Dummy
-import Michelson.Test.Integrational
-import Michelson.Text
-import qualified Michelson.Typed as T
-import Tezos.Core (unsafeMkMutez)
+  (Address, GetEntrypointArgCustom, IsoValue(..), TAddress(TAddress), parameterEntrypointCallCustom)
+import Morley.Michelson.Interpret
+import Morley.Michelson.Runtime.Dummy (dummyContractEnv)
+import Morley.Michelson.Runtime.GState (BigMapCounter(..))
+import Morley.Michelson.Text
+import qualified Morley.Michelson.Typed as T
+import Morley.Michelson.Typed.Haskell.Value (bmMap)
+import Morley.Tezos.Address (GlobalCounter(..))
+import Morley.Tezos.Core (unsafeMkMutez)
+import Morley.Util.Named (pattern (:!))
+import Test.Cleveland
 
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
@@ -89,9 +91,9 @@ generateContractInputs count = do
 
 -- | The property that is being tested.
 smtProperty :: Property
-smtProperty = property $ do
+smtProperty = property do
   PropertyTestInput (inputs, initialState) <- forAll genPropertyTestInput
-  integrationalTestProp $ do
+  testScenarioProps $ scenario do
     applyBothAndCompare inputs initialState
 
 -- | Accept a contract, a list of contract inputs and an initial state.  Then
@@ -101,15 +103,16 @@ smtProperty = property $ do
 -- parameter and repeat until all contract inputs are applied or until the contract
 -- state diverges.
 applyBothAndCompare
-  :: [ContractCall Parameter]
+  :: MonadCleveland caps m
+  => [ContractCall Parameter]
   -> ContractState
-  -> IntegrationalScenario
+  -> m ()
 applyBothAndCompare [] _ = pass
 applyBothAndCompare (cc:ccs) cs = let
   haskellResult = stablecoinHaskellModel cc cs
   michelsonResult = stablecoinMichelsonModel cc cs
   in if haskellResult /= michelsonResult
-    then integrationalFail $ CustomTestError $
+    then failure $
          "Models differ : " <> show (cc, cs, haskellResult, michelsonResult)
     else applyBothAndCompare ccs haskellResult
 
@@ -173,13 +176,13 @@ resultToSs sval =
 storageToSs :: Storage -> SimpleStorage
 storageToSs storage = SimpleStorage
   { ssMintingAllowances = sMintingAllowances storage
-  , ssLedger = T.bmMap $ sLedger storage
+  , ssLedger = bmMap $ sLedger storage
   , ssOwner = rOwner $ sRoles storage
   , ssMasterMinter = rMasterMinter $ sRoles storage
   , ssPauser = rPauser $ sRoles storage
   , ssPendingOwner = rPendingOwner $ sRoles storage
   , ssTransferlistContract = sTransferlistContract storage
-  , ssOperators = T.bmMap $ sOperators storage
+  , ssOperators = bmMap $ sOperators storage
   , ssPaused = sPaused storage
   , ssTotalSupply = sTotalSupply storage
   }
@@ -189,12 +192,12 @@ ssToOriginationParams
   -> OriginationParams
 ssToOriginationParams SimpleStorage {..} = let
   minters = ssMintingAllowances
-  in defaultOriginationParams
+  in (defaultOriginationParams
+        (#owner :! ssOwner)
+        (#pauser :! ssPauser)
+        (#masterMinter :! ssMasterMinter))
     { opBalances = ssLedger
-    , opOwner = ssOwner
     , opOwnerToOperators = mkOwnerToOperator ssOperators
-    , opMasterMinter = ssMasterMinter
-    , opPauser = ssPauser
     , opPaused = ssPaused
     , opMinters = minters
     , opPendingOwner = ssPendingOwner
@@ -506,7 +509,8 @@ stablecoinMichelsonModel cc@(ContractCall {..}) cs = let
     Right iRes -> let
       newStorage = resultToSs iRes
       in cs { csStorage = newStorage }
-    Left (InterpretError (MichelsonFailedWith (T.VString tval), _)) -> cs { csError = (ccIdx, contractErrorToModelError tval):(csError cs) }
+    Left (InterpretError (mfwsFailed -> MichelsonFailedWith (T.VString tval), _))
+      -> cs { csError = (ccIdx, contractErrorToModelError tval):(csError cs) }
     Left err -> error $ "Unexpected error:" <> show err
 
 callEntrypoint
@@ -515,39 +519,40 @@ callEntrypoint
   -> ContractEnv
   -> Either InterpretError (T.Value (ToT Storage))
 callEntrypoint cc st env = case ccParameter cc of
-  Pause -> call (Call @"Pause") ()
-  Unpause -> call (Call @"Unpause") ()
-  Configure_minter p -> call (Call @"Configure_minter") p
-  Remove_minter p -> call (Call @"Remove_minter") p
-  Mint p -> call (Call @"Mint") p
-  Burn p -> call (Call @"Burn") p
-  Transfer_ownership p -> call (Call @"Transfer_ownership") p
-  Accept_ownership -> call (Call @"Accept_ownership") ()
-  Change_master_minter p -> call (Call @"Change_master_minter") p
-  Change_pauser p -> call (Call @"Change_pauser") p
-  Set_transferlist p -> call (Call @"Set_transferlist") p
+  Pause -> call' (Call @"Pause") ()
+  Unpause -> call' (Call @"Unpause") ()
+  Configure_minter p -> call' (Call @"Configure_minter") p
+  Remove_minter p -> call' (Call @"Remove_minter") p
+  Mint p -> call' (Call @"Mint") p
+  Burn p -> call' (Call @"Burn") p
+  Transfer_ownership p -> call' (Call @"Transfer_ownership") p
+  Accept_ownership -> call' (Call @"Accept_ownership") ()
+  Change_master_minter p -> call' (Call @"Change_master_minter") p
+  Change_pauser p -> call' (Call @"Change_pauser") p
+  Set_transferlist p -> call' (Call @"Set_transferlist") p
   Call_FA2 fa2Param -> case fa2Param of
-    Transfer p -> call (Call @"Transfer") p
-    Update_operators p -> call (Call @"Update_operators") p
+    Transfer p -> call' (Call @"Transfer") p
+    Update_operators p -> call' (Call @"Update_operators") p
     _ -> error "Unexpected call"
   Permit _ -> error "Unexpected call"
   Set_expiry _ -> error "Unexpected call"
   where
-    call
+    call'
       :: IsoValue (GetEntrypointArgCustom Parameter ep)
       => EntrypointRef ep
       -> GetEntrypointArgCustom Parameter ep
       -> Either InterpretError (T.Value (ToT Storage))
-    call epRef param =
+    call' epRef param =
       case
         interpret
           stablecoinContract
           (parameterEntrypointCallCustom @Parameter epRef)
           (toVal param)
           (toVal st)
+          (GlobalCounter 0)
           (BigMapCounter 0)
           env of
-        (Left e, s) -> Left $ InterpretError (e, isMorleyLogs s)
+        (Left e, s) -> Left $ InterpretError (e, snd s)
         (Right (_, newSt), _) -> Right newSt
 
 

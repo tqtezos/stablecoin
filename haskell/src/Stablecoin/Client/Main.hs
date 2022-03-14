@@ -9,30 +9,29 @@ module Stablecoin.Client.Main
 import Control.Exception.Uncaught (displayUncaughtException)
 import Data.Map (lookup)
 import Fmt (pretty)
-import Michelson.Text (mt)
 import Morley.Client
-  (AddressOrAlias(AddressAlias), Alias(..), AliasHint(..), MorleyClientM,
-  TezosClientError(UnknownAddressAlias), mkMorleyClientEnv, rememberContract, runMorleyClientM)
+  (AddressOrAlias(AddressAlias), Alias, AliasOrAliasHint(..), MorleyClientM,
+  TezosClientError(UnknownAddressAlias), mkAliasHint, mkMorleyClientEnv, rememberContract,
+  runMorleyClientM)
 import Morley.Client.TezosClient (resolveAddress)
 import Morley.Client.TezosClient.Impl (prefixName)
 import Morley.Client.TezosClient.Types (HasTezosClientEnv(..), TezosClientEnv(..))
+import Morley.Michelson.Text (mt)
+import Morley.Util.Named (pattern (:!))
 import qualified Options.Applicative as Opt
-import Util.Named ((.!))
 
 import Stablecoin.Client.Contract (InitialStorageData(..))
 import Stablecoin.Client.Impl
   (AddressAndAlias(..), acceptOwnership, burn, changeMasterMinter, changePauser, configureMinter,
   deploy, getBalance, getBalanceOf, getContractOwner, getMasterMinter, getMintingAllowance,
   getPaused, getPauser, getPendingContractOwner, getTokenMetadata, getTransferlist, isOperator,
-  mint, pause, removeMinter, setTransferlist, transfer, transferOwnership, unpause,
-  updateOperators)
+  mint, pause, removeMinter, setTransferlist, transfer, transferOwnership, unpause, updateOperators)
 import Stablecoin.Client.Parser
   (BurnOptions(..), ChangeMasterMinterOptions(..), ChangePauserOptions(..), ClientArgs(..),
-  ClientArgsRaw(..), ConfigureMinterOptions(..), DeployContractOptions(..),
-  GetBalanceOfOptions(..), GetMintingAllowanceOptions(..), GlobalOptions(..),
-  IsOperatorOptions(..), MintOptions(..), RemoveMinterOptions(..), SetTransferlistOptions(..),
-  TransferOptions(..), TransferOwnershipOptions(..), UpdateOperatorsOptions(..),
-  stablecoinClientInfo)
+  ClientArgsRaw(..), ConfigureMinterOptions(..), DeployContractOptions(..), GetBalanceOfOptions(..),
+  GetMintingAllowanceOptions(..), GlobalOptions(..), IsOperatorOptions(..), MintOptions(..),
+  RemoveMinterOptions(..), SetTransferlistOptions(..), TransferOptions(..),
+  TransferOwnershipOptions(..), UpdateOperatorsOptions(..), stablecoinClientInfo)
 
 mainProgramIO :: IO ()
 mainProgramIO = do
@@ -48,8 +47,8 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
       -- TODO morley/#680: use `prefixNameM` there
       prefix <- tceAliasPrefix <$> view tezosClientEnvL
       let
-        contractAliasHint = AliasHint "stablecoin"
-        contractAlias = prefixName prefix contractAliasHint
+        contractAliasHint = mkAliasHint "stablecoin"
+        contractAlias = prefixName prefix (AnAliasHint contractAliasHint)
       aliasAlreadyExists <- checkIfAliasExists contractAlias
 
       (opHash, contractAddr, mCMetadataAddr) <- deploy user contractAliasHint InitialStorageData
@@ -76,7 +75,7 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
         then if dcoReplaceAlias
           then do
             -- silently replace existing alias
-            rememberContract True contractAddr contractAliasHint
+            rememberContract True contractAddr (AnAliasHint contractAliasHint)
             printAlias
           else do
             -- ask the user whether they want to replace the existing alias
@@ -85,7 +84,7 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
             confirmAction "Would you like to replace it with the newly deployed contract?" >>= \case
               Canceled -> pass
               Confirmed -> do
-                rememberContract True contractAddr contractAliasHint
+                rememberContract True contractAddr (AnAliasHint contractAliasHint)
                 printAlias
         else
           printAlias
@@ -174,8 +173,8 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
       putTextLn $ "Token decimals: " <> (decodeUtf8 $ fromMaybe "" $ lookup [mt|decimals|] tm)
 
   where
-    user = #sender .! goUser globalOptions
-    contract = #contract .! goContract globalOptions
+    user = #sender :! goUser globalOptions
+    contract = #contract :! goContract globalOptions
 
     putAddressAndAlias :: Text -> AddressAndAlias -> MorleyClientM ()
     putAddressAndAlias prefix (AddressAndAlias addr aliasMb) = do

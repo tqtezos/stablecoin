@@ -12,16 +12,16 @@ import Test.Tasty (TestTree)
 
 import Lorentz (Address, mkBigMap, toVal)
 import Lorentz.Contracts.Test.ApprovableLedger (AlSettings(..), approvableLedgerGenericTest)
-import Morley.Nettest
-import Michelson.Typed (untypeValue)
+import Test.Cleveland
+import Morley.Michelson.Typed (untypeValue)
 
 import Lorentz.Contracts.Stablecoin (MetadataUri(..), Roles(..), metadataMap)
 import Lorentz.Contracts.StablecoinFA1_2
   (Parameter, Storage(..), metadataJSON, stablecoinFA1_2Contract)
 
 alOriginationFunction
-  :: MonadNettest caps base m
-  => Address -> AlSettings -> m (ContractHandler Parameter Storage)
+  :: MonadCleveland caps m
+  => Address -> AlSettings -> m (ContractHandle Parameter Storage ())
 alOriginationFunction adminAddr (AlInitAddresses addrBalances) = do
   let storage = Storage
         { sDefaultExpiry = 1000
@@ -42,8 +42,8 @@ alOriginationFunction adminAddr (AlInitAddresses addrBalances) = do
         , sMetadata = metadataMap (CurrentContract metadataJSON True)
         }
 
-  ContractHandler "stablecoinFA1_2Contract" <$>
-    originateUntypedSimple "" (untypeValue $ toVal storage) stablecoinFA1_2Contract
+  ContractHandle "stablecoinFA1_2Contract" <$>
+    originateUntypedSimple "fa1.2" (untypeValue $ toVal storage) stablecoinFA1_2Contract
 
 test_fa1_2 :: TestTree
 test_fa1_2 = approvableLedgerGenericTest @Parameter @Storage alOriginationFunction

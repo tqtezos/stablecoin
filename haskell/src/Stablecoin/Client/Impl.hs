@@ -40,25 +40,24 @@ module Stablecoin.Client.Impl
 import qualified Data.Aeson as J
 import qualified Data.Map as M
 import Fmt (Buildable(build), pretty, (+|), (|+))
-import Lorentz (EntrypointRef(Call), HasEntrypointArg, ToT, arg, useHasEntrypointArg)
+import Lorentz (EntrypointRef(Call), HasEntrypointArg, ToT, def, useHasEntrypointArg)
 import qualified Lorentz.Contracts.Spec.TZIP16Interface as TZ
-import Michelson.Typed (BigMapId (..), Dict(..), IsoValue, fromVal, mkBigMap, toVal)
+import Morley.Michelson.Typed (BigMapId(..), Dict(..), IsoValue, fromVal, toVal)
 
-import Lorentz.Test (dummyContractEnv)
-import Michelson.Text
 import Morley.Client
-  (AddressOrAlias(..), Alias, AliasHint(..), MorleyClientM,
-  TezosClientError(UnknownAddress), getAlias, getContractScript, lTransfer, originateContract,
-  readBigMapValue, readBigMapValueMaybe)
+  (AddressOrAlias(..), Alias, AliasHint, MorleyClientM, TezosClientError(UnknownAddress),
+  getAlias, getContractScript, lTransfer, originateContract, readBigMapValue, readBigMapValueMaybe,
+  revealKeyUnlessRevealed)
 import qualified Morley.Client as Client
-import Morley.Client.RPC (OriginationScript(OriginationScript), OperationHash)
+import Morley.Client.RPC (OperationHash, OriginationScript(OriginationScript))
 import Morley.Client.TezosClient (resolveAddress)
 import qualified Morley.Metadata as MD
 import Morley.Micheline (Expression, FromExpressionError, fromExpression)
-import Morley.Nettest.Client (revealKeyUnlessRevealed)
-import Tezos.Address (Address)
-import Tezos.Core (Mutez, unsafeMkMutez)
-import Util.Named ((:!), (.!))
+import Morley.Michelson.Runtime.Dummy (dummyContractEnv)
+import Morley.Michelson.Text
+import Morley.Tezos.Address (Address)
+import Morley.Tezos.Core (Mutez, unsafeMkMutez)
+import Morley.Util.Named (pattern (:!), pattern N, (:!))
 
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin
@@ -80,7 +79,7 @@ data AddressAndAlias = AddressAndAlias Address (Maybe Alias)
 -- Saves the contract with the given alias.
 -- If the given alias already exists, nothing happens.
 deploy :: "sender" :! AddressOrAlias -> AliasHint -> InitialStorageData AddressOrAlias -> MorleyClientM (OperationHash, Address, Maybe Address)
-deploy (arg #sender -> sender) alias initialStorageData@InitialStorageData {..} = do
+deploy (N sender :: "sender" :! a) alias initialStorageData@InitialStorageData {..} = do
   masterMinter <- resolveAddress isdMasterMinter
   contractOwner <- resolveAddress isdContractOwner
   pauser <- resolveAddress isdPauser
@@ -158,13 +157,13 @@ getBalanceOf contract owner = do
 updateOperators
   :: "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias
   -> NonEmpty UpdateOperatorData -> MorleyClientM ()
-updateOperators (arg #sender -> sender) contract ops = do
+updateOperators (N sender :: "sender" :! a) contract ops = do
   senderAddr <- resolveAddress sender
   -- Note: As per the specification:
   -- "In each update_operator item `owner` MUST be equal to `SENDER`"
   let ownerAddr = senderAddr
   param <- traverse (mkUpdateOperator ownerAddr) (toList ops)
-  call (#sender .! AddressResolved senderAddr) contract (Call @"Update_operators") param
+  call (#sender :! AddressResolved senderAddr) contract (Call @"Update_operators") param
   where
     mkUpdateOperator :: Address -> UpdateOperatorData -> MorleyClientM FA2.UpdateOperator
     mkUpdateOperator ownerAddr = \case
@@ -274,7 +273,7 @@ setTransferlist sender contract transferlist = do
 
 -- | Retrieve the contract's balance.
 getBalance :: "contract" :! AddressOrAlias -> MorleyClientM Mutez
-getBalance (arg #contract -> contract) = do
+getBalance (N contract :: "contract" :! a) = do
   contractAddr <- resolveAddress contract
   Client.getBalance contractAddr
 
@@ -333,10 +332,10 @@ getTokenMetadata contract = do
         -- replacing all bigmaps with empty counterparts, and this should be fine here since
         -- the token metadata view does not access any of these big maps.
         storageView
-          { sLedger = mkBigMap mempty
-          , sMetadata = mkBigMap mempty
-          , sOperators = mkBigMap mempty
-          , sPermits = mkBigMap mempty
+          { sLedger = def
+          , sMetadata = def
+          , sOperators = def
+          , sPermits = def
           }
   snd <$> (throwMdErr (\err -> "Error while interpreting the contract:" <> show err) $
     MD.interpretView @(Natural, Map MText ByteString)
@@ -358,7 +357,7 @@ getContractMetadata contract = do
         $ (, storageView) <$> J.eitherDecodeStrict rawMd
     InRemoteContractUnderKey addr key -> do
       mtKey <- throwMdErr (const $ "Unexpected key:" <> key) $ mkMText key
-      bigMapId_ <- snd <$> getMetadataRegistryStorage (#contract .! (AddressResolved addr))
+      bigMapId_ <- snd <$> getMetadataRegistryStorage (#contract :! (AddressResolved addr))
       rawMd <- readBigMapValue bigMapId_ mtKey
       throwMdErr (\err -> "Error decoding metadata:" <> show err)
         $ (, storageView) <$> J.eitherDecodeStrict rawMd
@@ -384,13 +383,12 @@ call
   -> epRef
   -> epArg
   -> MorleyClientM ()
-call (arg #sender -> sender) (arg #contract -> contract) epRef epArg =
+call (N sender :: "sender" :! a) (N contract :: "contract" :! a) epRef epArg =
   case useHasEntrypointArg @Parameter @epRef @epArg epRef of
     (Dict, epName) -> do
       senderAddr <- resolveAddress sender
-      senderAlias <- getAlias sender
       env <- ask
-      liftIO $ revealKeyUnlessRevealed env senderAlias
+      liftIO $ Client.runMorleyClientM env $ revealKeyUnlessRevealed senderAddr Nothing
       contractAddr <- resolveAddress contract
       void $ lTransfer
         senderAddr
@@ -402,7 +400,7 @@ call (arg #sender -> sender) (arg #contract -> contract) epRef epArg =
 
 -- | Get the contract's storage.
 getStorage :: "contract" :! AddressOrAlias -> MorleyClientM StorageView
-getStorage (arg #contract -> contract) = do
+getStorage (N contract :: "contract" :! a) = do
   contractAddr <- resolveAddress contract
   OriginationScript _ storageExpr <- getContractScript contractAddr
   case fromVal @StorageView <$> fromExpression storageExpr of
@@ -411,7 +409,7 @@ getStorage (arg #contract -> contract) = do
 
 -- | Get the contract's storage.
 getMetadataRegistryStorage :: "contract" :! AddressOrAlias -> MorleyClientM ((), (BigMapId MText ByteString))
-getMetadataRegistryStorage (arg #contract -> contract) = do
+getMetadataRegistryStorage (N contract :: "contract" :! a) = do
   contractAddr <- resolveAddress contract
   OriginationScript _ storageExpr <- getContractScript contractAddr
   case fromVal @((), BigMapId MText ByteString) <$> fromExpression storageExpr of

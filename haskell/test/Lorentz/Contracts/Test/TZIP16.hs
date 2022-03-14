@@ -8,8 +8,8 @@ module Lorentz.Contracts.Test.TZIP16
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCase, (@?=))
 
-import Michelson.Runtime.GState (genesisAddress1)
-import Tezos.Address (formatAddress)
+import Morley.Michelson.Runtime.GState (genesisAddress1)
+import Morley.Tezos.Address (formatAddress)
 
 import Lorentz.Contracts.Stablecoin (ParsedMetadataUri(..), parseMetadataUri)
 

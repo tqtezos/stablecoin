@@ -26,7 +26,7 @@ import qualified Lorentz.Contracts.Spec.TZIP16Interface as TZ
 import Morley.Metadata
   (ViewCode(..), compileViewCodeTH, mkMichelsonStorageView, unsafeCompileViewCode)
 import Morley.Micheline (ToExpression(toExpression))
-import Tezos.Address (formatAddress, parseAddress)
+import Morley.Tezos.Address (formatAddress, parseAddress)
 
 import Lorentz.Contracts.Stablecoin.Types
 import Paths_stablecoin (version)

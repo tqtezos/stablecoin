@@ -8,13 +8,12 @@ module Stablecoin.Client.Cleveland.StablecoinImpl
 
 import Data.Text (isInfixOf)
 import Fmt (Buildable(build), pretty)
-import Lorentz (arg)
-import Morley.Client (AddressOrAlias, Alias)
-import Morley.Nettest (MorleyClientEnv)
-import Morley.Nettest.Client (ClientM, revealKeyUnlessRevealed)
-import Tezos.Address (Address)
-import Tezos.Core (Mutez)
-import Util.Named ((:!), (.!))
+import Morley.Client (AddressOrAlias)
+import Test.Cleveland (MorleyClientEnv)
+import Test.Cleveland.Internal.Client (ClientM, revealKeyUnlessRevealed)
+import Morley.Tezos.Address (Address)
+import Morley.Tezos.Core (Mutez)
+import Morley.Util.Named ((:!), pattern (:!), pattern N)
 
 import Stablecoin.Client
   (AddressAndAlias(..), InitialStorageData(..), UpdateOperatorData(AddOperator, RemoveOperator))
@@ -91,7 +90,7 @@ data StablecoinImpl m = StablecoinImpl
       :: "contract" :! AddressOrAlias
       -> m ("symbol" :! Text, "name" :! Text, "decimals" :! Natural)
   , siAssertEq :: forall a. (Eq a, Show a) => a -> a -> m ()
-  , siRevealKeyUnlessRevealed :: Alias -> m ()
+  , siRevealKeyUnlessRevealed :: Address -> m ()
   }
 
 -- | Implementation of `StablecoinImpl` that defers to `stablecoin-client`.
@@ -237,9 +236,9 @@ stablecoinImplClient env = StablecoinImpl
       output <- callStablecoinClient env $ [ "get-token-metadata" ] <> mkContractOpt contract
       runParser output $
         (,,)
-        <$> ((#symbol .!) <$> labelled "Token symbol" textParser)
-        <*> ((#name .!) <$> labelled "Token name" textParser)
-        <*> ((#decimals .!) <$> labelled "Token decimals" naturalParser)
+        <$> ((#symbol :!) <$> labelled "Token symbol" textParser)
+        <*> ((#name :!) <$> labelled "Token name" textParser)
+        <*> ((#decimals :!) <$> labelled "Token decimals" naturalParser)
   , siAssertEq = \actual expected ->
       if actual == expected
         then pass
@@ -248,7 +247,7 @@ stablecoinImplClient env = StablecoinImpl
   }
   where
     mkUserOpt :: "sender" :! AddressOrAlias -> [String]
-    mkUserOpt (arg #sender -> sender) = ["--user", pretty sender]
+    mkUserOpt (N sender) = ["--user", pretty sender]
 
     mkContractOpt :: "contract" :! AddressOrAlias -> [String]
-    mkContractOpt (arg #contract -> contract) = ["--contract", pretty contract]
+    mkContractOpt (N contract) = ["--contract", pretty contract]
