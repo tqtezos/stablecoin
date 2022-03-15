@@ -8,7 +8,7 @@
   }
 , pkgs ? import sources.nixpkgs haskell-nix.nixpkgsArgs
 , weeder-hacks ? import sources.haskell-nix-weeder { inherit pkgs; }
-, ligo ? (import "${sources.ligo}/nix" { }).ligo-bin
+, ligo ? (pkgs.runCommand "ligo" {} "mkdir -p $out/bin; cp ${sources.ligo} $out/bin/ligo; chmod +x $out/bin/ligo")
 , morley ? (import "${sources.morley}/ci.nix").packages.morley.exes.morley
 }:
 let
