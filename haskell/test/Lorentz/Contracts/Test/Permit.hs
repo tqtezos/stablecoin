@@ -1,4 +1,4 @@
--- SPDX-FileCopyrightText: 2020 tqtezos
+-- SPDX-FileCopyrightText: 2021 Oxhead Alpha
 -- SPDX-License-Identifier: MIT
 
 -- TODO: switch to `advanceTime` and remove this pragma when #350 is merged

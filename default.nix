@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2020 TQ Tezos
+# SPDX-FileCopyrightText: 2022 Oxhead Alpha
 # SPDX-License-Identifier: MIT
 
 { sources ? import ./nix/sources.nix
