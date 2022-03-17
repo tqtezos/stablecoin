@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 
-# SPDX-FileCopyrightText: 2020 Tocqueville Group
-#
-# SPDX-License-Identifier: LicenseRef-MIT-TQ
+# SPDX-FileCopyrightText: 2021 Oxhead Alpha
+# SPDX-License-Identifier: MIT
 
 # This script runs given nettest scenario using node provided
 # by the NETTEST_NODE_ADDR and NETTEST_NODE_PORT variables.
