@@ -114,6 +114,7 @@ metadataJSON mtmd mbDescription =
   TZ.authors
       [ TZ.author "Serokell" "https://serokell.io/"
       , TZ.author "TQ Tezos" "https://tqtezos.com/"
+      , TZ.author "Oxhead Alpha" "https://www.oxheadalpha.com/"
       ] <>
   TZ.homepage "https://github.com/tqtezos/stablecoin/" <>
   TZ.source Source
