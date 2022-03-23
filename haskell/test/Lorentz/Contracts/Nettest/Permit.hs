@@ -1,24 +1,29 @@
 -- SPDX-FileCopyrightText: 2021 Oxhead Alpha
 -- SPDX-License-Identifier: MIT
 
-module Permit
-  ( permitScenario
+module Lorentz.Contracts.Nettest.Permit
+  ( test_permitScenario
   ) where
 
 import Lorentz (Address, Packed(..), TAddress(..), lPackValue, toVal)
-import Morley.Michelson.Typed (convertContract, untypeValue)
-import Test.Cleveland
-import Morley.Util.Named (pattern (:!))
+
+import Test.Tasty (TestTree)
 
 import Lorentz.Contracts.Spec.FA2Interface (TransferDestination(..), TransferItem(..))
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
+import Morley.Michelson.Typed (convertContract, untypeValue)
+import Morley.Util.Named (pattern (:!))
+import Test.Cleveland
+
 import Lorentz.Contracts.Stablecoin
   (ConfigureMinterParam(..), FA2Parameter(..), MetadataUri(..), Parameter(..), PermitParam(..),
   metadataJSON, mkPermitHash, stablecoinContract)
-
 import Lorentz.Contracts.Test.Common
   (OriginationParams(..), addAccount, defaultOriginationParams, mkInitialStorage,
   nettestOriginateContractMetadataContract, testFA2TokenMetadata)
+
+test_permitScenario :: TestTree
+test_permitScenario = testScenario "permitScenario" permitScenario
 
 permitScenario :: Monad m => Scenario m
 permitScenario = scenario do

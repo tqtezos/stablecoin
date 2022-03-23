@@ -3,13 +3,17 @@
 
 {-# LANGUAGE OverloadedLists #-}
 
-module StablecoinClientTest
-  ( stablecoinClientScenario
+module Lorentz.Contracts.Nettest.StablecoinClientTest
+  ( test_stablecoinClientScenario
   ) where
+
+import Test.Tasty (TestTree)
+import Test.Tasty.HUnit (testCase)
 
 import Test.Cleveland.Internal.Abstract (SpecificOrDefaultAliasHint, Moneybag(..), ccMoneybag)
 import Morley.Client.TezosClient (AddressOrAlias(..))
 import Test.Cleveland as NT
+import Test.Cleveland.Tasty.Internal (whenNetworkEnabled)
 import Morley.Tezos.Address (Address)
 import Morley.Util.Named (pattern (:!))
 
@@ -23,6 +27,13 @@ import Stablecoin.Client.Cleveland
   updateOperators)
 import qualified Stablecoin.Client.Cleveland as SC
 import Stablecoin.Client.Parser (ContractMetadataOptions(..))
+import Stablecoin.Client.Cleveland.Caps (runStablecoinClient)
+
+test_stablecoinClientScenario :: TestTree
+test_stablecoinClientScenario =
+  whenNetworkEnabled $ \withEnv ->
+    testCase "stablecoinClientScenario" do
+      withEnv (`runStablecoinClient` stablecoinClientScenario)
 
 -- | Check that all the `stablecoin-client` commands work.
 

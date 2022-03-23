@@ -61,7 +61,6 @@ tests:
     <<: *test-common
     source-dirs:
       - test
-      - test-common
 
     dependencies:
       - aeson
@@ -73,6 +72,7 @@ tests:
       - hedgehog
       - lorentz
       - morley
+      - morley-client
       - morley-ledgers
       - morley-ledgers-test
       - morley-metadata
@@ -86,26 +86,4 @@ tests:
       - tasty-hedgehog
       - tasty-hunit-compat
       - text
-
-  stablecoin-nettest:
-    <<: *test-common
-    source-dirs:
-      - test-common
-      - nettest
-
-    dependencies:
-      - aeson
-      - cleveland
-      - containers
-      - either
-      - fmt
-      - lorentz
-      - morley
-      - morley-client
-      - morley-ledgers
-      - morley-metadata
-      - morley-prelude
-      - stablecoin
-      - tasty
-      - tasty-hunit-compat
       - with-utf8

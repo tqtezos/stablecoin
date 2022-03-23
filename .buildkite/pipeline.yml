@@ -82,10 +82,8 @@ steps:
    commands: &run-nettest
      - eval "$FETCH_CONTRACT"
      - cd haskell/
-     - nix build -L -f ../ nettest
-     - nix run -f ../ tezos-client stablecoin-client -c ../scripts/ci/run-local-chain-nettest.sh ./result/bin/stablecoin-nettest
      - nix build -L -f .. test
-     - nix run -f ../ tezos-client -c ./result/bin/stablecoin-test --cleveland-mode=only-network
+     - nix run -f ../ tezos-client stablecoin-client -c ./result/bin/stablecoin-test --cleveland-mode=only-network -d "$(mktemp -d --tmpdir="$PWD")"
    retry: &retry-nettest
       automatic:
         limit: 1
@@ -101,14 +99,9 @@ steps:
      # Note that testnet moneybag can run out of tz. If this happened, someone should transfer it some
      # more tz, its address: tz1ij8gUYbMRUXa4xX3mNvKguhaWG9GGbURn
      TASTY_CLEVELAND_MONEYBAG_SECRET_KEY: "unencrypted:edsk4EYgVvKVKppJXAyeoqxJrNeyoktNqmcx5op1CFht9P1p8pPxp7"
-   commands:
-     - eval "$FETCH_CONTRACT"
-     - cd haskell/
-     - nix build -L -f ../ nettest
-     - nix run -f ../ tezos-client stablecoin-client -c ../scripts/ci/run-local-chain-nettest.sh ./result/bin/stablecoin-nettest
-     - nix build -L -f .. test
      # Running all of the tests on network will end up draining the moneybag; for now, only FA1.2 tests are run
-     - nix run -f ../ tezos-client -c ./result/bin/stablecoin-test --cleveland-mode=only-network -p /FA1_2/
+     TASTY_PATTERN: '/Test.FA1_2/||/Lorentz.Contracts.Nettest/'
+   commands: *run-nettest
    retry: *retry-nettest
    timeout_in_minutes: 360
 

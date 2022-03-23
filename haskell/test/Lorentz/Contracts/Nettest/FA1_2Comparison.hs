@@ -1,11 +1,12 @@
 -- SPDX-FileCopyrightText: 2021 Oxhead Alpha
 -- SPDX-License-Identifier: MIT
 
-module FA1_2Comparison
-  ( fa1_2ComparisonScenario
+module Lorentz.Contracts.Nettest.FA1_2Comparison
+  ( test_fa1_2ComparisonScenario
   ) where
 
 import qualified Data.Map as Map
+import Test.Tasty (TestTree)
 
 import Lorentz (TAddress(..), toVal)
 import Morley.Michelson.Typed (convertContract, mkBigMap, untypeValue)
@@ -17,6 +18,9 @@ import Lorentz.Contracts.Stablecoin as SFA2
 import Lorentz.Contracts.StablecoinFA1_2 as SFA1_2
 
 import Lorentz.Contracts.Test.Common (nettestOriginateContractMetadataContract)
+
+test_fa1_2ComparisonScenario :: TestTree
+test_fa1_2ComparisonScenario = testScenario "fa1_2ComparisonScenario" fa1_2ComparisonScenario
 
 -- | This test originates both the FA1.2 and FA2 versions of stablecoin,
 -- and performs a single @transfer@ operation.

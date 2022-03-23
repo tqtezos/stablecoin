@@ -1,4 +1,4 @@
--- SPDX-FileCopyrightText: 2022 TQ Tezos
+-- SPDX-FileCopyrightText: 2022 Oxhead Alpha
 -- SPDX-License-Identifier: MIT
 
 module Lorentz.Contracts.Test.AsRPC

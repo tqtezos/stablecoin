@@ -1,22 +1,72 @@
 -- SPDX-FileCopyrightText: 2021 Oxhead Alpha
 -- SPDX-License-Identifier: MIT
 
-module Nettest
-  ( scNettestScenario
-  , TransferlistType(..)
+module Lorentz.Contracts.Nettest.Nettest
+  ( test_scenarioWithInternalTransferlist
+  , test_scenarioWithExternalTransferlist
   ) where
 
 import qualified Data.Set as Set
+import qualified Data.Text.IO.Utf8 as Utf8
+import Test.Tasty (TestTree)
 
 import Lorentz hiding (comment, (>>))
 import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Test.Common
+import Morley.Michelson.Parser.Types (MichelsonSource(MSFile))
+import Morley.Michelson.Runtime (parseExpandContract)
 import Morley.Michelson.Typed (untypeValue)
 import qualified Morley.Michelson.Typed as T
-import Test.Cleveland
+import qualified Morley.Michelson.Untyped as U (Contract)
 import Morley.Util.Named
+import Test.Cleveland
 
+import qualified Indigo.Contracts.Transferlist.External as External
+import qualified Indigo.Contracts.Transferlist.Internal as Internal
 import Lorentz.Contracts.Stablecoin
+
+test_scenarioWithInternalTransferlist :: TestTree
+test_scenarioWithInternalTransferlist =
+  testScenario "Stablecoin contract nettest scenarioWithInternalTransferlist" $
+    scNettestScenario
+      originateTransferlistInternal
+      Internal
+
+test_scenarioWithExternalTransferlist :: IO TestTree
+test_scenarioWithExternalTransferlist = do
+  externalTransferlistFile <- Utf8.readFile externalTransferlistContractPath
+  externalTransferlistContract <- either (error "cannot parse transferlist contract") pure $
+    parseExpandContract (MSFile externalTransferlistContractPath) externalTransferlistFile
+
+  pure $ testScenario "Stablecoin contract nettest scenarioWithExternalTransferlist" $
+    scNettestScenario
+      (originateTransferlistExternal externalTransferlistContract)
+      External
+
+externalTransferlistContractPath :: FilePath
+externalTransferlistContractPath = "test/resources/transferlist.tz"
+
+originateTransferlistInternal :: MonadOps f => Set (Address, Address) -> Set Address -> f Address
+originateTransferlistInternal transfers receivers = chAddress <$>
+  originateSimple
+    "nettest.transferlist_internal"
+    (Internal.Storage transfers receivers)
+    (Internal.transferlistContract)
+
+originateTransferlistExternal
+  :: MonadCleveland caps m
+  => U.Contract -> Set (Address, Address) -> Set Address -> m Address
+originateTransferlistExternal externalTransferlistContract transfers receivers = do
+  testOwner <- newAddress "testOwner"
+  originateUntypedSimple
+    "nettest.transferlist_internal"
+    (untypeValue @(ToT External.Storage) . toVal
+      $ External.convertToExternalStorage
+          (Internal.Storage transfers receivers)
+          testOwner -- issuer
+          testOwner -- admin
+          )
+    externalTransferlistContract
 
 -- | Indicates whether we're using the external safelist (the one parsed from @transferlist.tz@)
 -- or the internal safelist ('Indigo.Contracts.Transferlist.Internal')
