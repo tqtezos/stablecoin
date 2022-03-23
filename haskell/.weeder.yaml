@@ -48,3 +48,8 @@
     - message:
       - name: Redundant build-depends entry
       - depends: base-noprelude
+    - message:
+      - name: Weeds exported
+      - identifier:
+        - ingredients
+        - main

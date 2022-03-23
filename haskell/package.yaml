@@ -27,13 +27,12 @@ library:
     - aeson
     - aeson-casing
     - bytestring
-    - caps
     - cleveland
     - containers
     - directory
-    - file-embed
     - fmt
     - indigo
+    - lens
     - lorentz
     - megaparsec
     - morley
@@ -62,50 +61,29 @@ tests:
     <<: *test-common
     source-dirs:
       - test
-      - test-common
 
     dependencies:
       - aeson
       - bytestring
       - cleveland
       - containers
+      - either
       - fmt
       - hedgehog
-      - hspec
       - lorentz
       - morley
+      - morley-client
       - morley-ledgers
       - morley-ledgers-test
       - morley-metadata
       - morley-metadata-test
       - morley-prelude
       - mtl
+      - o-clock
       - optparse-applicative
       - stablecoin
       - tasty
       - tasty-hedgehog
-      - tasty-hspec
       - tasty-hunit-compat
-      - text
-
-  stablecoin-nettest:
-    <<: *test-common
-    source-dirs:
-      - test-common
-      - nettest
-
-    dependencies:
-      - aeson
-      - cleveland
-      - containers
-      - lorentz
-      - morley
-      - morley-client
-      - morley-ledgers
-      - morley-metadata
-      - morley-metadata-test
-      - morley-prelude
-      - optparse-applicative
-      - stablecoin
       - text
       - with-utf8

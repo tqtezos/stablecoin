@@ -12,14 +12,14 @@ module Lorentz.Contracts.StablecoinFA1_2.Types
   , GetDefaultExpiryParam
   ) where
 
-import Data.FileEmbed (embedStringFile)
 import Fmt (pretty)
 
 import Lorentz as L
 import qualified Lorentz.Contracts.Spec.ApprovableLedgerInterface as AL
 import Lorentz.Contracts.Spec.TZIP16Interface (MetadataMap)
-import Michelson.Runtime (parseExpandContract)
-import qualified Michelson.Untyped as U
+import qualified Morley.Michelson.Untyped as U
+import Test.Cleveland.Michelson.Import (embedTextFile, readUntypedContract)
+import Morley.Michelson.Parser.Types (MichelsonSource(MSFile))
 
 import qualified Lorentz.Contracts.Stablecoin as S
 import Lorentz.Contracts.StablecoinPath (stablecoinFA1_2Path)
@@ -65,22 +65,17 @@ data Parameter
 instance ParameterHasEntrypoints Parameter where
   type ParameterEntrypointsDerivation Parameter = EpdRecursive
 
-type GetCounterParam = View () Natural
+type GetCounterParam = View_ () Natural
 
-type GetDefaultExpiryParam = View () S.Expiry
+type GetDefaultExpiryParam = View_ () S.Expiry
 
 -- | Parse the metadata registry contract.
 stablecoinFA1_2Contract :: U.Contract
-stablecoinFA1_2Contract =
-  $(case parseExpandContract (Just stablecoinFA1_2Path) $(embedStringFile stablecoinFA1_2Path) of
-    Left e -> fail (pretty e)
-    Right _ ->
-      [|
-        -- Note: it's ok to use `error` here, because we just proved that the contract
-        -- can be parsed+typechecked.
-        either (error . pretty) id $
-          parseExpandContract
-            (Just stablecoinFA1_2Path)
-            $(embedStringFile stablecoinFA1_2Path)
-      |]
+stablecoinFA1_2Contract = $$(do
+  text <- embedTextFile stablecoinFA1_2Path
+  case readUntypedContract (MSFile stablecoinFA1_2Path) text of
+    Left err -> fail $ pretty err
+    -- Note: it's ok to use `error` here, because we just proved that the contract
+    -- can be parsed+typechecked.
+    Right _ -> [|| either (error . pretty) id $ readUntypedContract (MSFile stablecoinFA1_2Path) text ||]
     )

@@ -27,12 +27,12 @@ module Stablecoin.Client.Parser
 
 import qualified Data.List.NonEmpty as NonEmpty
 import Data.Version (showVersion)
-import Morley.Client (AddressOrAlias(..), Alias(..), MorleyClientConfig, clientConfigParser)
+import Morley.Client (AddressOrAlias(..), mkAlias, MorleyClientConfig, clientConfigParser)
 import qualified Options.Applicative as Opt
 import Options.Applicative.Help.Pretty (Doc, linebreak)
 import Paths_stablecoin (version)
-import Util.CLI (mkCLOptionParser)
-import Util.Named ((:!), (.!))
+import Morley.Util.CLI (mkCLOptionParser)
+import Morley.Util.Named ((:!), pattern (:!))
 
 import Lorentz.Contracts.Stablecoin (Expiry, UpdateOperatorData(..))
 import Morley.Client.Parser (addressOrAliasOption)
@@ -187,13 +187,13 @@ globalOptionsParser :: Opt.Parser GlobalOptions
 globalOptionsParser =
   GlobalOptions
     <$> addressOrAliasOption
-      (Just $ AddressAlias (Alias "stablecoin-user"))
-      (#name .! "user")
-      (#help .! "User to send operations as")
+      (Just $ AddressAlias (mkAlias "stablecoin-user"))
+      (#name :! "user")
+      (#help :! "User to send operations as")
     <*> addressOrAliasOption
-      (Just $ AddressAlias (Alias "stablecoin"))
-      (#name .! "contract")
-      (#help .! "The stablecoin contract address/alias to use")
+      (Just $ AddressAlias (mkAlias "stablecoin"))
+      (#name :! "contract")
+      (#help :! "The stablecoin contract address/alias to use")
 
 clientArgsRawParser :: Opt.Parser ClientArgsRaw
 clientArgsRawParser = Opt.subparser $
@@ -236,38 +236,38 @@ clientArgsRawParser = Opt.subparser $
       dcoMasterMinter <-
         addressOrAliasOption
           Nothing
-          (#name .! "master-minter")
-          (#help .! "Address or alias of the 'Master Minter' role")
+          (#name :! "master-minter")
+          (#help :! "Address or alias of the 'Master Minter' role")
       dcoContractOwner <-
         addressOrAliasOption
           Nothing
-          (#name .! "contract-owner")
-          (#help .! "Address or alias of the 'Contract Owner' role")
+          (#name :! "contract-owner")
+          (#help :! "Address or alias of the 'Contract Owner' role")
       dcoPauser <-
         addressOrAliasOption
           Nothing
-          (#name .! "pauser")
-          (#help .! "Address or alias of the 'Pauser' role")
+          (#name :! "pauser")
+          (#help :! "Address or alias of the 'Pauser' role")
       dcoTransferlist <-
         optional $ addressOrAliasOption
           Nothing
-          (#name .! "transferlist")
-          (#help .! "Address or alias of the Transferlist contract")
+          (#name :! "transferlist")
+          (#help :! "Address or alias of the Transferlist contract")
       dcoTokenSymbol <-
         mkCLOptionParser
           (Just "TEST")
-          (#name .! "token-symbol")
-          (#help .! "Token symbol")
+          (#name :! "token-symbol")
+          (#help :! "Token symbol")
       dcoTokenName <-
         mkCLOptionParser
           (Just "Test")
-          (#name .! "token-name")
-          (#help .! "Token name")
+          (#name :! "token-name")
+          (#help :! "Token name")
       dcoTokenDecimals <-
         naturalOption
           (Just 8)
-          (#name .! "token-decimals")
-          (#help .! ("Number of digits to use after the decimal point " <>
+          (#name :! "token-decimals")
+          (#help :! ("Number of digits to use after the decimal point " <>
                      "when displaying the token amounts"))
       dcoReplaceAlias <-
         Opt.switch $
@@ -280,8 +280,8 @@ clientArgsRawParser = Opt.subparser $
       dcoDefaultExpiry <-
         naturalOption
           Nothing
-          (#name .! "default-expiry")
-          (#help .! "Number of seconds it takes for a permit to expire")
+          (#name :! "default-expiry")
+          (#help :! "Number of seconds it takes for a permit to expire")
 
       -- Where to place metadata, while keeping it embedded in
       -- contract being the default
@@ -295,8 +295,8 @@ clientArgsRawParser = Opt.subparser $
         rawOptParser :: Opt.Parser ContractMetadataOptions
         rawOptParser = OpRaw <$> (mkCLOptionParser
           Nothing
-          (#name .! "contract-metadata-off-chain")
-          (#help .! "Use the provided off-chain URI for metadata URI"))
+          (#name :! "contract-metadata-off-chain")
+          (#help :! "Use the provided off-chain URI for metadata URI"))
 
         inplaceOptParser :: Opt.Parser ContractMetadataOptions
         inplaceOptParser = do
@@ -315,8 +315,8 @@ clientArgsRawParser = Opt.subparser $
         contractDescriptionParser =
           optional $ mkCLOptionParser @Text
             Nothing
-            (#name .! "description")
-            (#help .! "An optional contract description to add to the contract's metadata. \
+            (#name :! "description")
+            (#help :! "An optional contract description to add to the contract's metadata. \
                       \If none is specified, a generic default description will be used. \
                       \When the '--contract-metadata-in-place' option is used, the \
                       \'--description' option must come after it.")
@@ -333,18 +333,18 @@ clientArgsRawParser = Opt.subparser $
       toFrom <-
         addressOrAliasOption
           Nothing
-          (#name .! "from")
-          (#help .! "Address of the account to take tokens from")
+          (#name :! "from")
+          (#help :! "Address of the account to take tokens from")
       toTo <-
         addressOrAliasOption
           Nothing
-          (#name .! "to")
-          (#help .! "Address of the account to given tokens to")
+          (#name :! "to")
+          (#help :! "Address of the account to given tokens to")
       toAmount <-
         naturalOption
           Nothing
-          (#name .! "amount")
-          (#help .! "Amount of tokens to transfer")
+          (#name :! "amount")
+          (#help :! "Amount of tokens to transfer")
       pure $ TransferOptions {..}
 
     getBalanceOfCmd :: Opt.Mod Opt.CommandFields ClientArgsRaw
@@ -359,8 +359,8 @@ clientArgsRawParser = Opt.subparser $
       gbooOwner <-
         addressOrAliasOption
           Nothing
-          (#name .! "owner")
-          (#help .! "Address of the account whose balance will be retrieved.")
+          (#name :! "owner")
+          (#help :! "Address of the account whose balance will be retrieved.")
       pure $ GetBalanceOfOptions {..}
 
     updateOperatorsCmd :: Opt.Mod Opt.CommandFields ClientArgsRaw
@@ -376,14 +376,14 @@ clientArgsRawParser = Opt.subparser $
         nonEmptyParser $
           (AddOperator <$> addressOrAliasOption
             Nothing
-            (#name .! "add")
-            (#help .! ("Address of the operator to add to the account indicated by '--user'. " <>
+            (#name :! "add")
+            (#help :! ("Address of the operator to add to the account indicated by '--user'. " <>
                       "This option can be repeated many times.")))
           <|>
           (RemoveOperator <$> addressOrAliasOption
             Nothing
-            (#name .! "remove")
-            (#help .! ("Address of the operator to remove from the account indicated by '--user'. " <>
+            (#name :! "remove")
+            (#help :! ("Address of the operator to remove from the account indicated by '--user'. " <>
                       "This option can be repeated many times.")))
       pure $ UpdateOperatorsOptions {..}
 
@@ -399,13 +399,13 @@ clientArgsRawParser = Opt.subparser $
       iooOwner <-
         addressOrAliasOption
           Nothing
-          (#name .! "owner")
-          (#help .! "Address of the account whose operators will be checked")
+          (#name :! "owner")
+          (#help :! "Address of the account whose operators will be checked")
       iooOperator <-
         addressOrAliasOption
           Nothing
-          (#name .! "operator")
-          (#help .! "Address of the potential operator")
+          (#name :! "operator")
+          (#help :! "Address of the potential operator")
       pure $ IsOperatorOptions {..}
 
     pauseCmd :: Opt.Mod Opt.CommandFields ClientArgsRaw
@@ -437,19 +437,19 @@ clientArgsRawParser = Opt.subparser $
       cmoMinter <-
         addressOrAliasOption
           Nothing
-          (#name .! "minter")
-          (#help .! "Address or alias of the minter to add")
+          (#name :! "minter")
+          (#help :! "Address or alias of the minter to add")
       cmoCurrentMintingAllowance <-
         optional $ naturalOption
           Nothing
-          (#name .! "current-minting-allowance")
-          (#help .! ("The current minting allowance. If it does not match " <>
+          (#name :! "current-minting-allowance")
+          (#help :! ("The current minting allowance. If it does not match " <>
                      "the actual minting allowance, the operation fails."))
       cmoNewMintingAllowance <-
         naturalOption
           Nothing
-          (#name .! "new-minting-allowance")
-          (#help .! "The minting allowance for this minter")
+          (#name :! "new-minting-allowance")
+          (#help :! "The minting allowance for this minter")
       pure $ ConfigureMinterOptions {..}
 
     removeMinterCmd :: Opt.Mod Opt.CommandFields ClientArgsRaw
@@ -465,8 +465,8 @@ clientArgsRawParser = Opt.subparser $
       rmoMinter <-
         addressOrAliasOption
           Nothing
-          (#name .! "minter")
-          (#help .! "Address or alias of the minter to remove")
+          (#name :! "minter")
+          (#help :! "Address or alias of the minter to remove")
       pure $ RemoveMinterOptions {..}
 
     mintCmd :: Opt.Mod Opt.CommandFields ClientArgsRaw
@@ -482,13 +482,13 @@ clientArgsRawParser = Opt.subparser $
       moTo <-
         addressOrAliasOption
           Nothing
-          (#name .! "to")
-          (#help .! "Address or alias to which the tokens will be transferred")
+          (#name :! "to")
+          (#help :! "Address or alias to which the tokens will be transferred")
       moAmount <-
         naturalOption
           Nothing
-          (#name .! "amount")
-          (#help .! "The amount of tokens to produce")
+          (#name :! "amount")
+          (#help :! "The amount of tokens to produce")
       pure $ MintOptions {..}
 
     burnCmd :: Opt.Mod Opt.CommandFields ClientArgsRaw
@@ -505,8 +505,8 @@ clientArgsRawParser = Opt.subparser $
         nonEmptyParser $
           naturalOption
             Nothing
-            (#name .! "amount")
-            (#help .! "Amount of tokens to burn. This option can be repeated many times.")
+            (#name :! "amount")
+            (#help :! "Amount of tokens to burn. This option can be repeated many times.")
       pure $ BurnOptions {..}
 
     mkCommandParser
@@ -531,8 +531,8 @@ clientArgsRawParser = Opt.subparser $
       tooTo <-
         addressOrAliasOption
           Nothing
-          (#name .! "to")
-          (#help .! "Address or alias to which ownership will be transferred")
+          (#name :! "to")
+          (#help :! "Address or alias to which ownership will be transferred")
       pure $ TransferOwnershipOptions {..}
 
     acceptOwnershipCmd :: Opt.Mod Opt.CommandFields ClientArgsRaw
@@ -554,8 +554,8 @@ clientArgsRawParser = Opt.subparser $
       cmmoTo <-
         addressOrAliasOption
           Nothing
-          (#name .! "to")
-          (#help .! "Address or alias to which the 'master minter' role will be transferred")
+          (#name :! "to")
+          (#help :! "Address or alias to which the 'master minter' role will be transferred")
       pure $ ChangeMasterMinterOptions {..}
 
     changePauserCmd :: Opt.Mod Opt.CommandFields ClientArgsRaw
@@ -570,8 +570,8 @@ clientArgsRawParser = Opt.subparser $
       cpoTo <-
         addressOrAliasOption
           Nothing
-          (#name .! "to")
-          (#help .! "Address or alias to which the 'pauser' role will be transferred")
+          (#name :! "to")
+          (#help :! "Address or alias to which the 'pauser' role will be transferred")
       pure $ ChangePauserOptions {..}
 
     setTransferlistCmd :: Opt.Mod Opt.CommandFields ClientArgsRaw
@@ -586,8 +586,8 @@ clientArgsRawParser = Opt.subparser $
       ssoTransferlist <-
         optional $ addressOrAliasOption
           Nothing
-          (#name .! "transferlist")
-          (#help .! "Address or alias of the new transferlist")
+          (#name :! "transferlist")
+          (#help :! "Address or alias of the new transferlist")
       pure $ SetTransferlistOptions {..}
 
     getBalanceCmd :: Opt.Mod Opt.CommandFields ClientArgsRaw
@@ -651,8 +651,8 @@ clientArgsRawParser = Opt.subparser $
       gmaoMinter <-
         addressOrAliasOption
           Nothing
-          (#name .! "minter")
-          (#help .! "Address or alias of the minter whose allowance will be retrieved")
+          (#name :! "minter")
+          (#help :! "Address or alias of the minter whose allowance will be retrieved")
       pure $ GetMintingAllowanceOptions {..}
 
     getTokenMetadataCmd :: Opt.Mod Opt.CommandFields ClientArgsRaw

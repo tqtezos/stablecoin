@@ -26,7 +26,7 @@ import qualified Lorentz.Contracts.Spec.TZIP16Interface as TZ
 import Morley.Metadata
   (ViewCode(..), compileViewCodeTH, mkMichelsonStorageView, unsafeCompileViewCode)
 import Morley.Micheline (ToExpression(toExpression))
-import Tezos.Address (formatAddress, parseAddress)
+import Morley.Tezos.Address (formatAddress, parseAddress)
 
 import Lorentz.Contracts.Stablecoin.Types
 import Paths_stablecoin (version)
@@ -45,7 +45,7 @@ metadataMap mdata = mkBigMap $
   -- > There is no implicit conversion to Michelson's binary format (PACK) nor
   -- > quoting mechanism.
   --
-  -- See: <https://gitlab.com/tzip/tzip/-/blob/eb1da57684599a266334a73babd7ba82dbbbce66/proposals/tzip-16/tzip-16.md#contract-storage>
+  -- See: <https://gitlab.com/tezos/tzip/-/blob/eb1da57684599a266334a73babd7ba82dbbbce66/proposals/tzip-16/tzip-16.md#contract-storage>
   --
   -- So, instead, we encode it as UTF-8 byte sequences.
   case mdata of
@@ -114,6 +114,7 @@ metadataJSON mtmd mbDescription =
   TZ.authors
       [ TZ.author "Serokell" "https://serokell.io/"
       , TZ.author "TQ Tezos" "https://tqtezos.com/"
+      , TZ.author "Oxhead Alpha" "https://www.oxheadalpha.com/"
       ] <>
   TZ.homepage "https://github.com/tqtezos/stablecoin/" <>
   TZ.source Source

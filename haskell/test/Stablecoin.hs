@@ -2,38 +2,33 @@
 -- SPDX-License-Identifier: MIT
 
 module Stablecoin
-  ( spec_FA2
-  , spec_Management
-  , spec_Permit
+  ( test_FA2
+  , test_Management
+  , test_Permit
   , test_SMT
   ) where
 
 import Hedgehog (withTests)
-import Test.Hspec (Spec)
 import Test.Tasty (TestTree)
 import Test.Tasty.Hedgehog (testProperty)
 
-import Lorentz (TAddress(..))
 import Lorentz.Contracts.Stablecoin as SC
 import Lorentz.Contracts.Test.Common
 import Lorentz.Contracts.Test.FA2
 import Lorentz.Contracts.Test.Management
 import Lorentz.Contracts.Test.Permit (permitSpec)
-import Michelson.Test.Integrational
-import Michelson.Typed hiding (TAddress)
 import SMT
-import Tezos.Core
+import Test.Cleveland
 
-origination :: OriginationFn SC.Parameter
+origination :: MonadCleveland caps m => OriginationFn SC.Parameter SC.Storage m
 origination originationParams = do
-  TAddress @SC.Parameter <$> tOriginate
-    stablecoinContract
+  originateTypedSimple
     "Stablecoin contract"
-    (toVal (mkInitialStorage originationParams))
-    (toMutez 0)
+    (mkInitialStorage originationParams)
+    stablecoinContract
 
-spec_FA2 :: Spec
-spec_FA2 =
+test_FA2 :: [TestTree]
+test_FA2 =
   fa2Spec origination
 
 test_SMT :: [TestTree]
@@ -42,10 +37,10 @@ test_SMT =
     (withTests 20 $ smtProperty)
   ]
 
-spec_Management :: Spec
-spec_Management =
+test_Management :: [TestTree]
+test_Management =
   managementSpec origination
 
-spec_Permit :: Spec
-spec_Permit =
+test_Permit :: [TestTree]
+test_Permit =
   permitSpec origination
