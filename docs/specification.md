@@ -18,7 +18,7 @@ These specifications were assembled with the following references:
 - Contract Metadata:
   [*TZIP-16*][TZIP-16]
 
-- [*Michelson Contract Interfaces and Conventions*](https://gitlab.com/tzip/tzip/blob/ae2f1e7ebb3454d811a2bea3cd0698b0e64ccea5/proposals/tzip-4/tzip-4.md) TZIP which defines `view` and `void` type synonyms
+- [*Michelson Contract Interfaces and Conventions*](https://gitlab.com/tezos/tzip/blob/ae2f1e7ebb3454d811a2bea3cd0698b0e64ccea5/proposals/tzip-4/tzip-4.md) TZIP which defines `view` and `void` type synonyms
 
 # General Requirements
 
@@ -133,7 +133,7 @@ Required `Transferlist` entrypoints:
 * `assertReceivers(list address)`
   * Fails if any address in the list is not whitelisted or is blacklisted.
 
-The specific interface of transferlist contracts is described in [TZIP-15](https://gitlab.com/tzip/tzip/-/blob/c38f4c2dc9da883d01e85409d34d0015d6ad272a/proposals/tzip-15/tzip-15.md)
+The specific interface of transferlist contracts is described in [TZIP-15](https://gitlab.com/tezos/tzip/-/blob/c38f4c2dc9da883d01e85409d34d0015d6ad272a/proposals/tzip-15/tzip-15.md)
 
 # Errors
 
@@ -784,7 +784,7 @@ In this contract `update_operator` IS paused.
 7. CENTRE defines the `blacklister` role and blacklisting is part of the CENTRE Fiat Token contract.
 Our project is different: whitelisting and blacklisting are offloaded to a separate [`Transferlist` contract](#transferlist).
 
-[FA2]: https://gitlab.com/tzip/tzip/-/blob/b916f32718234b7c4016f46e00327d66702511a2/proposals/tzip-12/tzip-12.md
-[TZIP-17]: https://gitlab.com/tzip/tzip/-/blob/eb1da57684599a266334a73babd7ba82dbbbce66/proposals/tzip-17/tzip-17.md
-[TZIP-16]: https://gitlab.com/tzip/tzip/-/blob/eb1da57684599a266334a73babd7ba82dbbbce66/proposals/tzip-16/tzip-16.md
-[view]: https://gitlab.com/tzip/tzip/-/blob/master/proposals/tzip-4/tzip-4.md#view-entrypoints
+[FA2]: https://gitlab.com/tezos/tzip/-/blob/b916f32718234b7c4016f46e00327d66702511a2/proposals/tzip-12/tzip-12.md
+[TZIP-17]: https://gitlab.com/tezos/tzip/-/blob/eb1da57684599a266334a73babd7ba82dbbbce66/proposals/tzip-17/tzip-17.md
+[TZIP-16]: https://gitlab.com/tezos/tzip/-/blob/eb1da57684599a266334a73babd7ba82dbbbce66/proposals/tzip-16/tzip-16.md
+[view]: https://gitlab.com/tezos/tzip/-/blob/master/proposals/tzip-4/tzip-4.md#view-entrypoints

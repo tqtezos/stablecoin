@@ -8,7 +8,7 @@
 #include "actions.ligo"
 
 (*
- * FA1.2 entrypoints that are specified in [tzip-12](https://gitlab.com/tzip/tzip/-/blob/827c6c5f9e504e9c4a63e265f86dce24f5c5cef9/proposals/tzip-12/tzip-12.md)
+ * FA1.2 entrypoints that are specified in [tzip-12](https://gitlab.com/tezos/tzip/-/blob/827c6c5f9e504e9c4a63e265f86dce24f5c5cef9/proposals/tzip-12/tzip-12.md)
  *)
 function fa1_2_main
   ( const action : parameter

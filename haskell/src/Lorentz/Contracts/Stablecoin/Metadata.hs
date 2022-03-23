@@ -45,7 +45,7 @@ metadataMap mdata = mkBigMap $
   -- > There is no implicit conversion to Michelson's binary format (PACK) nor
   -- > quoting mechanism.
   --
-  -- See: <https://gitlab.com/tzip/tzip/-/blob/eb1da57684599a266334a73babd7ba82dbbbce66/proposals/tzip-16/tzip-16.md#contract-storage>
+  -- See: <https://gitlab.com/tezos/tzip/-/blob/eb1da57684599a266334a73babd7ba82dbbbce66/proposals/tzip-16/tzip-16.md#contract-storage>
   --
   -- So, instead, we encode it as UTF-8 byte sequences.
   case mdata of

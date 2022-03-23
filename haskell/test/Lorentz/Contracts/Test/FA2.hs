@@ -2,7 +2,7 @@
 -- SPDX-License-Identifier: MIT
 
 {- | Tests for FA2 interface.
- https://gitlab.com/tzip/tzip/-/blob/131b46dd89675bf030489ded9b0b3f5834b70eb6/proposals/tzip-12/tzip-12.md
+ https://gitlab.com/tezos/tzip/-/blob/131b46dd89675bf030489ded9b0b3f5834b70eb6/proposals/tzip-12/tzip-12.md
 -}
 module Lorentz.Contracts.Test.FA2
   ( OriginationParams (..)

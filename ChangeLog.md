@@ -46,9 +46,9 @@ README when a new version is released. -->
   * Contract metadata now contains the version of the ligo compiler used
     to compile the contract.
   * Update the types of the `is_operator` and `get_balance` views to reflect
-    the [recent changes to TZIP-012](https://gitlab.com/tzip/tzip/-/merge_requests/126).
+    the [recent changes to TZIP-012](https://gitlab.com/tezos/tzip/-/merge_requests/126).
   * Update the names of the metadata keys to use the camelCase naming scheme to reflect
-    the [recent changes to TZIP-016](https://gitlab.com/tzip/tzip/-/merge_requests/115).
+    the [recent changes to TZIP-016](https://gitlab.com/tezos/tzip/-/merge_requests/115).
 
 ## 1.6.0
 
