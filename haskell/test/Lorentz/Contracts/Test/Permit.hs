@@ -77,7 +77,7 @@ errMissignedPermit signedBytes = expectFailedWith ([mt|MISSIGNED|], signedBytes)
 assertPermitCount :: MonadCleveland caps m => ContractHandle Parameter Storage () -> Int -> m ()
 assertPermitCount contractAddr expectedCount = do
   storage <- getStorage @Storage contractAddr
-  count <- sum . map (length . upPermits) <$> getAllBigMapValues (sPermits storage)
+  count <- sum . map (length . upPermits) <$> getAllBigMapValues (sPermitsRPC storage)
   unless (count == expectedCount) $
     failure $
       "Expected there to be " <> show expectedCount

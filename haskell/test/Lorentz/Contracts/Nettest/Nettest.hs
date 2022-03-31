@@ -156,7 +156,7 @@ scNettestScenario originateTransferlist transferlistType = scenario do
       :: MonadCleveland caps m
       => [("from_" :! Address, [("to_" :! Address, "amount" :! Natural)])]
       -> m ()
-    callTransfers = mapM_ $ \(from@(N from_), destinations) ->
+    callTransfers = mapM_ $ \(from@(arg #from_ -> from_), destinations) ->
       withSender from_ $
         call sc (Call @"Transfer") (constructTransfersFromSender from destinations)
 
@@ -383,7 +383,7 @@ scNettestScenario originateTransferlist transferlistType = scenario do
       withSender superuser $ transfer $
         TransferData
           { tdTo = nettestMasterMinter
-          , tdAmount = toMutez 100000000
+          , tdAmount = [tz|100|]
           , tdEntrypoint = DefEpName
           , tdParameter = ()
           }

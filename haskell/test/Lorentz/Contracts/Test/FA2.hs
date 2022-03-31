@@ -15,9 +15,10 @@ module Lorentz.Contracts.Test.FA2
 
 import Data.Map as M (fromList)
 import Test.Tasty (TestTree, testGroup)
+import Fmt (pretty)
 
 import Lorentz.Contracts.Spec.FA2Interface as FA2 hiding (ParameterC)
-import Lorentz.Contracts.Stablecoin (ParameterC, Storage, sLedger, sOperators)
+import Lorentz.Contracts.Stablecoin (ParameterC, Storage, sLedgerRPC, sOperatorsRPC)
 import Lorentz.Contracts.Test.Common
 
 import Lorentz.Value
@@ -422,7 +423,7 @@ fa2Spec fa2Originate =
               withSender commonOperator $ call stablecoinContract (Call @"Transfer") transfer1
 
               storage <- getStorage @Storage (chAddress stablecoinContract)
-              val <- getBigMapValueMaybe (sLedger storage) wallet1
+              val <- getBigMapValueMaybe (sLedgerRPC storage) wallet1
               unless (isNothing val) $
                 failure "Zero balance account was not removed"
       ]
@@ -772,15 +773,15 @@ fa2Spec fa2Originate =
     -- We have such a configuration set by default in$  defaultOriginationParams.
     let checkForOperator stablecoinContract owner operator expectation = do
           storage <- getStorage @Storage (chAddress stablecoinContract)
-          val <- getBigMapValueMaybe (sOperators storage) (owner, operator)
+          val <- getBigMapValueMaybe (sOperatorsRPC storage) (owner, operator)
           let found = isJust val
           if found /= expectation
             then
               failure $
                 "Unexpected operator status. Expected: "
-                  <> show expectation
+                  <> pretty expectation
                   <> " Found: "
-                  <> show found
+                  <> pretty found
             else pass
      in testGroup "Configure operators entrypoint" $
           [ testScenario "add operator call adds operator as expected" $

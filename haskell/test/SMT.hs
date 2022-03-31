@@ -23,7 +23,7 @@ import Morley.Michelson.Text
 import qualified Morley.Michelson.Typed as T
 import Morley.Michelson.Typed.Haskell.Value (bmMap)
 import Morley.Tezos.Address (GlobalCounter(..))
-import Morley.Tezos.Core (unsafeMkMutez)
+import Morley.Tezos.Core (zeroMutez)
 import Morley.Util.Named (pattern (:!))
 import Test.Cleveland
 
@@ -113,7 +113,7 @@ applyBothAndCompare (cc:ccs) cs = let
   michelsonResult = stablecoinMichelsonModel cc cs
   in if haskellResult /= michelsonResult
     then failure $
-         "Models differ : " <> show (cc, cs, haskellResult, michelsonResult)
+         "Models differ : " <> pretty (cc, cs, haskellResult, michelsonResult)
     else applyBothAndCompare ccs haskellResult
 
 -- Size of the random address pool
@@ -502,7 +502,7 @@ stablecoinMichelsonModel
   -> ContractState
   -> ContractState
 stablecoinMichelsonModel cc@(ContractCall {..}) cs = let
-  contractEnv = dummyContractEnv { ceSender = ccSender, ceAmount = unsafeMkMutez 0 }
+  contractEnv = dummyContractEnv { ceSender = ccSender, ceAmount = zeroMutez }
   initSt = mkInitialStorage (ssToOriginationParams $ csStorage cs)
   iResult = callEntrypoint cc initSt contractEnv
   in case iResult of
@@ -511,7 +511,7 @@ stablecoinMichelsonModel cc@(ContractCall {..}) cs = let
       in cs { csStorage = newStorage }
     Left (InterpretError (mfwsFailed -> MichelsonFailedWith (T.VString tval), _))
       -> cs { csError = (ccIdx, contractErrorToModelError tval):(csError cs) }
-    Left err -> error $ "Unexpected error:" <> show err
+    Left err -> error $ "Unexpected error:" <> pretty err
 
 callEntrypoint
   :: ContractCall Parameter

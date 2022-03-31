@@ -16,9 +16,8 @@ module Lorentz.Contracts.Stablecoin.Types
   , FA2Parameter(..)
   , ParameterC
   , Parameter (..)
-  , Storage'(..)
-  , Storage
-  , StorageView
+  , Storage(..)
+  , StorageRPC(..)
   , UserPermits(..)
   , UpdateOperatorData(..)
   , PermitInfo(..)
@@ -49,6 +48,7 @@ import Morley.Michelson.Typed (Notes(..))
 import qualified Morley.Michelson.Typed as T
 import Morley.Michelson.Untyped (noAnn)
 import qualified Morley.Tezos.Crypto as Hash
+import Morley.AsRPC (HasRPCRepr(..), deriveRPCWithStrategy)
 
 import Lorentz.Contracts.StablecoinPath (metadataRegistryContractPath, stablecoinPath)
 
@@ -246,23 +246,26 @@ deriving anyclass instance IsoValue Roles
 deriving anyclass instance HasAnnotation Roles
 customGeneric "Roles" ligoLayout
 
-data Storage' big_map = Storage
+instance HasRPCRepr Roles where
+  type AsRPC Roles = Roles
+
+data Storage = Storage
   { sDefaultExpiry :: Expiry
-  , sLedger :: big_map Address Natural
-  , sMetadata :: MetadataMap big_map
+  , sLedger :: BigMap Address Natural
+  , sMetadata :: MetadataMap
   , sMintingAllowances :: Map Address Natural
-  , sOperators :: big_map (Address, Address) ()
+  , sOperators :: BigMap (Address, Address) ()
   , sPaused :: Bool
   , sPermitCounter :: Natural
-  , sPermits :: big_map Address UserPermits
+  , sPermits :: BigMap Address UserPermits
   , sRoles :: Roles
   , sTotalSupply :: Natural
   , sTransferlistContract :: Maybe Address
   }
 
-customGeneric "Storage'" ligoLayout
+customGeneric "Storage" ligoLayout
+deriveRPCWithStrategy "Storage" ligoLayout
 
-type Storage = Storage' BigMap
 deriving stock instance Show Storage
 deriving anyclass instance IsoValue Storage
 deriving anyclass instance HasAnnotation Storage
@@ -273,27 +276,24 @@ deriving anyclass instance HasAnnotation Storage
 -- except 'BigMap's have been replaced by 'BigMapId'.
 -- This is because, when a contract's storage is queried, the Tezos RPC returns
 -- big_maps' IDs instead of their contents.
-type StorageView = Storage' BigMapId
+type StorageView = StorageRPC
 deriving stock instance Show StorageView
-deriving anyclass instance IsoValue StorageView
 
 -- Currently the contract allows to add up to 12 minters.
 minterLimit :: Int
 minterLimit = 12
 
-data MetadataRegistryStorage' big_map = MetadataRegistryStorage
+data MetadataRegistryStorage = MetadataRegistryStorage
   { cmrsDummyField :: () -- Dummy field to match the ligo contract's storage.
-  , cmrsMetadata:: MetadataMap big_map
+  , cmrsMetadata:: MetadataMap
   }
   deriving stock Generic
-
-type MetadataRegistryStorage = MetadataRegistryStorage' BigMap
 
 deriving anyclass instance IsoValue MetadataRegistryStorage
 
 -- | Construct the storage for the Metadata contract.
 mkContractMetadataRegistryStorage
-  :: MetadataMap BigMap
+  :: MetadataMap
   -> MetadataRegistryStorage
 mkContractMetadataRegistryStorage m = MetadataRegistryStorage
   { cmrsDummyField = ()

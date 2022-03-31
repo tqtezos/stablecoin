@@ -5,6 +5,8 @@ module Test.Stablecoin.Client.Parser
   ( test_deployCmd
   ) where
 
+import qualified Debug (show)
+
 import Options.Applicative (ParserResult(Failure, Success), defaultPrefs, execParserPure)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (Assertion, assertFailure, testCase, (@?=))
@@ -52,12 +54,12 @@ test_deployCmd =
         Success (ClientArgs _ _ otherCmd) ->
           assertFailure $ toString $ unlines
             [ "Expected parser to succeed with a 'deploy' command, but it parsed this instead:"
-            , show otherCmd
+            , Debug.show otherCmd
             ]
         res ->
           assertFailure $ toString $ unlines
             [ "Expected parser to succeed, but it failed:"
-            , show res
+            , Debug.show res
             ]
 
     failsToParseDeployCmd :: [String] -> Assertion
@@ -67,7 +69,7 @@ test_deployCmd =
         res ->
           assertFailure $ toString $ unlines
             [ "Expected parser to failed, but the result was:"
-            , show res
+            , Debug.show res
             ]
 
     basicDeployOpts :: [String]

@@ -10,7 +10,7 @@ import Morley.Client (AddressOrAlias)
 
 import Lorentz as L
 import Lorentz.Contracts.Spec.TZIP16Interface (MetadataMap)
-import Lorentz.Contracts.Stablecoin (Expiry, Roles(..), Storage, Storage'(..))
+import Lorentz.Contracts.Stablecoin (Expiry, Roles(..), Storage(..))
 import Stablecoin.Client.Parser (ContractMetadataOptions(..))
 
 type family ComputeRegistryAddressType a where
@@ -18,7 +18,7 @@ type family ComputeRegistryAddressType a where
   ComputeRegistryAddressType AddressOrAlias = Maybe AddressOrAlias
 
 type family ComputeContractMetadataStorageType a where
-  ComputeContractMetadataStorageType Address = MetadataMap BigMap
+  ComputeContractMetadataStorageType Address = MetadataMap
   ComputeContractMetadataStorageType AddressOrAlias = ContractMetadataOptions
 
 -- | The data needed in order to create the stablecoin contract's initial storage.

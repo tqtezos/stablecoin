@@ -27,7 +27,7 @@ import Lorentz.Contracts.StablecoinPath (stablecoinFA1_2Path)
 data Storage = Storage
   { sDefaultExpiry :: S.Expiry
   , sLedger :: BigMap Address Natural
-  , sMetadata :: MetadataMap BigMap
+  , sMetadata :: MetadataMap
   , sMintingAllowances :: Map Address Natural
   , sPaused :: Bool
   , sPermitCounter :: Natural

@@ -24,7 +24,7 @@ import Morley.Client (Alias, mkAlias, MorleyClientEnv, MorleyClientEnv'(..))
 import qualified Morley.Client as MorleyClient
 import Morley.Client.TezosClient (TezosClientEnv(..))
 import Morley.Tezos.Address (Address, parseAddress)
-import Morley.Tezos.Core (Mutez, unsafeMkMutez)
+import Morley.Tezos.Core (Mutez, zeroMutez, toMutez)
 import Servant.Client (showBaseUrl)
 import System.Exit (ExitCode(..))
 import System.Process (readProcessWithExitCode)
@@ -97,9 +97,9 @@ mutezParser =
   -- as "-0 μꜩ" instead of "0 μꜩ", so we need to handle this special case here.
   -- https://github.com/chrisdone/formatting/pull/61
   -- https://gitlab.com/morley-framework/morley/-/issues/302#note_386133651
-  (string "-0 μꜩ" $> unsafeMkMutez 0)
+  (string "-0 μꜩ" $> zeroMutez)
   <|>
-  (fmap unsafeMkMutez decimal <* string " μꜩ")
+  (fmap (toMutez @Word63) decimal <* string " μꜩ")
 
 naturalParser :: Parser Natural
 naturalParser = decimal

@@ -11,6 +11,7 @@ module Lorentz.Contracts.Stablecoin.Metadata
   , parseMetadataUri
   ) where
 
+import Fmt (pretty)
 import qualified Data.Aeson as J
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Map as Map
@@ -35,7 +36,7 @@ import Stablecoin.Util (ligoVersion)
 jfield :: MText
 jfield = [mt|metadataJSON|]
 
-metadataMap :: J.ToJSON metadata => MetadataUri metadata -> MetadataMap BigMap
+metadataMap :: J.ToJSON metadata => MetadataUri metadata -> MetadataMap
 metadataMap mdata = mkBigMap $
   -- One might reasonable expect that the URI would be stored as packed Michelson strings,
   -- but the TZIP-16 spec is explicit about that not being the case.
@@ -86,7 +87,7 @@ remoteContractUriParser = do
   key <- P.many P.anySingle
   case parseAddress (toText addr) of
     Right paddr -> pure $ InRemoteContractUnderKey paddr (toText key)
-    Left err -> fail $ show err
+    Left err -> fail $ pretty err
 
 rawUriParser :: P.Parsec Void Text ParsedMetadataUri
 rawUriParser = (RawUri . toText) <$> (P.many (P.satisfy (const True)))
