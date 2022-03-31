@@ -9,11 +9,11 @@ module Stablecoin.Client.Cleveland.StablecoinImpl
 import Data.Text (isInfixOf)
 import Fmt (Buildable(build), pretty)
 import Morley.Client (AddressOrAlias)
-import Test.Cleveland (MorleyClientEnv)
-import Test.Cleveland.Internal.Client (ClientM, revealKeyUnlessRevealed)
 import Morley.Tezos.Address (Address)
 import Morley.Tezos.Core (Mutez)
-import Morley.Util.Named ((:!), pattern (:!))
+import Morley.Util.Named (pattern (:!), (:!))
+import Test.Cleveland (MorleyClientEnv)
+import Test.Cleveland.Internal.Client (ClientM, revealKeyUnlessRevealed)
 
 import Stablecoin.Client
   (AddressAndAlias(..), InitialStorageData(..), UpdateOperatorData(AddOperator, RemoveOperator))

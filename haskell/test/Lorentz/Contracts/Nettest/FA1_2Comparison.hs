@@ -5,13 +5,13 @@ module Lorentz.Contracts.Nettest.FA1_2Comparison
   ( test_fa1_2ComparisonScenario
   ) where
 
-import qualified Data.Map as Map
+import Data.Map qualified as Map
 import Test.Tasty (TestTree)
 
 import Lorentz (TAddress(..), toVal)
 import Morley.Michelson.Typed (convertContract, mkBigMap, untypeValue)
-import Test.Cleveland
 import Morley.Util.Named (pattern (:!))
+import Test.Cleveland
 
 import Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin as SFA2

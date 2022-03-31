@@ -37,18 +37,18 @@ module Lorentz.Contracts.Stablecoin.Types
   ) where
 
 import Fmt
-import qualified Text.Show
+import Text.Show qualified
 
 import Lorentz as L
-import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
+import Lorentz.Contracts.Spec.FA2Interface qualified as FA2
 import Lorentz.Contracts.Spec.TZIP16Interface (MetadataMap)
-import Morley.Client (AddressOrAlias(..))
-import Test.Cleveland.Michelson.Import (embedContract)
-import Morley.Michelson.Typed (Notes(..))
-import qualified Morley.Michelson.Typed as T
-import Morley.Michelson.Untyped (noAnn)
-import qualified Morley.Tezos.Crypto as Hash
 import Morley.AsRPC (HasRPCRepr(..), deriveRPCWithStrategy)
+import Morley.Client (AddressOrAlias(..))
+import Morley.Michelson.Typed (Notes(..))
+import Morley.Michelson.Typed qualified as T
+import Morley.Michelson.Untyped (noAnn)
+import Morley.Tezos.Crypto qualified as Hash
+import Test.Cleveland.Michelson.Import (embedContract)
 
 import Lorentz.Contracts.StablecoinPath (metadataRegistryContractPath, stablecoinPath)
 

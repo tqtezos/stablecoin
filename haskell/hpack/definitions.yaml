@@ -35,6 +35,7 @@ _definitions:
         - FlexibleInstances
         - GADTs
         - GeneralizedNewtypeDeriving
+        - ImportQualifiedPost
         - LambdaCase
         - MultiParamTypeClasses
         - MultiWayIf

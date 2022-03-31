@@ -10,24 +10,23 @@ module Lorentz.Contracts.Nettest.StablecoinClientTest
 import Test.Tasty (TestTree)
 import Test.Tasty.HUnit (testCase)
 
-import Test.Cleveland.Internal.Abstract (SpecificOrDefaultAliasHint, Moneybag(..), ccMoneybag)
 import Morley.Client.TezosClient (AddressOrAlias(..))
-import Test.Cleveland as NT
-import Test.Cleveland.Tasty.Internal (whenNetworkEnabled)
 import Morley.Tezos.Address (Address)
 import Morley.Util.Named (pattern (:!))
+import Test.Cleveland as NT
+import Test.Cleveland.Internal.Abstract (Moneybag(..), SpecificOrDefaultAliasHint, ccMoneybag)
+import Test.Cleveland.Tasty.Internal (whenNetworkEnabled)
 
 import Stablecoin.Client
   (AddressAndAlias(..), InitialStorageData(..), UpdateOperatorData(AddOperator, RemoveOperator))
 import Stablecoin.Client.Cleveland
-  (StablecoinT, acceptOwnership, assertEq, burn, changeMasterMinter, changePauser,
-  configureMinter, deploy, getBalanceOf, getContractOwner, getMasterMinter, getMintingAllowance,
-  getPaused, getPauser, getPendingContractOwner, getTokenMetadata, getTransferlist, isOperator,
-  mint, pause, removeMinter, setTransferlist, transferOwnership, unpause,
-  updateOperators)
-import qualified Stablecoin.Client.Cleveland as SC
-import Stablecoin.Client.Parser (ContractMetadataOptions(..))
+  (StablecoinT, acceptOwnership, assertEq, burn, changeMasterMinter, changePauser, configureMinter,
+  deploy, getBalanceOf, getContractOwner, getMasterMinter, getMintingAllowance, getPaused,
+  getPauser, getPendingContractOwner, getTokenMetadata, getTransferlist, isOperator, mint, pause,
+  removeMinter, setTransferlist, transferOwnership, unpause, updateOperators)
+import Stablecoin.Client.Cleveland qualified as SC
 import Stablecoin.Client.Cleveland.Caps (runStablecoinClient)
+import Stablecoin.Client.Parser (ContractMetadataOptions(..))
 
 test_stablecoinClientScenario :: TestTree
 test_stablecoinClientScenario =

@@ -20,15 +20,15 @@ module Stablecoin.Client.Cleveland.IO
 
 import Data.Char (isAlpha, isDigit)
 import Fmt (Buildable, pretty, (+|), (|+))
-import Morley.Client (Alias, mkAlias, MorleyClientEnv, MorleyClientEnv'(..))
-import qualified Morley.Client as MorleyClient
+import Morley.Client (Alias, MorleyClientEnv, MorleyClientEnv'(..), mkAlias)
+import Morley.Client qualified as MorleyClient
 import Morley.Client.TezosClient (TezosClientEnv(..))
 import Morley.Tezos.Address (Address, parseAddress)
-import Morley.Tezos.Core (Mutez, zeroMutez, toMutez)
+import Morley.Tezos.Core (Mutez, toMutez, zeroMutez)
 import Servant.Client (showBaseUrl)
 import System.Exit (ExitCode(..))
 import System.Process (readProcessWithExitCode)
-import qualified Text.Megaparsec as P
+import Text.Megaparsec qualified as P
   (Parsec, customFailure, many, parse, satisfy, skipManyTill, try)
 import Text.Megaparsec.Char (newline, printChar, string)
 import Text.Megaparsec.Char.Lexer (decimal)

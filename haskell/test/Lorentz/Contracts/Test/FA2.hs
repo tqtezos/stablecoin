@@ -14,8 +14,8 @@ module Lorentz.Contracts.Test.FA2
   ) where
 
 import Data.Map as M (fromList)
-import Test.Tasty (TestTree, testGroup)
 import Fmt (pretty)
+import Test.Tasty (TestTree, testGroup)
 
 import Lorentz.Contracts.Spec.FA2Interface as FA2 hiding (ParameterC)
 import Lorentz.Contracts.Stablecoin (ParameterC, Storage, sLedgerRPC, sOperatorsRPC)

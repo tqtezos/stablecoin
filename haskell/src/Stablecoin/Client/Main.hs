@@ -18,7 +18,7 @@ import Morley.Client.TezosClient.Impl (prefixName)
 import Morley.Client.TezosClient.Types (HasTezosClientEnv(..), TezosClientEnv(..))
 import Morley.Michelson.Text (mt)
 import Morley.Util.Named (pattern (:!))
-import qualified Options.Applicative as Opt
+import Options.Applicative qualified as Opt
 
 import Stablecoin.Client.Contract (InitialStorageData(..))
 import Stablecoin.Client.Impl

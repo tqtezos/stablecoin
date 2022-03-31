@@ -25,14 +25,14 @@ module Stablecoin.Client.Parser
   , stablecoinClientInfo
   ) where
 
-import qualified Data.List.NonEmpty as NonEmpty
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Version (showVersion)
-import Morley.Client (AddressOrAlias(..), mkAlias, MorleyClientConfig, clientConfigParser)
-import qualified Options.Applicative as Opt
+import Morley.Client (AddressOrAlias(..), MorleyClientConfig, clientConfigParser, mkAlias)
+import Morley.Util.CLI (mkCLOptionParser)
+import Morley.Util.Named (pattern (:!), (:!))
+import Options.Applicative qualified as Opt
 import Options.Applicative.Help.Pretty (Doc, linebreak)
 import Paths_stablecoin (version)
-import Morley.Util.CLI (mkCLOptionParser)
-import Morley.Util.Named ((:!), pattern (:!))
 
 import Lorentz.Contracts.Stablecoin (Expiry, UpdateOperatorData(..))
 import Morley.Client.Parser (addressOrAliasOption)

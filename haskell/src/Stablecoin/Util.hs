@@ -9,7 +9,7 @@ module Stablecoin.Util
 import Data.Aeson (Options(omitNothingFields), eitherDecodeFileStrict)
 import Data.Aeson.Casing (aesonPrefix, camelCase)
 import Data.Aeson.TH (deriveJSON)
-import qualified Data.Map as Map
+import Data.Map qualified as Map
 import Language.Haskell.TH.Syntax as TH (Exp, Lift(lift), Q)
 import Lorentz.Contracts.StablecoinPath (sourcesJsonPath)
 import System.Directory (makeAbsolute)

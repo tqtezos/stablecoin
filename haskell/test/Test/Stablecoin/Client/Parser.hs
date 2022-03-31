@@ -5,7 +5,7 @@ module Test.Stablecoin.Client.Parser
   ( test_deployCmd
   ) where
 
-import qualified Debug (show)
+import Debug qualified (show)
 
 import Options.Applicative (ParserResult(Failure, Success), defaultPrefs, execParserPure)
 import Test.Tasty (TestTree, testGroup)

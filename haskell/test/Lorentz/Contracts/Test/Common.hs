@@ -22,17 +22,17 @@ module Lorentz.Contracts.Test.Common
   ) where
 
 import Data.Aeson (ToJSON)
-import qualified Data.Map as Map
-import Fmt (pretty)
 import Data.Either.Validation (Validation(..))
+import Data.Map qualified as Map
+import Fmt (pretty)
 
-import qualified Lorentz.Contracts.Spec.TZIP16Interface as MD
+import Lorentz.Contracts.Spec.TZIP16Interface qualified as MD
 import Lorentz.Value
 import Morley.Michelson.Typed (convertContract, untypeValue)
-import Test.Cleveland as NT
 import Morley.Util.Named
+import Test.Cleveland as NT
 
-import qualified Indigo.Contracts.Transferlist.Internal as Transferlist
+import Indigo.Contracts.Transferlist.Internal qualified as Transferlist
 import Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin as SC
 import Test.Cleveland.Internal.Abstract

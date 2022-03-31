@@ -14,17 +14,17 @@ import Lorentz (mt)
 
 import Data.Map as M (fromList)
 import Data.Map.Strict as M (size)
-import qualified Data.Set as Set
+import Data.Set qualified as Set
 import Test.Tasty (TestTree, testGroup)
 
 import Lorentz.Address
-import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
+import Lorentz.Contracts.Spec.FA2Interface qualified as FA2
 import Morley.Tezos.Address (detGenKeyAddress)
 import Morley.Util.Named
 import Test.Cleveland hiding (originate)
 import Test.Cleveland.Lorentz.Consumer
 
-import qualified Indigo.Contracts.Transferlist.Internal as Transferlist
+import Indigo.Contracts.Transferlist.Internal qualified as Transferlist
 import Lorentz.Contracts.Stablecoin hiding (stablecoinContract)
 import Lorentz.Contracts.Test.Common
 

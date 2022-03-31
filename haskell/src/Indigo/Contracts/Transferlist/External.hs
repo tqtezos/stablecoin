@@ -11,13 +11,13 @@ module Indigo.Contracts.Transferlist.External
   , convertToExternalStorage
   ) where
 
-import qualified Data.List as List
-import qualified Data.Map as Map
-import qualified Data.Set as Set
+import Data.List qualified as List
+import Data.Map qualified as Map
+import Data.Set qualified as Set
 
-import qualified Indigo.Contracts.Transferlist.Internal as Internal
+import Indigo.Contracts.Transferlist.Internal qualified as Internal
 import Lorentz as L
-import qualified Unsafe
+import Unsafe qualified
 
 type TransferlistId = Natural
 

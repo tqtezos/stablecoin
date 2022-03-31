@@ -11,19 +11,19 @@ module Lorentz.Contracts.Stablecoin.Metadata
   , parseMetadataUri
   ) where
 
-import Fmt (pretty)
-import qualified Data.Aeson as J
-import qualified Data.ByteString.Lazy as BSL
-import qualified Data.Map as Map
+import Data.Aeson qualified as J
+import Data.ByteString.Lazy qualified as BSL
+import Data.Map qualified as Map
 import Data.Version (showVersion)
-import qualified Text.Megaparsec as P
+import Fmt (pretty)
+import Text.Megaparsec qualified as P
 import Text.Megaparsec.Char (string')
 
 import Lorentz as L
-import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
+import Lorentz.Contracts.Spec.FA2Interface qualified as FA2
 import Lorentz.Contracts.Spec.TZIP16Interface
   (Error(..), License(..), Metadata(..), MetadataMap, Source(..), ViewImplementation(..))
-import qualified Lorentz.Contracts.Spec.TZIP16Interface as TZ
+import Lorentz.Contracts.Spec.TZIP16Interface qualified as TZ
 import Morley.Metadata
   (ViewCode(..), compileViewCodeTH, mkMichelsonStorageView, unsafeCompileViewCode)
 import Morley.Micheline (ToExpression(toExpression))

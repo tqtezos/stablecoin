@@ -37,29 +37,29 @@ module Stablecoin.Client.Impl
   , getTokenMetadata
   ) where
 
-import qualified Data.Aeson as J
-import qualified Data.Map as M
+import Data.Aeson qualified as J
+import Data.Map qualified as M
 import Fmt (Buildable(build), pretty, (+|), (|+))
 import Lorentz (EntrypointRef(Call), HasEntrypointArg, ToT, def, useHasEntrypointArg)
-import qualified Lorentz.Contracts.Spec.TZIP16Interface as TZ
+import Lorentz.Contracts.Spec.TZIP16Interface qualified as TZ
 import Morley.Michelson.Typed (BigMapId(..), Dict(..), IsoValue, fromVal, toVal)
 
 import Morley.Client
-  (AddressOrAlias(..), Alias, AliasHint, MorleyClientM, TezosClientError(UnknownAddress),
-  getAlias, getContractScript, lTransfer, originateContract, readBigMapValue, readBigMapValueMaybe,
+  (AddressOrAlias(..), Alias, AliasHint, MorleyClientM, TezosClientError(UnknownAddress), getAlias,
+  getContractScript, lTransfer, originateContract, readBigMapValue, readBigMapValueMaybe,
   revealKeyUnlessRevealed)
-import qualified Morley.Client as Client
+import Morley.Client qualified as Client
 import Morley.Client.RPC (OperationHash, OriginationScript(OriginationScript))
 import Morley.Client.TezosClient (resolveAddress)
-import qualified Morley.Metadata as MD
+import Morley.Metadata qualified as MD
 import Morley.Micheline (Expression, FromExpressionError, fromExpression)
 import Morley.Michelson.Runtime.Dummy (dummyContractEnv)
 import Morley.Michelson.Text
 import Morley.Tezos.Address (Address)
 import Morley.Tezos.Core (Mutez, zeroMutez)
-import Morley.Util.Named (pattern (:!), arg, (:!))
+import Morley.Util.Named (arg, pattern (:!), (:!))
 
-import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
+import Lorentz.Contracts.Spec.FA2Interface qualified as FA2
 import Lorentz.Contracts.Stablecoin
   (ConfigureMinterParam(..), MetadataUri(..), MintParam(..), Parameter, ParsedMetadataUri(..),
   Roles(..), Storage(..), StorageRPC(..), UpdateOperatorData(..), contractMetadataContract,

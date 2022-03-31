@@ -6,23 +6,23 @@ module Lorentz.Contracts.Nettest.Nettest
   , test_scenarioWithExternalTransferlist
   ) where
 
-import qualified Data.Set as Set
-import qualified Data.Text.IO.Utf8 as Utf8
+import Data.Set qualified as Set
+import Data.Text.IO.Utf8 qualified as Utf8
 import Test.Tasty (TestTree)
 
 import Lorentz hiding (comment, (>>))
-import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
+import Lorentz.Contracts.Spec.FA2Interface qualified as FA2
 import Lorentz.Contracts.Test.Common
 import Morley.Michelson.Parser.Types (MichelsonSource(MSFile))
 import Morley.Michelson.Runtime (parseExpandContract)
 import Morley.Michelson.Typed (untypeValue)
-import qualified Morley.Michelson.Typed as T
-import qualified Morley.Michelson.Untyped as U (Contract)
+import Morley.Michelson.Typed qualified as T
+import Morley.Michelson.Untyped qualified as U (Contract)
 import Morley.Util.Named
 import Test.Cleveland
 
-import qualified Indigo.Contracts.Transferlist.External as External
-import qualified Indigo.Contracts.Transferlist.Internal as Internal
+import Indigo.Contracts.Transferlist.External qualified as External
+import Indigo.Contracts.Transferlist.Internal qualified as Internal
 import Lorentz.Contracts.Stablecoin
 
 test_scenarioWithInternalTransferlist :: TestTree
