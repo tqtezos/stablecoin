@@ -1,14 +1,13 @@
-
 # SPDX-FileCopyrightText: 2019 Serokell <https://serokell.io>
 #
-# SPDX-License-Identifier: MPL-2.0
-#
+# SPDX-License-Identifier: Unlicense
+
 ###########################################################################
 # Settings
 ###########################################################################
 
-- arguments: [-XTypeApplications, -XRecursiveDo, -XTemplateHaskell,
-    -XQuasiQuotes]
+- arguments: [-XTypeApplications, -XRecursiveDo, -XBlockArguments,
+    -XTemplateHaskell, -XQuasiQuotes]
 
 # These are just too annoying
 - ignore: { name: Redundant do }
@@ -29,6 +28,7 @@
 - ignore: { name: Use if }
 - ignore: { name: Use notElem }
 - ignore: { name: Use fromMaybe }
+- ignore: { name: Replace case with fromMaybe }
 - ignore: { name: Use maybe }
 - ignore: { name: Use fmap }
 - ignore: { name: Use foldl }
@@ -63,12 +63,55 @@
       the *last two elements* instead of failing with a type error.
         * If you want to traverse all elements of the tuple, use 'each'.
         * If 'both' is used on 'Either' here, replace it with 'chosen'.
+
 - warn: { lhs: either (const True) (const False), rhs: isLeft }
 - warn: { lhs: either (const False) (const True), rhs: isRight }
 
-- warn: { lhs: Data.Map.toAscList (Data.Map.fromList x), rhs:
-           Universum.sortWith fst x }
-- warn: { lhs: Data.Map.toDescList (Data.Map.fromList x), rhs:
-           Universum.sortWith (Down . fst) x }
-
 - warn: { lhs: map fst &&& map snd, rhs: unzip }
+
+- warn:
+    name: "'fromIntegral' is unsafe without type annotations."
+    lhs: Unsafe.fromIntegral x
+    rhs: Unsafe.fromIntegral @t1 @t2 x
+    note: "Use 'import Unsafe qualified (fromIntegral)'"
+- warn:
+    name: "'fromIntegral' is unsafe without TWO type annotations."
+    lhs: Unsafe.fromIntegral @t1 x
+    rhs: Unsafe.fromIntegral @t1 @t2 x
+    note: "Use 'import Unsafe qualified (fromIntegral)'"
+- warn:
+    name: "Avoid the use of '(+||)' and '(||+)'"
+    lhs: '(Fmt.+||)'
+    rhs: '(Fmt.+|)'
+    note: "The use of '(+||)' may result in outputting raw Haskell into user-facing code"
+- warn:
+    name: "Avoid the use of '(+||)' and '(||+)'"
+    lhs: '(Fmt.||+)'
+    rhs: '(Fmt.|+)'
+    note: "The use of '(||+)' may result in outputting raw Haskell into user-facing code"
+- warn:
+    name: "Avoid the use of '(||++||)'"
+    lhs: '(Fmt.||++||)'
+    rhs: '(Fmt.|++|)'
+    note: "The use of '(||++||)' may result in outputting raw Haskell into user-facing code"
+- warn:
+    name: "Avoid the use of '(||++|)'"
+    lhs: '(Fmt.||++|)'
+    rhs: '(Fmt.|++|)'
+    note: "The use of '(||++|)' may result in outputting raw Haskell into user-facing code"
+- warn:
+    name: "fromLabel needs a type annotaton/application."
+    lhs: Prelude.fromLabel Morley.Util.Named.:! x
+    rhs: Prelude.fromLabel @"label" Morley.Util.Named.:! x
+- warn:
+    name: "fromLabel needs a type annotaton/application."
+    lhs: Prelude.fromLabel Morley.Util.Named.:? x
+    rhs: Prelude.fromLabel @"label" Morley.Util.Named.:? x
+- warn:
+    name: "fromLabel needs a type annotaton/application."
+    lhs: Prelude.fromLabel Morley.Util.Named.<:!> x
+    rhs: Prelude.fromLabel @"label" Morley.Util.Named.<:!> x
+- warn:
+    name: "fromLabel needs a type annotaton/application."
+    lhs: Prelude.fromLabel Morley.Util.Named.<:?> x
+    rhs: Prelude.fromLabel @"label" Morley.Util.Named.<:?> x

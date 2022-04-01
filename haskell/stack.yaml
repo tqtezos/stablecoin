@@ -13,7 +13,7 @@ extra-deps:
     https://gitlab.com/morley-framework/morley-metadata.git
     # ^ CI cannot use ssh, so we use http clone here
   commit:
-    5a54cc98931327f6f110e3a34f6f23176c064396 # master
+    81b947ca1d74f3487a5b5c8e2141c37bf374f747 # master
   subdirs:
     - code/morley-metadata
     - code/morley-metadata-test
@@ -22,7 +22,7 @@ extra-deps:
     https://gitlab.com/morley-framework/morley-ledgers.git
     # ^ CI cannot use ssh, so we use http clone here
   commit:
-    a2062868022efa58d802d78aa883e5c80493dc1b # master
+    b39a971f42bb113a5b3e23c9145253e27ad6e049 # master
   subdirs:
     - code/morley-ledgers
     - code/morley-ledgers-test
@@ -30,7 +30,7 @@ extra-deps:
 - git:
     https://gitlab.com/morley-framework/indigo.git
   commit:
-    c28a890c1d53287261665bb280becbf7d53c4957 # master
+    e879e5f282afb8d25d72d8ba132f22d3d9e628a1 # master
   subdirs:
     - .
 
@@ -38,7 +38,7 @@ extra-deps:
     https://gitlab.com/morley-framework/morley.git
     # ^ CI cannot use ssh, so we use http clone here
   commit:
-    71b6dd7eb37ae340522c58963ec8a18605b38b91 # master
+    146da727ff486c46b0ec9f392d955f07d797848e # master
   subdirs:
     - code/morley
     - code/morley-client
@@ -56,6 +56,7 @@ extra-deps:
 - co-log-0.4.0.1@sha256:3d4c17f37693c80d1aa2c41669bc3438fac3e89dc5f479e57d79bc3ddc4dfcc5,5087
 - colourista-0.1.0.1@sha256:98353ee0e2f5d97d2148513f084c1cd37dfda03e48aa9dd7a017c9d9c0ba710e,3307
 - ansi-terminal-0.10.3@sha256:e2fbcef5f980dc234c7ad8e2fa433b0e8109132c9e643bc40ea5608cd5697797,3226
+- OddWord-1.0.2.0
 
 # Packages by Adjoint (somewhat unmaintained, hence they require constraints on their deps)
 - galois-field-1.0.2
@@ -73,7 +74,6 @@ extra-deps:
 - libsodium-1.0.18.2
 
 
-- caps-0.1@sha256:a550664f27e5c21fad6e4832d728356cfbbf1b72cb076759910ef3f3aecb0698,1098
 - summoner-2.0.1.1@sha256:8ced26ff256e012447e2c6a49a20102511adbea605624f00a059e1e85c366719,6993
 
 - generic-data-0.8.3.0@sha256:fef21320697370fa1fadc14f72ac3ad8092b021f5371b315be3c9f3bde44c274,3710

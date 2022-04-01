@@ -12,7 +12,7 @@ import Lorentz as L
 import Lorentz.Contracts.Spec.TZIP16Interface (Metadata(..), ViewImplementation(..))
 import Morley.Metadata (ViewCode(..), compileViewCodeTH, mkMichelsonStorageView)
 
-import qualified Lorentz.Contracts.Spec.TZIP16Interface as TZ
+import Lorentz.Contracts.Spec.TZIP16Interface qualified as TZ
 import Lorentz.Contracts.StablecoinFA1_2.Types (Storage)
 import Paths_stablecoin (version)
 

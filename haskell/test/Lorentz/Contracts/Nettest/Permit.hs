@@ -10,7 +10,7 @@ import Lorentz (Address, Packed(..), TAddress(..), lPackValue, toVal)
 import Test.Tasty (TestTree)
 
 import Lorentz.Contracts.Spec.FA2Interface (TransferDestination(..), TransferItem(..))
-import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
+import Lorentz.Contracts.Spec.FA2Interface qualified as FA2
 import Morley.Michelson.Typed (convertContract, untypeValue)
 import Morley.Util.Named (pattern (:!))
 import Test.Cleveland

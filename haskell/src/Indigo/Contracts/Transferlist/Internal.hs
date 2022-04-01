@@ -12,7 +12,7 @@ module Indigo.Contracts.Transferlist.Internal
   , transferlistContract
   ) where
 
-import qualified Data.Set as Set
+import Data.Set qualified as Set
 
 import Indigo
 import Lorentz.Run (Contract)

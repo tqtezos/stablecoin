@@ -22,17 +22,17 @@ module Lorentz.Contracts.Test.Common
   ) where
 
 import Data.Aeson (ToJSON)
-import qualified Data.Map as Map
-import Fmt (pretty)
 import Data.Either.Validation (Validation(..))
+import Data.Map qualified as Map
+import Fmt (pretty)
 
-import qualified Lorentz.Contracts.Spec.TZIP16Interface as MD
+import Lorentz.Contracts.Spec.TZIP16Interface qualified as MD
 import Lorentz.Value
 import Morley.Michelson.Typed (convertContract, untypeValue)
-import Test.Cleveland as NT
 import Morley.Util.Named
+import Test.Cleveland as NT
 
-import qualified Indigo.Contracts.Transferlist.Internal as Transferlist
+import Indigo.Contracts.Transferlist.Internal qualified as Transferlist
 import Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin as SC
 import Test.Cleveland.Internal.Abstract
@@ -87,22 +87,25 @@ data OriginationParams = OriginationParams
   }
 
 defaultOriginationParams :: "owner" :! Address -> "pauser" :! Address -> "masterMinter" :! Address -> OriginationParams
-defaultOriginationParams (N owner) (N pauser) (N masterMinter) = OriginationParams
-  { opBalances = mempty
-  , opOwner = owner
-  , opOwnerToOperators = mempty
-  , opPauser = pauser
-  , opMasterMinter = masterMinter
-  , opPaused = False
-  , opMinters = mempty
-  , opPendingOwner = Nothing
-  , opMetadataUri = CurrentContract metadata True
-  , opTransferlistContract = Nothing
-  , opDefaultExpiry = 1000
-  , opPermits = mempty
-  }
-  where
-    metadata = metadataJSON (Just testFA2TokenMetadata) Nothing
+defaultOriginationParams
+  (arg #owner -> owner)
+  (arg #pauser -> pauser)
+  (arg #masterMinter -> masterMinter) = OriginationParams
+    { opBalances = mempty
+    , opOwner = owner
+    , opOwnerToOperators = mempty
+    , opPauser = pauser
+    , opMasterMinter = masterMinter
+    , opPaused = False
+    , opMinters = mempty
+    , opPendingOwner = Nothing
+    , opMetadataUri = CurrentContract metadata True
+    , opTransferlistContract = Nothing
+    , opDefaultExpiry = 1000
+    , opPermits = mempty
+    }
+    where
+      metadata = metadataJSON (Just testFA2TokenMetadata) Nothing
 
 
 addMinter
@@ -115,7 +118,7 @@ addMinter (minter, mintingAllowance) op@OriginationParams{ opMinters = currentMi
 constructDestination
   :: ("to_" :! Address, "amount" :! Natural)
   -> TransferDestination
-constructDestination (N to, N amount) = TransferDestination
+constructDestination (arg #to_ -> to, arg #amount -> amount) = TransferDestination
   { tdTo = to
   , tdTokenId = FA2.theTokenId
   , tdAmount = amount
@@ -130,7 +133,7 @@ constructTransfersFromSender
   :: "from_" :! Address
   -> [("to_" :! Address, "amount" :! Natural)]
   -> TransferParams
-constructTransfersFromSender (N from) txs =
+constructTransfersFromSender (arg #from_ -> from) txs =
   [ TransferItem
       { tiFrom = from
       , tiTxs  = constructDestination <$> txs
@@ -142,7 +145,7 @@ constructSingleTransfer
   -> "to_" :! Address
   -> "amount" :! Natural
   -> TransferParams
-constructSingleTransfer (N from) (N to) (N amount)
+constructSingleTransfer (arg #from_ -> from) (arg #to_ -> to) (arg #amount -> amount)
     = [TransferItem from [TransferDestination to FA2.theTokenId amount]]
 
 type OriginationFn param st m = OriginationParams -> m (ContractHandle param st ())

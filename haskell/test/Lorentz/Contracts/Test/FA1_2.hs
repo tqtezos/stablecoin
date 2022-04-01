@@ -12,8 +12,8 @@ import Test.Tasty (TestTree)
 
 import Lorentz (Address, mkBigMap, toVal)
 import Lorentz.Contracts.Test.ApprovableLedger (AlSettings(..), approvableLedgerGenericTest)
-import Test.Cleveland
 import Morley.Michelson.Typed (untypeValue)
+import Test.Cleveland
 
 import Lorentz.Contracts.Stablecoin (MetadataUri(..), Roles(..), metadataMap)
 import Lorentz.Contracts.StablecoinFA1_2

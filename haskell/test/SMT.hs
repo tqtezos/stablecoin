@@ -6,12 +6,12 @@ module SMT
   ( smtProperty
   ) where
 
-import qualified Data.Map as Map
+import Data.Map qualified as Map
 import Fmt
 import Hedgehog hiding (failure)
-import qualified Hedgehog.Gen as Gen
-import qualified Hedgehog.Range as Range
-import qualified Text.Show
+import Hedgehog.Gen qualified as Gen
+import Hedgehog.Range qualified as Range
+import Text.Show qualified
 
 import Hedgehog.Gen.Tezos.Address (genAddress)
 import Lorentz
@@ -20,14 +20,14 @@ import Morley.Michelson.Interpret
 import Morley.Michelson.Runtime.Dummy (dummyContractEnv)
 import Morley.Michelson.Runtime.GState (BigMapCounter(..))
 import Morley.Michelson.Text
-import qualified Morley.Michelson.Typed as T
+import Morley.Michelson.Typed qualified as T
 import Morley.Michelson.Typed.Haskell.Value (bmMap)
 import Morley.Tezos.Address (GlobalCounter(..))
-import Morley.Tezos.Core (unsafeMkMutez)
+import Morley.Tezos.Core (zeroMutez)
 import Morley.Util.Named (pattern (:!))
 import Test.Cleveland
 
-import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
+import Lorentz.Contracts.Spec.FA2Interface qualified as FA2
 import Lorentz.Contracts.Stablecoin
 import Lorentz.Contracts.Test.Common
 
@@ -113,7 +113,7 @@ applyBothAndCompare (cc:ccs) cs = let
   michelsonResult = stablecoinMichelsonModel cc cs
   in if haskellResult /= michelsonResult
     then failure $
-         "Models differ : " <> show (cc, cs, haskellResult, michelsonResult)
+         "Models differ : " <> pretty (cc, cs, haskellResult, michelsonResult)
     else applyBothAndCompare ccs haskellResult
 
 -- Size of the random address pool
@@ -502,7 +502,7 @@ stablecoinMichelsonModel
   -> ContractState
   -> ContractState
 stablecoinMichelsonModel cc@(ContractCall {..}) cs = let
-  contractEnv = dummyContractEnv { ceSender = ccSender, ceAmount = unsafeMkMutez 0 }
+  contractEnv = dummyContractEnv { ceSender = ccSender, ceAmount = zeroMutez }
   initSt = mkInitialStorage (ssToOriginationParams $ csStorage cs)
   iResult = callEntrypoint cc initSt contractEnv
   in case iResult of
@@ -511,7 +511,7 @@ stablecoinMichelsonModel cc@(ContractCall {..}) cs = let
       in cs { csStorage = newStorage }
     Left (InterpretError (mfwsFailed -> MichelsonFailedWith (T.VString tval), _))
       -> cs { csError = (ccIdx, contractErrorToModelError tval):(csError cs) }
-    Left err -> error $ "Unexpected error:" <> show err
+    Left err -> error $ "Unexpected error:" <> pretty err
 
 callEntrypoint
   :: ContractCall Parameter

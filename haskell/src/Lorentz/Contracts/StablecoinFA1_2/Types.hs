@@ -15,19 +15,19 @@ module Lorentz.Contracts.StablecoinFA1_2.Types
 import Fmt (pretty)
 
 import Lorentz as L
-import qualified Lorentz.Contracts.Spec.ApprovableLedgerInterface as AL
+import Lorentz.Contracts.Spec.ApprovableLedgerInterface qualified as AL
 import Lorentz.Contracts.Spec.TZIP16Interface (MetadataMap)
-import qualified Morley.Michelson.Untyped as U
-import Test.Cleveland.Michelson.Import (embedTextFile, readUntypedContract)
 import Morley.Michelson.Parser.Types (MichelsonSource(MSFile))
+import Morley.Michelson.Untyped qualified as U
+import Test.Cleveland.Michelson.Import (embedTextFile, readUntypedContract)
 
-import qualified Lorentz.Contracts.Stablecoin as S
+import Lorentz.Contracts.Stablecoin qualified as S
 import Lorentz.Contracts.StablecoinPath (stablecoinFA1_2Path)
 
 data Storage = Storage
   { sDefaultExpiry :: S.Expiry
   , sLedger :: BigMap Address Natural
-  , sMetadata :: MetadataMap BigMap
+  , sMetadata :: MetadataMap
   , sMintingAllowances :: Map Address Natural
   , sPaused :: Bool
   , sPermitCounter :: Natural

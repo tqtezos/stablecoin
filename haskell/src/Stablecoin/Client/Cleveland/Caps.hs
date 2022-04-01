@@ -38,9 +38,10 @@ module Stablecoin.Client.Cleveland.Caps
   , revealKeyUnlessRevealed
   ) where
 
-import Control.Lens (makeLensesFor)
-
 import Control.Exception.Uncaught (displayUncaughtException)
+import Control.Lens (makeLensesFor)
+import Fmt (Buildable(..))
+
 import Morley.Client (AddressOrAlias(..), disableAlphanetWarning)
 import Morley.Tezos.Address (Address)
 import Morley.Tezos.Core (Mutez)
@@ -231,7 +232,7 @@ getTokenMetadata
   -> m ("symbol" :! Text, "name" :! Text, "decimals" :! Natural)
 getTokenMetadata c = implActionToCaps (`siGetTokenMetadata` c)
 
-assertEq :: MonadStablecoin caps m => (Eq a, Show a) => a -> a -> m ()
+assertEq :: MonadStablecoin caps m => (Eq a, Buildable a, Show a) => a -> a -> m ()
 assertEq a b = implActionToCaps \cap -> siAssertEq cap a b
 
 revealKeyUnlessRevealed :: MonadStablecoin caps m => Address -> m ()

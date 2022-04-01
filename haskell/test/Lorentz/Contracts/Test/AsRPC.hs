@@ -1,15 +1,16 @@
 -- SPDX-FileCopyrightText: 2022 Oxhead Alpha
 -- SPDX-License-Identifier: MIT
 
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module Lorentz.Contracts.Test.AsRPC
   () where
 
 import Lorentz.Contracts.Spec.FA2Interface (BalanceResponseItem, FA2OwnerHook)
-import Lorentz.Contracts.Stablecoin (Storage, Storage')
 
-import Lorentz.Value (BigMapId)
-import Test.Cleveland (AsRPC)
+import Test.Cleveland (HasRPCRepr(..))
 
-type instance AsRPC BalanceResponseItem = BalanceResponseItem
-type instance AsRPC Storage = Storage' BigMapId
-type instance AsRPC FA2OwnerHook = FA2OwnerHook
+instance HasRPCRepr BalanceResponseItem where
+  type AsRPC BalanceResponseItem = BalanceResponseItem
+instance HasRPCRepr FA2OwnerHook where
+  type AsRPC FA2OwnerHook = FA2OwnerHook

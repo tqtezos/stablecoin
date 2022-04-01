@@ -14,17 +14,17 @@ import Lorentz (mt)
 
 import Data.Map as M (fromList)
 import Data.Map.Strict as M (size)
-import qualified Data.Set as Set
+import Data.Set qualified as Set
 import Test.Tasty (TestTree, testGroup)
 
 import Lorentz.Address
-import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
+import Lorentz.Contracts.Spec.FA2Interface qualified as FA2
 import Morley.Tezos.Address (detGenKeyAddress)
 import Morley.Util.Named
 import Test.Cleveland hiding (originate)
 import Test.Cleveland.Lorentz.Consumer
 
-import qualified Indigo.Contracts.Transferlist.Internal as Transferlist
+import Indigo.Contracts.Transferlist.Internal qualified as Transferlist
 import Lorentz.Contracts.Stablecoin hiding (stablecoinContract)
 import Lorentz.Contracts.Test.Common
 
@@ -113,7 +113,7 @@ managementSpec originate =
             do
               withSender testPauser $ call stablecoinContract (Call @"Pause") ()
               storage <- getStorage @Storage (chAddress stablecoinContract)
-              unless (sPaused storage) $ failure "Contract is not paused as was expected"
+              unless (sPausedRPC storage) $ failure "Contract is not paused as was expected"
       , testScenario "cannot pause if sender does not have corresponding permissions" $
           scenario do
             testOwner <- newAddress "testOwner"
@@ -162,7 +162,7 @@ managementSpec originate =
             do
               withSender testPauser $ call stablecoinContract (Call @"Unpause") ()
               storage <- getStorage @Storage (chAddress stablecoinContract)
-              when (sPaused storage) $ failure "Contract is paused which wasn't expected"
+              when (sPausedRPC storage) $ failure "Contract is paused which wasn't expected"
       , testScenario "cannot unpause if sender does not have corresponding permissions" $
           scenario do
             testOwner <- newAddress "testOwner"
@@ -331,7 +331,7 @@ managementSpec originate =
 
               storage <- getStorage @Storage (chAddress stablecoinContract)
               let expectedMinters = fromList [(wallet1, 30), (wallet2, 10)]
-               in when (sMintingAllowances storage /= expectedMinters) $
+               in when (sMintingAllowancesRPC storage /= expectedMinters) $
                     failure "Configure_minter call produced a malformed minter list"
       , testScenario "fails if expected and actual minting allowances do not match" $
           scenario do
@@ -467,7 +467,7 @@ managementSpec originate =
                     mapM_ (call stablecoinContract (Call @"Configure_minter")) (configureMinterParam <$> [1 .. minterLimit])
 
                     storage <- getStorage @Storage (chAddress stablecoinContract)
-                    unless (M.size (sMintingAllowances storage) == minterLimit) $
+                    unless (M.size (sMintingAllowancesRPC storage) == minterLimit) $
                       failure "Configure_minter call produced a malformed minter list"
           , testScenario "Throws error when minter limit is exceeded" $
               scenario do
@@ -509,7 +509,7 @@ managementSpec originate =
               withSender testMasterMinter $ call stablecoinContract (Call @"Remove_minter") wallet2
               storage <- getStorage @Storage (chAddress stablecoinContract)
               let expectedMinters = fromList [(wallet3, 100)]
-               in when (sMintingAllowances storage /= expectedMinters) $
+               in when (sMintingAllowancesRPC storage /= expectedMinters) $
                     failure "Remove minter does not change minter list"
       , testScenario "fails if sender is not master minter" $
           scenario do
@@ -614,7 +614,7 @@ managementSpec originate =
               getStorage consumer @@== [balanceExpected]
 
               storage <- getStorage @Storage (chAddress stablecoinContract)
-              unless (sTotalSupply storage == 30) $ -- Started with 0 tokens and minted 30 tokens so total supply should be 30
+              unless (sTotalSupplyRPC storage == 30) $ -- Started with 0 tokens and minted 30 tokens so total supply should be 30
                 failure "Total supply was not updated as expected"
       , testScenario "aborts whole transaction if the sum of minting tokens at a given step exceeds current minting allowance" $
           scenario do
@@ -723,7 +723,7 @@ managementSpec originate =
               getStorage consumer @@== [balanceExpected]
 
               storage <- getStorage @Storage (chAddress stablecoinContract)
-              unless (sTotalSupply storage == 5) $ -- Started with 35 tokens and burned 30 tokens so total supply should be 5
+              unless (sTotalSupplyRPC storage == 5) $ -- Started with 35 tokens and burned 30 tokens so total supply should be 5
                 failure "Total supply was not updated as expected"
       , testScenario "removes account if balance after burning is zero" $
           scenario do
@@ -746,7 +746,7 @@ managementSpec originate =
               withSender wallet1 $ call stablecoinContract (Call @"Burn") [35]
 
               storage <- getStorage @Storage (chAddress stablecoinContract)
-              val <- getBigMapValueMaybe (sLedger storage) wallet1
+              val <- getBigMapValueMaybe (sLedgerRPC storage) wallet1
               unless (isNothing val) $
                 failure "Zero balance account was not removed after burning"
       , testScenario "fails to burn tokens if sender is not minter" $
@@ -850,7 +850,7 @@ managementSpec originate =
               withSender wallet1 $ call stablecoinContract (Call @"Transfer_ownership") wallet2
               withSender wallet2 $ call stablecoinContract (Call @"Accept_ownership") ()
               storage <- getStorage @Storage (chAddress stablecoinContract)
-              when ((rOwner $ sRoles storage) /= wallet2) $
+              when ((rOwner $ sRolesRPC storage) /= wallet2) $
                 failure "Owner was not changed"
       , testScenario "current contract owner retains its privileges if ownership weren't accepted yet" $
           scenario do
@@ -868,7 +868,7 @@ managementSpec originate =
             do
               withSender testOwner $ call stablecoinContract (Call @"Transfer_ownership") wallet1
               storage <- getStorage @Storage (chAddress stablecoinContract)
-              when ((rOwner $ sRoles storage) /= testOwner) $
+              when ((rOwner $ sRolesRPC storage) /= testOwner) $
                 failure "Owner was changed"
       , testScenario "transferring ownership fails if sender is not contract owner" $
           scenario do
@@ -956,7 +956,7 @@ managementSpec originate =
               withSender testOwner $ call stablecoinContract (Call @"Transfer_ownership") wallet3
               withSender wallet3 $ call stablecoinContract (Call @"Accept_ownership") ()
               storage <- getStorage @Storage (chAddress stablecoinContract)
-              when (rOwner (sRoles storage) /= wallet3) $
+              when (rOwner (sRolesRPC storage) /= wallet3) $
                 failure "Owner was not changed"
       , testScenario "contract cannot retain ownership privileges if pending owner was changed by subsequent transfer ownership call" $
           scenario do
@@ -992,7 +992,7 @@ managementSpec originate =
             do
               withSender testOwner $ call stablecoinContract (Call @"Change_master_minter") wallet1
               storage <- getStorage @Storage (chAddress stablecoinContract)
-              when (rMasterMinter (sRoles storage) /= wallet1) $
+              when (rMasterMinter (sRolesRPC storage) /= wallet1) $
                 failure "Master minter was not changed"
       , testScenario "contract owner changes contract pauser properly" $
           scenario do
@@ -1010,7 +1010,7 @@ managementSpec originate =
             do
               withSender testOwner $ call stablecoinContract (Call @"Change_pauser") wallet1
               storage <- getStorage @Storage (chAddress stablecoinContract)
-              when (rPauser (sRoles storage) /= wallet1) $
+              when (rPauser (sRolesRPC storage) /= wallet1) $
                 failure "Pauser was not changed"
 
                 -- All successfull master minter capabilities are already tested
@@ -1167,7 +1167,7 @@ managementSpec originate =
                     call stablecoinContract (Call @"Set_transferlist") ((Just $ chAddress transferlistContract))
 
                   storage <- getStorage @Storage (chAddress stablecoinContract)
-                  case sTransferlistContract storage of
+                  case sTransferlistContractRPC storage of
                     Just addr
                       | addr == chAddress transferlistContract -> pass
                       | otherwise -> failure "Transferlist contract address was not set correctly"
@@ -1193,7 +1193,7 @@ managementSpec originate =
                     call stablecoinContract (Call @"Set_transferlist") Nothing
 
                   storage <- getStorage @Storage (chAddress stablecoinContract)
-                  case sTransferlistContract storage of
+                  case sTransferlistContractRPC storage of
                     Just _ -> failure "Transferlist contract address was not unset"
                     Nothing -> pass
           , testScenario "should fail if parameter of transferlist contract does not have the required entrypoints" $

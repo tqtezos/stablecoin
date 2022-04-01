@@ -12,11 +12,11 @@ import Lorentz (Packed(..), lPackValue, mt, toTAddress)
 import Test.Tasty (TestTree, testGroup)
 import Time (sec)
 
-import qualified Lorentz.Contracts.Spec.FA2Interface as FA2
+import Lorentz.Contracts.Spec.FA2Interface qualified as FA2
 import Morley.Metadata (ViewParam(..))
 import Morley.Tezos.Address (Address)
 import Morley.Tezos.Crypto (Signature(..))
-import qualified Morley.Tezos.Crypto.Hash as Hash
+import Morley.Tezos.Crypto.Hash qualified as Hash
 import Morley.Util.Named (pattern (:!))
 import Test.Cleveland hiding (originate)
 import Test.Morley.Metadata
@@ -77,7 +77,7 @@ errMissignedPermit signedBytes = expectFailedWith ([mt|MISSIGNED|], signedBytes)
 assertPermitCount :: MonadCleveland caps m => ContractHandle Parameter Storage () -> Int -> m ()
 assertPermitCount contractAddr expectedCount = do
   storage <- getStorage @Storage contractAddr
-  count <- sum . map (length . upPermits) <$> getAllBigMapValues (sPermits storage)
+  count <- sum . map (length . upPermits) <$> getAllBigMapValues (sPermitsRPC storage)
   unless (count == expectedCount) $
     failure $
       "Expected there to be " <> show expectedCount

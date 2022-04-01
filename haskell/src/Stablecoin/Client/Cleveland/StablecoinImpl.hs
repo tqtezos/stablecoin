@@ -9,11 +9,11 @@ module Stablecoin.Client.Cleveland.StablecoinImpl
 import Data.Text (isInfixOf)
 import Fmt (Buildable(build), pretty)
 import Morley.Client (AddressOrAlias)
-import Test.Cleveland (MorleyClientEnv)
-import Test.Cleveland.Internal.Client (ClientM, revealKeyUnlessRevealed)
 import Morley.Tezos.Address (Address)
 import Morley.Tezos.Core (Mutez)
-import Morley.Util.Named ((:!), pattern (:!), pattern N)
+import Morley.Util.Named (pattern (:!), (:!))
+import Test.Cleveland (MorleyClientEnv)
+import Test.Cleveland.Internal.Client (ClientM, revealKeyUnlessRevealed)
 
 import Stablecoin.Client
   (AddressAndAlias(..), InitialStorageData(..), UpdateOperatorData(AddOperator, RemoveOperator))
@@ -22,15 +22,15 @@ import Stablecoin.Client.Cleveland.IO
   encodeMaybeOption, labelled, mutezParser, naturalParser, runParser, textParser)
 
 data StablecoinTestError where
-  STEDiff :: forall a. Show a => a -> a -> StablecoinTestError
+  STEDiff :: forall a. (Show a, Buildable a) => a -> a -> StablecoinTestError
 
 deriving stock instance Show StablecoinTestError
 
 instance Buildable StablecoinTestError where
   build (STEDiff actual expected) =
     "--- Diff ---\n" <>
-    "Expected: " <> show expected <> "\n" <>
-    "Actual:   " <> show actual
+    "Expected: " <> pretty expected <> "\n" <>
+    "Actual:   " <> pretty actual
 
 instance Exception StablecoinTestError where
   displayException = pretty
@@ -89,7 +89,7 @@ data StablecoinImpl m = StablecoinImpl
   , siGetTokenMetadata
       :: "contract" :! AddressOrAlias
       -> m ("symbol" :! Text, "name" :! Text, "decimals" :! Natural)
-  , siAssertEq :: forall a. (Eq a, Show a) => a -> a -> m ()
+  , siAssertEq :: forall a. (Eq a, Show a, Buildable a) => a -> a -> m ()
   , siRevealKeyUnlessRevealed :: Address -> m ()
   }
 
@@ -247,7 +247,7 @@ stablecoinImplClient env = StablecoinImpl
   }
   where
     mkUserOpt :: "sender" :! AddressOrAlias -> [String]
-    mkUserOpt (N sender) = ["--user", pretty sender]
+    mkUserOpt (_ :! sender) = ["--user", pretty sender]
 
     mkContractOpt :: "contract" :! AddressOrAlias -> [String]
-    mkContractOpt (N contract) = ["--contract", pretty contract]
+    mkContractOpt (_ :! contract) = ["--contract", pretty contract]

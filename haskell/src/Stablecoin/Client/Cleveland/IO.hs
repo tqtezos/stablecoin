@@ -20,15 +20,15 @@ module Stablecoin.Client.Cleveland.IO
 
 import Data.Char (isAlpha, isDigit)
 import Fmt (Buildable, pretty, (+|), (|+))
-import Morley.Client (Alias, mkAlias, MorleyClientEnv, MorleyClientEnv'(..))
-import qualified Morley.Client as MorleyClient
+import Morley.Client (Alias, MorleyClientEnv, MorleyClientEnv'(..), mkAlias)
+import Morley.Client qualified as MorleyClient
 import Morley.Client.TezosClient (TezosClientEnv(..))
 import Morley.Tezos.Address (Address, parseAddress)
-import Morley.Tezos.Core (Mutez, unsafeMkMutez)
+import Morley.Tezos.Core (Mutez, toMutez, zeroMutez)
 import Servant.Client (showBaseUrl)
 import System.Exit (ExitCode(..))
 import System.Process (readProcessWithExitCode)
-import qualified Text.Megaparsec as P
+import Text.Megaparsec qualified as P
   (Parsec, customFailure, many, parse, satisfy, skipManyTill, try)
 import Text.Megaparsec.Char (newline, printChar, string)
 import Text.Megaparsec.Char.Lexer (decimal)
@@ -97,9 +97,9 @@ mutezParser =
   -- as "-0 μꜩ" instead of "0 μꜩ", so we need to handle this special case here.
   -- https://github.com/chrisdone/formatting/pull/61
   -- https://gitlab.com/morley-framework/morley/-/issues/302#note_386133651
-  (string "-0 μꜩ" $> unsafeMkMutez 0)
+  (string "-0 μꜩ" $> zeroMutez)
   <|>
-  (fmap unsafeMkMutez decimal <* string " μꜩ")
+  (fmap (toMutez @Word63) decimal <* string " μꜩ")
 
 naturalParser :: Parser Natural
 naturalParser = decimal
