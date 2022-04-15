@@ -12,7 +12,7 @@
 , morley-infra ? (import sources.morley-infra)
 }:
 let
-  inherit (morley-infra) tezos-client weeder-hacks;
+  inherit (morley-infra) tezos-client weeder-hacks run-chain-tests;
   haskell-nix =
     if static
     then pkgs.pkgsCross.musl64.haskell-nix
@@ -92,5 +92,5 @@ in
   test = project.stablecoin.components.tests.stablecoin-test;
   nettest = project.stablecoin.components.tests.stablecoin-nettest;
   stablecoin-client = project.stablecoin.components.exes.stablecoin-client;
-  inherit tezos-contract tezos-contract-fa1-2 tezos-metadata-contract tezos-client pkgs weeder-script morley;
+  inherit tezos-contract tezos-contract-fa1-2 tezos-metadata-contract tezos-client pkgs weeder-script morley run-chain-tests;
 }

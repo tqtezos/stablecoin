@@ -78,12 +78,19 @@ steps:
      TASTY_CLEVELAND_NODE_ENDPOINT: "http://localhost:8733"
      # this key is defined in local-chain bootstrap accounts list in
      # https://github.com/serokell/aquarius-infra/blob/master/servers/albali/chain.nix
-     TASTY_CLEVELAND_MONEYBAG_SECRET_KEY: "unencrypted:edsk3GjD83F7oj2LrnRGYQer99Fj69U2QLyjWGiJ4UoBZNQwS38J4v"
+     CHAIN_TEST_MONEYBAG_SECRET_KEY: "unencrypted:edsk3GjD83F7oj2LrnRGYQer99Fj69U2QLyjWGiJ4UoBZNQwS38J4v"
    commands: &run-nettest
      - eval "$FETCH_CONTRACT"
      - cd haskell/
+     - export PATH=$(nix-build ../ -A stablecoin-client)/bin:$PATH
      - nix build -L -f .. test
-     - nix run -f ../ tezos-client stablecoin-client -c ./result/bin/stablecoin-test --cleveland-mode=only-network -d "$(mktemp -d --tmpdir="$PWD")"
+     # Note that 'refill-balance' below is the initial 'TASTY_CLEVELAND_MONEYBAG_SECRET_KEY' balance
+     # which may need to be adjusted in case of insufficient balance errors
+     - $(nix-build ../ -A run-chain-tests
+         --argstr refill-balance 50
+         --argstr node-endpoint $$TASTY_CLEVELAND_NODE_ENDPOINT
+         --argstr step-moneybag $$CHAIN_TEST_MONEYBAG_SECRET_KEY --no-out-link
+         --argstr scenario './result/bin/stablecoin-test --cleveland-mode=only-network')
    retry: &retry-nettest
       automatic:
         limit: 1
@@ -98,7 +105,7 @@ steps:
      TASTY_CLEVELAND_NODE_ENDPOINT: "https://ithaca.testnet.tezos.serokell.team"
      # Note that testnet moneybag can run out of tz. If this happened, someone should transfer it some
      # more tz, its address: tz1ij8gUYbMRUXa4xX3mNvKguhaWG9GGbURn
-     TASTY_CLEVELAND_MONEYBAG_SECRET_KEY: "unencrypted:edsk4EYgVvKVKppJXAyeoqxJrNeyoktNqmcx5op1CFht9P1p8pPxp7"
+     CHAIN_TEST_MONEYBAG_SECRET_KEY: "unencrypted:edsk4EYgVvKVKppJXAyeoqxJrNeyoktNqmcx5op1CFht9P1p8pPxp7"
      # Running all of the tests on network will end up draining the moneybag; for now, only FA1.2 tests are run
      TASTY_PATTERN: '/Test.FA1_2/||/Lorentz.Contracts.Nettest/'
    commands: *run-nettest
