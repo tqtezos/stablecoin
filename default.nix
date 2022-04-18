@@ -7,11 +7,12 @@
     sourcesOverride = { hackage = sources."hackage.nix"; stackage = sources."stackage.nix"; };
   }
 , pkgs ? import sources.nixpkgs haskell-nix.nixpkgsArgs
-, weeder-hacks ? import sources.haskell-nix-weeder { inherit pkgs; }
 , ligo ? (pkgs.runCommand "ligo" {} "mkdir -p $out/bin; cp ${sources.ligo} $out/bin/ligo; chmod +x $out/bin/ligo")
 , morley ? (import "${sources.morley}/ci.nix").packages.morley.exes.morley
+, morley-infra ? (import sources.morley-infra)
 }:
 let
+  inherit (morley-infra) tezos-client weeder-hacks run-chain-tests;
   haskell-nix =
     if static
     then pkgs.pkgsCross.musl64.haskell-nix
@@ -78,19 +79,10 @@ let
     buildPhase = "make metadata.tz";
     installPhase = "cp metadata.tz $out";
   };
-  tezos-client = (import "${sources.tezos-packaging}/nix/build/pkgs.nix" {}).ocamlPackages.tezos-client;
 
-  # nixpkgs has weeder 2, but we use weeder 1
-  weeder-legacy = pkgs.haskellPackages.callHackageDirect {
-    pkg = "weeder";
-    ver = "1.0.9";
-    sha256 = "0gfvhw7n8g2274k74g8gnv1y19alr1yig618capiyaix6i9wnmpa";
-  } {};
-
-  weeder-script = weeder-hacks.weeder-script {
-    weeder = weeder-legacy;
+  weeder-script = morley-infra.weeder-script {
     hs-pkgs = project;
-    local-packages = local-packages;
+    inherit local-packages;
   };
 
 in
@@ -100,5 +92,5 @@ in
   test = project.stablecoin.components.tests.stablecoin-test;
   nettest = project.stablecoin.components.tests.stablecoin-nettest;
   stablecoin-client = project.stablecoin.components.exes.stablecoin-client;
-  inherit tezos-contract tezos-contract-fa1-2 tezos-metadata-contract tezos-client pkgs weeder-script morley;
+  inherit tezos-contract tezos-contract-fa1-2 tezos-metadata-contract tezos-client pkgs weeder-script morley run-chain-tests;
 }
