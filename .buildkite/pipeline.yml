@@ -87,7 +87,7 @@ steps:
      # Note that 'refill-balance' below is the initial 'TASTY_CLEVELAND_MONEYBAG_SECRET_KEY' balance
      # which may need to be adjusted in case of insufficient balance errors
      - $(nix-build ../ -A run-chain-tests
-         --argstr refill-balance 50
+         --argstr refill-balance 1100
          --argstr node-endpoint $$TASTY_CLEVELAND_NODE_ENDPOINT
          --argstr step-moneybag $$CHAIN_TEST_MONEYBAG_SECRET_KEY --no-out-link
          --argstr scenario './result/bin/stablecoin-test --cleveland-mode=only-network')

@@ -38,10 +38,10 @@
         "url_template": "https://gitlab.com/morley-framework/morley/-/archive/morley-<rev>/morley-morley-<rev>.tar.gz"
     },
     "morley-infra": {
-        "rev": "7f3609264ee708576b1d2f22fee789f713ab7975",
-        "sha256": "031rc2bh3a7gnvhiv602g6xa532m56cfwmrwbxnrl0bc3g7d9rrk",
+        "rev": "b67cb8a39061b20d11c11d30428b2ff7974f72b5",
+        "sha256": "0czn2k1njd6lhhrr41bkmc045bdjqdql510ars8ld8dvizwpgkg8",
         "type": "tarball",
-        "url": "https://gitlab.com/morley-framework/morley-infra/-/archive/7f3609264ee708576b1d2f22fee789f713ab7975/morley-infra-7f3609264ee708576b1d2f22fee789f713ab7975.tar.gz",
+        "url": "https://gitlab.com/morley-framework/morley-infra/-/archive/b67cb8a39061b20d11c11d30428b2ff7974f72b5/morley-infra-b67cb8a39061b20d11c11d30428b2ff7974f72b5.tar.gz",
         "url_template": "https://gitlab.com/morley-framework/morley-infra/-/archive/<rev>/morley-infra-<rev>.tar.gz"
     },
     "nixpkgs": {
