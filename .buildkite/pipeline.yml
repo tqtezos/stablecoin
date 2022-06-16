@@ -88,8 +88,10 @@ steps:
      # which may need to be adjusted in case of insufficient balance errors
      - $(nix-build ../ -A run-chain-tests
          --argstr refill-balance 1100
-         --argstr node-endpoint $$TASTY_CLEVELAND_NODE_ENDPOINT
-         --argstr step-moneybag $$CHAIN_TEST_MONEYBAG_SECRET_KEY --no-out-link
+         --argstr node-endpoint "$$TASTY_CLEVELAND_NODE_ENDPOINT"
+         --argstr step-moneybag "$$CHAIN_TEST_MONEYBAG_SECRET_KEY"
+         --argstr step-moneybag-password "$$CHAIN_TEST_MONEYBAG_PASSWORD"
+         --no-out-link
          --argstr scenario './result/bin/stablecoin-test --cleveland-mode=only-network')
    retry: &retry-nettest
       automatic:
