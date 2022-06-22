@@ -88,12 +88,26 @@ steps:
      # which may need to be adjusted in case of insufficient balance errors
      - $(nix-build ../ -A run-chain-tests
          --argstr refill-balance 1100
-         --argstr node-endpoint $$TASTY_CLEVELAND_NODE_ENDPOINT
-         --argstr step-moneybag $$CHAIN_TEST_MONEYBAG_SECRET_KEY --no-out-link
+         --argstr node-endpoint "$$TASTY_CLEVELAND_NODE_ENDPOINT"
+         --argstr step-moneybag "$$CHAIN_TEST_MONEYBAG_SECRET_KEY"
+         --argstr step-moneybag-password "$$CHAIN_TEST_MONEYBAG_PASSWORD"
+         --no-out-link
          --argstr scenario './result/bin/stablecoin-test --cleveland-mode=only-network')
    retry: &retry-nettest
       automatic:
         limit: 1
+
+ - label: nettest-local-chain-013
+   key: nettest-local-chain-013
+   if: *not_scheduled
+   depends_on: build_library
+   env:
+     TASTY_CLEVELAND_NODE_ENDPOINT: "http://localhost:8734"
+     # this key is defined in local-chain bootstrap accounts list in
+     # https://github.com/serokell/aquarius-infra/blob/master/servers/albali/chain.nix
+     CHAIN_TEST_MONEYBAG_SECRET_KEY: "unencrypted:edsk3GjD83F7oj2LrnRGYQer99Fj69U2QLyjWGiJ4UoBZNQwS38J4v"
+   commands: *run-nettest
+   retry: *retry-nettest
 
  - label: nettest-scheduled-ithacanet
    key: nettest-scheduled-ithacanet
@@ -106,6 +120,22 @@ steps:
      # Note that testnet moneybag can run out of tz. If this happened, someone should transfer it some
      # more tz, its address: tz1ij8gUYbMRUXa4xX3mNvKguhaWG9GGbURn
      CHAIN_TEST_MONEYBAG_SECRET_KEY: "unencrypted:edsk4EYgVvKVKppJXAyeoqxJrNeyoktNqmcx5op1CFht9P1p8pPxp7"
+     # Running all of the tests on network will end up draining the moneybag; for now, only FA1.2 tests are run
+     TASTY_PATTERN: '/Test.FA1_2/||/Lorentz.Contracts.Nettest/'
+   commands: *run-nettest
+   retry: *retry-nettest
+   timeout_in_minutes: 360
+
+ - label: nettest-scheduled-jakartanet
+   key: nettest-scheduled-jakartanet
+   if: build.source == "schedule"
+   depends_on:
+     - build_library
+     - LIGO-contract
+   env:
+     TASTY_CLEVELAND_NODE_ENDPOINT: "https://jakarta.testnet.tezos.serokell.team"
+     CHAIN_TEST_MONEYBAG_SECRET_KEY: "$JAKARTANET_MONEYBAG"
+     CHAIN_TEST_MONEYBAG_PASSWORD: "$JAKARTANET_MONEYBAG_PASSWORD"
      # Running all of the tests on network will end up draining the moneybag; for now, only FA1.2 tests are run
      TASTY_PATTERN: '/Test.FA1_2/||/Lorentz.Contracts.Nettest/'
    commands: *run-nettest
