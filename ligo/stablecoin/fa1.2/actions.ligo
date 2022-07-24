@@ -158,9 +158,10 @@ function debit_from
 function convert_to_transferlist_transfer
   ( const tp : transfer_param
   ) : transferlist_transfer_item is
-    ( tp.from_
-    , list [ tp.to_ ]
-    )
+    record [
+      from_ = tp.from_;
+      tos = list [ tp.to_ ];
+    ]
 
 (*
  * Calls `assert_transfer` of the provided transferlist contract using

@@ -148,7 +148,10 @@ type transfer_descriptor_param is [@layout:comb] record [
  * Transferlist
  *)
 
-type transferlist_transfer_item is michelson_pair(address, "from", list(address), "tos")
+type transferlist_transfer_item is [@layout:comb] record [
+  [@annot:from] from_: address;
+  tos: list(address);
+]
 
 type transferlist_assert_transfers_param is list(transferlist_transfer_item)
 
@@ -176,7 +179,10 @@ type user_permits is
 
 type permits is big_map (address, user_permits)
 
-type permit_signature is michelson_pair(signature, "", blake2b_hash, "permit_hash")
+type permit_signature is [@layout:comb] record [
+  signature : signature;
+  permit_hash : blake2b_hash;
+]
 type permit_param is (key * permit_signature)
 
 type revoke_param is blake2b_hash * address

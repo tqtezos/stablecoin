@@ -151,14 +151,15 @@ function debit_from
 function convert_to_transferlist_transfer
   ( const tp : transfer_param
   ) : transferlist_transfer_item is
-    ( tp.from_
-    , List.map
+    record [
+      from_ = tp.from_;
+      tos =  List.map
           ( function
               ( const dst: transfer_destination
               ) : address is dst.to_
           , tp.txs
-          )
-    )
+          );
+    ]
 
 (*
  * Calls `assert_transfer` of the provided transferlist contract using
@@ -687,8 +688,8 @@ function add_permit
   ; const store    : storage
   ) : entrypoint is block
 { const key : key = parameter.0
-; const signature : signature = parameter.1.0
-; const permit : blake2b_hash = parameter.1.1
+; const signature : signature = parameter.1.signature
+; const permit : blake2b_hash = parameter.1.permit_hash
 ; const issuer: address = Tezos.address(Tezos.implicit_account(Crypto.hash_key(key)))
 
 // form the structure that is to be signed by pairing self contract address, chain id, counter

@@ -86,8 +86,10 @@ type parameter is
  * Transferlist
  *)
 
-type transferlist_transfer_item is michelson_pair(address, "from", list(address), "tos")
-
+type transferlist_transfer_item is [@layout:comb] record [
+  [@annot:from] from_: address;
+  tos: list(address);
+]
 type transferlist_assert_transfers_param is list(transferlist_transfer_item)
 
 type transferlist_assert_receivers_param is list(address)
