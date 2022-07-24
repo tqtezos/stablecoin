@@ -9,6 +9,9 @@ SPDX-License-Identifier: MIT
 <!-- Don't forget to update the gas/transaction costs tables in the
 README when a new version is released. -->
 
+* [#195](https://github.com/tqtezos/stablecoin/pull/195)
+  * Update to ligo 0.46.1
+
 ## 1.7.2
 
 * [#181](https://github.com/tqtezos/stablecoin/pull/181)

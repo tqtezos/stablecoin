@@ -10,13 +10,13 @@
  *
  * 1. All builtins such as `Tezos.*` and `Layout.*` are allowed
  * to be called only on "top-level" and don't work with nested
- * (multiple) calls. From the descussions:
+ * (multiple) calls. From the discussions:
  *
  * ```
- * @sras > Some expressions like Tezos.self_address are only possible
+ * @sras > Some expressions like Tezos.get_self_address() are only possible
  * to be used in a "top-level". It seemed to me that, according to
  * LIGO, a function is top-level, if it is only called from a single
- * location. So the Tezos.self_address can work from function func1
+ * location. So the Tezos.get_self_address() can work from function func1
  * so long as func1 is only called from one place. As soon as you
  * have a second call site for func1, it ceases to be top level, and
  * will trigger the error..I guess it should be same with the various
@@ -45,25 +45,21 @@ function convert_to_transfer_descriptor
   ; const param_sender_addr : address
   ; const transfer_destination : transfer_destination
   ): transfer_descriptor_param is block
-{ const transfer_destination_descriptor_ : transfer_destination_descriptor_ = record
-    [ to_      = Some (transfer_destination.0)
-    ; token_id = transfer_destination.1.0
-    ; amount   = transfer_destination.1.1
+{ const transfer_destination_descriptor : transfer_destination_descriptor = record
+    [ to_      = Some (transfer_destination.to_)
+    ; token_id = transfer_destination.token_id
+    ; amount   = transfer_destination.amount
     ]
-; const transfer_destination_descriptor : transfer_destination_descriptor =
-    Layout.convert_to_right_comb ((transfer_destination_descriptor_ : transfer_destination_descriptor_))
-; const transfer_descriptor_ : transfer_descriptor_ = record
+; const transfer_descriptor : transfer_descriptor = record
     [ from_ = Some (param_sender_addr)
     ; txs   = list [ transfer_destination_descriptor ]
     ]
-; const transfer_descriptor_batch : list (transfer_descriptor) = list
-    [ Layout.convert_to_right_comb ((transfer_descriptor_ : transfer_descriptor_)) ]
-; const transfer_descriptor_param : transfer_descriptor_param_ = record
+; const transfer_descriptor_param : transfer_descriptor_param = record
     [ fa2      = self_addr
-    ; batch    = transfer_descriptor_batch
-    ; operator = Tezos.sender
+    ; batch    = list [ transfer_descriptor ]
+    ; operator = Tezos.get_sender()
     ]
-} with Layout.convert_to_right_comb ((transfer_descriptor_param : transfer_descriptor_param_))
+} with transfer_descriptor_param
 
 (*
  * Helper function that merges two `operation`s `list`s.
@@ -79,4 +75,3 @@ function merge_operations
     , fst
     , snd
     )
-

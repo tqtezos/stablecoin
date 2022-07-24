@@ -16,8 +16,8 @@
   ( const transfer_param         : transfer_param
   ; const operators              : operators
   ) : bool is block
-{ const operator : address = Tezos.sender
-; const owner : address = transfer_param.0
+{ const operator : address = Tezos.get_sender()
+; const owner : address = transfer_param.from_
 } with if owner = operator or Big_map.mem ((owner, operator), operators)
   then True else False
 
@@ -28,8 +28,8 @@ function add_operator
   ( const param     : operator_param
   ; const operators : operators
   ) : operators is block
-{ validate_token_type(param.1.1)
-; const operator_key : (owner * operator) = (param.0, param.1.0)
+{ validate_token_type(param.token_id)
+; const operator_key : (owner * operator) = (param.owner, param.operator)
 } with Big_map.update (operator_key, Some (unit), operators)
 
 (*
@@ -39,8 +39,8 @@ function remove_operator
   ( const param     : operator_param
   ; const operators : operators
   ) : operators is block
-{ validate_token_type(param.1.1)
-; const operator_key : (owner * operator) = (param.0, param.1.0)
+{ validate_token_type(param.token_id)
+; const operator_key : (owner * operator) = (param.owner, param.operator)
 } with Big_map.remove (operator_key, operators)
 
 (*
@@ -54,10 +54,10 @@ function update_operators
     ( function
         ( const operators             : operators
         ; const update_operator_param : update_operator_param
-        ) : operators is case update_operator_param of
-          Add_operator    (param) -> add_operator    (param, operators)
+        ) : operators is case update_operator_param of [
+        | Add_operator    (param) -> add_operator    (param, operators)
         | Remove_operator (param) -> remove_operator (param, operators)
-        end
+        ]
     , params
     , operators
     )
@@ -68,7 +68,7 @@ function update_operators
 function get_owner
   ( const param : update_operator_param
   ) : address is
-  case param of
-    Add_operator    (param) -> param.0
-  | Remove_operator (param) -> param.0
-  end
+  case param of [
+  | Add_operator    (param) -> param.owner
+  | Remove_operator (param) -> param.owner
+  ]

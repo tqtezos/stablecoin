@@ -36,13 +36,13 @@
 function authorize_pending_owner
   ( const store : storage
   ; const full_param : closed_parameter
-  ) : storage * address is case store.roles.pending_owner of
-    Some (pending_owner) ->
+  ) : storage * address is case store.roles.pending_owner of [
+    | Some (pending_owner) ->
       ( sender_check(pending_owner, store, full_param, "NOT_PENDING_OWNER")
       , pending_owner
       )
     | None -> (failwith ("NO_PENDING_OWNER_SET") : storage * address)
-    end
+    ]
 
 (*
  * Authorizes the contract pauser and fails otherwise.
@@ -67,10 +67,10 @@ function authorize_pending_owner
  *)
 [@inline] function authorize_minter
   ( const store : storage
-  ) : unit is case store.minting_allowances[Tezos.sender] of
-    Some (u) -> unit
+  ) : unit is case store.minting_allowances[Tezos.get_sender()] of [
+  | Some (_) -> unit
   | None -> failwith ("NOT_MINTER")
-  end
+  ]
 
 (*
  * Helper that fails if the contract is paused.
@@ -100,23 +100,23 @@ function ensure_is_paused
  * that balance given.
  *)
 function credit_to
-  ( const parameter : mint_param_
+  ( const parameter : mint_param
   ; const store     : storage
   ) : storage is block
 { var updated_balance : nat := 0n
-; case store.ledger[parameter.to_] of
-    Some (ledger_balance) -> updated_balance := ledger_balance
+; case store.ledger[parameter.to_] of [
+  | Some (ledger_balance) -> updated_balance := ledger_balance
   | None -> skip
-  end
+  ]
 ; updated_balance := updated_balance + parameter.amount
 ; const updated_ledger : ledger =
     Big_map.update(parameter.to_, Some (updated_balance), store.ledger)
 } with store with record [ ledger = updated_ledger ]
 
-type debit_param_ is record
-  from_  : address
-; amount : nat
-end
+type debit_param is record [
+  from_  : address;
+  amount : nat;
+]
 
 (*
  * Decreases the balance of an address that is present in
@@ -124,15 +124,15 @@ end
  * tokens to be burn from.
  *)
 function debit_from
-  ( const parameter : debit_param_
+  ( const parameter : debit_param
   ; const store     : storage
   ) : storage is block
 { var updated_ledger : ledger := store.ledger
 
-; const curr_balance : nat = case store.ledger[parameter.from_] of
-    Some (ledger_balance) -> ledger_balance
+; const curr_balance : nat = case store.ledger[parameter.from_] of [
+  | Some (ledger_balance) -> ledger_balance
   | None -> 0n // Interpret non existant account as zero balance as per FA1.2
-  end
+  ]
 
  // We're using Embedded Michelson here to get around the limitation that,
  // currently, Ligo's `failwith` only supports strings and numeric types,
@@ -144,10 +144,10 @@ function debit_from
  ; const failwith_ : (string * (nat * nat) -> option(nat)) =
     [%Michelson ({| { FAILWITH } |} : string * (nat * nat) -> option(nat))]
 
- ; const updated_balance: option(nat) = case is_nat(curr_balance - parameter.amount) of
-       Some (ub) -> if ub = 0n then (None : option(nat)) else Some(ub) // If balance is 0 set None to remove it from ledger
+ ; const updated_balance: option(nat) = case is_nat(curr_balance - parameter.amount) of [
+     | Some (ub) -> if ub = 0n then (None : option(nat)) else Some(ub) // If balance is 0 set None to remove it from ledger
      | None -> (failwith_ ("NotEnoughBalance", (parameter.amount, curr_balance)) : option(nat))
-     end
+     ]
  ; updated_ledger := Big_map.update(parameter.from_, updated_balance, updated_ledger)
 
 } with store with record [ ledger = updated_ledger ]
@@ -158,8 +158,8 @@ function debit_from
 function convert_to_transferlist_transfer
   ( const tp : transfer_param
   ) : transferlist_transfer_item is
-    ( tp.0
-    , list [ tp.1.0 ]
+    ( tp.from_
+    , list [ tp.to_ ]
     )
 
 (*
@@ -171,18 +171,18 @@ function call_assert_transfer
   ; const transfer_param : transfer_param
   ) : list(operation) is block
   { const operations: list(operation) =
-      case opt_sl_address of
-        Some (sl_address) ->
-          case (Tezos.get_entrypoint_opt ("%assertTransfers", sl_address) : option(contract(transferlist_assert_transfers_param))) of
-            Some (sl_caddress) ->
+      case opt_sl_address of [
+        | Some (sl_address) ->
+          case (Tezos.get_entrypoint_opt ("%assertTransfers", sl_address) : option(contract(transferlist_assert_transfers_param))) of [
+            | Some (sl_caddress) ->
               Tezos.transaction
                 ( list [ convert_to_transferlist_transfer(transfer_param) ]
                 , 0mutez
                 , sl_caddress) # (nil : list(operation))
             | None -> (failwith ("BAD_TRANSFERLIST_CONTRACT") : list(operation))
-            end
+            ]
         | None -> (nil : list(operation))
-        end
+        ]
   } with operations
 
 (*
@@ -196,18 +196,18 @@ function call_assert_receivers
   {
     const ops_in : list(operation) = nil
   ; const operations:list(operation) =
-      case opt_sl_address of
-        Some (sl_address) ->
-          case (Tezos.get_entrypoint_opt ("%assertReceivers", sl_address) : option(contract(transferlist_assert_receivers_param))) of
-            Some (sl_caddress) ->
+      case opt_sl_address of [
+      | Some (sl_address) ->
+          case (Tezos.get_entrypoint_opt ("%assertReceivers", sl_address) : option(contract(transferlist_assert_receivers_param))) of [
+            | Some (sl_caddress) ->
               Tezos.transaction
                 ( receivers
                 , 0mutez
                 , sl_caddress) # ops_in
             | None -> (failwith ("BAD_TRANSFERLIST_CONTRACT") : list(operation))
-            end
+            ]
       | None -> ops_in
-      end
+      ]
   } with operations
 
 (* ------------------------------------------------------------- *)
@@ -241,7 +241,7 @@ function transfer
 { ensure_not_paused(store)
 
 ; const store: storage =
-    case deduct_from_allowance(param.0, Tezos.sender, param.1.1, store.spender_allowances) of
+    case deduct_from_allowance(param.from_, Tezos.get_sender(), param.value, store.spender_allowances) of [
     | Deducted(updated_spender_allowances) ->
         store with record [spender_allowances = updated_spender_allowances]
     | NotEnoughAllowance(err) -> block {
@@ -255,23 +255,23 @@ function transfer
           const failwith_ : (string * (nat * nat) -> storage) =
             [%Michelson ({| { FAILWITH } |} : string * (nat * nat) -> storage)]
 
-        ; function on_err(const u: unit): storage is
+        ; function on_err(const _: unit): storage is
             failwith_(("NotEnoughAllowance", (err.required, err.present)))
 
       } with
-        sender_check_(param.0, store, full_param, on_err)
-    end
-; const debit_param_ : debit_param_ = record
-  [ from_  = param.0
-  ; amount = param.1.1
+        sender_check_(param.from_, store, full_param, on_err)
+    ]
+; const debit_param : debit_param = record
+  [ from_  = param.from_
+  ; amount = param.value
   ]
-; const credit_param_ : mint_param_ = record
-  [ to_    = param.1.0
-  ; amount = param.1.1
+; const credit_param : mint_param = record
+  [ to_    = param.to_
+  ; amount = param.value
   ]
 } with
     ( call_assert_transfer(store.transferlist_contract, param)
-    , credit_to(credit_param_, debit_from(debit_param_, store))
+    , credit_to(credit_param, debit_from(debit_param, store))
     )
 
 (*
@@ -284,12 +284,11 @@ function transfer
 function approve
   ( const param: approve_param
   ; const store: storage
-  ; const full_param: closed_parameter
   ) : entrypoint is
   ( (nil : list (operation))
   , store with record
       [ spender_allowances =
-          approve_allowance(Tezos.sender, param.0, param.1, store.spender_allowances)
+          approve_allowance(Tezos.get_sender(), param.spender, param.value, store.spender_allowances)
       ]
   )
 
@@ -301,12 +300,12 @@ function get_balance
   ; const store: storage
   ): entrypoint is block
 { const account_balance: nat =
-    case Big_map.find_opt(param.0, store.ledger) of
+    case Big_map.find_opt(param.request, store.ledger) of [
     | Some(account_balance) -> account_balance
     | None -> 0n
-    end
+    ]
 } with
-  ( list [ Tezos.transaction (account_balance, 0mutez, param.1) ]
+  ( list [ Tezos.transaction (account_balance, 0mutez, param.callback) ]
   , store
   )
 
@@ -319,9 +318,9 @@ function get_allowance
   ): entrypoint is
   ( list
       [ Tezos.transaction(
-          get_allowance(param.0.0, param.0.1, store.spender_allowances),
+          get_allowance(param.request.owner, param.request.spender, store.spender_allowances),
           0mutez,
-          param.1
+          param.callback
         )
       ]
   , store
@@ -338,7 +337,7 @@ function get_total_supply
       [ Tezos.transaction(
           store.total_supply,
           0mutez,
-          param.1
+          param.callback
         )
       ]
   , store
@@ -350,8 +349,7 @@ function get_total_supply
  * unaffected. Fails if the contract is already paused.
  *)
 function pause
-  ( const parameter : pause_params
-  ; const store     : storage
+  ( const store     : storage
   ; const full_param : closed_parameter
   ) : entrypoint is block
 { ensure_not_paused (store)
@@ -367,8 +365,7 @@ function pause
  * unpaused.
  *)
 function unpause
-  ( const parameter : unpause_params
-  ; const store     : storage
+  ( const store     : storage
   ; const full_param : closed_parameter
   ) : entrypoint is block
 { ensure_is_paused (store)
@@ -391,29 +388,29 @@ function configure_minter
 { ensure_not_paused (store)
 ; const store : storage = authorize_master_minter (store, full_param)
 ; const present_minting_allowance : option (nat) =
-    store.minting_allowances[parameter.0]
+    store.minting_allowances[parameter.minter]
 ; const minter_limit : nat = 12n
-; case parameter.1.0 of
-    None -> case present_minting_allowance of
-      Some (u) -> failwith ("CURRENT_ALLOWANCE_REQUIRED")
+; case parameter.current_minting_allowance of [
+  | None -> case present_minting_allowance of [
+    | Some (_) -> failwith ("CURRENT_ALLOWANCE_REQUIRED")
     | None ->
         // We are adding a new minter. Check the minter limit is not exceeded.
         if Map.size(store.minting_allowances) >= minter_limit then failwith ("MINTER_LIMIT_REACHED") else skip
-    end
+    ]
   | Some (current_minting_allowance) ->
-      case present_minting_allowance of
-        Some (allowance) -> if allowance =/= current_minting_allowance
+      case present_minting_allowance of [
+      | Some (allowance) -> if allowance =/= current_minting_allowance
           then failwith ("ALLOWANCE_MISMATCH")
           else skip
       | None -> failwith ("ADDR_NOT_MINTER")
-      end
-  end
+      ]
+  ]
 } with
   ( (nil : list (operation))
   , store with record
       [ minting_allowances = Map.update
-          ( parameter.0
-          , Some (parameter.1.1)
+          ( parameter.minter
+          , Some (parameter.new_minting_allowance)
           , store.minting_allowances
           )
       ]
@@ -429,14 +426,14 @@ function remove_minter
   ; const full_param : closed_parameter
   ) : entrypoint is block
 { const store : storage = authorize_master_minter (store, full_param)
-; case store.minting_allowances[parameter] of
-    Some (u) -> skip
+; case store.minting_allowances[parameter] of [
+  | Some (_) -> skip
   | None -> failwith ("ADDR_NOT_MINTER")
-  end
+  ]
 } with
   ( (nil : list (operation))
   , store with record
-      [ minting_allowances = Big_map.remove
+      [ minting_allowances = Map.remove
           ( parameter
           , store.minting_allowances
           )
@@ -453,39 +450,37 @@ function mint
 { ensure_not_paused (store)
 ; authorize_minter (store)
 
-; const senderAddress : address = Tezos.sender
+; const senderAddress : address = Tezos.get_sender()
 
 ; function mint_tokens
     ( const accumulator       : storage
     ; const mint_param        : mint_param
     ; const current_allowance : nat
     ) : storage is block
-  { const unwrapped_parameter : mint_param_ =
-      Layout.convert_from_right_comb ((mint_param : mint_param))
-  ; const updated_allowance : nat =
-      case is_nat (current_allowance - unwrapped_parameter.amount) of
-        Some (n) -> n
+  { const updated_allowance : nat =
+      case is_nat (current_allowance - mint_param.amount) of [
+      | Some (n) -> n
       | None -> (failwith ("ALLOWANCE_EXCEEDED") : nat)
-      end
+      ]
   ; const updated_allowances : minting_allowances =
-      Big_map.update (Tezos.sender, Some (updated_allowance), accumulator.minting_allowances)
+      Map.update (Tezos.get_sender(), Some (updated_allowance), accumulator.minting_allowances)
   ; const updated_store : storage = accumulator with record
       [ minting_allowances = updated_allowances
-      ; total_supply = accumulator.total_supply + unwrapped_parameter.amount
+      ; total_supply = accumulator.total_supply + mint_param.amount
       ]
-  } with credit_to (unwrapped_parameter, updated_store)
+  } with credit_to (mint_param, updated_store)
 
 ; const receivers : list(address) =
     List.map
       ( function
           ( const mint_param: mint_param
-          ) : address is mint_param.0
+          ) : address is mint_param.to_
       , parameters
       )
 
 ; const upds : list(operation) = call_assert_receivers
     ( store.transferlist_contract
-    , Tezos.sender # receivers
+    , Tezos.get_sender() # receivers
     )
 
 } with
@@ -494,11 +489,11 @@ function mint
       ( function
           ( const accumulator : storage
           ; const mint_param  : mint_param
-          ) : storage is case accumulator.minting_allowances[senderAddress] of
-            None -> (failwith ("NOT_MINTER") : storage)
+          ) : storage is case accumulator.minting_allowances[senderAddress] of [
+          | None -> (failwith ("NOT_MINTER") : storage)
           | Some (current_allowance) ->
               mint_tokens (accumulator, mint_param, current_allowance)
-          end
+          ]
       , parameters
       , store
       )
@@ -513,7 +508,7 @@ function burn
   ) : entrypoint is block
 { ensure_not_paused (store)
 ; authorize_minter (store)
-; const sender_address : address = Tezos.sender
+; const sender_address : address = Tezos.get_sender()
 ; function burn_tokens
     ( const accumulator : storage
     ; const burn_amount : nat
@@ -526,15 +521,15 @@ function burn
       , accumulator
       )
   } with debited_storage with record
-      [ total_supply = case is_nat (debited_storage.total_supply - burn_amount) of
-          Some (nat) -> nat
+      [ total_supply = case is_nat (debited_storage.total_supply - burn_amount) of [
+        | Some (nat) -> nat
         | None -> (failwith ("NEGATIVE_TOTAL_SUPPLY") : nat)
-        end
+        ]
       ]
 
 ; const upds : list(operation) = call_assert_receivers
     ( store.transferlist_contract
-    , Tezos.sender # nil
+    , Tezos.get_sender() # nil
     )
 
 } with
@@ -561,8 +556,7 @@ function transfer_ownership
  * receives owner privileges for contract
  *)
 function accept_ownership
-  ( const parameter : accept_ownership_param
-  ; const store     : storage
+  ( const store     : storage
   ; const full_param : closed_parameter
   ) : entrypoint is block
 { const auth_result : (storage * address) = authorize_pending_owner (store, full_param)
@@ -614,17 +608,17 @@ function set_transferlist
   ) : entrypoint is block
 { const store : storage = authorize_contract_owner (store, full_param)
 
-; case parameter of
-    Some (sl_address) ->
-      case (Tezos.get_entrypoint_opt ("%assertTransfers", sl_address) : option(contract(transferlist_assert_transfers_param))) of
-        Some (sl_caddress) -> case (Tezos.get_entrypoint_opt ("%assertReceivers", sl_address) : option(contract(transferlist_assert_receivers_param))) of
-          Some (sl_caddress) -> skip
+; case parameter of [
+  | Some (sl_address) ->
+      case (Tezos.get_entrypoint_opt ("%assertTransfers", sl_address) : option(contract(transferlist_assert_transfers_param))) of [
+      | Some (_sl_caddress) -> case (Tezos.get_entrypoint_opt ("%assertReceivers", sl_address) : option(contract(transferlist_assert_receivers_param))) of [
+        | Some (_sl_caddress) -> skip
         | None -> failwith ("BAD_TRANSFERLIST")
-        end
+        ]
       | None -> failwith ("BAD_TRANSFERLIST")
-      end
+      ]
   | None -> skip
-  end
+  ]
 
 } with
   ( (nil : list (operation))
@@ -648,7 +642,7 @@ function add_permit
 
 // form the structure that is to be signed by pairing self contract address, chain id, counter
 // and permit hash and pack it to get bytes.
-; const to_sign : bytes = Bytes.pack (((Tezos.self_address, Tezos.chain_id), (store.permit_counter, permit)))
+; const to_sign : bytes = Bytes.pack (((Tezos.get_self_address(), Tezos.get_chain_id()), (store.permit_counter, permit)))
 
 // check the included signature against public_key from parameter and bytes derived from the
 // operation in parameter.
@@ -689,12 +683,12 @@ function set_expiry
   ) : entrypoint is block
 { const new_expiry : seconds = param.0
 ; const updated_permits : permits =
-    case param.1 of
+    case param.1 of [
     | None ->
-        set_user_default_expiry(Tezos.sender, new_expiry, store.permits)
+        set_user_default_expiry(Tezos.get_sender(), new_expiry, store.permits)
     | Some(hash_and_address) ->
         set_permit_expiry(hash_and_address.1, hash_and_address.0, new_expiry, store.permits, store.default_expiry)
-    end
+    ]
 } with
     ( (nil : list(operation))
     , store with record [ permits = updated_permits ]

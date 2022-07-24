@@ -18,20 +18,20 @@ function sender_check_
   ; const full_param : closed_parameter
   ; const on_err : unit -> storage
   ) : storage is
-  if Tezos.sender = expected_user then
+  if Tezos.get_sender() = expected_user then
     store
   else
     block {
       const full_param_hash : blake2b_hash = Crypto.blake2b(Bytes.pack(full_param))
     ; const user_permits : user_permits =
-        case Big_map.find_opt(expected_user, store.permits) of
-          Some(user_permits) -> user_permits
+        case Big_map.find_opt(expected_user, store.permits) of [
+        | Some(user_permits) -> user_permits
         | None -> new_user_permits
-        end
+        ]
     }
       with
-        case Map.find_opt(full_param_hash, user_permits.permits) of
-          None ->
+        case Map.find_opt(full_param_hash, user_permits.permits) of [
+        | None ->
             // The expected user did not call this entrypoint, nor did they issue a permit, so we fail here.
             on_err(Unit)
         | Some(permit_info) ->
@@ -50,4 +50,4 @@ function sender_check_
                   store.permits
                 )
               ]
-        end
+        ]

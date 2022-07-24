@@ -11,33 +11,33 @@ function fa2_main
   ; const store  : storage
   ; const full_param : closed_parameter
   ) : entrypoint
-is case action of
-    Transfer                (params) -> transfer                (params, store, full_param)
+is case action of [
+  | Transfer                (params) -> transfer                (params, store, full_param)
   | Balance_of              (params) -> balance_of              (params, store)
   | Update_operators        (params) -> update_operators_action (params, store, full_param)
-end
+]
 
 (*
  * Root entrypoint of stablecoin smart-contract.
  *)
-function stablecoin_main
+function main
   ( const full_param : closed_parameter
   ; const store  : storage
   ) : entrypoint is block
-{ fail_on (Tezos.amount =/= 0tz, "XTZ_RECEIVED") // Validate whether the contract receives non-zero amount of tokens
-} with case full_param of
-    Call_FA2              (params) -> fa2_main              (params, store, full_param)
-  | Pause                 (params) -> pause                 (params, store, full_param)
-  | Unpause               (params) -> unpause               (params, store, full_param)
+{ fail_on (Tezos.get_amount() =/= 0tz, "XTZ_RECEIVED") // Validate whether the contract receives non-zero amount of tokens
+} with case full_param of [
+  | Call_FA2              (params) -> fa2_main              (params, store, full_param)
+  | Pause                 (Unit)   -> pause                 (store, full_param)
+  | Unpause               (Unit)   -> unpause               (store, full_param)
   | Configure_minter      (params) -> configure_minter      (params, store, full_param)
   | Remove_minter         (params) -> remove_minter         (params, store, full_param)
   | Mint                  (params) -> mint                  (params, store)
   | Burn                  (params) -> burn                  (params, store)
   | Transfer_ownership    (params) -> transfer_ownership    (params, store, full_param)
-  | Accept_ownership      (params) -> accept_ownership      (params, store, full_param)
+  | Accept_ownership      (Unit)   -> accept_ownership      (store, full_param)
   | Change_master_minter  (params) -> change_master_minter  (params, store, full_param)
   | Change_pauser         (params) -> change_pauser         (params, store, full_param)
   | Set_transferlist      (params) -> set_transferlist      (params, store, full_param)
   | Permit                (params) -> add_permit            (params, store)
   | Set_expiry            (params) -> set_expiry            (params, store, full_param)
-  end
+  ]
