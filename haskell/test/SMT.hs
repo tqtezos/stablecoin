@@ -86,7 +86,7 @@ generateContractInputs count = do
     startingStorage = SimpleStorage
       gsMinterPool ledgerBalances owner masterMinter pauser pendingOwner Nothing operatorsMap
       isPaused (sum $ Map.elems ledgerBalances)
-  inputs <- runReaderT (mapM generateAction [1..count]) generatorState
+  inputs <- runReaderT (mapM (\i -> generateAction i) [1..count]) generatorState
   pure (inputs, ContractState startingStorage [])
 
 -- | The property that is being tested.

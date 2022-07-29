@@ -17,6 +17,11 @@ import System.Directory (makeAbsolute)
 aesonOptions :: Options
 aesonOptions = (aesonPrefix camelCase) { omitNothingFields = True}
 
+data NixPackageInfo = NixPackageInfo
+  { npiRev :: Text
+  }
+deriveJSON (aesonPrefix camelCase) ''NixPackageInfo
+
 -- | Load the @ligo@ version we use to compile the ligo contract
 -- by parsing it from nix's @sources.json@ file.
 ligoVersion :: Q Exp
@@ -29,8 +34,3 @@ ligoVersion = do
         Nothing -> fail "Could not find 'ligo' package in sources.json"
         Just pkgInfo ->
           TH.lift (npiRev pkgInfo)
-
-data NixPackageInfo = NixPackageInfo
-  { npiRev :: Text
-  }
-deriveJSON (aesonPrefix camelCase) ''NixPackageInfo

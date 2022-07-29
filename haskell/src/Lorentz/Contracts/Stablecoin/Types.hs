@@ -43,10 +43,10 @@ import Lorentz as L
 import Lorentz.Contracts.Spec.FA2Interface qualified as FA2
 import Lorentz.Contracts.Spec.TZIP16Interface (MetadataMap)
 import Morley.AsRPC (HasRPCRepr(..), deriveRPCWithStrategy)
-import Morley.Client (AddressOrAlias(..))
 import Morley.Michelson.Typed (Notes(..))
 import Morley.Michelson.Typed qualified as T
 import Morley.Michelson.Untyped (noAnn)
+import Morley.Tezos.Address.Alias (AddressOrAlias(..))
 import Morley.Tezos.Crypto qualified as Hash
 import Test.Cleveland.Michelson.Import (embedContract)
 
@@ -139,16 +139,15 @@ instance Buildable FA2Parameter where
     Transfer p -> "<Transfer:" +| build p |+ ">"
     Update_operators p -> "<Update_operators:" +| build p |+ ">"
 
+customGeneric "FA2Parameter" ligoLayout
+deriving anyclass instance IsoValue FA2Parameter
+
 instance HasAnnotation FA2Parameter where
   getAnnotation f =
     NTOr noAnn noAnn noAnn
       (NTOr noAnn noAnn noAnn
         (getAnnotation @FA2.BalanceRequestParams f) (getAnnotation @FA2.TransferParams f))
       (getAnnotation @FA2.UpdateOperatorsParam f)
-
-customGeneric "FA2Parameter" ligoLayout
-
-deriving anyclass instance IsoValue FA2Parameter
 
 instance ParameterHasEntrypoints FA2Parameter where
   type ParameterEntrypointsDerivation FA2Parameter = EpdPlain
@@ -242,9 +241,9 @@ data Roles = Roles
   }
   deriving stock (Show)
 
+customGeneric "Roles" ligoLayout
 deriving anyclass instance IsoValue Roles
 deriving anyclass instance HasAnnotation Roles
-customGeneric "Roles" ligoLayout
 
 instance HasRPCRepr Roles where
   type AsRPC Roles = Roles
@@ -306,10 +305,6 @@ defaultContractMetadataStorage :: MetadataRegistryStorage
 defaultContractMetadataStorage =
   mkContractMetadataRegistryStorage
     (mkBigMap [([mt|TEST|], "TEST"), ([mt|Test|], "Test")])
-
--- This empty splice lets us workaround the GHC stage restriction, and refer to `Storage`
--- in the TH splices below.
-$(pure [])
 
 stablecoinContract :: T.Contract (ToT Parameter) (ToT Storage)
 stablecoinContract =

@@ -39,7 +39,7 @@ getDefaultExpiryView =
     , vImplementations = one $
         VIMichelsonStorageView $
           mkMichelsonStorageView @Storage @Natural Nothing [] $
-            $$(compileViewCodeTH $ WithoutParam $
+            $$(compileViewCodeTH $ WithoutParam $ mkLambda $
               L.toField #sDefaultExpiry
             )
     }
@@ -53,7 +53,7 @@ getCounterView =
     , vImplementations = one $
         VIMichelsonStorageView $
           mkMichelsonStorageView @Storage @Natural Nothing [] $
-            $$(compileViewCodeTH $ WithoutParam $
+            $$(compileViewCodeTH $ WithoutParam $ mkLambda $
               L.toField #sPermitCounter
             )
     }

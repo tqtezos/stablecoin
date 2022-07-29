@@ -42,8 +42,9 @@ import Control.Exception.Uncaught (displayUncaughtException)
 import Control.Lens (makeLensesFor)
 import Fmt (Buildable(..))
 
-import Morley.Client (AddressOrAlias(..), disableAlphanetWarning)
+import Morley.Client (disableAlphanetWarning)
 import Morley.Tezos.Address (Address)
+import Morley.Tezos.Address.Alias (AddressOrAlias(..))
 import Morley.Tezos.Core (Mutez)
 import Morley.Util.Named ((:!))
 import Test.Cleveland.Internal.Abstract

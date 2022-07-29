@@ -70,8 +70,8 @@ fa1_2ComparisonScenario = scenario do
         , sMetadata = metadataMap @(()) (RemoteContract cmrFA1_2Address)
         }
 
-  fa1_2ContractAddr <- TAddress @SFA1_2.Parameter <$>
-    originateUntypedSimple "Stablecoin FA1.2" (untypeValue $ toVal fa1_2Storage) stablecoinFA1_2Contract
+  fa1_2ContractAddr <-
+    originateTypedSimple @SFA1_2.Parameter @SFA1_2.Storage @() "Stablecoin FA1.2" fa1_2Storage stablecoinFA1_2Contract
 
   comment "Calling transfer"
   withSender owner1 $

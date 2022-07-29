@@ -45,9 +45,8 @@ import Lorentz.Contracts.Spec.TZIP16Interface qualified as TZ
 import Morley.Michelson.Typed (BigMapId(..), Dict(..), IsoValue, fromVal, toVal)
 
 import Morley.Client
-  (AddressOrAlias(..), Alias, AliasHint, MorleyClientM, TezosClientError(UnknownAddress), getAlias,
-  getContractScript, lTransfer, originateContract, readBigMapValue, readBigMapValueMaybe,
-  revealKeyUnlessRevealed)
+  (MorleyClientM, TezosClientError(UnknownAddress), getAlias, getContractScript, lTransfer,
+  originateContract, readBigMapValue, readBigMapValueMaybe, revealKeyUnlessRevealed)
 import Morley.Client qualified as Client
 import Morley.Client.RPC (OperationHash, OriginationScript(OriginationScript))
 import Morley.Client.TezosClient (resolveAddress)
@@ -56,6 +55,7 @@ import Morley.Micheline (Expression, FromExpressionError, fromExpression)
 import Morley.Michelson.Runtime.Dummy (dummyContractEnv)
 import Morley.Michelson.Text
 import Morley.Tezos.Address (Address)
+import Morley.Tezos.Address.Alias (AddressOrAlias(..), Alias(..))
 import Morley.Tezos.Core (Mutez, zeroMutez)
 import Morley.Util.Named (arg, pattern (:!), (:!))
 
@@ -82,7 +82,7 @@ instance Buildable AddressAndAlias where
 --
 -- Saves the contract with the given alias.
 -- If the given alias already exists, nothing happens.
-deploy :: "sender" :! AddressOrAlias -> AliasHint -> InitialStorageData AddressOrAlias -> MorleyClientM (OperationHash, Address, Maybe Address)
+deploy :: "sender" :! AddressOrAlias -> Alias -> InitialStorageData AddressOrAlias -> MorleyClientM (OperationHash, Address, Maybe Address)
 deploy (arg #sender -> sender) alias initialStorageData@InitialStorageData {..} = do
   masterMinter <- resolveAddress isdMasterMinter
   contractOwner <- resolveAddress isdContractOwner
@@ -108,7 +108,7 @@ deploy (arg #sender -> sender) alias initialStorageData@InitialStorageData {..} 
               (metadataMap $ CurrentContract metadata False)
         contractMetadataRegistryAddress <- snd <$> originateContract
           False
-          "stablecoin-tzip16-metadata"
+          (Alias "stablecoin-tzip16-metadata")
           sender
           zeroMutez
           contractMetadataContract

@@ -330,7 +330,7 @@ managementSpec originate =
               withSender testMasterMinter $ call stablecoinContract (Call @"Configure_minter") configureMinterParam2
 
               storage <- getStorage @Storage (chAddress stablecoinContract)
-              let expectedMinters = fromList [(wallet1, 30), (wallet2, 10)]
+              let expectedMinters = M.fromList [(wallet1, 30), (wallet2, 10)]
                in when (sMintingAllowancesRPC storage /= expectedMinters) $
                     failure "Configure_minter call produced a malformed minter list"
       , testScenario "fails if expected and actual minting allowances do not match" $
@@ -508,7 +508,7 @@ managementSpec originate =
               withSender testMasterMinter $ call stablecoinContract (Call @"Remove_minter") wallet1
               withSender testMasterMinter $ call stablecoinContract (Call @"Remove_minter") wallet2
               storage <- getStorage @Storage (chAddress stablecoinContract)
-              let expectedMinters = fromList [(wallet3, 100)]
+              let expectedMinters = M.fromList [(wallet3, 100)]
                in when (sMintingAllowancesRPC storage /= expectedMinters) $
                     failure "Remove minter does not change minter list"
       , testScenario "fails if sender is not master minter" $

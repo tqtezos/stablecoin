@@ -9,14 +9,12 @@ module Lorentz.Contracts.StablecoinFA1_2.Types
   , stablecoinFA1_2Contract
   ) where
 
-import Fmt (pretty)
 
 import Lorentz as L
 import Lorentz.Contracts.Spec.ApprovableLedgerInterface qualified as AL
 import Lorentz.Contracts.Spec.TZIP16Interface (MetadataMap)
-import Morley.Michelson.Parser.Types (MichelsonSource(MSFile))
-import Morley.Michelson.Untyped qualified as U
-import Test.Cleveland.Michelson.Import (embedTextFile, readUntypedContract)
+import Morley.Michelson.Typed qualified as T
+import Test.Cleveland.Michelson.Import (embedContract)
 
 import Lorentz.Contracts.Stablecoin qualified as S
 import Lorentz.Contracts.StablecoinPath (stablecoinFA1_2Path)
@@ -35,9 +33,20 @@ data Storage = Storage
   , sTransferlistContract :: Maybe Address
   }
 
+customGeneric "Storage" ligoLayout
 deriving anyclass instance IsoValue Storage
 deriving anyclass instance HasAnnotation Storage
-customGeneric "Storage" ligoLayout
+
+-- | Similar to 'AL.Parameter' from @morley-ledgers@, but with a layout compatible with
+-- the ligo implementation
+data FA1_2Parameter
+  = Transfer       AL.TransferParams
+  | Approve        AL.ApproveParams
+  | GetAllowance   AL.GetAllowanceArg
+  | GetBalance     AL.GetBalanceArg
+  | GetTotalSupply AL.GetTotalSupplyArg
+customGeneric "FA1_2Parameter" ligoLayout
+deriving anyclass instance IsoValue FA1_2Parameter
 
 data Parameter
   = Accept_ownership
@@ -53,20 +62,15 @@ data Parameter
   | Set_transferlist S.SetTransferlistParam
   | Transfer_ownership S.TransferOwnershipParam
   | Unpause
-  | Call_FA1_2 AL.Parameter
-  deriving stock (Generic)
-  deriving anyclass (IsoValue)
+  | Call_FA1_2 FA1_2Parameter
+
+customGeneric "Parameter" ligoLayout
+deriving anyclass instance IsoValue Parameter
 
 instance ParameterHasEntrypoints Parameter where
   type ParameterEntrypointsDerivation Parameter = EpdRecursive
 
--- | Parse the metadata registry contract.
-stablecoinFA1_2Contract :: U.Contract
-stablecoinFA1_2Contract = $$(do
-  text <- embedTextFile stablecoinFA1_2Path
-  case readUntypedContract (MSFile stablecoinFA1_2Path) text of
-    Left err -> fail $ pretty err
-    -- Note: it's ok to use `error` here, because we just proved that the contract
-    -- can be parsed+typechecked.
-    Right _ -> [|| either (error . pretty) id $ readUntypedContract (MSFile stablecoinFA1_2Path) text ||]
-    )
+-- | Parse the FA1.2 variant of the stablecoin contract.
+stablecoinFA1_2Contract :: T.Contract (ToT Parameter) (ToT Storage)
+stablecoinFA1_2Contract =
+  $$(embedContract @(ToT Parameter) @(ToT Storage) stablecoinFA1_2Path)
