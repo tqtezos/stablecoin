@@ -46,5 +46,5 @@ function main
   | Change_pauser         (params) -> change_pauser         (params, store, full_param)
   | Set_transferlist      (params) -> set_transferlist      (params, store, full_param)
   | Permit                (params) -> add_permit            (params, store)
-  | Set_expiry            (params) -> set_expiry            (params, store)
+  | Set_expiry            (params) -> set_expiry            (params, store, full_param)
   ]
