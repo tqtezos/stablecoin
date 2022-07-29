@@ -28,7 +28,6 @@ import Fmt (pretty)
 
 import Lorentz.Contracts.Spec.TZIP16Interface qualified as MD
 import Lorentz.Value
-import Morley.Michelson.Typed (convertContract, untypeValue)
 import Morley.Util.Named
 import Test.Cleveland as NT
 
@@ -181,12 +180,12 @@ mkInitialStorage OriginationParams{..} =
 mgmContractPaused :: MonadCleveland caps m => m () -> m ()
 mgmContractPaused = expectFailedWith [mt|CONTRACT_PAUSED|]
 
-nettestOriginateContractMetadataContract :: (ToJSON metadata) => MonadCleveland caps m => metadata -> m Address
+nettestOriginateContractMetadataContract :: (ToJSON metadata) => MonadCleveland caps m => metadata -> m (ContractHandle () MetadataRegistryStorage ())
 nettestOriginateContractMetadataContract mdata =
-  originateUntypedSimple
+  originateSimple
     "nettest.ContractMetadata"
-    (untypeValue (toVal $ mkContractMetadataRegistryStorage $  metadataMap (CurrentContract mdata False)))
-    (convertContract contractMetadataContract)
+    (mkContractMetadataRegistryStorage $  metadataMap (CurrentContract mdata False))
+    contractMetadataContract
 
 testFA2TokenMetadata :: FA2.TokenMetadata
 testFA2TokenMetadata = FA2.mkTokenMetadata "TEST" "TEST" "3"

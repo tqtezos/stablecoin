@@ -15,7 +15,8 @@ import Text.Show qualified
 
 import Hedgehog.Gen.Tezos.Address (genAddress)
 import Lorentz
-  (Address, GetEntrypointArgCustom, IsoValue(..), TAddress(TAddress), parameterEntrypointCallCustom)
+  (Address, GetEntrypointArgCustom, IsoValue(..), TAddress(TAddress), parameterEntrypointCallCustom,
+  toMichelsonContract)
 import Morley.Michelson.Interpret
 import Morley.Michelson.Runtime.Dummy (dummyContractEnv)
 import Morley.Michelson.Runtime.GState (BigMapCounter(..))
@@ -545,7 +546,7 @@ callEntrypoint cc st env = case ccParameter cc of
     call' epRef param =
       case
         interpret
-          stablecoinContract
+          (toMichelsonContract stablecoinContract)
           (parameterEntrypointCallCustom @Parameter epRef)
           (toVal param)
           (toVal st)

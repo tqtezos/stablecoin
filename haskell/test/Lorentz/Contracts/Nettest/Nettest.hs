@@ -16,7 +16,6 @@ import Lorentz.Contracts.Test.Common
 import Morley.Michelson.Parser.Types (MichelsonSource(MSFile))
 import Morley.Michelson.Runtime (parseExpandContract)
 import Morley.Michelson.Typed (untypeValue)
-import Morley.Michelson.Typed qualified as T
 import Morley.Michelson.Untyped qualified as U (Contract)
 import Morley.Util.Named
 import Test.Cleveland
@@ -113,15 +112,12 @@ scNettestScenario originateTransferlist transferlistType = scenario do
           (#owner :! nettestOwner)
           (#pauser :! nettestPauser)
           (#masterMinter :! nettestMasterMinter)
-          ){ opMetadataUri = RemoteContract cmrAddress
+          ){ opMetadataUri = RemoteContract $ toAddress cmrAddress
           }
 
   comment "Originating stablecoin contract"
-  scAddress <-
-    originateUntypedSimple
-      "nettest.Stablecoin"
-      (untypeValue (toVal (mkInitialStorage originationParams)))
-      (T.convertContract stablecoinContract)
+  sc <- originateSimple "nettest.Stablecoin"
+    (mkInitialStorage originationParams) stablecoinContract
 
   comment "Originating transferlist contract"
 
@@ -138,9 +134,6 @@ scNettestScenario originateTransferlist transferlistType = scenario do
   sfAddress <- originateTransferlist transfers receivers
 
   let
-    sc :: TAddress Parameter ()
-    sc = TAddress scAddress
-
     tp :: Address -> Address -> Natural -> FA2.TransferParams
     tp from to value = constructSingleTransfer
       (#from_ :! from)
@@ -165,7 +158,7 @@ scNettestScenario originateTransferlist transferlistType = scenario do
 
     configureMinter'
       :: MonadCleveland caps m
-      => TAddress Parameter () -> Address -> Address -> Maybe Natural -> Natural -> m ()
+      => ContractHandle Parameter Storage () -> Address -> Address -> Maybe Natural -> Natural -> m ()
     configureMinter' sc' from for' expectedAllowance newAllowance =
       withSender from $
         call sc' (Call @"Configure_minter") (ConfigureMinterParam for' expectedAllowance newAllowance)
@@ -371,12 +364,11 @@ scNettestScenario originateTransferlist transferlistType = scenario do
       comment $ "Adding minters to limit"
 
       -- We originate a new contract to make sure the minters list is empty
-      scAddress' <- do
+      sc' <- do
         let str = mkInitialStorage (originationParams { opMinters = mempty })
-        originateUntypedSimple "nettest.Stablecoin_for_minter_test" (untypeValue $ toVal str) (T.convertContract stablecoinContract)
+        originateSimple "nettest.Stablecoin_for_minter_test" str stablecoinContract
 
       let
-        sc' = TAddress @Parameter scAddress'
         addMinter' ma = configureMinter' sc' nettestMasterMinter ma Nothing 100
 
       comment "Send some tez to master minter"

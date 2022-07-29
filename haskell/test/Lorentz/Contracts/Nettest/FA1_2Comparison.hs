@@ -8,8 +8,8 @@ module Lorentz.Contracts.Nettest.FA1_2Comparison
 import Data.Map qualified as Map
 import Test.Tasty (TestTree)
 
-import Lorentz (TAddress(..), toVal)
-import Morley.Michelson.Typed (convertContract, mkBigMap, untypeValue)
+import Lorentz (toAddress)
+import Morley.Michelson.Typed (mkBigMap)
 import Morley.Util.Named (pattern (:!))
 import Test.Cleveland
 
@@ -67,11 +67,11 @@ fa1_2ComparisonScenario = scenario do
         , sTransferlistContract = Nothing
         , sTotalSupply = sum $ Map.fromList balances
         , sSpenderAllowances = mempty
-        , sMetadata = metadataMap @(()) (RemoteContract cmrFA1_2Address)
+        , sMetadata = metadataMap @(()) (RemoteContract $ toAddress cmrFA1_2Address)
         }
 
   fa1_2ContractAddr <-
-    originateTypedSimple @SFA1_2.Parameter @SFA1_2.Storage @() "Stablecoin FA1.2" fa1_2Storage stablecoinFA1_2Contract
+    originateSimple @SFA1_2.Parameter @SFA1_2.Storage @() "Stablecoin FA1.2" fa1_2Storage stablecoinFA1_2Contract
 
   comment "Calling transfer"
   withSender owner1 $
@@ -88,13 +88,12 @@ fa1_2ComparisonScenario = scenario do
         , sRoles = roles
         , sTransferlistContract = Nothing
         , sOperators = mempty
-        , sMetadata = SFA2.metadataMap @(()) (RemoteContract cmrAddress)
+        , sMetadata = SFA2.metadataMap @(()) (RemoteContract $ toAddress cmrAddress)
         , sTotalSupply = 0
         }
 
   comment "Originating Stablecoin FA2 contract"
-  fa2ContractAddr <- TAddress @SFA2.FA2Parameter <$>
-    originateUntypedSimple "Stablecoin FA2" (untypeValue $ toVal fa2Storage) (convertContract stablecoinContract)
+  fa2ContractAddr <- originateSimple "Stablecoin FA2" fa2Storage stablecoinContract
 
   comment "Calling transfer"
   withSender owner1 $ call fa2ContractAddr (Call @"Transfer") [FA2.TransferItem

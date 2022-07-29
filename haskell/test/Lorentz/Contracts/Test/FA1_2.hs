@@ -41,7 +41,7 @@ alOriginationFunction adminAddr (AlInitAddresses addrBalances) = do
         , sMetadata = metadataMap (CurrentContract metadataJSON True)
         }
 
-  originateTypedSimple "fa1.2" storage stablecoinFA1_2Contract
+  originateSimple "fa1.2" storage stablecoinFA1_2Contract
 
 test_fa1_2 :: TestTree
 test_fa1_2 = approvableLedgerGenericTest @Parameter @Storage alOriginationFunction

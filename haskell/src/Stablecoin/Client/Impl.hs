@@ -40,7 +40,8 @@ module Stablecoin.Client.Impl
 import Data.Aeson qualified as J
 import Data.Map qualified as M
 import Fmt (Buildable(build), pretty, (+|), (|+))
-import Lorentz (EntrypointRef(Call), HasEntrypointArg, ToT, def, useHasEntrypointArg)
+import Lorentz
+  (EntrypointRef(Call), HasEntrypointArg, ToT, def, toMichelsonContract, useHasEntrypointArg)
 import Lorentz.Contracts.Spec.TZIP16Interface qualified as TZ
 import Morley.Michelson.Typed (BigMapId(..), Dict(..), IsoValue, fromVal, toVal)
 
@@ -111,7 +112,7 @@ deploy (arg #sender -> sender) alias initialStorageData@InitialStorageData {..} 
           (Alias "stablecoin-tzip16-metadata")
           sender
           zeroMutez
-          contractMetadataContract
+          (toMichelsonContract contractMetadataContract)
           (toVal mdrStorage)
           Nothing
         pure $ RemoteContract contractMetadataRegistryAddress
@@ -135,7 +136,7 @@ deploy (arg #sender -> sender) alias initialStorageData@InitialStorageData {..} 
     alias
     sender
     zeroMutez
-    stablecoinContract
+    (toMichelsonContract stablecoinContract)
     (toVal initialStorage)
     Nothing
   pure (cName, cAddr, cmdAddress)

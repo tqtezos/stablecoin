@@ -6,18 +6,14 @@
 module Lorentz.Contracts.StablecoinFA1_2.Types
   ( Storage(..)
   , Parameter(..)
-  , stablecoinFA1_2Contract
   ) where
 
 
 import Lorentz as L
 import Lorentz.Contracts.Spec.ApprovableLedgerInterface qualified as AL
 import Lorentz.Contracts.Spec.TZIP16Interface (MetadataMap)
-import Morley.Michelson.Typed qualified as T
-import Test.Cleveland.Michelson.Import (embedContract)
 
 import Lorentz.Contracts.Stablecoin qualified as S
-import Lorentz.Contracts.StablecoinPath (stablecoinFA1_2Path)
 
 data Storage = Storage
   { sDefaultExpiry :: S.Expiry
@@ -69,8 +65,3 @@ deriving anyclass instance IsoValue Parameter
 
 instance ParameterHasEntrypoints Parameter where
   type ParameterEntrypointsDerivation Parameter = EpdRecursive
-
--- | Parse the FA1.2 variant of the stablecoin contract.
-stablecoinFA1_2Contract :: T.Contract (ToT Parameter) (ToT Storage)
-stablecoinFA1_2Contract =
-  $$(embedContract @(ToT Parameter) @(ToT Storage) stablecoinFA1_2Path)
