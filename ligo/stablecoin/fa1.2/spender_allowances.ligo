@@ -10,10 +10,10 @@ function get_allowance
   ; const spender: address
   ; const spender_allowances: spender_allowances
   ) : nat is
-  case Big_map.find_opt((owner, spender), spender_allowances) of
+  case Big_map.find_opt((owner, spender), spender_allowances) of [
   | None -> 0n
   | Some(allowance) -> allowance
-  end
+  ]
 
 (*
  * Unconditionally set a spender's allowance to the given amount.
@@ -36,10 +36,10 @@ function set_allowance
 type deduct_from_allowance_result is
   | Deducted of spender_allowances
   | NotEnoughAllowance of
-      ( record
+      ( record [
           required: nat;
           present: nat
-        end
+        ]
       )
 
 (*
@@ -59,12 +59,12 @@ function deduct_from_allowance
   else block {
     const current_allowance: nat = get_allowance(owner, spender, spender_allowances)
   } with
-    case is_nat(current_allowance - value) of
+    case is_nat(current_allowance - value) of [
     | None ->
         NotEnoughAllowance(record [required = value; present = current_allowance])
     | Some(new_allowance) ->
         Deducted(set_allowance(owner, spender, new_allowance, spender_allowances))
-    end
+    ]
 
 (*
  * Allows `spender` to spend the given amount of tokens from the `owner`'s account.

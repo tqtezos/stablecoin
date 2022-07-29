@@ -18,7 +18,7 @@ In order to build the LIGO smart contracts you need to have [`ligo`](https://lig
 You can provide a different name/command to launch `ligo` using the `$LIGO` environment variable.
 
 Since LIGO is an actively developed project, some versions of it may be incompatible with Stablecoin.
-The latest working version tested is [0.10.0](https://gitlab.com/ligolang/ligo/-/releases/0.10.0).
+The latest working version tested is [0.46.1](https://gitlab.com/ligolang/ligo/-/releases/0.46.1).
 
 Use [`Makefile`](/ligo/Makefile) to compile the smart contracts.
 For example, running `make` without arguments in this folder should produce `stablecoin.tz`.

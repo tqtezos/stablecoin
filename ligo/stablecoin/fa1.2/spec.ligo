@@ -11,48 +11,36 @@
  * Parameter types
  *)
 
-type transfer_param is michelson_pair_right_comb(
-  record
+type transfer_param is [@layout:comb] record [
     from_: address;
     to_: address;
     value: nat;
-  end
-)
+]
 
-type get_balance_param is michelson_pair_right_comb(
-  record
+type get_balance_param is [@layout:comb] record [
     request: address;
     callback: contract(nat);
-  end
-)
+]
 
-type get_allowance_request is michelson_pair_right_comb(
-  record
+type get_allowance_request is [@layout:comb] record [
     owner: address;
     spender: address;
-  end
-)
+]
 
-type get_allowance_param is michelson_pair_right_comb(
-  record
+type get_allowance_param is [@layout:comb] record [
     request: get_allowance_request;
     callback: contract(nat);
-  end
-)
+]
 
-type approve_param is michelson_pair_right_comb(
-  record
+type approve_param is [@layout:comb] record [
     spender: address;
     value: nat;
-  end
-)
+]
 
-type get_total_supply_param is michelson_pair_right_comb(
-  record
+type get_total_supply_param is [@layout:comb] record [
     request: unit;
     callback: contract(nat);
-  end
-)
+]
 
 (* ------------------------------------------------------------- *)
 
@@ -60,22 +48,18 @@ type pause_params is unit
 
 type unpause_params is unit
 
-type configure_minter_params_ is record
-  minter                    : address
-; current_minting_allowance : option (nat)
-; new_minting_allowance     : nat
-end
-
-type configure_minter_params is michelson_pair_right_comb (configure_minter_params_)
+type configure_minter_params is [@layout:comb] record [
+  minter                    : address;
+  current_minting_allowance : option (nat);
+  new_minting_allowance     : nat;
+]
 
 type remove_minter_params is address
 
-type mint_param_ is record
-  to_    : address
-; amount : nat
-end
-
-type mint_param is michelson_pair_right_comb (mint_param_)
+type mint_param is [@layout:comb] record [
+  to_    : address;
+  amount : nat;
+]
 
 type mint_params is list (mint_param)
 
@@ -102,8 +86,10 @@ type parameter is
  * Transferlist
  *)
 
-type transferlist_transfer_item is michelson_pair(address, "from", list(address), "tos")
-
+type transferlist_transfer_item is [@layout:comb] record [
+  [@annot:from] from_: address;
+  tos: list(address);
+]
 type transferlist_assert_transfers_param is list(transferlist_transfer_item)
 
 type transferlist_assert_receivers_param is list(address)
@@ -173,12 +159,12 @@ type spender is address
 type spender_allowances is
   big_map ((owner * spender), nat)
 
-type roles is record
-  owner         : address
-; pending_owner : option (address)
-; pauser        : address
-; master_minter : address
-end
+type roles is record [
+  owner         : address;
+  pending_owner : option (address);
+  pauser        : address;
+  master_minter : address;
+]
 
 type ledger is big_map (address, nat)
 
@@ -186,18 +172,18 @@ type minting_allowances is map (address, nat)
 
 type metadata is big_map (string, bytes)
 
-type storage is record
-  ledger                  : ledger
-; minting_allowances      : minting_allowances
-; total_supply            : nat
-; paused                  : bool
-; roles                   : roles
-; spender_allowances      : spender_allowances
-; transferlist_contract   : option(address)
-; permit_counter          : counter
-; permits                 : permits
-; default_expiry          : seconds
-; metadata                : metadata
-end
+type storage is record [
+  ledger                  : ledger;
+  minting_allowances      : minting_allowances;
+  total_supply            : nat;
+  paused                  : bool;
+  roles                   : roles;
+  spender_allowances      : spender_allowances;
+  transferlist_contract   : option(address);
+  permit_counter          : counter;
+  permits                 : permits;
+  default_expiry          : seconds;
+  metadata                : metadata;
+]
 
 type entrypoint is list (operation) * storage
