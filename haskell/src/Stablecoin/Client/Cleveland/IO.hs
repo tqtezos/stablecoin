@@ -20,10 +20,11 @@ module Stablecoin.Client.Cleveland.IO
 
 import Data.Char (isAlpha, isDigit)
 import Fmt (Buildable, pretty, (+|), (|+))
-import Morley.Client (Alias, MorleyClientEnv, MorleyClientEnv'(..), mkAlias)
+import Morley.Client (MorleyClientEnv, MorleyClientEnv'(..))
 import Morley.Client qualified as MorleyClient
 import Morley.Client.TezosClient (TezosClientEnv(..))
 import Morley.Tezos.Address (Address, parseAddress)
+import Morley.Tezos.Address.Alias (Alias(..))
 import Morley.Tezos.Core (Mutez, toMutez, zeroMutez)
 import Servant.Client (showBaseUrl)
 import System.Exit (ExitCode(..))
@@ -119,7 +120,7 @@ addressParser = do
       (isDigit c && c /= '0') || (isAlpha c && c /= 'O' && c /= 'I' && c /= 'l')
 
 aliasParser :: Parser Alias
-aliasParser = mkAlias <$> textParser
+aliasParser = Alias <$> textParser
 
 addressAndAliasParser :: Text -> Parser AddressAndAlias
 addressAndAliasParser label =

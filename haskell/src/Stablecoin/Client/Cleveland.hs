@@ -8,7 +8,7 @@ module Stablecoin.Client.Cleveland
   , AddressAndAlias(..)
   ) where
 
-import Morley.Client (Alias)
+import Morley.Tezos.Address.Alias (Alias)
 
 import Stablecoin.Client (AddressAndAlias(..))
 import Stablecoin.Client.Cleveland.Caps

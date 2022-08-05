@@ -22,7 +22,7 @@ import Test.Cleveland
 
 origination :: MonadCleveland caps m => OriginationFn SC.Parameter SC.Storage m
 origination originationParams = do
-  originateTypedSimple
+  originateSimple
     "Stablecoin contract"
     (mkInitialStorage originationParams)
     stablecoinContract

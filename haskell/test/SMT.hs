@@ -15,7 +15,8 @@ import Text.Show qualified
 
 import Hedgehog.Gen.Tezos.Address (genAddress)
 import Lorentz
-  (Address, GetEntrypointArgCustom, IsoValue(..), TAddress(TAddress), parameterEntrypointCallCustom)
+  (Address, GetEntrypointArgCustom, IsoValue(..), TAddress(TAddress), parameterEntrypointCallCustom,
+  toMichelsonContract)
 import Morley.Michelson.Interpret
 import Morley.Michelson.Runtime.Dummy (dummyContractEnv)
 import Morley.Michelson.Runtime.GState (BigMapCounter(..))
@@ -86,7 +87,7 @@ generateContractInputs count = do
     startingStorage = SimpleStorage
       gsMinterPool ledgerBalances owner masterMinter pauser pendingOwner Nothing operatorsMap
       isPaused (sum $ Map.elems ledgerBalances)
-  inputs <- runReaderT (mapM generateAction [1..count]) generatorState
+  inputs <- runReaderT (mapM (\i -> generateAction i) [1..count]) generatorState
   pure (inputs, ContractState startingStorage [])
 
 -- | The property that is being tested.
@@ -545,7 +546,7 @@ callEntrypoint cc st env = case ccParameter cc of
     call' epRef param =
       case
         interpret
-          stablecoinContract
+          (toMichelsonContract stablecoinContract)
           (parameterEntrypointCallCustom @Parameter epRef)
           (toVal param)
           (toVal st)

@@ -681,16 +681,19 @@ function add_permit
 function set_expiry
   ( const param: set_expiry_param
   ; const store : storage
+  ; const full_param: closed_parameter
   ) : entrypoint is block
-{ const new_expiry : seconds = param.0
+{ const owner : address = param.issuer
+; const updated_store : storage = sender_check(owner, store, full_param, "NOT_PERMIT_ISSUER")
+
 ; const updated_permits : permits =
-    case param.1 of [
+    case param.permit_hash of [
     | None ->
-        set_user_default_expiry(Tezos.get_sender(), new_expiry, store.permits)
-    | Some(hash_and_address) ->
-        set_permit_expiry(hash_and_address.1, hash_and_address.0, new_expiry, store.permits, store.default_expiry)
+        set_user_default_expiry(owner, param.expiry, updated_store.permits)
+    | Some(permit_hash) ->
+        set_permit_expiry(owner, permit_hash, param.expiry, updated_store.permits, store.default_expiry)
     ]
 } with
     ( (nil : list(operation))
-    , store with record [ permits = updated_permits ]
+    , updated_store with record [ permits = updated_permits ]
     )

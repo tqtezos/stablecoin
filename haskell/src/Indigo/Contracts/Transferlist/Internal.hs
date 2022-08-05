@@ -48,7 +48,7 @@ instance CustomErrorHasDoc "assertionFailure" where
     "Assertion failed."
 
 transferlistContract :: Contract Parameter Storage ()
-transferlistContract = defaultContract $ compileIndigoContract transferlistIndigo
+transferlistContract = mkContract $ compileIndigoContract transferlistIndigo
 
 transferlistIndigo
   :: (HasStorage Storage)

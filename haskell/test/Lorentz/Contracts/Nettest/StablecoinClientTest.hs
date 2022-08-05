@@ -10,11 +10,11 @@ module Lorentz.Contracts.Nettest.StablecoinClientTest
 import Test.Tasty (TestTree)
 import Test.Tasty.HUnit (testCase)
 
-import Morley.Client.TezosClient (AddressOrAlias(..))
 import Morley.Tezos.Address (Address)
+import Morley.Tezos.Address.Alias (AddressOrAlias(..))
 import Morley.Util.Named (pattern (:!))
 import Test.Cleveland as NT
-import Test.Cleveland.Internal.Abstract (Moneybag(..), SpecificOrDefaultAliasHint, ccMoneybag)
+import Test.Cleveland.Internal.Abstract (Moneybag(..), SpecificOrDefaultAlias, ccMoneybag)
 import Test.Cleveland.Tasty.Internal (whenNetworkEnabled)
 
 import Stablecoin.Client
@@ -36,7 +36,7 @@ test_stablecoinClientScenario =
 
 -- | Check that all the `stablecoin-client` commands work.
 
-createRole :: SpecificOrDefaultAliasHint -> StablecoinT m (Address, AddressOrAlias)
+createRole :: SpecificOrDefaultAlias -> StablecoinT m (Address, AddressOrAlias)
 createRole alias = do
   addr <- newAddress alias
   return (addr, AddressResolved addr)

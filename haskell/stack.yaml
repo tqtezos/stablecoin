@@ -3,7 +3,7 @@
 
 # To update hackage and stackage indexes used by CI run:
 # $ niv update hackage.nix; niv update stackage.nix
-resolver: lts-18.10
+resolver: lts-19.3
 
 packages:
 - .
@@ -13,7 +13,7 @@ extra-deps:
     https://gitlab.com/morley-framework/morley-metadata.git
     # ^ CI cannot use ssh, so we use http clone here
   commit:
-    c7d545897bad10bc98ceb1d9672f184b108dd40e # master
+    4635eae9882afbb661aea8991dfcdb7baabe967f # master
   subdirs:
     - code/morley-metadata
     - code/morley-metadata-test
@@ -22,7 +22,7 @@ extra-deps:
     https://gitlab.com/morley-framework/morley-ledgers.git
     # ^ CI cannot use ssh, so we use http clone here
   commit:
-    81ce02e733b6c33e4d4fe8034e65d95f03a5f0a7 # master
+    9727e20a50d1e8dd518819c4afd9d46af87bed66 # master
   subdirs:
     - code/morley-ledgers
     - code/morley-ledgers-test
@@ -30,28 +30,43 @@ extra-deps:
 - git:
     https://gitlab.com/morley-framework/indigo.git
   commit:
-    8074d3c6a03d6e79b7ddb48b323bca72bf6c2767 # master
+    08f5cdda02ab0d70ff4491d2e9f3620a2a5310c9 # master
   subdirs:
     - .
 
 # Stable versions available on Hackage
-- cleveland-0.1.1
-- morley-1.16.3
-- morley-client-0.1.1
+- cleveland-0.2.0
+- lorentz-0.14.0
+- morley-1.17.0
+- morley-client-0.2.0
 - morley-prelude-0.5.1
-- lorentz-0.13.3
 
 # Required by morley
 - git: https://github.com/serokell/base-noprelude.git
-  commit: 1282e0b992b00089d55228a2aa9edc4a3581c319
-- hex-text-0.1.0.4
-- show-type-0.1.1
-- named-0.3.0.1@sha256:2975d50c9c5d88095026ffc1303d2d9be52e5f588a8f8bcb7003a04b79f10a06,2312
-- bitvec-1.0.3.0@sha256:f69ed0e463045cb497a7cf1bc808a2e84ea0ce286cf9507983bb6ed8b4bd3993,3977
-- co-log-0.4.0.1@sha256:3d4c17f37693c80d1aa2c41669bc3438fac3e89dc5f479e57d79bc3ddc4dfcc5,5087
-- colourista-0.1.0.1@sha256:98353ee0e2f5d97d2148513f084c1cd37dfda03e48aa9dd7a017c9d9c0ba710e,3307
-- ansi-terminal-0.10.3@sha256:e2fbcef5f980dc234c7ad8e2fa433b0e8109132c9e643bc40ea5608cd5697797,3226
+  commit: c8b06c4c8a271fce0c2f41ab18e88d58e64bac52 # 4.15.1.0
 - OddWord-1.0.2.0
+- bitvec-1.0.3.0@sha256:f69ed0e463045cb497a7cf1bc808a2e84ea0ce286cf9507983bb6ed8b4bd3993,3977
+- colourista-0.1.0.1@sha256:98353ee0e2f5d97d2148513f084c1cd37dfda03e48aa9dd7a017c9d9c0ba710e,3307
+- named-0.3.0.1@sha256:418543272f0c844a77639b05276ee3906d5f305cd4cab46fafcb4f15b7f1e60d,2312
+- show-type-0.1.1
+
+# TODO: set to a base-4.15-compatible version when one is released
+- git: https://github.com/co-log/co-log.git
+  commit: 0552a366b90be5c361f7394447291d8de3b9d0e2
+  # nix-sha256: 0z3kf6jgza4g0lxc77hajjyn42ck7cw3bl27xlqffgj39ig6qdqs
+# Required by co-log
+- chronos-1.1.4
+- co-log-core-0.3.1.0
+- typerep-map-0.5.0.0
+# Required by chronos
+- bytebuild-0.3.10.0
+- byteslice-0.2.7.0
+- bytesmith-0.3.8.0
+# Required by byte*
+- run-st-0.1.1.0
+- zigzag-0.0.1.0
+- contiguous-0.6.1.1
+
 
 # Packages by Adjoint (somewhat unmaintained, hence they require constraints on their deps)
 - galois-field-1.0.2
@@ -67,12 +82,3 @@ extra-deps:
 # Dependencies of crypto-sodium
 - NaCl-0.0.5.0
 - libsodium-1.0.18.2
-
-
-- summoner-2.0.1.1@sha256:8ced26ff256e012447e2c6a49a20102511adbea605624f00a059e1e85c366719,6993
-
-- generic-data-0.8.3.0@sha256:fef21320697370fa1fadc14f72ac3ad8092b021f5371b315be3c9f3bde44c274,3710
-- neat-interpolation-0.3.2.6@sha256:05a7516f4ffc86ba1ca4e9c1cddda5a062131ae518e1d423d6f162c214be4cc1,3066
-- optparse-applicative-0.15.1.0@sha256:29ff6146aabf54d46c4c8788e8d1eadaea27c94f6d360c690c5f6c93dac4b07e,4810
-
-- megaparsec-8.0.0@sha256:362f85e243ecbcb550e1de6e5c74ba5a50c09edaa1208c99bc5b9fd242227fc6,3808

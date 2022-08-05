@@ -5,13 +5,12 @@ module Lorentz.Contracts.Nettest.Permit
   ( test_permitScenario
   ) where
 
-import Lorentz (Address, Packed(..), TAddress(..), lPackValue, toVal)
+import Lorentz (Address, Packed(..), lPackValue, toAddress)
 
 import Test.Tasty (TestTree)
 
 import Lorentz.Contracts.Spec.FA2Interface (TransferDestination(..), TransferItem(..))
 import Lorentz.Contracts.Spec.FA2Interface qualified as FA2
-import Morley.Michelson.Typed (convertContract, untypeValue)
 import Morley.Util.Named (pattern (:!))
 import Test.Cleveland
 
@@ -46,13 +45,10 @@ permitScenario = scenario do
             (#owner :! owner1)
             (#pauser :! pauser)
             (#masterMinter :! masterMinter))
-            { opMetadataUri = RemoteContract cmrAddress
+            { opMetadataUri = RemoteContract $ toAddress cmrAddress
             }
       storage = mkInitialStorage originationParams
-  contract <- TAddress @Parameter @() <$> originateUntypedSimple
-    "nettest.Stablecoin"
-    (untypeValue (toVal storage))
-    (convertContract stablecoinContract)
+  contract <- originateSimple "nettest.Stablecoin" storage stablecoinContract
   chainId <- getChainId
 
   let
@@ -74,7 +70,7 @@ permitScenario = scenario do
       -- counter <- getCounter
 
       let permitHash = mkPermitHash param
-      let Packed bytes = lPackValue ((contract, chainId), (counter, permitHash))
+      let Packed bytes = lPackValue ((toAddress contract, chainId), (counter, permitHash))
       sig <- signBytes bytes addr
       pk <- getPublicKey addr
       call contract (Call @"Permit") (PermitParam pk sig permitHash)

@@ -8,8 +8,8 @@ module Stablecoin.Client.Cleveland.StablecoinImpl
 
 import Data.Text (isInfixOf)
 import Fmt (Buildable(build), pretty)
-import Morley.Client (AddressOrAlias)
 import Morley.Tezos.Address (Address)
+import Morley.Tezos.Address.Alias (AddressOrAlias)
 import Morley.Tezos.Core (Mutez)
 import Morley.Util.Named (pattern (:!), (:!))
 import Test.Cleveland (MorleyClientEnv)

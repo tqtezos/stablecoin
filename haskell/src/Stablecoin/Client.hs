@@ -7,7 +7,7 @@ module Stablecoin.Client
   , Alias
   ) where
 
-import Morley.Client (Alias)
+import Morley.Tezos.Address.Alias (Alias)
 
 import Stablecoin.Client.Contract
 import Stablecoin.Client.Impl

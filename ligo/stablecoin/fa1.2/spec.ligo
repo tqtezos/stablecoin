@@ -116,7 +116,11 @@ type permits is big_map (address, user_permits)
 
 type permit_param is (key * (signature * blake2b_hash))
 
-type set_expiry_param is (seconds * option(blake2b_hash * address))
+type set_expiry_param is [@layout:comb] record [
+  issuer: address;
+  expiry: seconds;
+  permit_hash: option(blake2b_hash);
+]
 
 (*
  * A counter that's incremented everytime a permit is created.

@@ -10,9 +10,8 @@ module Lorentz.Contracts.Test.FA1_2
 
 import Test.Tasty (TestTree)
 
-import Lorentz (Address, mkBigMap, toVal)
+import Lorentz (Address, mkBigMap)
 import Lorentz.Contracts.Test.ApprovableLedger (AlSettings(..), approvableLedgerGenericTest)
-import Morley.Michelson.Typed (untypeValue)
 import Test.Cleveland
 
 import Lorentz.Contracts.Stablecoin (MetadataUri(..), Roles(..), metadataMap)
@@ -42,8 +41,7 @@ alOriginationFunction adminAddr (AlInitAddresses addrBalances) = do
         , sMetadata = metadataMap (CurrentContract metadataJSON True)
         }
 
-  ContractHandle "stablecoinFA1_2Contract" <$>
-    originateUntypedSimple "fa1.2" (untypeValue $ toVal storage) stablecoinFA1_2Contract
+  originateSimple "fa1.2" storage stablecoinFA1_2Contract
 
 test_fa1_2 :: TestTree
 test_fa1_2 = approvableLedgerGenericTest @Parameter @Storage alOriginationFunction

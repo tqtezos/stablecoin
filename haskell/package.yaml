@@ -64,7 +64,6 @@ tests:
 
     dependencies:
       - aeson
-      - bytestring
       - cleveland
       - containers
       - either
@@ -72,18 +71,15 @@ tests:
       - hedgehog
       - lorentz
       - morley
-      - morley-client
       - morley-ledgers
       - morley-ledgers-test
       - morley-metadata
       - morley-metadata-test
       - morley-prelude
-      - mtl
       - o-clock
       - optparse-applicative
       - stablecoin
       - tasty
       - tasty-hedgehog
       - tasty-hunit-compat
-      - text
       - with-utf8

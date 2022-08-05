@@ -49,6 +49,7 @@ steps:
  - label: build library
    key: build_library
    if: *not_scheduled
+   timeout_in_minutes: 180
    commands:
      - eval "$FETCH_CONTRACT"
      - nix build -L -f. lib

@@ -27,7 +27,8 @@ module Stablecoin.Client.Parser
 
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Version (showVersion)
-import Morley.Client (AddressOrAlias(..), MorleyClientConfig, clientConfigParser, mkAlias)
+import Morley.Client (MorleyClientConfig, clientConfigParser)
+import Morley.Tezos.Address.Alias (AddressOrAlias(..), Alias(..))
 import Morley.Util.CLI (mkCLOptionParser)
 import Morley.Util.Named (pattern (:!), (:!))
 import Options.Applicative qualified as Opt
@@ -179,7 +180,7 @@ data ContractMetadataOptions
 clientArgsParser :: Opt.Parser ClientArgs
 clientArgsParser =
   ClientArgs
-    <$> clientConfigParser (pure Nothing)
+    <$> clientConfigParser
     <*> globalOptionsParser
     <*> clientArgsRawParser
 
@@ -187,11 +188,11 @@ globalOptionsParser :: Opt.Parser GlobalOptions
 globalOptionsParser =
   GlobalOptions
     <$> addressOrAliasOption
-      (Just $ AddressAlias (mkAlias "stablecoin-user"))
+      (Just $ AddressAlias (Alias "stablecoin-user"))
       (#name :! "user")
       (#help :! "User to send operations as")
     <*> addressOrAliasOption
-      (Just $ AddressAlias (mkAlias "stablecoin"))
+      (Just $ AddressAlias (Alias "stablecoin"))
       (#name :! "contract")
       (#help :! "The stablecoin contract address/alias to use")
 

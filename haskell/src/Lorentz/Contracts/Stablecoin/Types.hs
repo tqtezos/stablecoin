@@ -31,9 +31,6 @@ module Lorentz.Contracts.Stablecoin.Types
   , SetExpiryParam(..)
   , minterLimit
 
-  -- * Embedded LIGO contracts
-  , contractMetadataContract
-  , stablecoinContract
   ) where
 
 import Fmt
@@ -43,14 +40,10 @@ import Lorentz as L
 import Lorentz.Contracts.Spec.FA2Interface qualified as FA2
 import Lorentz.Contracts.Spec.TZIP16Interface (MetadataMap)
 import Morley.AsRPC (HasRPCRepr(..), deriveRPCWithStrategy)
-import Morley.Client (AddressOrAlias(..))
 import Morley.Michelson.Typed (Notes(..))
-import Morley.Michelson.Typed qualified as T
 import Morley.Michelson.Untyped (noAnn)
+import Morley.Tezos.Address.Alias (AddressOrAlias(..))
 import Morley.Tezos.Crypto qualified as Hash
-import Test.Cleveland.Michelson.Import (embedContract)
-
-import Lorentz.Contracts.StablecoinPath (metadataRegistryContractPath, stablecoinPath)
 
 ------------------------------------------------------------------
 -- Parameter
@@ -139,16 +132,15 @@ instance Buildable FA2Parameter where
     Transfer p -> "<Transfer:" +| build p |+ ">"
     Update_operators p -> "<Update_operators:" +| build p |+ ">"
 
+customGeneric "FA2Parameter" ligoLayout
+deriving anyclass instance IsoValue FA2Parameter
+
 instance HasAnnotation FA2Parameter where
   getAnnotation f =
     NTOr noAnn noAnn noAnn
       (NTOr noAnn noAnn noAnn
         (getAnnotation @FA2.BalanceRequestParams f) (getAnnotation @FA2.TransferParams f))
       (getAnnotation @FA2.UpdateOperatorsParam f)
-
-customGeneric "FA2Parameter" ligoLayout
-
-deriving anyclass instance IsoValue FA2Parameter
 
 instance ParameterHasEntrypoints FA2Parameter where
   type ParameterEntrypointsDerivation FA2Parameter = EpdPlain
@@ -242,9 +234,9 @@ data Roles = Roles
   }
   deriving stock (Show)
 
+customGeneric "Roles" ligoLayout
 deriving anyclass instance IsoValue Roles
 deriving anyclass instance HasAnnotation Roles
-customGeneric "Roles" ligoLayout
 
 instance HasRPCRepr Roles where
   type AsRPC Roles = Roles
@@ -306,37 +298,3 @@ defaultContractMetadataStorage :: MetadataRegistryStorage
 defaultContractMetadataStorage =
   mkContractMetadataRegistryStorage
     (mkBigMap [([mt|TEST|], "TEST"), ([mt|Test|], "Test")])
-
--- This empty splice lets us workaround the GHC stage restriction, and refer to `Storage`
--- in the TH splices below.
-$(pure [])
-
-stablecoinContract :: T.Contract (ToT Parameter) (ToT Storage)
-stablecoinContract =
-  -- This TemplateHaskell splice is here to ensure the Michelson representation
-  -- (i.e., the generated tree of `or` and `pair`) of these Haskell data
-  -- types matches exactly the Michelson representation of the Ligo data types.
-  --
-  -- For example, if a Ligo data type generates a Michelson balanced tuple like
-  -- ((a, b), (c, d)), but the corresponding Haskell data type generates a Michelson
-  -- tuple like (a, (b, (c, d))), compilation should fail.
-  --
-  -- The reason they need to match is because of the way permits work.
-  -- If we issue a permit for an entrypoint and the tree of `or`s is incorrect,
-  -- then the permit will be unusable.
-  -- See TZIP-017 for more info.
-  --
-  -- The splice attempts to parse the stablecoin.tz contract at compile-time.
-  -- If, for example, the Michelson representation of Haskell's
-  -- `Lorentz.Contracts.Stablecoin.Parameter` is different from Ligo's `parameter`,
-  -- then this splice will raise a compilation error.
-  --
-  -- This can usually be fixed by writing a custom instance of Generic using `customGeneric`,
-  -- and making sure the data type's layout matches the layout in stablecoin.tz.
-  -- See examples in this module.
-  $$(embedContract @(ToT Parameter) @(ToT Storage) stablecoinPath)
-
--- | Parse the contract-metadata contract.
-contractMetadataContract :: T.Contract (ToT ()) (ToT MetadataRegistryStorage)
-contractMetadataContract =
-  $$(embedContract @(ToT ()) @(ToT MetadataRegistryStorage) metadataRegistryContractPath)

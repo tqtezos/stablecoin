@@ -9,6 +9,10 @@ SPDX-License-Identifier: MIT
 <!-- Don't forget to update the gas/transaction costs tables in the
 README when a new version is released. -->
 
+* [#196](https://github.com/tqtezos/stablecoin/pull/196)
+  * Update the structure of the `set_expiry` parameter to be compatible with
+    [the 2020-10-30 version](https://gitlab.com/tezos/tzip/-/blob/eb1da57684599a266334a73babd7ba82dbbbce66/proposals/tzip-17/tzip-17.md)
+    of TZIP-17.
 * [#195](https://github.com/tqtezos/stablecoin/pull/195)
   * Update to ligo 0.46.1
 

@@ -6,16 +6,11 @@ module Stablecoin.Client.Contract
   , mkInitialStorage
   ) where
 
-import Morley.Client (AddressOrAlias)
-
 import Lorentz as L
 import Lorentz.Contracts.Spec.TZIP16Interface (MetadataMap)
 import Lorentz.Contracts.Stablecoin (Expiry, Roles(..), Storage(..))
+import Morley.Tezos.Address.Alias (AddressOrAlias)
 import Stablecoin.Client.Parser (ContractMetadataOptions(..))
-
-type family ComputeRegistryAddressType a where
-  ComputeRegistryAddressType Address = Address
-  ComputeRegistryAddressType AddressOrAlias = Maybe AddressOrAlias
 
 type family ComputeContractMetadataStorageType a where
   ComputeContractMetadataStorageType Address = MetadataMap
