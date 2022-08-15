@@ -50,38 +50,46 @@ Please refer to the [`haskell/`](/haskell/) directory for details.
 ## Gas / Transaction costs
 
 The tables below show the gas and transaction costs of both versions (FA1.2 and FA2) of
-the stablecoin contract [v1.7.2](https://github.com/tqtezos/stablecoin/releases/tag/v1.7.2) in hangzhounet.
+the stablecoin contract [v1.7.3](https://github.com/tqtezos/stablecoin/releases/tag/v1.7.3) in jakartanet.
 
-### hangzhounet
+### jakartanet
 
-* [FA1.2 operations](https://hangzhou.tzstats.com/KT1PoKKx4LZUE23EAoX416dzN8TWZXu8fF8k)
-* [FA2 operations](https://hangzhou.tzstats.com/KT197sCXNP8q1tFmqzQxyJHaXrTQBaa9Qcbo)
+* [FA1.2 operations](https://better-call.dev/jakartanet/KT1ASuzkJzZ2pCqYVKeV48p5yxunynrjmdGE/operations)
+* [FA2 operations](https://better-call.dev/jakartanet/KT19mksNfM9XjWqapR2iMywM1ic5kbVQwpjB/operations)
 
 |             | FA1.2 Gas cost | FA2 Gas cost | FA1.2 Tx cost | FA2 Tx cost |
 | ----------- | -------------- | ------------ | ------------- | ----------- |
-| origination | 7477           | 8410         | 2.89527 ꜩ     | 2.874531 ꜩ  |
-| transfer    | 9573           | 10737        | 0.001294 ꜩ    | 0.001427 ꜩ  |
+| origination | 5743           | 5809         | 2.381299 ꜩ    | 2.414438 ꜩ  |
+| transfer    | 6659           | 7003         | 0.001001 ꜩ    | 0.001053 ꜩ  |
 
 ### Measuring
 
 To measure and collect these numbers:
-1. Configure your `tezos-client` to use a current testnet node
-1. Make sure `tezos-client` has a `nettest` alias with enough ꜩ
+1. Pick a testnet:
     ```
-    tezos-client get balance for nettest
+    export STABLECOIN_TESTNET=https://jakarta.testnet.tezos.serokell.team/
     ```
-1. Run `cd haskell && stack test stablecoin:test:stablecoin-nettest`
-
-   This deploys the FA2 and FA1.2 contracts along with the corresponding
-   metadata contracts. So metadata is deployed to separate contracts and linked
-   from the main contracts via the TZIP-016 metadata URI. After this some tests
-   on the deployed contracts. (The origination costs in the table above does
-   not include origination costs of these metadata contracts).
+1. Use a [testnet faucet](https://teztnets.xyz/) to create a test account with enough funds.
+1. Activate the account:
+    ```
+    tezos-client -E $STABLECOIN_TESTNET activate account stablecoin-moneybag with <activation_file.json>
+    ```
+1. Run:
+    ```bash
+    cd haskell
+    stack test --fast --test-arguments \
+        "-p \"Lorentz.Contracts.Nettest.FA1_2Comparison\" \
+        --cleveland-mode only-network \
+        --cleveland-moneybag-alias stablecoin-moneybag \
+        -E $STABLECOIN_TESTNET"
+    ```
+   This deploys the FA2 and FA1.2 contracts (the TZIP-16 metadata will be stored in separate contracts),
+   and calls the `transfer` entrypoint of each contract.
 
 1. The logs should show these two messages, with two addresses:
     ```
-    Originated smart contract Stablecoin FA1.2 with address <...>
-    Originated smart contract Stablecoin FA2 with address <...>
+    Originated smart contract 'Stablecoin FA1.2' with address <...>
+    Originated smart contract 'Stablecoin FA2' with address <...>
     ```
 1. Search for these addresses in <https://better-call.dev/>, select the "Contracts" tab, you should get 1 search result.
    Select it to see the origination and transfer costs.
