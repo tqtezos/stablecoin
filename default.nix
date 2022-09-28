@@ -56,6 +56,13 @@ let
         # disable haddock for dependencies
         doHaddock = false;
       }
+      {
+        packages.stablecoin.components.library = {
+          preBuild = ''
+            cp -rT ${projectSrc}/test/resources test/resources/
+          '';
+        };
+      }
     ];
   };
   tezos-contract = pkgs.stdenv.mkDerivation {
@@ -88,7 +95,11 @@ let
 in
 {
   lib = project.stablecoin.components.library;
-  haddock = project.stablecoin.components.library.haddock;
+  haddock = project.stablecoin.components.library.haddock.overrideAttrs(o: {
+    buildPhase = ''
+      cp -rT ${projectSrc}/test/resources test/resources/
+    '' + o.buildPhase;
+  });
   test = project.stablecoin.components.tests.stablecoin-test;
   nettest = project.stablecoin.components.tests.stablecoin-nettest;
   stablecoin-client = project.stablecoin.components.exes.stablecoin-client;
