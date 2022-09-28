@@ -25,7 +25,7 @@
     },
     "ligo": {
         "rev": "0.46.1",
-        "sha256": "165xh33c88inh3wimrm82hw8szl1say2xl9cm0dkvxkkd93p0gqq",
+        "sha256": "167lq0kjxq1m48sp7cpwka9c3jgypryww5xwkp3j065rrw4y9di3",
         "type": "file",
         "url": "https://gitlab.com/ligolang/ligo/-/jobs/2702841321/artifacts/raw/ligo",
         "url_template": "https://gitlab.com/ligolang/ligo/-/jobs/2702841321/artifacts/raw/ligo"
