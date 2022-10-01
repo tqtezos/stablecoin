@@ -2,43 +2,46 @@
 -- SPDX-License-Identifier: MIT
 
 module Stablecoin.Client.Contract
-  ( InitialStorageData(..)
+  ( InitialStorageOptions(..)
+  , InitialStorageData(..)
   , mkInitialStorage
   ) where
 
 import Lorentz as L
 import Lorentz.Contracts.Spec.TZIP16Interface (MetadataMap)
 import Lorentz.Contracts.Stablecoin (Expiry, Roles(..), Storage(..))
-import Morley.Tezos.Address.Alias (AddressOrAlias)
+import Morley.Tezos.Address (ContractAddress, L1Address)
+import Stablecoin.Client.L1AddressOrAlias (ContractAddressOrAlias, L1AddressOrAlias)
 import Stablecoin.Client.Parser (ContractMetadataOptions(..))
 
-type family ComputeContractMetadataStorageType a where
-  ComputeContractMetadataStorageType Address = MetadataMap
-  ComputeContractMetadataStorageType AddressOrAlias = ContractMetadataOptions
+-- | The options needed to create the data for the contract's initial storage.
+data InitialStorageOptions = InitialStorageOptions
+  { isoMasterMinter :: L1AddressOrAlias
+  , isoContractOwner :: L1AddressOrAlias
+  , isoPauser :: L1AddressOrAlias
+  , isoTransferlist :: Maybe ContractAddressOrAlias
+  , isoTokenSymbol :: Text
+  , isoTokenName :: Text
+  , isoTokenDecimals :: Natural
+  , isoContractMetadataStorage :: ContractMetadataOptions
+  , isoDefaultExpiry :: Expiry
+  }
 
 -- | The data needed in order to create the stablecoin contract's initial storage.
--- This is used in two slightly different contexts, and some field types require
--- changes accordingly.
---
--- 1. As an input to the `deploy` function when the
--- registry contract addresses only contains the configurations for metadata contracts.
---
--- 2. As an input to the function that creates the raw initial storage value
--- for the contract. There these fields will contain resolved addresses.
-data InitialStorageData addr = InitialStorageData
-  { isdMasterMinter :: addr
-  , isdContractOwner :: addr
-  , isdPauser :: addr
-  , isdTransferlist :: Maybe addr
+data InitialStorageData = InitialStorageData
+  { isdMasterMinter :: L1Address
+  , isdContractOwner :: L1Address
+  , isdPauser :: L1Address
+  , isdTransferlist :: Maybe ContractAddress
   , isdTokenSymbol :: Text
   , isdTokenName :: Text
   , isdTokenDecimals :: Natural
-  , isdContractMetadataStorage :: ComputeContractMetadataStorageType addr
+  , isdContractMetadataStorage :: MetadataMap
   , isdDefaultExpiry :: Expiry
   }
 
 -- | Construct the stablecoin contract's initial storage in order to deploy it.
-mkInitialStorage :: InitialStorageData Address -> Storage
+mkInitialStorage :: InitialStorageData -> Storage
 mkInitialStorage InitialStorageData {..} =
   Storage
     { sDefaultExpiry = isdDefaultExpiry
@@ -49,12 +52,12 @@ mkInitialStorage InitialStorageData {..} =
     , sPermitCounter = 0
     , sPermits = def
     , sRoles = Roles
-        { rMasterMinter = isdMasterMinter
-        , rOwner = isdContractOwner
-        , rPauser = isdPauser
+        { rMasterMinter = toAddress isdMasterMinter
+        , rOwner = toAddress isdContractOwner
+        , rPauser = toAddress isdPauser
         , rPendingOwner = Nothing
         }
-    , sTransferlistContract = isdTransferlist
+    , sTransferlistContract = toAddress <$> isdTransferlist
     , sMetadata = isdContractMetadataStorage
     , sTotalSupply = 0
     }

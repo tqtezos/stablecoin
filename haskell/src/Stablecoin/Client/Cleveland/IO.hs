@@ -14,6 +14,7 @@ module Stablecoin.Client.Cleveland.IO
   , mutezParser
   , naturalParser
   , textParser
+  , contractAddressParser
   , addressParser
   , addressAndAliasParser
   ) where
@@ -23,8 +24,8 @@ import Fmt (Buildable, pretty, (+|), (|+))
 import Morley.Client (MorleyClientEnv, MorleyClientEnv'(..))
 import Morley.Client qualified as MorleyClient
 import Morley.Client.TezosClient (TezosClientEnv(..))
-import Morley.Tezos.Address (Address, parseAddress)
-import Morley.Tezos.Address.Alias (Alias(..))
+import Morley.Tezos.Address
+  (Address, ContractAddress, ParseAddressError, parseAddress, parseKindedAddress)
 import Morley.Tezos.Core (Mutez, toMutez, zeroMutez)
 import Servant.Client (showBaseUrl)
 import System.Exit (ExitCode(..))
@@ -108,10 +109,16 @@ naturalParser = decimal
 textParser :: Parser Text
 textParser = fromString <$> some printChar
 
+contractAddressParser :: Parser ContractAddress
+contractAddressParser = mkAddressParser parseKindedAddress
+
 addressParser :: Parser Address
-addressParser = do
+addressParser = mkAddressParser parseAddress
+
+mkAddressParser :: (Text -> Either ParseAddressError a) -> Parser a
+mkAddressParser addrParser = do
   rawAddr <- P.many (P.satisfy isBase58Char)
-  case parseAddress (fromString rawAddr) of
+  case addrParser (fromString rawAddr) of
     Left err -> P.customFailure $ OutputParseError "address" $ pretty err
     Right addr -> pure addr
   where
@@ -119,11 +126,8 @@ addressParser = do
     isBase58Char c =
       (isDigit c && c /= '0') || (isAlpha c && c /= 'O' && c /= 'I' && c /= 'l')
 
-aliasParser :: Parser Alias
-aliasParser = Alias <$> textParser
-
 addressAndAliasParser :: Text -> Parser AddressAndAlias
 addressAndAliasParser label =
   AddressAndAlias
     <$> labelled (label <> " address") addressParser
-    <*> optional (P.try (labelled (label <> " alias") aliasParser))
+    <*> optional (P.try (labelled (label <> " alias") textParser))

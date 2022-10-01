@@ -5,13 +5,12 @@ module Lorentz.Contracts.Nettest.Permit
   ( test_permitScenario
   ) where
 
-import Lorentz (Address, Packed(..), lPackValue, toAddress)
+import Lorentz (Packed(..), lPackValue)
 
 import Test.Tasty (TestTree)
 
 import Lorentz.Contracts.Spec.FA2Interface (TransferDestination(..), TransferItem(..))
 import Lorentz.Contracts.Spec.FA2Interface qualified as FA2
-import Morley.Util.Named (pattern (:!))
 import Test.Cleveland
 
 import Lorentz.Contracts.Stablecoin
@@ -20,11 +19,12 @@ import Lorentz.Contracts.Stablecoin
 import Lorentz.Contracts.Test.Common
   (OriginationParams(..), addAccount, defaultOriginationParams, mkInitialStorage,
   nettestOriginateContractMetadataContract, testFA2TokenMetadata)
+import Test.Cleveland.Lorentz (toContractAddress)
 
 test_permitScenario :: TestTree
 test_permitScenario = testScenario "permitScenario" permitScenario
 
-permitScenario :: Monad m => Scenario m
+permitScenario :: Scenario m
 permitScenario = scenario do
   comment "-- Permits tests --"
   comment "Creating accounts"
@@ -45,14 +45,14 @@ permitScenario = scenario do
             (#owner :! owner1)
             (#pauser :! pauser)
             (#masterMinter :! masterMinter))
-            { opMetadataUri = RemoteContract $ toAddress cmrAddress
+            { opMetadataUri = RemoteContract $ toContractAddress cmrAddress
             }
       storage = mkInitialStorage originationParams
-  contract <- originateSimple "nettest.Stablecoin" storage stablecoinContract
+  contract <- originate "nettest.Stablecoin" storage stablecoinContract
   chainId <- getChainId
 
   let
-    issuePermit :: MonadCleveland caps m => Natural -> Address -> Parameter -> m ()
+    issuePermit :: MonadCleveland caps m => Natural -> ImplicitAddress -> Parameter -> m ()
     issuePermit counter addr param = do
       -- NOTE: A couples of changes were introduced in #124. Crucially:
       --
@@ -73,56 +73,56 @@ permitScenario = scenario do
       let Packed bytes = lPackValue ((toAddress contract, chainId), (counter, permitHash))
       sig <- signBytes bytes addr
       pk <- getPublicKey addr
-      call contract (Call @"Permit") (PermitParam pk sig permitHash)
+      transfer contract $ calling (ep @"Permit") (PermitParam pk sig permitHash)
 
   comment "Issue a permit for Pause"
   issuePermit 0 pauser Pause
-  withSender user1 $ call contract (Call @"Pause") ()
+  withSender user1 $ transfer contract $ calling (ep @"Pause") ()
 
   comment "Issue a permit for Unpause"
   issuePermit 1 pauser Unpause
-  withSender user1 $ call contract (Call @"Unpause") ()
+  withSender user1 $ transfer contract $ calling (ep @"Unpause") ()
 
   comment "Issue a permit for Transfer"
   let transferParam =
-        [ TransferItem owner1 [TransferDestination user1 FA2.theTokenId 1] ]
+        [ TransferItem (toAddress owner1) [TransferDestination (toAddress user1) FA2.theTokenId 1] ]
   issuePermit 2 owner1 (Call_FA2 $ Transfer transferParam)
-  withSender user1 $ call contract (Call @"Transfer") transferParam
+  withSender user1 $ transfer contract $ calling (ep @"Transfer") transferParam
 
   comment "Issue a permit for Update_operators"
   let param =
         [ FA2.AddOperator
-            FA2.OperatorParam { opOwner = owner1, opOperator = user1, opTokenId = FA2.theTokenId }
+            FA2.OperatorParam { opOwner = toAddress owner1, opOperator = toAddress user1, opTokenId = FA2.theTokenId }
         ]
   issuePermit 3 owner1 (Call_FA2 $ Update_operators param)
-  withSender user1 $ call contract (Call @"Update_operators") param
+  withSender user1 $ transfer contract $ calling (ep @"Update_operators") param
 
   comment "Issue a permit for Configure_minter"
-  let configureMinterParam = ConfigureMinterParam user1 Nothing 30
+  let configureMinterParam = ConfigureMinterParam (toAddress user1) Nothing 30
   issuePermit 4 masterMinter (Configure_minter configureMinterParam)
-  withSender user1 $ call contract (Call @"Configure_minter") configureMinterParam
+  withSender user1 $ transfer contract $ calling (ep @"Configure_minter") configureMinterParam
 
   comment "Issue a permit for Remove_minter"
   let removeMinterParam = user1
-  issuePermit 5 masterMinter (Remove_minter removeMinterParam)
-  withSender user1 $ call contract (Call @"Remove_minter") removeMinterParam
+  issuePermit 5 masterMinter (Remove_minter $ toAddress removeMinterParam)
+  withSender user1 $ transfer contract $ calling (ep @"Remove_minter") $ toAddress removeMinterParam
 
   comment "Issue a permit for Set_transferlist"
   issuePermit 6 owner1 (Set_transferlist Nothing)
-  withSender user1 $ call contract (Call @"Set_transferlist") Nothing
+  withSender user1 $ transfer contract $ calling (ep @"Set_transferlist") Nothing
 
   comment "Issue a permit for Change_pauser"
-  issuePermit 7 owner1 (Change_pauser owner2)
-  withSender user1 $ call contract (Call @"Change_pauser") owner2
+  issuePermit 7 owner1 (Change_pauser $ toAddress owner2)
+  withSender user1 $ transfer contract $ calling (ep @"Change_pauser") $ toAddress owner2
 
   comment "Issue a permit for Change_master_minter"
-  issuePermit 8 owner1 (Change_master_minter owner2)
-  withSender user1 $ call contract (Call @"Change_master_minter") owner2
+  issuePermit 8 owner1 (Change_master_minter $ toAddress owner2)
+  withSender user1 $ transfer contract $ calling (ep @"Change_master_minter") $ toAddress owner2
 
   comment "Issue a permit for Transfer_ownership"
-  issuePermit 9 owner1 (Transfer_ownership owner2)
-  withSender user1 $ call contract (Call @"Transfer_ownership") owner2
+  issuePermit 9 owner1 (Transfer_ownership $ toAddress owner2)
+  withSender user1 $ transfer contract $ calling (ep @"Transfer_ownership") $ toAddress owner2
 
   comment "Issue a permit for Accept_ownership"
   issuePermit 10 owner2 Accept_ownership
-  withSender user1 $ call contract (Call @"Accept_ownership") ()
+  withSender user1 $ transfer contract $ calling (ep @"Accept_ownership") ()

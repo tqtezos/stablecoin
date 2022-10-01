@@ -5,10 +5,10 @@
         "homepage": "",
         "owner": "input-output-hk",
         "repo": "hackage.nix",
-        "rev": "00f36506f22e85d56391924decf1d59731bb3835",
-        "sha256": "1i555nzknv9m6h3lps5hjq6wamcwxh5l794jg86m3kbjjvj07knd",
+        "rev": "987ffa5675745c059cb5d9148bdf8c582b154300",
+        "sha256": "0rvij1csfibqlx14q2gbcdh7i4dd6rizm22cwc0ghrq84k0hzn2y",
         "type": "tarball",
-        "url": "https://github.com/input-output-hk/hackage.nix/archive/00f36506f22e85d56391924decf1d59731bb3835.tar.gz",
+        "url": "https://github.com/input-output-hk/hackage.nix/archive/987ffa5675745c059cb5d9148bdf8c582b154300.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "haskell.nix": {
@@ -17,10 +17,10 @@
         "homepage": "https://input-output-hk.github.io/haskell.nix",
         "owner": "input-output-hk",
         "repo": "haskell.nix",
-        "rev": "1b0eac78c61b425ad382427b25a4450c8d6f6771",
-        "sha256": "06m5fa3zndgfngyl2p7v738lv3miljmdwz35c6vqly78agc0xdy9",
+        "rev": "0e493268a58415adf1e373e13a2b7adc32303ee0",
+        "sha256": "0h6zsv4s7ah15b4gw055y6qam6dw7j0rcax6l66396frh3h2sahn",
         "type": "tarball",
-        "url": "https://github.com/input-output-hk/haskell.nix/archive/1b0eac78c61b425ad382427b25a4450c8d6f6771.tar.gz",
+        "url": "https://github.com/input-output-hk/haskell.nix/archive/0e493268a58415adf1e373e13a2b7adc32303ee0.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ligo": {
@@ -38,10 +38,10 @@
         "url_template": "https://gitlab.com/morley-framework/morley/-/archive/morley-<rev>/morley-morley-<rev>.tar.gz"
     },
     "morley-infra": {
-        "rev": "be8b5a9107ea869bc84678ab2979f13d7d0f3956",
-        "sha256": "1qk5fbjyj8pfny35fhb83sccwx7iqi7wcyhbc5785v1k5pr2vc2b",
+        "rev": "d2f8d163188f1cfef38fca75fb30fec98dbfc4c7",
+        "sha256": "1kjcjvwmp0prqcfxsaq90cb3097fnfmp7q1wb45i2an8i5rh0dhy",
         "type": "tarball",
-        "url": "https://gitlab.com/morley-framework/morley-infra/-/archive/be8b5a9107ea869bc84678ab2979f13d7d0f3956/morley-infra-be8b5a9107ea869bc84678ab2979f13d7d0f3956.tar.gz",
+        "url": "https://gitlab.com/morley-framework/morley-infra/-/archive/d2f8d163188f1cfef38fca75fb30fec98dbfc4c7/morley-infra-d2f8d163188f1cfef38fca75fb30fec98dbfc4c7.tar.gz",
         "url_template": "https://gitlab.com/morley-framework/morley-infra/-/archive/<rev>/morley-infra-<rev>.tar.gz"
     },
     "nixpkgs": {
@@ -50,10 +50,10 @@
         "homepage": "",
         "owner": "serokell",
         "repo": "nixpkgs",
-        "rev": "1714a2ead1a18678afa3cbf75dff3f024c579061",
-        "sha256": "12lypkc60p1w4v4j6gr097hdp1kj7fwhhi5yhb3j73z2l99zrq1d",
+        "rev": "7887e272ab2ad8376d54ca5f58df0ed7f67676e6",
+        "sha256": "0sx7ff2ps79izkaqnigyj85vs6jffvx8x9kgl0qf4wv0n3b2wwmj",
         "type": "tarball",
-        "url": "https://github.com/serokell/nixpkgs/archive/1714a2ead1a18678afa3cbf75dff3f024c579061.tar.gz",
+        "url": "https://github.com/serokell/nixpkgs/archive/7887e272ab2ad8376d54ca5f58df0ed7f67676e6.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "stackage.nix": {
@@ -62,10 +62,10 @@
         "homepage": "",
         "owner": "input-output-hk",
         "repo": "stackage.nix",
-        "rev": "3e5ad43cbf28cc30b939671b3f5d5d5582996d73",
-        "sha256": "0kkclbixbcc06fr6m8nkfd0pcc0mxm1l2shsi6lfs9mmlwm4dsk3",
+        "rev": "5c48fc444f9323b0bab35759158186cbb252f83f",
+        "sha256": "19gza2hq1cq9kjq9vvplk1n9spzmmwhab1fpbx896hq7vnzwvyj7",
         "type": "tarball",
-        "url": "https://github.com/input-output-hk/stackage.nix/archive/3e5ad43cbf28cc30b939671b3f5d5d5582996d73.tar.gz",
+        "url": "https://github.com/input-output-hk/stackage.nix/archive/5c48fc444f9323b0bab35759158186cbb252f83f.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "xrefcheck": {

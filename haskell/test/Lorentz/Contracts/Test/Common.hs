@@ -45,16 +45,16 @@ oneTokenId = TokenId 1
 
 type LedgerType = Map Address Natural
 
-addAccount :: (Address, ([Address], Natural)) -> OriginationParams -> OriginationParams
+addAccount :: (KindedAddress kind1, ([KindedAddress kind2], Natural)) -> OriginationParams -> OriginationParams
 addAccount (addr, (operators, bal)) op = let
   withAccount = op
     { opBalances =
-        Map.insert addr bal $ opBalances op
+        Map.insert (toAddress addr) bal $ opBalances op
     }
   in foldl' (\oparams operator -> addOperator (addr, operator) oparams) withAccount operators
 
-addOperator :: (Address, Address) -> OriginationParams -> OriginationParams
-addOperator (owner_, operator) op = op
+addOperator :: (KindedAddress kind1, KindedAddress kind2) -> OriginationParams -> OriginationParams
+addOperator (toAddress -> owner_, toAddress -> operator) op = op
   { opOwnerToOperators =
       Map.alter (\case
           Just ops -> Just $ operator:ops
@@ -85,16 +85,17 @@ data OriginationParams = OriginationParams
   , opPermits :: Map Address UserPermits
   }
 
-defaultOriginationParams :: "owner" :! Address -> "pauser" :! Address -> "masterMinter" :! Address -> OriginationParams
+defaultOriginationParams
+  :: "owner" :! KindedAddress kind1 -> "pauser" :! KindedAddress kind2 -> "masterMinter" :! KindedAddress kind3 -> OriginationParams
 defaultOriginationParams
   (arg #owner -> owner)
   (arg #pauser -> pauser)
   (arg #masterMinter -> masterMinter) = OriginationParams
     { opBalances = mempty
-    , opOwner = owner
+    , opOwner = toAddress owner
     , opOwnerToOperators = mempty
-    , opPauser = pauser
-    , opMasterMinter = masterMinter
+    , opPauser = toAddress pauser
+    , opMasterMinter = toAddress masterMinter
     , opPaused = False
     , opMinters = mempty
     , opPendingOwner = Nothing
@@ -108,33 +109,34 @@ defaultOriginationParams
 
 
 addMinter
-  :: (Address, Natural)
+  :: ToAddress addr
+  => (addr, Natural)
   -> OriginationParams
   -> OriginationParams
-addMinter (minter, mintingAllowance) op@OriginationParams{ opMinters = currentMinters } =
+addMinter (toAddress -> minter, mintingAllowance) op@OriginationParams{ opMinters = currentMinters } =
   op { opMinters = Map.insert minter mintingAllowance currentMinters }
 
 constructDestination
-  :: ("to_" :! Address, "amount" :! Natural)
+  :: ("to_" :! ImplicitAddress, "amount" :! Natural)
   -> TransferDestination
 constructDestination (arg #to_ -> to, arg #amount -> amount) = TransferDestination
-  { tdTo = to
+  { tdTo = toAddress to
   , tdTokenId = FA2.theTokenId
   , tdAmount = amount
   }
 
 constructTransfers
-  :: [("from_" :! Address, [("to_" :! Address, "amount" :! Natural)])]
+  :: [("from_" :! ImplicitAddress, [("to_" :! ImplicitAddress, "amount" :! Natural)])]
   -> TransferParams
 constructTransfers pairs = pairs >>= uncurry constructTransfersFromSender
 
 constructTransfersFromSender
-  :: "from_" :! Address
-  -> [("to_" :! Address, "amount" :! Natural)]
+  :: "from_" :! ImplicitAddress
+  -> [("to_" :! ImplicitAddress, "amount" :! Natural)]
   -> TransferParams
 constructTransfersFromSender (arg #from_ -> from) txs =
   [ TransferItem
-      { tiFrom = from
+      { tiFrom = toAddress from
       , tiTxs  = constructDestination <$> txs
       }
   ]
@@ -165,7 +167,7 @@ mkInitialStorage OriginationParams{..} =
         , rPauser = opPauser
         , rPendingOwner = opPendingOwner
         }
-    , sTransferlistContract = unTAddress <$> opTransferlistContract
+    , sTransferlistContract = toAddress <$> opTransferlistContract
     , sMetadata = metadataMap opMetadataUri
     , sTotalSupply = sum $ Map.elems opBalances
     }
@@ -182,7 +184,7 @@ mgmContractPaused = expectFailedWith [mt|CONTRACT_PAUSED|]
 
 nettestOriginateContractMetadataContract :: (ToJSON metadata) => MonadCleveland caps m => metadata -> m (ContractHandle () MetadataRegistryStorage ())
 nettestOriginateContractMetadataContract mdata =
-  originateSimple
+  originate
     "nettest.ContractMetadata"
     (mkContractMetadataRegistryStorage $  metadataMap (CurrentContract mdata False))
     contractMetadataContract

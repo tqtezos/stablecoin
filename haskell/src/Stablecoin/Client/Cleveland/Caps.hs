@@ -43,19 +43,19 @@ import Control.Lens (makeLensesFor)
 import Fmt (Buildable(..))
 
 import Morley.Client (disableAlphanetWarning)
-import Morley.Tezos.Address (Address)
-import Morley.Tezos.Address.Alias (AddressOrAlias(..))
+import Morley.Tezos.Address (ContractAddress, ImplicitAddress, L1Address)
 import Morley.Tezos.Core (Mutez)
 import Morley.Util.Named ((:!))
+import Test.Cleveland (NetworkEnv(..))
 import Test.Cleveland.Internal.Abstract
   (ClevelandCaps(..), DefaultAliasCounter(..), HasClevelandCaps(..), MonadCleveland, Moneybag(..),
   Sender(..))
 import Test.Cleveland.Internal.Client
-  (ClientM(..), ClientState(..), NetworkEnv(..), networkMiscImpl, networkOpsImpl,
-  setupMoneybagAddress)
+  (ClientM(..), ClientState(..), networkMiscImpl, networkOpsImpl, setupMoneybagAddress)
 
-import Stablecoin.Client (AddressAndAlias(..), InitialStorageData(..), UpdateOperatorData)
+import Stablecoin.Client (AddressAndAlias(..), UpdateOperatorData)
 import Stablecoin.Client.Cleveland.StablecoinImpl (StablecoinImpl(..), stablecoinImplClient)
+import Stablecoin.Client.Contract (InitialStorageOptions(..))
 
 data StablecoinCaps m = StablecoinCaps
   { scCleveland :: ClevelandCaps m
@@ -88,7 +88,7 @@ runStablecoinClient env scenario = displayUncaughtException $ do
   let caps = ClevelandCaps
         { ccSender = Sender $ unMoneybag moneybag
         , ccMoneybag = moneybag
-        , ccMiscCap = networkMiscImpl clientEnv
+        , ccMiscCap = networkMiscImpl env
         , ccOpsCap = networkOpsImpl clientEnv
         }
       clientEnv = neMorleyClientEnv env
@@ -116,125 +116,125 @@ implActionToCaps useCap = do
   cap <- asks getStablecoinCap
   lift $ useCap cap
 
-deploy :: MonadStablecoin caps m => "sender" :! AddressOrAlias -> InitialStorageData AddressOrAlias -> m Address
+deploy :: MonadStablecoin caps m => "sender" :! ImplicitAddress -> InitialStorageOptions -> m ContractAddress
 deploy s st = implActionToCaps \cap -> siDeploy cap s st
 
 transfer
   :: MonadStablecoin caps m
-  => "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias
-  -> AddressOrAlias -> AddressOrAlias -> Natural -> m ()
+  => "sender" :! ImplicitAddress -> "contract" :! ContractAddress
+  -> L1Address -> L1Address -> Natural -> m ()
 transfer s c a1 a2 n = implActionToCaps \caps -> siTransfer caps s c a1 a2 n
 
 getBalanceOf
   :: MonadStablecoin caps m
-  => "contract" :! AddressOrAlias
-  -> AddressOrAlias -> m Natural
+  => "contract" :! ContractAddress
+  -> L1Address -> m Natural
 getBalanceOf c a = implActionToCaps \caps -> siGetBalanceOf caps c a
 
 updateOperators
   :: MonadStablecoin caps m
-  => "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias
+  => "sender" :! ImplicitAddress -> "contract" :! ContractAddress
   -> NonEmpty UpdateOperatorData -> m ()
 updateOperators s c d = implActionToCaps \caps -> siUpdateOperators caps s c d
 
 isOperator
   :: MonadStablecoin caps m
-  => "contract" :! AddressOrAlias
-  -> AddressOrAlias -> AddressOrAlias -> m Bool
+  => "contract" :! ContractAddress
+  -> L1Address -> L1Address -> m Bool
 isOperator c a1 a2 = implActionToCaps \caps -> siIsOperator caps c a1 a2
 
-pause :: MonadStablecoin caps m => "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias -> m ()
+pause :: MonadStablecoin caps m => "sender" :! ImplicitAddress -> "contract" :! ContractAddress -> m ()
 pause s c = implActionToCaps \cap -> siPause cap s c
 
-unpause :: MonadStablecoin caps m => "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias -> m ()
+unpause :: MonadStablecoin caps m => "sender" :! ImplicitAddress -> "contract" :! ContractAddress -> m ()
 unpause s c = implActionToCaps \cap -> siUnpause cap s c
 
 configureMinter
   :: MonadStablecoin caps m
-  => "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias
-  -> AddressOrAlias -> Maybe Natural -> Natural -> m ()
+  => "sender" :! ImplicitAddress -> "contract" :! ContractAddress
+  -> L1Address -> Maybe Natural -> Natural -> m ()
 configureMinter s c a mn n = implActionToCaps \cap -> siConfigureMinter cap s c a mn n
 
 removeMinter
   :: MonadStablecoin caps m
-  => "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias
-  -> AddressOrAlias -> m ()
+  => "sender" :! ImplicitAddress -> "contract" :! ContractAddress
+  -> L1Address -> m ()
 removeMinter s c a = implActionToCaps \cap -> siRemoveMinter cap s c a
 
 mint
   :: MonadStablecoin caps m
-  => "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias
-  -> AddressOrAlias -> Natural -> m ()
+  => "sender" :! ImplicitAddress -> "contract" :! ContractAddress
+  -> L1Address -> Natural -> m ()
 mint s c a n = implActionToCaps \cap -> siMint cap s c a n
 
 burn
   :: MonadStablecoin caps m
-  => "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias
+  => "sender" :! ImplicitAddress -> "contract" :! ContractAddress
   -> NonEmpty Natural -> m ()
 burn s c ns = implActionToCaps \cap -> siBurn cap s c ns
 
 transferOwnership
   :: MonadStablecoin caps m
-  => "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias
-  -> AddressOrAlias -> m ()
+  => "sender" :! ImplicitAddress -> "contract" :! ContractAddress
+  -> L1Address -> m ()
 transferOwnership s c a = implActionToCaps \cap -> siTransferOwnership cap s c a
 
 acceptOwnership
   :: MonadStablecoin caps m
-  => "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias
+  => "sender" :! ImplicitAddress -> "contract" :! ContractAddress
   -> m ()
 acceptOwnership s c = implActionToCaps \cap -> siAcceptOwnership cap s c
 
 changeMasterMinter
   :: MonadStablecoin caps m
-  => "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias
-  -> AddressOrAlias -> m ()
+  => "sender" :! ImplicitAddress -> "contract" :! ContractAddress
+  -> L1Address -> m ()
 changeMasterMinter s c a = implActionToCaps \cap -> siChangeMasterMinter cap s c a
 
 changePauser
   :: MonadStablecoin caps m
-  => "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias
-  -> AddressOrAlias -> m ()
+  => "sender" :! ImplicitAddress -> "contract" :! ContractAddress
+  -> L1Address -> m ()
 changePauser s c a = implActionToCaps \cap -> siChangePauser cap s c a
 
 setTransferlist
   :: MonadStablecoin caps m
-  => "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias
-  -> Maybe AddressOrAlias -> m ()
+  => "sender" :! ImplicitAddress -> "contract" :! ContractAddress
+  -> Maybe ContractAddress -> m ()
 setTransferlist s c a = implActionToCaps \cap -> siSetTransferlist cap s c a
 
-getBalance :: MonadStablecoin caps m => "contract" :! AddressOrAlias -> m Mutez
+getBalance :: MonadStablecoin caps m => "contract" :! ContractAddress -> m Mutez
 getBalance c = implActionToCaps (`siGetBalance` c)
 
-getPaused :: MonadStablecoin caps m => "contract" :! AddressOrAlias -> m Bool
+getPaused :: MonadStablecoin caps m => "contract" :! ContractAddress -> m Bool
 getPaused c = implActionToCaps (`siGetPaused` c)
 
-getContractOwner :: MonadStablecoin caps m => "contract" :! AddressOrAlias -> m AddressAndAlias
+getContractOwner :: MonadStablecoin caps m => "contract" :! ContractAddress -> m AddressAndAlias
 getContractOwner c = implActionToCaps (`siGetContractOwner` c)
 
-getPendingContractOwner :: MonadStablecoin caps m => "contract" :! AddressOrAlias -> m (Maybe AddressAndAlias)
+getPendingContractOwner :: MonadStablecoin caps m => "contract" :! ContractAddress -> m (Maybe AddressAndAlias)
 getPendingContractOwner c = implActionToCaps (`siGetPendingContractOwner` c)
 
-getMasterMinter :: MonadStablecoin caps m => "contract" :! AddressOrAlias -> m AddressAndAlias
+getMasterMinter :: MonadStablecoin caps m => "contract" :! ContractAddress -> m AddressAndAlias
 getMasterMinter c = implActionToCaps (`siGetMasterMinter` c)
 
-getPauser :: MonadStablecoin caps m => "contract" :! AddressOrAlias -> m AddressAndAlias
+getPauser :: MonadStablecoin caps m => "contract" :! ContractAddress -> m AddressAndAlias
 getPauser c = implActionToCaps (`siGetPauser` c)
 
-getTransferlist :: MonadStablecoin caps m => "contract" :! AddressOrAlias -> m (Maybe AddressAndAlias)
+getTransferlist :: MonadStablecoin caps m => "contract" :! ContractAddress -> m (Maybe AddressAndAlias)
 getTransferlist c = implActionToCaps (`siGetTransferlist` c)
 
-getMintingAllowance :: MonadStablecoin caps m => "contract" :! AddressOrAlias -> AddressOrAlias -> m Natural
+getMintingAllowance :: MonadStablecoin caps m => "contract" :! ContractAddress -> L1Address -> m Natural
 getMintingAllowance c a = implActionToCaps \cap -> siGetMintingAllowance cap c a
 
 getTokenMetadata
   :: MonadStablecoin caps m
-  => "contract" :! AddressOrAlias
+  => "contract" :! ContractAddress
   -> m ("symbol" :! Text, "name" :! Text, "decimals" :! Natural)
 getTokenMetadata c = implActionToCaps (`siGetTokenMetadata` c)
 
 assertEq :: MonadStablecoin caps m => (Eq a, Buildable a, Show a) => a -> a -> m ()
 assertEq a b = implActionToCaps \cap -> siAssertEq cap a b
 
-revealKeyUnlessRevealed :: MonadStablecoin caps m => Address -> m ()
+revealKeyUnlessRevealed :: MonadStablecoin caps m => ImplicitAddress -> m ()
 revealKeyUnlessRevealed a = implActionToCaps (`siRevealKeyUnlessRevealed` a)

@@ -13,7 +13,7 @@ import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
 import Text.Show qualified
 
-import Hedgehog.Gen.Tezos.Address (genAddress)
+import Hedgehog.Gen.Tezos.Address (genKeyAddress)
 import Lorentz
   (Address, GetEntrypointArgCustom, IsoValue(..), TAddress(TAddress), parameterEntrypointCallCustom,
   toMichelsonContract)
@@ -23,9 +23,8 @@ import Morley.Michelson.Runtime.GState (BigMapCounter(..))
 import Morley.Michelson.Text
 import Morley.Michelson.Typed qualified as T
 import Morley.Michelson.Typed.Haskell.Value (bmMap)
-import Morley.Tezos.Address (GlobalCounter(..))
+import Morley.Tezos.Address (ConstrainedAddress(..), GlobalCounter(..), KindedAddress(..))
 import Morley.Tezos.Core (zeroMutez)
-import Morley.Util.Named (pattern (:!))
 import Test.Cleveland
 
 import Lorentz.Contracts.Spec.FA2Interface qualified as FA2
@@ -62,10 +61,10 @@ import Lorentz.Contracts.Test.Common
 -- actions will be legal, and will be executed succesfully.
 generateContractInputs :: MonadGen m => Int -> m ([ContractCall Parameter], ContractState)
 generateContractInputs count = do
-  gsOwnerPool <- vectorOf poolSize genAddress
-  gsMasterMinterPool <- vectorOf poolSize genAddress
-  gsPauserPool <- vectorOf poolSize genAddress
-  gsTokenOwnerPool <- vectorOf poolSize genAddress
+  gsOwnerPool <- vectorOf poolSize genKeyAddress
+  gsMasterMinterPool <- vectorOf poolSize genKeyAddress
+  gsPauserPool <- vectorOf poolSize genKeyAddress
+  gsTokenOwnerPool <- vectorOf poolSize genKeyAddress
   gsMinterPool <- Map.fromList . fmap unMintingAllowance <$> vectorOf 3 genMintingAllowance
   owner <- Gen.element gsOwnerPool
   masterMinter <- Gen.element gsMasterMinterPool
@@ -155,14 +154,14 @@ instance Buildable ModelError where
   build = genericF
 
 data SimpleStorage = SimpleStorage
-  { ssMintingAllowances :: Map Address Natural
-  , ssLedger :: Map Address Natural
-  , ssOwner :: Address
-  , ssMasterMinter :: Address
-  , ssPauser :: Address
-  , ssPendingOwner :: Maybe Address
+  { ssMintingAllowances :: Map ImplicitAddress Natural
+  , ssLedger :: Map ImplicitAddress Natural
+  , ssOwner :: ImplicitAddress
+  , ssMasterMinter :: ImplicitAddress
+  , ssPauser :: ImplicitAddress
+  , ssPendingOwner :: Maybe ImplicitAddress
   , ssTransferlistContract :: Maybe Address
-  , ssOperators :: Map (Address, Address) ()
+  , ssOperators :: Map (ImplicitAddress, ImplicitAddress) ()
   , ssPaused :: Bool
   , ssTotalSupply :: Natural
   } deriving stock (Eq, Generic, Show)
@@ -176,14 +175,17 @@ resultToSs sval =
 
 storageToSs :: Storage -> SimpleStorage
 storageToSs storage = SimpleStorage
-  { ssMintingAllowances = sMintingAllowances storage
-  , ssLedger = bmMap $ sLedger storage
-  , ssOwner = rOwner $ sRoles storage
-  , ssMasterMinter = rMasterMinter $ sRoles storage
-  , ssPauser = rPauser $ sRoles storage
-  , ssPendingOwner = rPendingOwner $ sRoles storage
+  { ssMintingAllowances = Map.mapKeys unsafeAddressToImplicitAddress $ sMintingAllowances storage
+  , ssLedger = Map.mapKeys unsafeAddressToImplicitAddress $ bmMap $ sLedger storage
+  , ssOwner = unsafeAddressToImplicitAddress $ rOwner $ sRoles storage
+  , ssMasterMinter = unsafeAddressToImplicitAddress $ rMasterMinter $ sRoles storage
+  , ssPauser = unsafeAddressToImplicitAddress $ rPauser $ sRoles storage
+  , ssPendingOwner = unsafeAddressToImplicitAddress <$> rPendingOwner (sRoles storage)
   , ssTransferlistContract = sTransferlistContract storage
-  , ssOperators = bmMap $ sOperators storage
+  , ssOperators =
+      Map.mapKeys (bimap unsafeAddressToImplicitAddress unsafeAddressToImplicitAddress) $
+        bmMap $
+          sOperators storage
   , ssPaused = sPaused storage
   , ssTotalSupply = sTotalSupply storage
   }
@@ -191,30 +193,30 @@ storageToSs storage = SimpleStorage
 ssToOriginationParams
   :: SimpleStorage
   -> OriginationParams
-ssToOriginationParams SimpleStorage {..} = let
-  minters = ssMintingAllowances
-  in (defaultOriginationParams
+ssToOriginationParams SimpleStorage {..} =
+  (defaultOriginationParams
         (#owner :! ssOwner)
         (#pauser :! ssPauser)
         (#masterMinter :! ssMasterMinter))
-    { opBalances = ssLedger
+    { opBalances = Map.mapKeys toAddress ssLedger
     , opOwnerToOperators = mkOwnerToOperator ssOperators
     , opPaused = ssPaused
-    , opMinters = minters
-    , opPendingOwner = ssPendingOwner
+    , opMinters = Map.mapKeys toAddress ssMintingAllowances
+    , opPendingOwner = toAddress <$> ssPendingOwner
     , opTransferlistContract = TAddress <$> ssTransferlistContract
     }
-  where
-    mkOwnerToOperator :: Map (Address, Address) () -> Map Address [Address]
-    mkOwnerToOperator operatorMap =
-      Map.foldrWithKey (\(ow, op) _ m -> Map.alter (alterFn op) ow m) mempty operatorMap
 
-    alterFn :: Address -> Maybe [Address] -> Maybe [Address]
-    alterFn op Nothing = Just [op]
-    alterFn op (Just ops) = Just (op:ops)
+  where
+    mkOwnerToOperator :: Map (ImplicitAddress, ImplicitAddress) () -> Map Address [Address]
+    mkOwnerToOperator operatorMap =
+      Map.foldrWithKey (\(ow, op) _ m -> Map.alter (alterFn op) (toAddress ow) m) mempty operatorMap
+
+    alterFn :: ImplicitAddress -> Maybe [Address] -> Maybe [Address]
+    alterFn op Nothing = Just [toAddress op]
+    alterFn op (Just ops) = Just (toAddress op : ops)
 
 data ContractCall p = ContractCall
-  { ccSender :: Address
+  { ccSender :: ImplicitAddress
   , ccParameter :: p
   , ccIdx :: Int
   } deriving stock Generic
@@ -242,11 +244,11 @@ instance Show ContractState where
 -- | This structure holds the state of the generator
 -- based on which new input values are generated.
 data GeneratorState = GeneratorState
-  { gsOwnerPool :: [Address]
-  , gsMasterMinterPool :: [Address]
-  , gsMinterPool :: Map Address Natural
-  , gsPauserPool :: [Address]
-  , gsTokenOwnerPool :: [Address]
+  { gsOwnerPool :: [ImplicitAddress]
+  , gsMasterMinterPool :: [ImplicitAddress]
+  , gsMinterPool :: Map ImplicitAddress Natural
+  , gsPauserPool :: [ImplicitAddress]
+  , gsTokenOwnerPool :: [ImplicitAddress]
   }
 
 type GeneratorM a = forall m. MonadGen m => ReaderT GeneratorState m a
@@ -259,11 +261,11 @@ genPropertyTestInput :: MonadGen m => m PropertyTestInput
 genPropertyTestInput = PropertyTestInput <$> generateContractInputs testSize
 
 newtype MintingAllowance = MintingAllowance
-  { unMintingAllowance :: (Address, Natural) }
+  { unMintingAllowance :: (ImplicitAddress, Natural) }
 
 genMintingAllowance :: MonadGen m => m MintingAllowance
 genMintingAllowance = do
-  addr <- genAddress
+  addr <- genKeyAddress
   allowance <- Gen.integral (Range.constant 0 amountRange)
   pure $ MintingAllowance (addr, allowance)
 
@@ -307,56 +309,56 @@ generateOwnerAction idx = do
   where
     generateTransferOwnershipAction = do
       newOwner <- getRandomOwner
-      pure $ Transfer_ownership newOwner
+      pure $ Transfer_ownership $ toAddress newOwner
 
     generateAcceptOwnershipAction = pure Accept_ownership
 
     generateChangeMasterMinterAction = do
       masterMinter <- getRandomMasterMinter
-      pure $ Change_master_minter masterMinter
+      pure $ Change_master_minter $ toAddress masterMinter
 
     generateChangePauserAction = do
       pauser <- getRandomPauser
-      pure $ Change_pauser pauser
+      pure $ Change_pauser $ toAddress pauser
 
-getMinterAllowance :: Address -> GeneratorM (Maybe Natural)
+getMinterAllowance :: ImplicitAddress -> GeneratorM (Maybe Natural)
 getMinterAllowance minter = do
   minters <- gsMinterPool <$> ask
   pure $ Map.lookup minter minters
 
-getRandomOwner :: GeneratorM Address
+getRandomOwner :: GeneratorM ImplicitAddress
 getRandomOwner = do
   pool <- gsOwnerPool <$> ask
   Gen.element pool
 
-getRandomPauser :: GeneratorM Address
+getRandomPauser :: GeneratorM ImplicitAddress
 getRandomPauser = do
   pool <- gsPauserPool <$> ask
   Gen.element pool
 
-getRandomMinter :: GeneratorM Address
+getRandomMinter :: GeneratorM ImplicitAddress
 getRandomMinter = do
   pool <- gsMinterPool <$> ask
   Gen.element (Map.keys pool)
 
-getRandomMasterMinter :: GeneratorM Address
+getRandomMasterMinter :: GeneratorM ImplicitAddress
 getRandomMasterMinter = do
   pool <- gsMasterMinterPool <$> ask
   Gen.element pool
 
-getRandomTokenOwner :: GeneratorM Address
+getRandomTokenOwner :: GeneratorM ImplicitAddress
 getRandomTokenOwner = do
   pool <- gsTokenOwnerPool <$> ask
   Gen.element pool
 
-getRandomOperator :: GeneratorM Address
+getRandomOperator :: GeneratorM ImplicitAddress
 getRandomOperator = do
   pool <- gsTokenOwnerPool <$> ask
   Gen.element pool
 
 generateMasterMinterAction :: Int -> GeneratorM (ContractCall Parameter)
 generateMasterMinterAction idx = do
-  sender <-getRandomMasterMinter
+  sender <- getRandomMasterMinter
   configureMinterAction <- generateConfigureMinterAction
   removeMinterAction <- generateRemoveMinterAction
   param <- Gen.element
@@ -367,7 +369,7 @@ generateMasterMinterAction idx = do
     where
       generateRemoveMinterAction = do
         minter <- getRandomMinter
-        pure $ Remove_minter minter
+        pure $ Remove_minter $ toAddress minter
 
       generateConfigureMinterAction = do
         minter <- getRandomMinter
@@ -385,7 +387,7 @@ generateMasterMinterAction idx = do
 
         newMintingAllowances <- Gen.integral (Range.constant 0 amountRange)
         pure $ Configure_minter ConfigureMinterParam
-          { cmpMinter = minter
+          { cmpMinter = toAddress minter
           , cmpCurrentMintingAllowance = currentMintingAllowance
           , cmpNewMintingAllowance = newMintingAllowances
           }
@@ -408,8 +410,8 @@ generateTokenOwnerAction idx = do
   pure $ ContractCall sender param idx
   where
     generateUpdateOperatorsAction = do
-      operator <- getRandomOperator
-      owner <- getRandomOwner
+      operator <- toAddress <$> getRandomOperator
+      owner <- toAddress <$> getRandomOwner
       updateOperation <- Gen.element
         [ FA2.AddOperator FA2.OperatorParam { opOwner = owner, opOperator = operator, opTokenId = FA2.theTokenId }
         , FA2.AddOperator FA2.OperatorParam { opOwner = owner, opOperator = operator, opTokenId = oneTokenId }
@@ -424,9 +426,9 @@ generateTransferAction = do
   txs <- replicateM 10 $ do
     to <- getRandomTokenOwner
     amount <- Gen.integral (Range.constant 0 amountRange)
-    pure FA2.TransferDestination { tdTo = to, tdTokenId = FA2.theTokenId, tdAmount = amount }
+    pure FA2.TransferDestination { tdTo = toAddress to, tdTokenId = FA2.theTokenId, tdAmount = amount }
   stxs <- Gen.subsequence txs
-  let transferItem = FA2.TransferItem { tiFrom = from, tiTxs = stxs }
+  let transferItem = FA2.TransferItem { tiFrom = toAddress from, tiTxs = stxs }
   pure $ Call_FA2 $ Transfer [transferItem]
 
 generateOperatorAction :: Int -> GeneratorM (ContractCall Parameter)
@@ -449,7 +451,7 @@ generateMintAction idx = do
     targetTokenOwner <- getRandomTokenOwner
     target <- Gen.element [targetMinter, targetTokenOwner]
     mintValue <- Gen.integral (Range.constant 0 amountRange)
-    pure (MintParam target mintValue)
+    pure (MintParam (toAddress target) mintValue)
   parameter <- Gen.subsequence mints
   pure $ ContractCall sender (Mint parameter) idx
 
@@ -503,7 +505,7 @@ stablecoinMichelsonModel
   -> ContractState
   -> ContractState
 stablecoinMichelsonModel cc@(ContractCall {..}) cs = let
-  contractEnv = dummyContractEnv { ceSender = ccSender, ceAmount = zeroMutez }
+  contractEnv = dummyContractEnv { ceSender = toL1Address ccSender, ceAmount = zeroMutez }
   initSt = mkInitialStorage (ssToOriginationParams $ csStorage cs)
   iResult = callEntrypoint cc initSt contractEnv
   in case iResult of
@@ -557,17 +559,17 @@ callEntrypoint cc st env = case ccParameter cc of
         (Right (_, newSt), _) -> Right newSt
 
 
-ensureOwner :: Address -> SimpleStorage -> Either ModelError ()
+ensureOwner :: ImplicitAddress -> SimpleStorage -> Either ModelError ()
 ensureOwner addr SimpleStorage {..} = if addr == ssOwner then Right () else Left NOT_CONTRACT_OWNER
 
-ensurePauser :: Address -> SimpleStorage -> Either ModelError ()
+ensurePauser :: ImplicitAddress -> SimpleStorage -> Either ModelError ()
 ensurePauser addr SimpleStorage {..} = if addr == ssPauser then Right () else Left NOT_PAUSER
 
-ensureMasterMinter :: Address -> SimpleStorage -> Either ModelError ()
+ensureMasterMinter :: ImplicitAddress -> SimpleStorage -> Either ModelError ()
 ensureMasterMinter addr SimpleStorage {..} =
   if addr == ssMasterMinter then Right () else Left NOT_MASTERMINTER
 
-ensurePendingOwner :: Address -> SimpleStorage -> Either ModelError Address
+ensurePendingOwner :: ImplicitAddress -> SimpleStorage -> Either ModelError ImplicitAddress
 ensurePendingOwner addr SimpleStorage {..} = case ssPendingOwner of
   Just pa -> if addr == pa then Right pa else Left NOT_PENDING_OWNER
   Nothing -> Left CONTRACT_NOT_IN_TRANSFER
@@ -586,30 +588,30 @@ validateTokenId = \case
     validateTokenId' :: FA2.OperatorParam -> Either ModelError ()
     validateTokenId' FA2.OperatorParam {..} = if opTokenId == FA2.theTokenId then Right () else Left FA2_TOKEN_UNDEFINED
 
-ensureMinter :: Address -> SimpleStorage -> Either ModelError Natural
+ensureMinter :: ImplicitAddress -> SimpleStorage -> Either ModelError Natural
 ensureMinter minter cs = case Map.lookup minter $ ssMintingAllowances cs of
   Just ma -> Right ma
   Nothing -> Left NOT_MINTER
 
-isOperatorOf :: SimpleStorage -> Address -> Address -> Bool
+isOperatorOf :: SimpleStorage -> ImplicitAddress -> ImplicitAddress -> Bool
 isOperatorOf ss operator owner = case Map.lookup (operator, owner) (ssOperators ss) of
   Just _ -> True
   _ -> False
 
-applyPause :: Address -> SimpleStorage -> Either ModelError SimpleStorage
+applyPause :: ImplicitAddress -> SimpleStorage -> Either ModelError SimpleStorage
 applyPause sender ss = do
   ensureNotPaused ss
   ensurePauser sender ss
   Right ss { ssPaused = True }
 
-applyUnpause :: Address -> SimpleStorage -> Either ModelError SimpleStorage
+applyUnpause :: ImplicitAddress -> SimpleStorage -> Either ModelError SimpleStorage
 applyUnpause sender ss = do
   ensurePaused ss
   ensurePauser sender ss
   Right ss { ssPaused = False }
 
-applyConfigureMinter :: Address -> SimpleStorage -> ConfigureMinterParam -> Either ModelError SimpleStorage
-applyConfigureMinter sender cs (ConfigureMinterParam minter mbCurrent new) = do
+applyConfigureMinter :: ImplicitAddress -> SimpleStorage -> ConfigureMinterParam -> Either ModelError SimpleStorage
+applyConfigureMinter sender cs (ConfigureMinterParam (unsafeAddressToImplicitAddress -> minter) mbCurrent new) = do
   -- Check sender is master minter
   -- if yes then see if provided current allowance if Just value
   --  if yes then check if minter allowance exist
@@ -635,14 +637,14 @@ applyConfigureMinter sender cs (ConfigureMinterParam minter mbCurrent new) = do
         Just _ -> Left ADDR_NOT_MINTER
         Nothing -> Right $ cs { ssMintingAllowances = Map.insert minter new $ ssMintingAllowances cs }
 
-applyRemoveMinter :: Address -> SimpleStorage -> RemoveMinterParam -> Either ModelError SimpleStorage
-applyRemoveMinter sender cs minter = do
+applyRemoveMinter :: ImplicitAddress -> SimpleStorage -> RemoveMinterParam -> Either ModelError SimpleStorage
+applyRemoveMinter sender cs (unsafeAddressToImplicitAddress -> minter) = do
   ensureMasterMinter sender cs
   case Map.lookup minter $ ssMintingAllowances cs of
     Just _ -> Right cs { ssMintingAllowances = Map.delete minter $ ssMintingAllowances cs }
     Nothing -> Left ADDR_NOT_MINTER
 
-reduceMintingAllowance :: Address -> Natural -> SimpleStorage -> SimpleStorage
+reduceMintingAllowance :: ImplicitAddress -> Natural -> SimpleStorage -> SimpleStorage
 reduceMintingAllowance minter amount ss@SimpleStorage {..} =
   ss { ssMintingAllowances = Map.update (\m -> Just $ m - amount) minter ssMintingAllowances }
 
@@ -651,9 +653,9 @@ applySingleMint (MintParam to value) storage =
   storage
     { ssTotalSupply = ssTotalSupply storage + value
     , ssLedger = Map.alter
-        (\case Nothing -> Just value; Just x -> Just $ x + value) to $ ssLedger storage }
+        (\case Nothing -> Just value; Just x -> Just $ x + value) (unsafeAddressToImplicitAddress to) $ ssLedger storage }
 
-applyMint :: Address -> SimpleStorage -> MintParams -> Either ModelError SimpleStorage
+applyMint :: ImplicitAddress -> SimpleStorage -> MintParams -> Either ModelError SimpleStorage
 applyMint sender cs mintparams = do
   ensureNotPaused cs
   ma <- ensureMinter sender cs
@@ -662,7 +664,7 @@ applyMint sender cs mintparams = do
     then Right $ reduceMintingAllowance sender totalMint $ foldr applySingleMint cs mintparams
     else Left ALLOWANCE_EXCEEDED
 
-applyBurn :: Address -> SimpleStorage -> BurnParams -> Either ModelError SimpleStorage
+applyBurn :: ImplicitAddress -> SimpleStorage -> BurnParams -> Either ModelError SimpleStorage
 applyBurn ccSender cs burnparams = do
   ensureNotPaused cs
   void $ ensureMinter ccSender cs
@@ -675,7 +677,7 @@ applyBurn ccSender cs burnparams = do
         in Right $ newStorageAfterBurn { ssTotalSupply = ssTotalSupply cs - totalBurn }
     else Left FA2_INSUFFICIENT_BALANCE
 
-applySingleBurn :: Address -> Natural -> SimpleStorage -> SimpleStorage
+applySingleBurn :: ImplicitAddress -> Natural -> SimpleStorage -> SimpleStorage
 applySingleBurn src value storage =
   storage { ssLedger = Map.alter (\case
     Nothing -> if value > 0
@@ -687,25 +689,25 @@ applySingleBurn src value storage =
     Just x -> let b = x - value
       in if b > 0 then Just b else Nothing) src $ ssLedger storage }
 
-applyTransferOwnership :: Address -> SimpleStorage -> TransferOwnershipParam -> Either ModelError SimpleStorage
+applyTransferOwnership :: ImplicitAddress -> SimpleStorage -> TransferOwnershipParam -> Either ModelError SimpleStorage
 applyTransferOwnership sender cs newOwner = do
   ensureOwner sender cs
-  Right cs { ssPendingOwner = Just newOwner }
+  Right cs { ssPendingOwner = Just $ unsafeAddressToImplicitAddress newOwner }
 
-applyAcceptOwnership :: Address -> SimpleStorage -> Either ModelError SimpleStorage
+applyAcceptOwnership :: ImplicitAddress -> SimpleStorage -> Either ModelError SimpleStorage
 applyAcceptOwnership sender cs = do
   newOwner <- ensurePendingOwner sender cs
   Right cs { ssOwner = newOwner, ssPendingOwner = Nothing }
 
-applyChangeMasterMinter :: Address -> SimpleStorage -> ChangeMasterMinterParam -> Either ModelError SimpleStorage
+applyChangeMasterMinter :: ImplicitAddress -> SimpleStorage -> ChangeMasterMinterParam -> Either ModelError SimpleStorage
 applyChangeMasterMinter sender cs newMm = do
   ensureOwner sender cs
-  Right cs { ssMasterMinter = newMm }
+  Right cs { ssMasterMinter = unsafeAddressToImplicitAddress newMm }
 
-applyChangePauser :: Address -> SimpleStorage -> ChangeMasterMinterParam -> Either ModelError SimpleStorage
+applyChangePauser :: ImplicitAddress -> SimpleStorage -> ChangeMasterMinterParam -> Either ModelError SimpleStorage
 applyChangePauser sender cs newPauser = do
   ensureOwner sender cs
-  Right cs { ssPauser = newPauser }
+  Right cs { ssPauser = unsafeAddressToImplicitAddress newPauser }
 
 applyParameter :: ContractCall Parameter -> SimpleStorage -> Either ModelError SimpleStorage
 applyParameter cc@(ContractCall {..}) cs = case ccParameter of
@@ -722,22 +724,22 @@ applyParameter cc@(ContractCall {..}) cs = case ccParameter of
   Change_pauser newPsr -> applyChangePauser ccSender cs newPsr
   _ -> error "Unexpected call"
 
-applyDebit :: Address -> Natural ->  SimpleStorage -> SimpleStorage
+applyDebit :: ImplicitAddress -> Natural ->  SimpleStorage -> SimpleStorage
 applyDebit from amount ss@SimpleStorage {..} =  ss
   { ssLedger =
       Map.update (\x -> let n = x - amount in if n == 0 then Nothing else Just n) from ssLedger }
 
-applyCredit :: Address -> Natural -> SimpleStorage -> SimpleStorage
+applyCredit :: ImplicitAddress -> Natural -> SimpleStorage -> SimpleStorage
 applyCredit from amount ss@SimpleStorage {..} =
   ss { ssLedger = Map.alter (\case Just x -> Just $ x + amount; Nothing -> Just amount;) from ssLedger }
 
-applyTransfer :: Address -> SimpleStorage -> FA2.TransferParams -> Either ModelError SimpleStorage
+applyTransfer :: ImplicitAddress -> SimpleStorage -> FA2.TransferParams -> Either ModelError SimpleStorage
 applyTransfer ccSender storage tis = do
   ensureNotPaused storage
   foldl' (applySingleTransfer ccSender) (Right storage) tis
 
-applySingleTransfer :: Address -> Either ModelError SimpleStorage -> FA2.TransferItem -> Either ModelError SimpleStorage
-applySingleTransfer ccSender estorage (FA2.TransferItem from txs) =
+applySingleTransfer :: ImplicitAddress -> Either ModelError SimpleStorage -> FA2.TransferItem -> Either ModelError SimpleStorage
+applySingleTransfer ccSender estorage (FA2.TransferItem (unsafeAddressToImplicitAddress -> from) txs) =
   case estorage of
     Left err -> Left err
     Right storage@(SimpleStorage {}) ->
@@ -750,22 +752,22 @@ applySingleTransfer ccSender estorage (FA2.TransferItem from txs) =
       -- consider zero balance if account is not found
       srcBalance = fromMaybe 0 (Map.lookup from ssLedger)
       in if srcBalance >= amount
-        then Right $ applyCredit to amount $ applyDebit from amount storage
+        then Right $ applyCredit (unsafeAddressToImplicitAddress to) amount $ applyDebit from amount storage
         else Left FA2_INSUFFICIENT_BALANCE
 
-applyUpdateOperator :: Address -> Either ModelError SimpleStorage -> FA2.UpdateOperator -> Either ModelError SimpleStorage
+applyUpdateOperator :: ImplicitAddress -> Either ModelError SimpleStorage -> FA2.UpdateOperator -> Either ModelError SimpleStorage
 applyUpdateOperator ccSender estorage op = case estorage of
   Left err -> Left err
   Right storage -> do
     ensureNotPaused storage
     case op of
-      FA2.AddOperator (FA2.OperatorParam own operator _)
+      FA2.AddOperator (FA2.OperatorParam (unsafeAddressToImplicitAddress -> own) (unsafeAddressToImplicitAddress -> operator) _)
         -> if own == ccSender -- enforce that sender is owner
           then do
             validateTokenId op
             Right $ storage { ssOperators = Map.insert (own, operator) () $ ssOperators storage }
           else Left NOT_TOKEN_OWNER
-      FA2.RemoveOperator (FA2.OperatorParam own operator _)
+      FA2.RemoveOperator (FA2.OperatorParam (unsafeAddressToImplicitAddress -> own) (unsafeAddressToImplicitAddress -> operator) _)
         -> if own == ccSender
           then do
             validateTokenId op
@@ -784,3 +786,9 @@ applyFA2Parameter ContractCall {..} cs = do
 -- can generate a smaller list (always non-empty).
 vectorOf :: MonadGen m => Int -> m x -> m [x]
 vectorOf n = Gen.list (Range.linear 1 n)
+
+unsafeAddressToImplicitAddress :: HasCallStack => Address -> ImplicitAddress
+unsafeAddressToImplicitAddress = \case
+  MkAddress (ia@ImplicitAddress{}) -> ia
+  MkAddress (ContractAddress{}) -> error "Unexpected contract address"
+  MkAddress (TxRollupAddress{}) -> error "Unexpected transaction rollup address"
