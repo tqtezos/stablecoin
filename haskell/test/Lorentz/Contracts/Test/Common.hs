@@ -5,7 +5,6 @@
 
 module Lorentz.Contracts.Test.Common
   ( oneTokenId
-  , OriginationFn
   , OriginationParams (..)
   , defaultOriginationParams
   , addAccount
@@ -15,6 +14,7 @@ module Lorentz.Contracts.Test.Common
   , constructTransfersFromSender
   , constructSingleTransfer
   , mgmContractPaused
+  , originateStablecoin
   , mkInitialStorage
   , nettestOriginateContractMetadataContract
   , testFA2TokenMetadata
@@ -149,7 +149,12 @@ constructSingleTransfer
 constructSingleTransfer (arg #from_ -> from) (arg #to_ -> to) (arg #amount -> amount)
     = [TransferItem from [TransferDestination to FA2.theTokenId amount]]
 
-type OriginationFn param st m = OriginationParams -> m (ContractHandle param st ())
+originateStablecoin :: MonadCleveland caps m => OriginationParams -> m (ContractHandle SC.Parameter SC.Storage ())
+originateStablecoin originationParams =
+  originate
+    "Stablecoin contract"
+    (mkInitialStorage originationParams)
+    stablecoinContract
 
 mkInitialStorage :: OriginationParams -> Storage
 mkInitialStorage OriginationParams{..} =

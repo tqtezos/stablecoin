@@ -15,10 +15,10 @@ import Test.Cleveland
 
 import Lorentz.Contracts.Stablecoin
   (ConfigureMinterParam(..), FA2Parameter(..), MetadataUri(..), Parameter(..), PermitParam(..),
-  metadataJSON, mkPermitHash, stablecoinContract)
+  metadataJSON, mkPermitHash)
 import Lorentz.Contracts.Test.Common
-  (OriginationParams(..), addAccount, defaultOriginationParams, mkInitialStorage,
-  nettestOriginateContractMetadataContract, testFA2TokenMetadata)
+  (OriginationParams(..), addAccount, defaultOriginationParams,
+  nettestOriginateContractMetadataContract, originateStablecoin, testFA2TokenMetadata)
 import Test.Cleveland.Lorentz (toContractAddress)
 
 test_permitScenario :: TestTree
@@ -47,8 +47,7 @@ permitScenario = scenario do
             (#masterMinter :! masterMinter))
             { opMetadataUri = RemoteContract $ toContractAddress cmrAddress
             }
-      storage = mkInitialStorage originationParams
-  contract <- originate "nettest.Stablecoin" storage stablecoinContract
+  contract <- originateStablecoin originationParams
   chainId <- getChainId
 
   let

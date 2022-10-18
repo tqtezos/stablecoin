@@ -62,12 +62,8 @@ mgmAllowanceExceeded = expectFailedWith [mt|ALLOWANCE_EXCEEDED|]
 mgmBadTransferlist = expectFailedWith [mt|BAD_TRANSFERLIST|]
 mgmMinterLimitExceeded = expectFailedWith [mt|MINTER_LIMIT_REACHED|]
 
-managementSpec
-  :: forall param.
-     ParameterC param
-  => (forall caps m. MonadCleveland caps m => OriginationFn param Storage m)
-  -> [TestTree]
-managementSpec originateSc =
+managementSpec :: [TestTree]
+managementSpec =
   [ testGroup "Contract meta" $
       [ testScenario "fails if contract receives non-zero amount of xtz" $
           scenario do
@@ -84,7 +80,7 @@ managementSpec originateSc =
                         (#pauser :! testPauser)
                         (#masterMinter :! testMasterMinter)
                     )
-            stablecoinContract <- originateSc originationParams
+            stablecoinContract <- originateStablecoin originationParams
             do
               mgmXtzReceived $
                 withSender commonOperator $
@@ -98,7 +94,7 @@ managementSpec originateSc =
             testPauser <- newAddress "testPauser"
             testMasterMinter <- newAddress "testMasterMinter"
             stablecoinContract <-
-              originateSc $
+              originateStablecoin $
                 ( defaultOriginationParams
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
@@ -115,7 +111,7 @@ managementSpec originateSc =
             testMasterMinter <- newAddress "testMasterMinter"
             wallet2 <- newAddress "wallet2"
             stablecoinContract <-
-              originateSc $
+              originateStablecoin $
                 ( defaultOriginationParams
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
@@ -130,7 +126,7 @@ managementSpec originateSc =
             testPauser <- newAddress "testPauser"
             testMasterMinter <- newAddress "testMasterMinter"
             stablecoinContract <-
-              originateSc $
+              originateStablecoin $
                 ( defaultOriginationParams
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
@@ -154,7 +150,7 @@ managementSpec originateSc =
                   )
                     { opPaused = True
                     }
-            stablecoinContract <- originateSc originationParams
+            stablecoinContract <- originateStablecoin originationParams
             withSender testPauser $
               transfer stablecoinContract $ calling (ep @"Unpause") ()
             storage <- getStorage stablecoinContract
@@ -173,7 +169,7 @@ managementSpec originateSc =
                   )
                     { opPaused = True
                     }
-            stablecoinContract <- originateSc originationParams
+            stablecoinContract <- originateStablecoin originationParams
             mgmNotPauser $
               withSender wallet2 $
                 transfer stablecoinContract $ calling (ep @"Unpause") ()
@@ -190,7 +186,7 @@ managementSpec originateSc =
                   )
                     { opPaused = True
                     }
-            stablecoinContract <- originateSc originationParams
+            stablecoinContract <- originateStablecoin originationParams
             withSender testPauser do
               transfer stablecoinContract $ calling (ep @"Unpause") ()
               mgmContractNotPaused $
@@ -214,7 +210,7 @@ managementSpec originateSc =
                       )
                         { opPaused = True
                         }
-            stablecoinContract <- originateSc originationParams
+            stablecoinContract <- originateStablecoin originationParams
             let transfers = constructSingleTransfer (#from_ :! toAddress wallet1) (#to_ :! toAddress wallet2) (#amount :! 10)
             mgmContractPaused $
               withSender commonOperator $
@@ -241,7 +237,7 @@ managementSpec originateSc =
                           { opPaused = True
                           }
 
-            stablecoinContract <- originateSc originationParams
+            stablecoinContract <- originateStablecoin originationParams
             withSender testPauser $
               transfer stablecoinContract $ calling (ep @"Unpause") ()
             let transfer1 =
@@ -296,7 +292,7 @@ managementSpec originateSc =
             wallet1 <- newAddress "wallet1"
             wallet2 <- newAddress "wallet2"
             stablecoinContract <-
-              originateSc $
+              originateStablecoin $
                 ( defaultOriginationParams
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
@@ -339,7 +335,7 @@ managementSpec originateSc =
             testMasterMinter <- newAddress "testMasterMinter"
             wallet2 <- newAddress "wallet2"
             stablecoinContract <-
-              originateSc $
+              originateStablecoin $
                 ( defaultOriginationParams
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
@@ -370,7 +366,7 @@ managementSpec originateSc =
             testMasterMinter <- newAddress "testMasterMinter"
             wallet2 <- newAddress "wallet2"
             stablecoinContract <-
-              originateSc $
+              originateStablecoin $
                 ( defaultOriginationParams
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
@@ -401,7 +397,7 @@ managementSpec originateSc =
             testMasterMinter <- newAddress "testMasterMinter"
             wallet2 <- newAddress "wallet2"
             stablecoinContract <-
-              originateSc $
+              originateStablecoin $
                 ( defaultOriginationParams
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
@@ -424,7 +420,7 @@ managementSpec originateSc =
             testMasterMinter <- newAddress "testMasterMinter"
             wallet2 <- newAddress "wallet2"
             stablecoinContract <-
-              originateSc $
+              originateStablecoin $
                 ( defaultOriginationParams
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
@@ -457,7 +453,7 @@ managementSpec originateSc =
                 testPauser <- newAddress "testPauser"
                 testMasterMinter <- newAddress "testMasterMinter"
                 stablecoinContract <-
-                  originateSc $
+                  originateStablecoin $
                     ( defaultOriginationParams
                         (#owner :! testOwner)
                         (#pauser :! testPauser)
@@ -476,7 +472,7 @@ managementSpec originateSc =
                 testPauser <- newAddress "testPauser"
                 testMasterMinter <- newAddress "testMasterMinter"
                 stablecoinContract <-
-                  originateSc $
+                  originateStablecoin $
                     ( defaultOriginationParams
                         (#owner :! testOwner)
                         (#pauser :! testPauser)
@@ -506,7 +502,7 @@ managementSpec originateSc =
                             (#pauser :! testPauser)
                             (#masterMinter :! testMasterMinter)
                         )
-            stablecoinContract <- originateSc originationParams
+            stablecoinContract <- originateStablecoin originationParams
             withSender testMasterMinter do
               transfer stablecoinContract $ calling (ep @"Remove_minter") $ toAddress wallet1
               transfer stablecoinContract $ calling (ep @"Remove_minter") $ toAddress wallet2
@@ -528,7 +524,7 @@ managementSpec originateSc =
                         (#pauser :! testPauser)
                         (#masterMinter :! testMasterMinter)
                     )
-            stablecoinContract <- originateSc originationParams
+            stablecoinContract <- originateStablecoin originationParams
             mgmNotMasterMinter $
               withSender wallet2 $
                 transfer stablecoinContract $ calling (ep @"Remove_minter") $ toAddress wallet1
@@ -545,7 +541,7 @@ managementSpec originateSc =
                         (#pauser :! testPauser)
                         (#masterMinter :! testMasterMinter)
                     )
-            stablecoinContract <- originateSc originationParams
+            stablecoinContract <- originateStablecoin originationParams
             withSender testMasterMinter do
               transfer stablecoinContract $ calling (ep @"Remove_minter") $ toAddress wallet1
               mgmAddrNotMinter $
@@ -557,7 +553,7 @@ managementSpec originateSc =
             testMasterMinter <- newAddress "testMasterMinter"
             wallet1 <- newAddress "wallet1"
             stablecoinContract <-
-              originateSc $
+              originateStablecoin $
                 ( defaultOriginationParams
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
@@ -583,7 +579,7 @@ managementSpec originateSc =
                         (#pauser :! testPauser)
                         (#masterMinter :! testMasterMinter)
                     )
-            stablecoinContract <- originateSc originationParams
+            stablecoinContract <- originateStablecoin originationParams
             let mintings =
                   [ MintParam (toAddress wallet1) 10
                   , MintParam (toAddress wallet2) 5
@@ -637,7 +633,7 @@ managementSpec originateSc =
                         (#pauser :! testPauser)
                         (#masterMinter :! testMasterMinter)
                     )
-            stablecoinContract <- originateSc originationParams
+            stablecoinContract <- originateStablecoin originationParams
             let mintings =
                   [ MintParam (toAddress wallet1) 5
                   , MintParam (toAddress wallet2) 10 -- Error here
@@ -654,7 +650,7 @@ managementSpec originateSc =
             testMasterMinter <- newAddress "testMasterMinter"
             wallet1 <- newAddress "wallet1"
             stablecoinContract <-
-              originateSc $
+              originateStablecoin $
                 ( defaultOriginationParams
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
@@ -679,7 +675,7 @@ managementSpec originateSc =
                     )
                       { opPaused = True
                       }
-            stablecoinContract <- originateSc originationParams
+            stablecoinContract <- originateStablecoin originationParams
             let mintings = [MintParam (toAddress wallet1) 5]
             mgmContractPaused $
               withSender wallet1 $
@@ -705,7 +701,7 @@ managementSpec originateSc =
                               (#pauser :! testPauser)
                               (#masterMinter :! testMasterMinter)
                           )
-            stablecoinContract <- originateSc originationParams
+            stablecoinContract <- originateStablecoin originationParams
             withSender wallet1 $
               transfer stablecoinContract $ calling (ep @"Burn") [10, 20]
             withSender wallet2 $
@@ -751,7 +747,7 @@ managementSpec originateSc =
                           (#pauser :! testPauser)
                           (#masterMinter :! testMasterMinter)
                       )
-            stablecoinContract <- originateSc originationParams
+            stablecoinContract <- originateStablecoin originationParams
             withSender wallet1 $
               transfer stablecoinContract $ calling (ep @"Burn") [35]
 
@@ -774,7 +770,7 @@ managementSpec originateSc =
                         (#pauser :! testPauser)
                         (#masterMinter :! testMasterMinter)
                     )
-            stablecoinContract <- originateSc originationParams
+            stablecoinContract <- originateStablecoin originationParams
             mgmNotMinter $
               withSender wallet1 $
                 transfer stablecoinContract $ calling (ep @"Burn") [10]
@@ -794,7 +790,7 @@ managementSpec originateSc =
                           (#pauser :! testPauser)
                           (#masterMinter :! testMasterMinter)
                       )
-            stablecoinContract <- originateSc originationParams
+            stablecoinContract <- originateStablecoin originationParams
             mgmInsufficientBalance $
               withSender wallet1 $
                 transfer stablecoinContract $ calling (ep @"Burn") [10, 10]
@@ -814,7 +810,7 @@ managementSpec originateSc =
                           (#pauser :! testPauser)
                           (#masterMinter :! testMasterMinter)
                       )
-            stablecoinContract <- originateSc originationParams
+            stablecoinContract <- originateStablecoin originationParams
             withSender wallet1 do
               transfer stablecoinContract $ calling (ep @"Burn") [10]
               let mintings = [MintParam (toAddress wallet1) 10]
@@ -838,7 +834,7 @@ managementSpec originateSc =
                       )
                         { opPaused = True
                         }
-            stablecoinContract <- originateSc originationParams
+            stablecoinContract <- originateStablecoin originationParams
             mgmContractPaused $
               withSender wallet1 $
                 transfer stablecoinContract $ calling (ep @"Burn") [10]
@@ -852,7 +848,7 @@ managementSpec originateSc =
             wallet1 <- newAddress "wallet1"
             wallet2 <- newAddress "wallet2"
             stablecoinContract <-
-              originateSc $
+              originateStablecoin $
                 ( defaultOriginationParams
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
@@ -875,7 +871,7 @@ managementSpec originateSc =
             testMasterMinter <- newAddress "testMasterMinter"
             wallet1 <- newAddress "wallet1"
             stablecoinContract <-
-              originateSc $
+              originateStablecoin $
                 ( defaultOriginationParams
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
@@ -893,7 +889,7 @@ managementSpec originateSc =
             testMasterMinter <- newAddress "testMasterMinter"
             wallet1 <- newAddress "wallet1"
             stablecoinContract <-
-              originateSc $
+              originateStablecoin $
                 ( defaultOriginationParams
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
@@ -910,7 +906,7 @@ managementSpec originateSc =
             wallet1 <- newAddress "wallet1"
             wallet2 <- newAddress "wallet2"
             stablecoinContract <-
-              originateSc $
+              originateStablecoin $
                 ( defaultOriginationParams
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
@@ -931,7 +927,7 @@ managementSpec originateSc =
             wallet1 <- newAddress "wallet1"
             wallet2 <- newAddress "wallet2"
             stablecoinContract <-
-              originateSc $
+              originateStablecoin $
                 ( defaultOriginationParams
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
@@ -949,7 +945,7 @@ managementSpec originateSc =
             testMasterMinter <- newAddress "testMasterMinter"
             wallet2 <- newAddress "wallet2"
             stablecoinContract <-
-              originateSc $
+              originateStablecoin $
                 ( defaultOriginationParams
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
@@ -967,7 +963,7 @@ managementSpec originateSc =
             wallet2 <- newAddress "wallet2"
             wallet3 <- newAddress "wallet3"
             stablecoinContract <-
-              originateSc $
+              originateStablecoin $
                 ( defaultOriginationParams
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
@@ -990,7 +986,7 @@ managementSpec originateSc =
             wallet1 <- newAddress "wallet1"
             wallet2 <- newAddress "wallet2"
             stablecoinContract <-
-              originateSc $
+              originateStablecoin $
                 ( defaultOriginationParams
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
@@ -1009,7 +1005,7 @@ managementSpec originateSc =
             testMasterMinter <- newAddress "testMasterMinter"
             wallet1 <- newAddress "wallet1"
             stablecoinContract <-
-              originateSc $
+              originateStablecoin $
                 ( defaultOriginationParams
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
@@ -1027,7 +1023,7 @@ managementSpec originateSc =
             testMasterMinter <- newAddress "testMasterMinter"
             wallet1 <- newAddress "wallet1"
             stablecoinContract <-
-              originateSc $
+              originateStablecoin $
                 ( defaultOriginationParams
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
@@ -1049,7 +1045,7 @@ managementSpec originateSc =
             testMasterMinter <- newAddress "testMasterMinter"
             wallet1 <- newAddress "wallet1"
             stablecoinContract <-
-              originateSc $
+              originateStablecoin $
                 ( defaultOriginationParams
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
@@ -1066,7 +1062,7 @@ managementSpec originateSc =
             wallet1 <- newAddress "wallet1"
             wallet2 <- newAddress "wallet2"
             stablecoinContract <-
-              originateSc $
+              originateStablecoin $
                 ( defaultOriginationParams
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
@@ -1082,7 +1078,7 @@ managementSpec originateSc =
             testMasterMinter <- newAddress "testMasterMinter"
             wallet1 <- newAddress "wallet1"
             stablecoinContract <-
-              originateSc $
+              originateStablecoin $
                 ( defaultOriginationParams
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
@@ -1098,7 +1094,7 @@ managementSpec originateSc =
             testMasterMinter <- newAddress "testMasterMinter"
             wallet1 <- newAddress "wallet1"
             stablecoinContract <-
-              originateSc $
+              originateStablecoin $
                 ( defaultOriginationParams
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
@@ -1118,7 +1114,7 @@ managementSpec originateSc =
             testMasterMinter <- newAddress "testMasterMinter"
             wallet1 <- newAddress "wallet1"
             stablecoinContract <-
-              originateSc $
+              originateStablecoin $
                 ( defaultOriginationParams
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
@@ -1135,7 +1131,7 @@ managementSpec originateSc =
             wallet1 <- newAddress "wallet1"
             wallet2 <- newAddress "wallet2"
             stablecoinContract <-
-              originateSc $
+              originateStablecoin $
                 ( defaultOriginationParams
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
@@ -1151,7 +1147,7 @@ managementSpec originateSc =
             testMasterMinter <- newAddress "testMasterMinter"
             wallet1 <- newAddress "wallet1"
             stablecoinContract <-
-              originateSc $
+              originateStablecoin $
                 ( defaultOriginationParams
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
@@ -1167,7 +1163,7 @@ managementSpec originateSc =
             testMasterMinter <- newAddress "testMasterMinter"
             wallet1 <- newAddress "wallet1"
             stablecoinContract <-
-              originateSc $
+              originateStablecoin $
                 ( defaultOriginationParams
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
@@ -1195,7 +1191,7 @@ managementSpec originateSc =
                           (#masterMinter :! testMasterMinter)
                       )
                 transferlistContract <- originate "Transferlist test dummy" transferlistStorage Transferlist.transferlistContract
-                stablecoinContract <- originateSc originationParams
+                stablecoinContract <- originateStablecoin originationParams
                 withSender testOwner $
                   transfer stablecoinContract $ calling (ep @"Set_transferlist") (Just $ toAddress transferlistContract)
 
@@ -1220,7 +1216,7 @@ managementSpec originateSc =
                       )
                         { opTransferlistContract = (Just $ toTAddress transferlistContract)
                         }
-                stablecoinContract <- originateSc originationParams
+                stablecoinContract <- originateStablecoin originationParams
                 withSender testOwner $
                   transfer stablecoinContract $ calling (ep @"Set_transferlist") Nothing
 
@@ -1240,7 +1236,7 @@ managementSpec originateSc =
                           (#pauser :! testPauser)
                           (#masterMinter :! testMasterMinter)
                       )
-                stablecoinContract <- originateSc originationParams
+                stablecoinContract <- originateStablecoin originationParams
                 mgmBadTransferlist $
                   withSender testOwner $
                   transfer stablecoinContract $ calling (ep @"Set_transferlist") (Just $ toAddress wallet1)
@@ -1270,7 +1266,7 @@ managementSpec originateSc =
                         )
                           { opTransferlistContract = (Just $ toTAddress transferlistContract)
                           }
-                stablecoinContract <- originateSc originationParams
+                stablecoinContract <- originateStablecoin originationParams
                 let transfers =
                       [FA2.TransferItem (toAddress wallet1) [FA2.TransferDestination (toAddress wallet2) FA2.theTokenId 10]]
 
@@ -1296,7 +1292,7 @@ managementSpec originateSc =
                           )
                             { opTransferlistContract = (Just $ toTAddress transferlistContract)
                             }
-                stablecoinContract <- originateSc originationParams
+                stablecoinContract <- originateStablecoin originationParams
                 let mintings = [MintParam (toAddress wallet1) 10]
                 expectFailedWithAny $
                   withSender wallet1 $
@@ -1320,7 +1316,7 @@ managementSpec originateSc =
                           )
                             { opTransferlistContract = (Just $ toTAddress transferlistContract)
                             }
-                stablecoinContract <- originateSc originationParams
+                stablecoinContract <- originateStablecoin originationParams
                 expectFailedWithAny $
                   withSender wallet1 $
                     transfer stablecoinContract $ calling (ep @"Burn") [10]
@@ -1350,7 +1346,7 @@ managementSpec originateSc =
                     )
                       { opTransferlistContract = (Just $ toTAddress transferlistContract)
                       }
-            stablecoinContract <- originateSc originationParams
+            stablecoinContract <- originateStablecoin originationParams
             let transfers =
                   [ FA2.TransferItem
                       { tiFrom = toAddress wallet1
@@ -1385,7 +1381,7 @@ managementSpec originateSc =
                       )
                         { opTransferlistContract = (Just $ toTAddress transferlistContract)
                         }
-            stablecoinContract <- originateSc originationParams
+            stablecoinContract <- originateStablecoin originationParams
             let mintings = [MintParam (toAddress wallet1) 10]
             withSender wallet1 $
               transfer stablecoinContract $ calling (ep @"Mint") mintings
@@ -1414,7 +1410,7 @@ managementSpec originateSc =
                       )
                         { opTransferlistContract = (Just $ toTAddress transferlistContract)
                         }
-            stablecoinContract <- originateSc originationParams
+            stablecoinContract <- originateStablecoin originationParams
             withSender wallet1 $
               transfer stablecoinContract $ calling (ep @"Burn") [10]
       ]

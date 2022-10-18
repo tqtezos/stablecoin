@@ -15,7 +15,7 @@ import Time (sec)
 import Lorentz.Contracts.Spec.FA2Interface qualified as FA2
 import Morley.Tezos.Crypto (Signature(..))
 import Morley.Tezos.Crypto.Hash qualified as Hash
-import Test.Cleveland hiding (originate)
+import Test.Cleveland
 import Test.Morley.Metadata
 
 import Lorentz.Contracts.Stablecoin hiding (metadataJSON, stablecoinContract)
@@ -81,15 +81,15 @@ assertPermitCount contractAddr expectedCount = do
         <> " permits left in the storage, but there were "
         <> show count
 
-permitSpec :: (forall caps m. MonadCleveland caps m => OriginationFn Parameter Storage m) -> [TestTree]
-permitSpec originate =
+permitSpec :: [TestTree]
+permitSpec =
   [ testGroup
       "Permits"
       [ testScenario "The counter used to sign the permit must match the contract's counter" $ scenario do
           testOwner <- newAddress "testOwner"
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -105,7 +105,7 @@ permitSpec originate =
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -120,7 +120,7 @@ permitSpec originate =
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
           wallet2 <- newAddress "wallet2"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -134,7 +134,7 @@ permitSpec originate =
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -149,7 +149,7 @@ permitSpec originate =
           testOwner <- newAddress "testOwner"
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -172,7 +172,7 @@ permitSpec originate =
           -- More generally, we want to assert that if two entrypoints X and Y have the same
           -- parameter type (in this case, both `Pause` and `Unpause` are of type `Unit`),
           -- then a permit issued for X cannot be used to access entrypoint Y.
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -191,7 +191,7 @@ permitSpec originate =
                 (#masterMinter :! testMasterMinter))
                 { opDefaultExpiry = 10 }
               defaultExpiry = opDefaultExpiry originationParams
-          stablecoinContract <- originate originationParams
+          stablecoinContract <- originateStablecoin originationParams
 
           withSender testPauser $ do
             callPermit stablecoinContract testPauser 0 Pause
@@ -204,7 +204,7 @@ permitSpec originate =
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -224,7 +224,7 @@ permitSpec originate =
                 (#pauser :! testPauser)
                 (#masterMinter :! testMasterMinter))
                 {opDefaultExpiry = defaultExpiry}
-          stablecoinContract <- originate originationParams
+          stablecoinContract <- originateStablecoin originationParams
           withSender wallet1 $ do
             callPermit stablecoinContract testPauser 0 Pause
             -- Advance enough time for the permit to expire
@@ -242,7 +242,7 @@ permitSpec originate =
                 (#pauser :! testPauser)
                 (#masterMinter :! testMasterMinter))
                 {opDefaultExpiry = defaultExpiry}
-          stablecoinContract <- originate originationParams
+          stablecoinContract <- originateStablecoin originationParams
           withSender testPauser $ do
             hash <- callPermit stablecoinContract testPauser 0 Pause
             transfer stablecoinContract $ calling (ep @"Set_expiry") $ SetExpiryParam (toAddress testPauser) 1 $ Just hash
@@ -267,7 +267,7 @@ permitSpec originate =
                 (#masterMinter :! testMasterMinter))
                 { opDefaultExpiry = 10 }
               defaultExpiry = opDefaultExpiry originationParams
-          stablecoinContract <- originate originationParams
+          stablecoinContract <- originateStablecoin originationParams
           withSender testPauser $ do
             callPermit stablecoinContract testPauser 0 Pause
             advanceTime (sec $ fromIntegralOverflowing defaultExpiry + 1)
@@ -280,7 +280,7 @@ permitSpec originate =
           testOwner <- newAddress "testOwner"
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -291,7 +291,7 @@ permitSpec originate =
           testOwner <- newAddress "testOwner"
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -305,7 +305,7 @@ permitSpec originate =
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -321,7 +321,7 @@ permitSpec originate =
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -338,7 +338,7 @@ permitSpec originate =
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -355,7 +355,7 @@ permitSpec originate =
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -373,7 +373,7 @@ permitSpec originate =
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -393,7 +393,7 @@ permitSpec originate =
                 (#pauser :! testPauser)
                 (#masterMinter :! testMasterMinter))
                 {opDefaultExpiry = defaultExpiry}
-          stablecoinContract <- originate originationParams
+          stablecoinContract <- originateStablecoin originationParams
           withSender wallet1 $ do
             pausePermitHash <- callPermit stablecoinContract testPauser 0 Pause
             callPermit stablecoinContract testPauser 1 $
@@ -406,7 +406,7 @@ permitSpec originate =
           testOwner <- newAddress "testOwner"
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -421,7 +421,7 @@ permitSpec originate =
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -445,7 +445,7 @@ permitSpec originate =
                 (#pauser :! testPauser)
                 (#masterMinter :! testMasterMinter)
               defaultExpiry = opDefaultExpiry originationParams
-          stablecoinContract <- originate originationParams
+          stablecoinContract <- originateStablecoin originationParams
           callOffChainView @Natural stablecoinContract "GetDefaultExpiry" NoParam @@== defaultExpiry
       ]
   , testGroup
@@ -454,7 +454,7 @@ permitSpec originate =
           testOwner <- newAddress "testOwner"
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -472,7 +472,7 @@ permitSpec originate =
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -487,7 +487,7 @@ permitSpec originate =
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -499,7 +499,7 @@ permitSpec originate =
           testOwner <- newAddress "testOwner"
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -515,7 +515,7 @@ permitSpec originate =
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -532,7 +532,7 @@ permitSpec originate =
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -547,7 +547,7 @@ permitSpec originate =
           testOwner <- newAddress "testOwner"
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -565,7 +565,7 @@ permitSpec originate =
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
           wallet2 <- newAddress "wallet2"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -581,7 +581,7 @@ permitSpec originate =
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
           wallet2 <- newAddress "wallet2"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -594,7 +594,7 @@ permitSpec originate =
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
           wallet2 <- newAddress "wallet2"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -611,7 +611,7 @@ permitSpec originate =
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
           wallet2 <- newAddress "wallet2"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -629,7 +629,7 @@ permitSpec originate =
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
           wallet2 <- newAddress "wallet2"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -644,7 +644,7 @@ permitSpec originate =
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
           wallet2 <- newAddress "wallet2"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -663,7 +663,7 @@ permitSpec originate =
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
           wallet2 <- newAddress "wallet2"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -679,7 +679,7 @@ permitSpec originate =
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
           wallet2 <- newAddress "wallet2"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -692,7 +692,7 @@ permitSpec originate =
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
           wallet2 <- newAddress "wallet2"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -709,7 +709,7 @@ permitSpec originate =
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
           wallet2 <- newAddress "wallet2"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -725,7 +725,7 @@ permitSpec originate =
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
           wallet2 <- newAddress "wallet2"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -738,7 +738,7 @@ permitSpec originate =
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
           wallet2 <- newAddress "wallet2"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -754,7 +754,7 @@ permitSpec originate =
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -769,7 +769,7 @@ permitSpec originate =
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -781,7 +781,7 @@ permitSpec originate =
           testOwner <- newAddress "testOwner"
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -797,7 +797,7 @@ permitSpec originate =
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -813,7 +813,7 @@ permitSpec originate =
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -827,7 +827,7 @@ permitSpec originate =
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -845,7 +845,7 @@ permitSpec originate =
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
           wallet2 <- newAddress "wallet2"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -865,7 +865,7 @@ permitSpec originate =
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
           wallet2 <- newAddress "wallet2"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -879,7 +879,7 @@ permitSpec originate =
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
           wallet2 <- newAddress "wallet2"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -900,7 +900,7 @@ permitSpec originate =
           testMasterMinter <- newAddress "testMasterMinter"
           wallet1 <- newAddress "wallet1"
           wallet2 <- newAddress "wallet2"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -926,7 +926,7 @@ permitSpec originate =
           wallet1 <- newAddress "wallet1"
           wallet2 <- newAddress "wallet2"
           wallet3 <- newAddress "wallet3"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -948,7 +948,7 @@ permitSpec originate =
           testPauser <- newAddress "testPauser"
           testMasterMinter <- newAddress "testMasterMinter"
           wallet2 <- newAddress "wallet2"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -967,7 +967,7 @@ permitSpec originate =
           testMasterMinter <- newAddress "testMasterMinter"
           wallet2 <- newAddress "wallet2"
           wallet3 <- newAddress "wallet3"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -995,7 +995,7 @@ permitSpec originate =
           wallet2 <- newAddress "wallet2"
           wallet3 <- newAddress "wallet3"
           wallet4 <- newAddress "wallet4"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -1022,7 +1022,7 @@ permitSpec originate =
           wallet2 <- newAddress "wallet2"
           wallet3 <- newAddress "wallet3"
           wallet4 <- newAddress "wallet4"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)
@@ -1045,7 +1045,7 @@ permitSpec originate =
           testMasterMinter <- newAddress "testMasterMinter"
           wallet2 <- newAddress "wallet2"
           wallet3 <- newAddress "wallet3"
-          stablecoinContract <- originate $ defaultOriginationParams
+          stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
             (#masterMinter :! testMasterMinter)

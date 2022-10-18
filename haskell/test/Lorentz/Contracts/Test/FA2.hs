@@ -17,8 +17,8 @@ import Data.Map as M (fromList)
 import Fmt (pretty)
 import Test.Tasty (TestTree, testGroup)
 
-import Lorentz.Contracts.Spec.FA2Interface as FA2 hiding (ParameterC)
-import Lorentz.Contracts.Stablecoin (ParameterC, Storage, sLedgerRPC, sOperatorsRPC)
+import Lorentz.Contracts.Spec.FA2Interface as FA2 hiding (Parameter, ParameterC)
+import Lorentz.Contracts.Stablecoin (Parameter, Storage, sLedgerRPC, sOperatorsRPC)
 import Lorentz.Contracts.Test.Common
 
 import Lorentz.Value
@@ -45,12 +45,8 @@ fa2NotOperator = expectFailedWith [mt|FA2_NOT_OPERATOR|]
  1. Supports a single token type.
  2. Does not have an external permission checking transfer hook.
 -}
-fa2Spec
-  :: forall param.
-     (ParameterC param)
-  => (forall caps m. MonadCleveland caps m => OriginationFn param Storage m)
-  -> [TestTree]
-fa2Spec fa2Originate =
+fa2Spec :: [TestTree]
+fa2Spec =
   [ testGroup
       "Operator Transfer"
       -- Transfer tests or tests for core transfer behavior, as per FA2
@@ -79,7 +75,7 @@ fa2Spec fa2Originate =
                             (#owner :! testOwner)
                             (#pauser :! testPauser)
                             (#masterMinter :! testMasterMinter)
-            fa2contract <- fa2Originate originationParams
+            fa2contract <- originateStablecoin originationParams
             let transfers =
                   constructTransfers
                     [ (#from_ :! wallet1, [(#to_ :! wallet2, #amount :! 10)])
@@ -138,7 +134,7 @@ fa2Spec fa2Originate =
                       (#owner :! testOwner)
                       (#pauser :! testPauser)
                       (#masterMinter :! testMasterMinter)
-            fa2contract <- fa2Originate originationParams
+            fa2contract <- originateStablecoin originationParams
             do
               let transfers =
                     constructSingleTransfer
@@ -168,7 +164,7 @@ fa2Spec fa2Originate =
                             (#owner :! testOwner)
                             (#pauser :! testPauser)
                             (#masterMinter :! testMasterMinter)
-            fa2contract <- fa2Originate originationParams
+            fa2contract <- originateStablecoin originationParams
             do
               let transfers =
                     constructTransfersFromSender
@@ -197,7 +193,7 @@ fa2Spec fa2Originate =
                         (#owner :! testOwner)
                         (#pauser :! testPauser)
                         (#masterMinter :! testMasterMinter)
-            fa2contract <- fa2Originate originationParams
+            fa2contract <- originateStablecoin originationParams
             do
               let transfers =
                     constructSingleTransfer
@@ -228,7 +224,7 @@ fa2Spec fa2Originate =
                             (#owner :! testOwner)
                             (#pauser :! testPauser)
                             (#masterMinter :! testMasterMinter)
-            fa2contract <- fa2Originate originationParams
+            fa2contract <- originateStablecoin originationParams
             do
               let transfers1 =
                     constructSingleTransfer
@@ -267,7 +263,7 @@ fa2Spec fa2Originate =
                             (#owner :! testOwner)
                             (#pauser :! testPauser)
                             (#masterMinter :! testMasterMinter)
-            fa2contract <- fa2Originate originationParams
+            fa2contract <- originateStablecoin originationParams
             do
               let transfers1 =
                     constructSingleTransfer
@@ -299,7 +295,7 @@ fa2Spec fa2Originate =
                       (#owner :! testOwner)
                       (#pauser :! testPauser)
                       (#masterMinter :! testMasterMinter)
-            fa2contract <- fa2Originate originationParams
+            fa2contract <- originateStablecoin originationParams
             do
               let transfers = [TransferItem (toAddress wallet1) []]
 
@@ -321,7 +317,7 @@ fa2Spec fa2Originate =
                       (#owner :! testOwner)
                       (#pauser :! testPauser)
                       (#masterMinter :! testMasterMinter)
-            fa2contract <- fa2Originate originationParams
+            fa2contract <- originateStablecoin originationParams
             do
               let transfers =
                     [ TransferItem
@@ -352,7 +348,7 @@ fa2Spec fa2Originate =
                         (#owner :! testOwner)
                         (#pauser :! testPauser)
                         (#masterMinter :! testMasterMinter)
-            fa2contract <- fa2Originate originationParams
+            fa2contract <- originateStablecoin originationParams
             do
               let transfers =
                     constructSingleTransfer
@@ -377,7 +373,7 @@ fa2Spec fa2Originate =
                       (#owner :! testOwner)
                       (#pauser :! testPauser)
                       (#masterMinter :! testMasterMinter)
-            fa2contract <- fa2Originate originationParams
+            fa2contract <- originateStablecoin originationParams
             do
               let transfers =
                     constructSingleTransfer
@@ -412,7 +408,7 @@ fa2Spec fa2Originate =
                         (#pauser :! testPauser)
                         (#masterMinter :! testMasterMinter)
 
-            stablecoinContract <- fa2Originate originationParams
+            stablecoinContract <- originateStablecoin originationParams
             do
               let transfer1 =
                     constructTransfersFromSender
@@ -444,7 +440,7 @@ fa2Spec fa2Originate =
                         (#pauser :! testPauser)
                         (#masterMinter :! testMasterMinter)
                   )
-            fa2contract <- fa2Originate originationParams
+            fa2contract <- originateStablecoin originationParams
             do
               let transfers =
                     constructSingleTransfer
@@ -471,7 +467,7 @@ fa2Spec fa2Originate =
                       (#masterMinter :! testMasterMinter)
             consumer <- originate "consumer" [] (contractConsumer @[BalanceResponseItem])
 
-            fa2contract <- fa2Originate originationParams
+            fa2contract <- originateStablecoin originationParams
             do
               let transfers =
                     constructSingleTransfer
@@ -500,7 +496,7 @@ fa2Spec fa2Originate =
                       (#owner :! testOwner)
                       (#pauser :! testPauser)
                       (#masterMinter :! testMasterMinter)
-            fa2contract <- fa2Originate originationParams
+            fa2contract <- originateStablecoin originationParams
             do
               let transfers =
                     [ TransferItem
@@ -527,7 +523,7 @@ fa2Spec fa2Originate =
             -- Tests transactions are applied in order
             -- Update balances exactly
             fa2contract <-
-              fa2Originate $
+              originateStablecoin $
                 defaultOriginationParams
                   (#owner :! testOwner)
                   (#pauser :! testPauser)
@@ -557,7 +553,7 @@ fa2Spec fa2Originate =
                       (#pauser :! testPauser)
                       (#masterMinter :! testMasterMinter)
             -- Tests transactions are applied atomically
-            fa2contract <- fa2Originate originationParams
+            fa2contract <- originateStablecoin originationParams
             do
               let transfers =
                     constructTransfersFromSender
@@ -585,7 +581,7 @@ fa2Spec fa2Originate =
                         (#pauser :! testPauser)
                         (#masterMinter :! testMasterMinter)
             -- Tests transactions are applied atomically
-            fa2contract <- fa2Originate originationParams
+            fa2contract <- originateStablecoin originationParams
             do
               let transfers =
                     constructSingleTransfer
@@ -611,7 +607,7 @@ fa2Spec fa2Originate =
                       (#pauser :! testPauser)
                       (#masterMinter :! testMasterMinter)
             -- Tests transactions are applied atomically
-            fa2contract <- fa2Originate originationParams
+            fa2contract <- originateStablecoin originationParams
             do
               let transfers =
                     [ TransferItem
@@ -639,7 +635,7 @@ fa2Spec fa2Originate =
                       (#owner :! testOwner)
                       (#pauser :! testPauser)
                       (#masterMinter :! testMasterMinter)
-            fa2contract <- fa2Originate originationParams
+            fa2contract <- originateStablecoin originationParams
             do
               let transfers =
                     constructSingleTransfer
@@ -681,7 +677,7 @@ fa2Spec fa2Originate =
                               (#owner :! testOwner)
                               (#pauser :! testPauser)
                               (#masterMinter :! testMasterMinter)
-            fa2contract <- fa2Originate originationParams
+            fa2contract <- originateStablecoin originationParams
             do
               consumer <- originate "consumer" [] (contractConsumer @[BalanceResponseItem])
               let balanceRequestItems =
@@ -718,7 +714,7 @@ fa2Spec fa2Originate =
                       (#owner :! testOwner)
                       (#pauser :! testPauser)
                       (#masterMinter :! testMasterMinter)
-            fa2contract <- fa2Originate originationParams
+            fa2contract <- originateStablecoin originationParams
             do
               consumer <- originate "consumer" [] (contractConsumer @[BalanceResponseItem])
               let balanceRequestItem = BalanceRequestItem {briOwner = toAddress wallet1, briTokenId = oneTokenId}
@@ -736,7 +732,7 @@ fa2Spec fa2Originate =
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
                     (#masterMinter :! testMasterMinter)
-            fa2contract <- fa2Originate originationParams
+            fa2contract <- originateStablecoin originationParams
             do
               consumer <- originate "consumer" [] (contractConsumer @[BalanceResponseItem])
               let balanceRequestItem = BalanceRequestItem {briOwner = toAddress wallet1, briTokenId = theTokenId}
@@ -758,7 +754,7 @@ fa2Spec fa2Originate =
                     (#owner :! testOwner)
                     (#pauser :! testPauser)
                     (#masterMinter :! testMasterMinter)
-            fa2contract <- fa2Originate originationParams
+            fa2contract <- originateStablecoin originationParams
             do
               consumer <- originate "consumer" [] (contractConsumer @[BalanceResponseItem])
               let balanceRequestItems = []
@@ -772,7 +768,7 @@ fa2Spec fa2Originate =
   , -- These tests require permission descriptor to be configured that allows for operator transfer.
     -- We have such a configuration set by default in$  defaultOriginationParams.
     let
-      checkForOperator :: MonadCleveland caps m => ContractHandle param Storage () -> ImplicitAddress -> ImplicitAddress -> Bool -> m ()
+      checkForOperator :: MonadCleveland caps m => ContractHandle Parameter Storage () -> ImplicitAddress -> ImplicitAddress -> Bool -> m ()
       checkForOperator stablecoinContract owner operator expectation = do
           storage <- getStorage stablecoinContract
           val <- getBigMapValueMaybe (sOperatorsRPC storage) (toAddress owner, toAddress operator)
@@ -799,7 +795,7 @@ fa2Spec fa2Originate =
                           (#owner :! testOwner)
                           (#pauser :! testPauser)
                           (#masterMinter :! testMasterMinter)
-                fa2contract <- fa2Originate originationParams
+                fa2contract <- originateStablecoin originationParams
                 do
                   withSender wallet1 $ do
                     let operatorParam = OperatorParam {opOwner = toAddress wallet1, opOperator = toAddress wallet2, opTokenId = theTokenId}
@@ -822,7 +818,7 @@ fa2Spec fa2Originate =
                           (#owner :! testOwner)
                           (#pauser :! testPauser)
                           (#masterMinter :! testMasterMinter)
-                fa2contract <- fa2Originate originationParams
+                fa2contract <- originateStablecoin originationParams
                 do
                   withSender wallet1 $ do
                     let operatorParam = OperatorParam {opOwner = toAddress wallet1, opOperator = toAddress commonOperator, opTokenId = theTokenId}
@@ -844,7 +840,7 @@ fa2Spec fa2Originate =
                           (#owner :! testOwner)
                           (#pauser :! testPauser)
                           (#masterMinter :! testMasterMinter)
-                fa2contract <- fa2Originate originationParams
+                fa2contract <- originateStablecoin originationParams
                 do
                   withSender wallet1 $ do
                     let operatorParam = OperatorParam {opOwner = toAddress wallet1, opOperator = toAddress wallet2, opTokenId = theTokenId}
@@ -867,7 +863,7 @@ fa2Spec fa2Originate =
                           (#owner :! testOwner)
                           (#pauser :! testPauser)
                           (#masterMinter :! testMasterMinter)
-                fa2contract <- fa2Originate originationParams
+                fa2contract <- originateStablecoin originationParams
                 do
                   withSender wallet1 $ do
                     let operatorParam = OperatorParam {opOwner = toAddress wallet1, opOperator = toAddress wallet2, opTokenId = theTokenId}
@@ -888,7 +884,7 @@ fa2Spec fa2Originate =
                           (#owner :! testOwner)
                           (#pauser :! testPauser)
                           (#masterMinter :! testMasterMinter)
-                fa2contract <- fa2Originate originationParams
+                fa2contract <- originateStablecoin originationParams
                 do
                   withSender wallet1 $ do
                     let operatorParam =
@@ -911,7 +907,7 @@ fa2Spec fa2Originate =
                           (#owner :! testOwner)
                           (#pauser :! testPauser)
                           (#masterMinter :! testMasterMinter)
-                fa2contract <- fa2Originate originationParams
+                fa2contract <- originateStablecoin originationParams
                 do
                   withSender wallet1 $ do
                     let operatorParam =
@@ -933,7 +929,7 @@ fa2Spec fa2Originate =
                           (#owner :! testOwner)
                           (#pauser :! testPauser)
                           (#masterMinter :! testMasterMinter)
-                fa2contract <- fa2Originate originationParams
+                fa2contract <- originateStablecoin originationParams
                 do
                   withSender testPauser $ transfer fa2contract $ calling (ep @"Pause") ()
 
@@ -958,7 +954,7 @@ fa2Spec fa2Originate =
                           (#owner :! testOwner)
                           (#pauser :! testPauser)
                           (#masterMinter :! testMasterMinter)
-                fa2contract <- fa2Originate originationParams
+                fa2contract <- originateStablecoin originationParams
                 do
                   withSender testPauser $ transfer fa2contract $ calling (ep @"Pause") ()
 
@@ -987,7 +983,7 @@ fa2Spec fa2Originate =
                       (#owner :! testOwner)
                       (#pauser :! testPauser)
                       (#masterMinter :! testMasterMinter)
-            stablecoinContract <- fa2Originate originationParams
+            stablecoinContract <- originateStablecoin originationParams
             do
               withSender wallet2 $ do
                 let operatorParam = OperatorParam {opOwner = toAddress wallet1, opOperator = toAddress wallet2, opTokenId = theTokenId}
@@ -1009,7 +1005,7 @@ fa2Spec fa2Originate =
                       (#owner :! testOwner)
                       (#pauser :! testPauser)
                       (#masterMinter :! testMasterMinter)
-            stablecoinContract <- fa2Originate originationParams
+            stablecoinContract <- originateStablecoin originationParams
             do
               withSender wallet2 $ do
                 let operatorParam = OperatorParam {opOwner = toAddress wallet1, opOperator = toAddress commonOperator, opTokenId = theTokenId}
@@ -1031,7 +1027,7 @@ fa2Spec fa2Originate =
                       (#owner :! testOwner)
                       (#pauser :! testPauser)
                       (#masterMinter :! testMasterMinter)
-            stablecoinContract <- fa2Originate originationParams
+            stablecoinContract <- originateStablecoin originationParams
             do
               withSender commonOperator $ do
                 let operatorParam = OperatorParam {opOwner = toAddress wallet1, opOperator = toAddress wallet2, opTokenId = theTokenId}
@@ -1052,7 +1048,7 @@ fa2Spec fa2Originate =
                       (#owner :! testOwner)
                       (#pauser :! testPauser)
                       (#masterMinter :! testMasterMinter)
-            stablecoinContract <- fa2Originate originationParams
+            stablecoinContract <- originateStablecoin originationParams
             do
               withSender commonOperator $ do
                 let operatorParam = OperatorParam {opOwner = toAddress wallet1, opOperator = toAddress commonOperator, opTokenId = theTokenId}
@@ -1080,7 +1076,7 @@ fa2Spec fa2Originate =
                       (#owner :! testOwner)
                       (#pauser :! testPauser)
                       (#masterMinter :! testMasterMinter)
-            fa2contract <- fa2Originate originationParams
+            fa2contract <- originateStablecoin originationParams
             do
               let transfers =
                     constructSingleTransfer
@@ -1106,7 +1102,7 @@ fa2Spec fa2Originate =
                       (#owner :! testOwner)
                       (#pauser :! testPauser)
                       (#masterMinter :! testMasterMinter)
-            fa2contract <- fa2Originate originationParams
+            fa2contract <- originateStablecoin originationParams
             do
               let transfers =
                     constructSingleTransfer
@@ -1140,7 +1136,7 @@ fa2Spec fa2Originate =
                             (#owner :! testOwner)
                             (#pauser :! testPauser)
                             (#masterMinter :! testMasterMinter)
-            fa2contract <- fa2Originate originationParams
+            fa2contract <- originateStablecoin originationParams
             do
               callOffChainView @Natural fa2contract "get_balance" (ViewParam (toAddress wallet1, 0 :: Natural)) @@== 10
       ]
@@ -1165,7 +1161,7 @@ fa2Spec fa2Originate =
                             (#owner :! testOwner)
                             (#pauser :! testPauser)
                             (#masterMinter :! testMasterMinter)
-            fa2contract <- fa2Originate originationParams
+            fa2contract <- originateStablecoin originationParams
             do
               callOffChainView @Natural fa2contract "total_supply" (ViewParam (0 :: Natural)) @@== 35
       ]
@@ -1190,7 +1186,7 @@ fa2Spec fa2Originate =
                             (#owner :! testOwner)
                             (#pauser :! testPauser)
                             (#masterMinter :! testMasterMinter)
-            fa2contract <- fa2Originate originationParams
+            fa2contract <- originateStablecoin originationParams
             do
               callOffChainView @[Natural] fa2contract "all_tokens" NoParam @@== [0]
       ]
@@ -1215,7 +1211,7 @@ fa2Spec fa2Originate =
                             (#owner :! testOwner)
                             (#pauser :! testPauser)
                             (#masterMinter :! testMasterMinter)
-            fa2contract <- fa2Originate originationParams
+            fa2contract <- originateStablecoin originationParams
             do
               callOffChainView @Bool fa2contract "is_operator" (ViewParam (toAddress wallet1, (toAddress commonOperator, 0 :: Natural))) @@== True
       ]
@@ -1240,7 +1236,7 @@ fa2Spec fa2Originate =
                             (#owner :! testOwner)
                             (#pauser :! testPauser)
                             (#masterMinter :! testMasterMinter)
-            fa2contract <- fa2Originate originationParams
+            fa2contract <- originateStablecoin originationParams
             do
               Showing <$> (callOffChainView @(Natural, TokenMetadata) fa2contract "token_metadata" (ViewParam (0 :: Natural)))
                 @@== Showing

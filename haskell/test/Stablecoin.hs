@@ -12,24 +12,14 @@ import Hedgehog (withTests)
 import Test.Tasty (TestTree)
 import Test.Tasty.Hedgehog (testProperty)
 
-import Lorentz.Contracts.Stablecoin as SC
-import Lorentz.Contracts.Test.Common
 import Lorentz.Contracts.Test.FA2
 import Lorentz.Contracts.Test.Management
 import Lorentz.Contracts.Test.Permit (permitSpec)
 import SMT
-import Test.Cleveland
-
-origination :: MonadCleveland caps m => OriginationFn SC.Parameter SC.Storage m
-origination originationParams = do
-  originate
-    "Stablecoin contract"
-    (mkInitialStorage originationParams)
-    stablecoinContract
 
 test_FA2 :: [TestTree]
 test_FA2 =
-  fa2Spec origination
+  fa2Spec
 
 test_SMT :: [TestTree]
 test_SMT =
@@ -39,8 +29,8 @@ test_SMT =
 
 test_Management :: [TestTree]
 test_Management =
-  managementSpec origination
+  managementSpec
 
 test_Permit :: [TestTree]
 test_Permit =
-  permitSpec origination
+  permitSpec

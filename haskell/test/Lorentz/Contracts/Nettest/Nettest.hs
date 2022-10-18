@@ -123,8 +123,7 @@ scNettestScenario originateTransferlist transferlistType = scenario do
           }
 
   comment "Originating stablecoin contract"
-  sc <- originate "nettest.Stablecoin"
-    (mkInitialStorage originationParams) stablecoinContract
+  sc <- originateStablecoin originationParams
 
   comment "Originating transferlist contract"
 
@@ -373,9 +372,7 @@ scNettestScenario originateTransferlist transferlistType = scenario do
       comment $ "Adding minters to limit"
 
       -- We originate a new contract to make sure the minters list is empty
-      sc' <- do
-        let str = mkInitialStorage (originationParams { opMinters = mempty })
-        originate "nettest.Stablecoin_for_minter_test" str stablecoinContract
+      sc' <- originateStablecoin $ originationParams { opMinters = mempty }
 
       let
         addMinter' ma = configureMinter' sc' nettestMasterMinter ma Nothing 100
