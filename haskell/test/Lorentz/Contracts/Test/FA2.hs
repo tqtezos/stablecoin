@@ -5,10 +5,7 @@
  https://gitlab.com/tezos/tzip/-/blob/131b46dd89675bf030489ded9b0b3f5834b70eb6/proposals/tzip-12/tzip-12.md
 -}
 module Lorentz.Contracts.Test.FA2
-  ( OriginationParams (..)
-  , addAccount
-  , defaultOriginationParams
-  , fa2Spec
+  ( test_FA2
   , fa2NotOperator
   , fa2NotOwner
   ) where
@@ -45,8 +42,8 @@ fa2NotOperator = expectFailedWith [mt|FA2_NOT_OPERATOR|]
  1. Supports a single token type.
  2. Does not have an external permission checking transfer hook.
 -}
-fa2Spec :: [TestTree]
-fa2Spec =
+test_FA2 :: [TestTree]
+test_FA2 =
   [ testGroup
       "Operator Transfer"
       -- Transfer tests or tests for core transfer behavior, as per FA2

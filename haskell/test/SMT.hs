@@ -3,7 +3,7 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module SMT
-  ( smtProperty
+  ( test_SMT
   ) where
 
 import Data.Map qualified as Map
@@ -11,6 +11,8 @@ import Fmt
 import Hedgehog hiding (failure)
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
+import Test.Tasty (TestTree)
+import Test.Tasty.Hedgehog (testProperty)
 import Text.Show qualified
 
 import Hedgehog.Gen.Tezos.Address (genKeyAddress)
@@ -30,6 +32,12 @@ import Test.Cleveland
 import Lorentz.Contracts.Spec.FA2Interface qualified as FA2
 import Lorentz.Contracts.Stablecoin
 import Lorentz.Contracts.Test.Common
+
+test_SMT :: [TestTree]
+test_SMT =
+  [ testProperty "have the same state as the model after running the inputs"
+    (withTests 20 $ smtProperty)
+  ]
 
 -- Some implementation notes:
 --

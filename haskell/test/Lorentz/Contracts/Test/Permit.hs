@@ -4,7 +4,7 @@
 
 -- | Tests for permit functionality of stablecoin smart-contract
 module Lorentz.Contracts.Test.Permit
-  ( permitSpec
+  ( test_Permit
   ) where
 
 import Lorentz (Packed(..), lPackValue, mt, toTAddress)
@@ -81,8 +81,8 @@ assertPermitCount contractAddr expectedCount = do
         <> " permits left in the storage, but there were "
         <> show count
 
-permitSpec :: [TestTree]
-permitSpec =
+test_Permit :: [TestTree]
+test_Permit =
   [ testGroup
       "Permits"
       [ testScenario "The counter used to sign the permit must match the contract's counter" $ scenario do

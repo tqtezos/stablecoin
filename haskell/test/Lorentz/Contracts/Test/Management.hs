@@ -3,7 +3,7 @@
 
 -- | Tests for management entrypoints of stablecoin smart-contract
 module Lorentz.Contracts.Test.Management
-  ( managementSpec
+  ( test_Management
   , mgmNotContractOwner
   , mgmNotPendingOwner
   , mgmNotPauser
@@ -62,8 +62,8 @@ mgmAllowanceExceeded = expectFailedWith [mt|ALLOWANCE_EXCEEDED|]
 mgmBadTransferlist = expectFailedWith [mt|BAD_TRANSFERLIST|]
 mgmMinterLimitExceeded = expectFailedWith [mt|MINTER_LIMIT_REACHED|]
 
-managementSpec :: [TestTree]
-managementSpec =
+test_Management :: [TestTree]
+test_Management =
   [ testGroup "Contract meta" $
       [ testScenario "fails if contract receives non-zero amount of xtz" $
           scenario do
