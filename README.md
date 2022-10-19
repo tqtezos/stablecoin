@@ -69,11 +69,14 @@ To measure and collect these numbers:
     ```
     export STABLECOIN_TESTNET=https://jakarta.testnet.tezos.serokell.team/
     ```
-1. Use a [testnet faucet](https://teztnets.xyz/) to create a test account with enough funds.
-1. Activate the account:
+1. Create a test account and grab its hash:
     ```
-    tezos-client -E $STABLECOIN_TESTNET activate account stablecoin-moneybag with <activation_file.json>
+    $ tezos-client gen keys stablecoin-moneybag --force
+    $ tezos-client -E $STABLECOIN_TESTNET show address stablecoin-moneybag
+    Hash: tz1Shin6pHETKn7EroLGyG2afTenW2zT2K6w
+    Public Key: edpktpFQUaRZRHPMBgk66W4jQoYK2hzZ95o9ZJrPmH38zqSzfH5Zor
     ```
+1. Use a [testnet faucet](https://teztnets.xyz/) to add funds to your account.
 1. Run:
     ```bash
     cd haskell
