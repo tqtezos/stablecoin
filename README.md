@@ -50,24 +50,24 @@ Please refer to the [`haskell/`](/haskell/) directory for details.
 ## Gas / Transaction costs
 
 The tables below show the gas and transaction costs of both versions (FA1.2 and FA2) of
-the stablecoin contract [v1.7.3](https://github.com/tqtezos/stablecoin/releases/tag/v1.7.3) in jakartanet.
+the stablecoin contract [v1.7.4](https://github.com/tqtezos/stablecoin/releases/tag/v1.7.4) in kathmandunet.
 
-### jakartanet
+### kathmandunet
 
-* [FA1.2 operations](https://better-call.dev/jakartanet/KT1ASuzkJzZ2pCqYVKeV48p5yxunynrjmdGE/operations)
-* [FA2 operations](https://better-call.dev/jakartanet/KT19mksNfM9XjWqapR2iMywM1ic5kbVQwpjB/operations)
+* [FA1.2 operations](https://better-call.dev/kathmandunet/KT19nHidwLXgGCEPgm2ZVMsmgzowsqEGFyKG/operations)
+* [FA2 operations](https://better-call.dev/kathmandunet/KT1RxTmLHfCRfvCP7WFSSCftxLNQNfKPqDTo/operations)
 
 |             | FA1.2 Gas cost | FA2 Gas cost | FA1.2 Tx cost | FA2 Tx cost |
 | ----------- | -------------- | ------------ | ------------- | ----------- |
-| origination | 5743           | 5809         | 2.381299 ꜩ    | 2.414438 ꜩ  |
-| transfer    | 6659           | 7003         | 0.001001 ꜩ    | 0.001053 ꜩ  |
+| origination | 7,131          | 7,052        | 2.381438 ꜩ    | 2.414563 ꜩ  |
+| transfer    | 8,047          | 8,246        | 0.00114 ꜩ     | 0.001177 ꜩ  |
 
 ### Measuring
 
 To measure and collect these numbers:
 1. Pick a testnet:
     ```
-    export STABLECOIN_TESTNET=https://jakarta.testnet.tezos.serokell.team/
+    export STABLECOIN_TESTNET=https://kathmandu.testnet.tezos.serokell.team/
     ```
 1. Create a test account and grab its hash:
     ```
