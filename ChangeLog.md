@@ -9,6 +9,8 @@ SPDX-License-Identifier: MIT
 <!-- Don't forget to update the gas/transaction costs tables in the
 README when a new version is released. -->
 
+## 1.7.4
+
 * [#198](https://github.com/tqtezos/stablecoin/pull/198)
   * Add support for the kathmandu protocol.
 
