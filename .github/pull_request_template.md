@@ -36,12 +36,26 @@ you must be able to justify that.
 
 - Documentation
   - [ ] I checked whether I should update the docs and did so if necessary:
-    - [README](../tree/master/README.md)
+    - [README](https://github.com/tqtezos/stablecoin/tree/master/README.md)
     - Haddock
-  - [ ] I updated [changelog](../tree/master/ChangeLog.md) unless I am sure my changes are
+  - [ ] I updated [changelog](https://github.com/tqtezos/stablecoin/tree/master/ChangeLog.md) unless I am sure my changes are
         not essential.
 
 #### Stylistic guide (mandatory)
 
 - [ ] My commits comply with [the policy used in Serokell](https://www.notion.so/serokell/Where-and-how-to-commit-your-work-58f8973a4b3142c8abbd2e6fd5b3a08e).
-- [ ] My code complies with the [style guide](../tree/master/docs/code-style.md).
+- [ ] My code complies with the [style guide](https://github.com/tqtezos/stablecoin/tree/master/docs/code-style.md).
+
+#### ✓ Release Checklist
+
+- [ ] I updated the [Gas / Transaction costs](https://github.com/tqtezos/stablecoin/tree/master/README.md#gas--transaction-costs) table in the README.
+- [ ] I updated the version number in `package.yaml`.
+- [ ] I updated the [changelog](https://github.com/tqtezos/stablecoin/tree/master/ChangeLog.md) and moved everything
+      under the "Unreleased" section to a new section for this release version.
+- [ ] (After merging) I created a new entry in the [releases](https://github.com/tqtezos/stablecoin/releases) page,
+      with a summary of all user-facing changes.
+    * I made sure a tag was created using the format `vX.Y.Z`
+    * I attached the following artifacts from [buildkite](https://buildkite.com/serokell/stablecoin)
+      * `stablecoin-client`
+      * `stablecoin.fa1.2.tz`
+      * `stablecoin.tz`

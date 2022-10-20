@@ -13,7 +13,6 @@ module Lorentz.Contracts.Stablecoin.Metadata
 
 import Data.Aeson qualified as J
 import Data.ByteString.Lazy qualified as BSL
-import Data.Map qualified as Map
 import Data.Version (showVersion)
 import Fmt (pretty)
 import Text.Megaparsec qualified as P
@@ -27,7 +26,7 @@ import Lorentz.Contracts.Spec.TZIP16Interface qualified as TZ
 import Morley.Metadata
   (ViewCode(..), compileViewCodeTH, mkMichelsonStorageView, unsafeCompileViewCode)
 import Morley.Micheline (ToExpression(toExpression))
-import Morley.Tezos.Address (formatAddress, parseAddress)
+import Morley.Tezos.Address (ContractAddress, formatAddress, parseKindedAddress)
 
 import Lorentz.Contracts.Stablecoin.Types
 import Paths_stablecoin (version)
@@ -67,7 +66,7 @@ metadataMap mdata = mkBigMap $
 -- Result after parsing the metadata uri from a TZIP-16 metadata bigmap.
 data ParsedMetadataUri
   = InCurrentContractUnderKey Text
-  | InRemoteContractUnderKey Address Text
+  | InRemoteContractUnderKey ContractAddress Text
   | RawUri Text
   deriving stock (Eq, Show)
 
@@ -85,7 +84,7 @@ remoteContractUriParser = do
   _ <- string' (TZ.tezosStorageScheme <> "://")
   addr <- P.manyTill P.anySingle (string' "/")
   key <- P.many P.anySingle
-  case parseAddress (toText addr) of
+  case parseKindedAddress (toText addr) of
     Right paddr -> pure $ InRemoteContractUnderKey paddr (toText key)
     Left err -> fail $ pretty err
 
@@ -100,7 +99,7 @@ currentContractUriParser = do
 
 data MetadataUri metadata
   = CurrentContract metadata Bool -- ^ Metadata and a flag to denote if URI should be included
-  | RemoteContract Address
+  | RemoteContract ContractAddress
   | Raw Text
 
 -- | Make the TZIP-16 metadata. We accept a @Maybe@ @FA2.TokenMetadata@
@@ -269,7 +268,7 @@ mkTokenMetadataView md =
     , vPure = Just True
     , vImplementations = one $
         VIMichelsonStorageView $
-          mkMichelsonStorageView @Storage @(Natural, Map.Map MText ByteString) Nothing [] vc
+          mkMichelsonStorageView @Storage @(Natural, FA2.TokenMetadata) Nothing [] vc
     }
 
 getDefaultExpiryView :: TZ.View (ToT Storage)

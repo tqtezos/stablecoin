@@ -12,18 +12,18 @@ import Fmt (pretty)
 import Morley.Client
   (MorleyClientM, TezosClientError(UnknownAddressAlias), mkMorleyClientEnv, rememberContract,
   runMorleyClientM)
-import Morley.Client.TezosClient (resolveAddress)
 import Morley.Michelson.Text (mt)
-import Morley.Tezos.Address.Alias (AddressOrAlias(AddressAlias), Alias(..))
+import Morley.Tezos.Address.Alias (Alias(..), ContractAlias)
 import Morley.Util.Named (pattern (:!))
 import Options.Applicative qualified as Opt
 
-import Stablecoin.Client.Contract (InitialStorageData(..))
+import Stablecoin.Client.Contract (InitialStorageOptions(..))
 import Stablecoin.Client.Impl
   (AddressAndAlias(..), acceptOwnership, burn, changeMasterMinter, changePauser, configureMinter,
   deploy, getBalance, getBalanceOf, getContractOwner, getMasterMinter, getMintingAllowance,
   getPaused, getPauser, getPendingContractOwner, getTokenMetadata, getTransferlist, isOperator,
   mint, pause, removeMinter, setTransferlist, transfer, transferOwnership, unpause, updateOperators)
+import Stablecoin.Client.L1AddressOrAlias (KindedAddressOrAlias(..), resolveAddress)
 import Stablecoin.Client.Parser
   (BurnOptions(..), ChangeMasterMinterOptions(..), ChangePauserOptions(..), ClientArgs(..),
   ClientArgsRaw(..), ConfigureMinterOptions(..), DeployContractOptions(..), GetBalanceOfOptions(..),
@@ -42,19 +42,19 @@ mainProgram :: ClientArgs -> MorleyClientM ()
 mainProgram (ClientArgs _ globalOptions cmd) = do
   case cmd of
     CmdDeployContract DeployContractOptions {..} -> do
-      let contractAlias = Alias "stablecoin"
+      let contractAlias = ContractAlias "stablecoin"
       aliasAlreadyExists <- checkIfAliasExists contractAlias
 
-      (opHash, contractAddr, mCMetadataAddr) <- deploy user contractAlias InitialStorageData
-        { isdMasterMinter = dcoMasterMinter
-        , isdContractOwner = dcoContractOwner
-        , isdPauser = dcoPauser
-        , isdTransferlist = dcoTransferlist
-        , isdTokenName = dcoTokenName
-        , isdTokenSymbol = dcoTokenSymbol
-        , isdTokenDecimals = dcoTokenDecimals
-        , isdDefaultExpiry = dcoDefaultExpiry
-        , isdContractMetadataStorage = dcoContractMetadata
+      (opHash, contractAddr, mCMetadataAddr) <- deploy user contractAlias InitialStorageOptions
+        { isoMasterMinter = dcoMasterMinter
+        , isoContractOwner = dcoContractOwner
+        , isoPauser = dcoPauser
+        , isoTransferlist = dcoTransferlist
+        , isoTokenName = dcoTokenName
+        , isoTokenSymbol = dcoTokenSymbol
+        , isoTokenDecimals = dcoTokenDecimals
+        , isoDefaultExpiry = dcoDefaultExpiry
+        , isoContractMetadataStorage = dcoContractMetadata
         }
 
       putTextLn "Contract was successfully deployed."
@@ -176,9 +176,9 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
       whenJust aliasMb $ \alias ->
         putTextLn $ prefix <> " alias: " <> pretty alias
 
-    checkIfAliasExists :: Alias -> MorleyClientM Bool
+    checkIfAliasExists :: ContractAlias -> MorleyClientM Bool
     checkIfAliasExists alias = do
-      (resolveAddress (AddressAlias alias) $> True) `catch` \case
+      (resolveAddress (KAOAAlias alias) $> True) `catch` \case
         UnknownAddressAlias _ -> pure False
         err -> throwM err
 

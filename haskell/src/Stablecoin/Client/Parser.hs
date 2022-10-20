@@ -28,7 +28,7 @@ module Stablecoin.Client.Parser
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Version (showVersion)
 import Morley.Client (MorleyClientConfig, clientConfigParser)
-import Morley.Tezos.Address.Alias (AddressOrAlias(..), Alias(..))
+import Morley.Tezos.Address.Alias (Alias(..))
 import Morley.Util.CLI (mkCLOptionParser)
 import Morley.Util.Named (pattern (:!), (:!))
 import Options.Applicative qualified as Opt
@@ -36,7 +36,9 @@ import Options.Applicative.Help.Pretty (Doc, linebreak)
 import Paths_stablecoin (version)
 
 import Lorentz.Contracts.Stablecoin (Expiry, UpdateOperatorData(..))
-import Morley.Client.Parser (addressOrAliasOption)
+import Stablecoin.Client.L1AddressOrAlias
+  (ContractAddressOrAlias, ImplicitAddressOrAlias, KindedAddressOrAlias(..), L1AddressOrAlias,
+  contractAddressOrAliasOption, implicitAddressOrAliasOption, l1AddressOrAliasOption)
 
 data ClientArgs = ClientArgs
   { caMorleyClientConfig :: MorleyClientConfig
@@ -46,8 +48,8 @@ data ClientArgs = ClientArgs
   deriving stock Show
 
 data GlobalOptions = GlobalOptions
-  { goUser :: AddressOrAlias
-  , goContract :: AddressOrAlias
+  { goUser :: ImplicitAddressOrAlias
+  , goContract :: ContractAddressOrAlias
   }
   deriving stock Show
 
@@ -83,10 +85,10 @@ data ClientArgsRaw
   deriving stock Show
 
 data DeployContractOptions = DeployContractOptions
-  { dcoMasterMinter :: AddressOrAlias
-  , dcoContractOwner :: AddressOrAlias
-  , dcoPauser :: AddressOrAlias
-  , dcoTransferlist :: Maybe AddressOrAlias
+  { dcoMasterMinter :: L1AddressOrAlias
+  , dcoContractOwner :: L1AddressOrAlias
+  , dcoPauser :: L1AddressOrAlias
+  , dcoTransferlist :: Maybe ContractAddressOrAlias
   , dcoTokenSymbol :: Text
   , dcoTokenName :: Text
   , dcoTokenDecimals :: Natural
@@ -97,14 +99,14 @@ data DeployContractOptions = DeployContractOptions
   deriving stock Show
 
 data TransferOptions = TransferOptions
-  { toFrom :: AddressOrAlias
-  , toTo :: AddressOrAlias
+  { toFrom :: L1AddressOrAlias
+  , toTo :: L1AddressOrAlias
   , toAmount :: Natural
   }
   deriving stock Show
 
 data GetBalanceOfOptions = GetBalanceOfOptions
-  { gbooOwner :: AddressOrAlias
+  { gbooOwner :: L1AddressOrAlias
   }
   deriving stock Show
 
@@ -114,25 +116,25 @@ data UpdateOperatorsOptions = UpdateOperatorsOptions
   deriving stock Show
 
 data IsOperatorOptions = IsOperatorOptions
-  { iooOwner :: AddressOrAlias
-  , iooOperator :: AddressOrAlias
+  { iooOwner :: L1AddressOrAlias
+  , iooOperator :: L1AddressOrAlias
   }
   deriving stock Show
 
 data ConfigureMinterOptions = ConfigureMinterOptions
-  { cmoMinter :: AddressOrAlias
+  { cmoMinter :: L1AddressOrAlias
   , cmoCurrentMintingAllowance :: Maybe Natural
   , cmoNewMintingAllowance :: Natural
   }
   deriving stock Show
 
 data RemoveMinterOptions = RemoveMinterOptions
-  { rmoMinter :: AddressOrAlias
+  { rmoMinter :: L1AddressOrAlias
   }
   deriving stock Show
 
 data MintOptions = MintOptions
-  { moTo :: AddressOrAlias
+  { moTo :: L1AddressOrAlias
   , moAmount :: Natural
   }
   deriving stock Show
@@ -143,27 +145,27 @@ data BurnOptions = BurnOptions
   deriving stock Show
 
 data TransferOwnershipOptions = TransferOwnershipOptions
-  { tooTo :: AddressOrAlias
+  { tooTo :: L1AddressOrAlias
   }
   deriving stock Show
 
 data ChangeMasterMinterOptions = ChangeMasterMinterOptions
-  { cmmoTo :: AddressOrAlias
+  { cmmoTo :: L1AddressOrAlias
   }
   deriving stock Show
 
 data ChangePauserOptions = ChangePauserOptions
-  { cpoTo :: AddressOrAlias
+  { cpoTo :: L1AddressOrAlias
   }
   deriving stock Show
 
 data SetTransferlistOptions = SetTransferlistOptions
-  { ssoTransferlist :: Maybe AddressOrAlias
+  { ssoTransferlist :: Maybe ContractAddressOrAlias
   }
   deriving stock Show
 
 data GetMintingAllowanceOptions = GetMintingAllowanceOptions
-  { gmaoMinter :: AddressOrAlias
+  { gmaoMinter :: L1AddressOrAlias
   }
   deriving stock Show
 
@@ -187,12 +189,12 @@ clientArgsParser =
 globalOptionsParser :: Opt.Parser GlobalOptions
 globalOptionsParser =
   GlobalOptions
-    <$> addressOrAliasOption
-      (Just $ AddressAlias (Alias "stablecoin-user"))
+    <$> implicitAddressOrAliasOption
+      (Just $ KAOAAlias (ImplicitAlias "stablecoin-user"))
       (#name :! "user")
       (#help :! "User to send operations as")
-    <*> addressOrAliasOption
-      (Just $ AddressAlias (Alias "stablecoin"))
+    <*> contractAddressOrAliasOption
+      (Just $ KAOAAlias (ContractAlias "stablecoin"))
       (#name :! "contract")
       (#help :! "The stablecoin contract address/alias to use")
 
@@ -235,22 +237,22 @@ clientArgsRawParser = Opt.subparser $
     deployContractOptions :: Opt.Parser DeployContractOptions
     deployContractOptions = do
       dcoMasterMinter <-
-        addressOrAliasOption
+        l1AddressOrAliasOption
           Nothing
           (#name :! "master-minter")
           (#help :! "Address or alias of the 'Master Minter' role")
       dcoContractOwner <-
-        addressOrAliasOption
+        l1AddressOrAliasOption
           Nothing
           (#name :! "contract-owner")
           (#help :! "Address or alias of the 'Contract Owner' role")
       dcoPauser <-
-        addressOrAliasOption
+        l1AddressOrAliasOption
           Nothing
           (#name :! "pauser")
           (#help :! "Address or alias of the 'Pauser' role")
       dcoTransferlist <-
-        optional $ addressOrAliasOption
+        optional $ contractAddressOrAliasOption
           Nothing
           (#name :! "transferlist")
           (#help :! "Address or alias of the Transferlist contract")
@@ -332,12 +334,12 @@ clientArgsRawParser = Opt.subparser $
     transferOptions :: Opt.Parser TransferOptions
     transferOptions = do
       toFrom <-
-        addressOrAliasOption
+        l1AddressOrAliasOption
           Nothing
           (#name :! "from")
           (#help :! "Address of the account to take tokens from")
       toTo <-
-        addressOrAliasOption
+        l1AddressOrAliasOption
           Nothing
           (#name :! "to")
           (#help :! "Address of the account to given tokens to")
@@ -358,7 +360,7 @@ clientArgsRawParser = Opt.subparser $
     getBalanceOfOptions :: Opt.Parser GetBalanceOfOptions
     getBalanceOfOptions = do
       gbooOwner <-
-        addressOrAliasOption
+        l1AddressOrAliasOption
           Nothing
           (#name :! "owner")
           (#help :! "Address of the account whose balance will be retrieved.")
@@ -375,13 +377,13 @@ clientArgsRawParser = Opt.subparser $
     updateOperatorsOptions = do
       uooUpdateOperators <-
         nonEmptyParser $
-          (AddOperator <$> addressOrAliasOption
+          (AddOperator <$> l1AddressOrAliasOption
             Nothing
             (#name :! "add")
             (#help :! ("Address of the operator to add to the account indicated by '--user'. " <>
                       "This option can be repeated many times.")))
           <|>
-          (RemoveOperator <$> addressOrAliasOption
+          (RemoveOperator <$> l1AddressOrAliasOption
             Nothing
             (#name :! "remove")
             (#help :! ("Address of the operator to remove from the account indicated by '--user'. " <>
@@ -398,12 +400,12 @@ clientArgsRawParser = Opt.subparser $
     isOperatorOptions :: Opt.Parser IsOperatorOptions
     isOperatorOptions = do
       iooOwner <-
-        addressOrAliasOption
+        l1AddressOrAliasOption
           Nothing
           (#name :! "owner")
           (#help :! "Address of the account whose operators will be checked")
       iooOperator <-
-        addressOrAliasOption
+        l1AddressOrAliasOption
           Nothing
           (#name :! "operator")
           (#help :! "Address of the potential operator")
@@ -436,7 +438,7 @@ clientArgsRawParser = Opt.subparser $
     configureMinterOptions :: Opt.Parser ConfigureMinterOptions
     configureMinterOptions = do
       cmoMinter <-
-        addressOrAliasOption
+        l1AddressOrAliasOption
           Nothing
           (#name :! "minter")
           (#help :! "Address or alias of the minter to add")
@@ -464,7 +466,7 @@ clientArgsRawParser = Opt.subparser $
     removeMinterOptions :: Opt.Parser RemoveMinterOptions
     removeMinterOptions = do
       rmoMinter <-
-        addressOrAliasOption
+        l1AddressOrAliasOption
           Nothing
           (#name :! "minter")
           (#help :! "Address or alias of the minter to remove")
@@ -481,7 +483,7 @@ clientArgsRawParser = Opt.subparser $
     mintOptions :: Opt.Parser MintOptions
     mintOptions = do
       moTo <-
-        addressOrAliasOption
+        l1AddressOrAliasOption
           Nothing
           (#name :! "to")
           (#help :! "Address or alias to which the tokens will be transferred")
@@ -530,7 +532,7 @@ clientArgsRawParser = Opt.subparser $
     transferOwnershipOptions :: Opt.Parser TransferOwnershipOptions
     transferOwnershipOptions = do
       tooTo <-
-        addressOrAliasOption
+        l1AddressOrAliasOption
           Nothing
           (#name :! "to")
           (#help :! "Address or alias to which ownership will be transferred")
@@ -553,7 +555,7 @@ clientArgsRawParser = Opt.subparser $
     changeMasterMinterOptions :: Opt.Parser ChangeMasterMinterOptions
     changeMasterMinterOptions = do
       cmmoTo <-
-        addressOrAliasOption
+        l1AddressOrAliasOption
           Nothing
           (#name :! "to")
           (#help :! "Address or alias to which the 'master minter' role will be transferred")
@@ -569,7 +571,7 @@ clientArgsRawParser = Opt.subparser $
     changePauserOptions :: Opt.Parser ChangePauserOptions
     changePauserOptions = do
       cpoTo <-
-        addressOrAliasOption
+        l1AddressOrAliasOption
           Nothing
           (#name :! "to")
           (#help :! "Address or alias to which the 'pauser' role will be transferred")
@@ -585,7 +587,7 @@ clientArgsRawParser = Opt.subparser $
     setTransferlistOptions :: Opt.Parser SetTransferlistOptions
     setTransferlistOptions = do
       ssoTransferlist <-
-        optional $ addressOrAliasOption
+        optional $ contractAddressOrAliasOption
           Nothing
           (#name :! "transferlist")
           (#help :! "Address or alias of the new transferlist")
@@ -650,7 +652,7 @@ clientArgsRawParser = Opt.subparser $
     getMintingAllowanceOptions :: Opt.Parser GetMintingAllowanceOptions
     getMintingAllowanceOptions = do
       gmaoMinter <-
-        addressOrAliasOption
+        l1AddressOrAliasOption
           Nothing
           (#name :! "minter")
           (#help :! "Address or alias of the minter whose allowance will be retrieved")

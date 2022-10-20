@@ -10,7 +10,7 @@ module Lorentz.Contracts.Test.FA1_2
 
 import Test.Tasty (TestTree)
 
-import Lorentz (Address, mkBigMap)
+import Lorentz (mkBigMap)
 import Lorentz.Contracts.Test.ApprovableLedger (AlSettings(..), approvableLedgerGenericTest)
 import Test.Cleveland
 
@@ -20,20 +20,20 @@ import Lorentz.Contracts.StablecoinFA1_2
 
 alOriginationFunction
   :: MonadCleveland caps m
-  => Address -> AlSettings -> m (ContractHandle Parameter Storage ())
+  => ImplicitAddress -> AlSettings -> m (ContractHandle Parameter Storage ())
 alOriginationFunction adminAddr (AlInitAddresses addrBalances) = do
   let storage = Storage
         { sDefaultExpiry = 1000
-        , sLedger = mkBigMap $ filter ((/= 0) . snd) addrBalances
+        , sLedger = mkBigMap $ fmap (first toAddress) $ filter ((/= 0) . snd) addrBalances
         , sMintingAllowances = mempty
         , sSpenderAllowances = mempty
         , sPaused = False
         , sPermitCounter = 0
         , sPermits = mempty
         , sRoles = Roles
-            { rMasterMinter = adminAddr
-            , rOwner = adminAddr
-            , rPauser = adminAddr
+            { rMasterMinter = toAddress adminAddr
+            , rOwner = toAddress adminAddr
+            , rPauser = toAddress adminAddr
             , rPendingOwner = Nothing
             }
         , sTransferlistContract = Nothing
@@ -41,7 +41,7 @@ alOriginationFunction adminAddr (AlInitAddresses addrBalances) = do
         , sMetadata = metadataMap (CurrentContract metadataJSON True)
         }
 
-  originateSimple "fa1.2" storage stablecoinFA1_2Contract
+  originate "fa1.2" storage stablecoinFA1_2Contract
 
 test_fa1_2 :: TestTree
 test_fa1_2 = approvableLedgerGenericTest @Parameter @Storage alOriginationFunction

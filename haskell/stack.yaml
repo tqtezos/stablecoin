@@ -13,7 +13,7 @@ extra-deps:
     https://gitlab.com/morley-framework/morley-metadata.git
     # ^ CI cannot use ssh, so we use http clone here
   commit:
-    4635eae9882afbb661aea8991dfcdb7baabe967f # master
+    cb05e64b417f8d4928542fef99639366e04e7b18 # master
   subdirs:
     - code/morley-metadata
     - code/morley-metadata-test
@@ -22,7 +22,7 @@ extra-deps:
     https://gitlab.com/morley-framework/morley-ledgers.git
     # ^ CI cannot use ssh, so we use http clone here
   commit:
-    9727e20a50d1e8dd518819c4afd9d46af87bed66 # master
+    5b38f8c6bc2885e4775a38a52303a50f381ce686 # master
   subdirs:
     - code/morley-ledgers
     - code/morley-ledgers-test
@@ -35,10 +35,10 @@ extra-deps:
     - .
 
 # Stable versions available on Hackage
-- cleveland-0.2.0
-- lorentz-0.14.0
-- morley-1.17.0
-- morley-client-0.2.0
+- cleveland-0.2.1
+- lorentz-0.14.1
+- morley-1.18.0
+- morley-client-0.2.1
 - morley-prelude-0.5.1
 
 # Required by morley

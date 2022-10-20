@@ -8,8 +8,7 @@ module Lorentz.Contracts.Test.TZIP16
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCase, (@?=))
 
-import Morley.Michelson.Runtime.GState (genesisAddress1)
-import Morley.Tezos.Address (formatAddress)
+import Morley.Tezos.Address (formatAddress, ta)
 
 import Lorentz.Contracts.Stablecoin (ParsedMetadataUri(..), parseMetadataUri)
 
@@ -27,8 +26,8 @@ test_TZIP16_uri_parser =
         actual @?= expected
 
     , testCase "can parse remote uri" $ do
-        let addr = genesisAddress1
-        let uri = "tezos-storage://" <> (formatAddress addr) <>"/foo"
+        let addr = [ta|KT1Wy6Ks9Zxx9cmhDbGWbFhsVwFDASD3hDA3|]
+        let uri = "tezos-storage://" <> formatAddress addr <>"/foo"
 
         let actual = InRemoteContractUnderKey addr "foo"
         expected <- case parseMetadataUri uri of

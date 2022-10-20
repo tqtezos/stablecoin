@@ -4,7 +4,7 @@
 <<: !include "./hpack/module.yaml"
 
 name:                stablecoin
-version:             1.7.3
+version:             1.7.4
 
 extra-source-files:
 - README.md
@@ -28,6 +28,8 @@ library:
     - aeson-casing
     - bytestring
     - cleveland
+    - colourista
+    - constraints
     - containers
     - directory
     - fmt
@@ -35,6 +37,7 @@ library:
     - lens
     - lorentz
     - megaparsec
+    - memory
     - morley
     - morley-client
     - morley-ledgers
@@ -43,6 +46,7 @@ library:
     - optparse-applicative
     - process
     - servant-client
+    - singletons
     - template-haskell
     - text
     - uncaught-exception

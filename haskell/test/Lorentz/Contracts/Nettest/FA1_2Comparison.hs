@@ -8,10 +8,9 @@ module Lorentz.Contracts.Nettest.FA1_2Comparison
 import Data.Map qualified as Map
 import Test.Tasty (TestTree)
 
-import Lorentz (toAddress)
 import Morley.Michelson.Typed (mkBigMap)
-import Morley.Util.Named (pattern (:!))
 import Test.Cleveland
+import Test.Cleveland.Lorentz (toContractAddress)
 
 import Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin as SFA2
@@ -32,7 +31,7 @@ test_fa1_2ComparisonScenario = testScenario "fa1_2ComparisonScenario" fa1_2Compa
 -- Whenever a new version of the contract is released, we should
 -- run this test, collect the gas/transaction costs, and update
 -- the table in the README.
-fa1_2ComparisonScenario :: Monad m => Scenario m
+fa1_2ComparisonScenario :: Scenario m
 fa1_2ComparisonScenario = scenario do
   comment "-- FA1.2 vs FA2 comparison tests --"
 
@@ -43,13 +42,13 @@ fa1_2ComparisonScenario = scenario do
 
   comment "Originating Stablecoin FA1.2 contract"
   let balances =
-        [ (owner1, 10)
-        , (owner2, 10)
+        [ (toAddress owner1, 10)
+        , (toAddress owner2, 10)
         ]
   let roles = Roles
-        { rMasterMinter = nettest
-        , rOwner = nettest
-        , rPauser = nettest
+        { rMasterMinter = toAddress nettest
+        , rOwner = toAddress nettest
+        , rPauser = toAddress nettest
         , rPendingOwner = Nothing
         }
 
@@ -67,15 +66,19 @@ fa1_2ComparisonScenario = scenario do
         , sTransferlistContract = Nothing
         , sTotalSupply = sum $ Map.fromList balances
         , sSpenderAllowances = mempty
-        , sMetadata = metadataMap @(()) (RemoteContract $ toAddress cmrFA1_2Address)
+        , sMetadata = metadataMap @(()) (RemoteContract $ toContractAddress cmrFA1_2Address)
         }
 
   fa1_2ContractAddr <-
-    originateSimple @SFA1_2.Parameter @SFA1_2.Storage @() "Stablecoin FA1.2" fa1_2Storage stablecoinFA1_2Contract
+    originate
+      "Stablecoin FA1.2"
+      fa1_2Storage
+      stablecoinFA1_2Contract
 
   comment "Calling transfer"
   withSender owner1 $
-    call fa1_2ContractAddr (Call @"Transfer") (#from :! owner1, #to :! owner2, #value :! 2)
+    transfer fa1_2ContractAddr $ calling (ep @"Transfer")
+      (#from :! toAddress owner1, #to :! toAddress owner2, #value :! 2)
 
   cmrAddress <- nettestOriginateContractMetadataContract metadata
   let fa2Storage = SFA2.Storage
@@ -88,19 +91,19 @@ fa1_2ComparisonScenario = scenario do
         , sRoles = roles
         , sTransferlistContract = Nothing
         , sOperators = mempty
-        , sMetadata = SFA2.metadataMap @(()) (RemoteContract $ toAddress cmrAddress)
+        , sMetadata = SFA2.metadataMap @(()) (RemoteContract $ toContractAddress cmrAddress)
         , sTotalSupply = 0
         }
 
   comment "Originating Stablecoin FA2 contract"
-  fa2ContractAddr <- originateSimple "Stablecoin FA2" fa2Storage stablecoinContract
+  fa2ContractAddr <- originate "Stablecoin FA2" fa2Storage stablecoinContract
 
   comment "Calling transfer"
-  withSender owner1 $ call fa2ContractAddr (Call @"Transfer") [FA2.TransferItem
-    { tiFrom = owner1
+  withSender owner1 $ transfer fa2ContractAddr $ calling (ep @"Transfer") [FA2.TransferItem
+    { tiFrom = toAddress owner1
     , tiTxs =
         [ TransferDestination
-          { tdTo = owner2
+          { tdTo = toAddress owner2
           , tdTokenId = FA2.theTokenId
           , tdAmount = 2
           }

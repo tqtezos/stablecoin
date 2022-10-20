@@ -19,6 +19,7 @@ import Morley.Michelson.Typed (untypeValue)
 import Morley.Michelson.Untyped qualified as U (Contract)
 import Morley.Util.Named
 import Test.Cleveland
+import Test.Cleveland.Lorentz (toContractAddress)
 
 import Indigo.Contracts.Transferlist.External qualified as External
 import Indigo.Contracts.Transferlist.Internal qualified as Internal
@@ -45,26 +46,32 @@ test_scenarioWithExternalTransferlist = do
 externalTransferlistContractPath :: FilePath
 externalTransferlistContractPath = "test/resources/transferlist.tz"
 
-originateTransferlistInternal :: MonadOps f => Set (Address, Address) -> Set Address -> f Address
-originateTransferlistInternal transfers receivers = chAddress <$>
-  originateSimple
+originateTransferlistInternal :: MonadCleveland caps m => Set (ImplicitAddress, ImplicitAddress) -> Set ImplicitAddress -> m ContractAddress
+originateTransferlistInternal transfers receivers = toContractAddress <$>
+  originate
     "nettest.transferlist_internal"
-    (Internal.Storage transfers receivers)
+    (Internal.Storage
+      (Set.map (bimap toAddress toAddress) transfers)
+      (Set.map toAddress receivers)
+    )
     (Internal.transferlistContract)
 
 originateTransferlistExternal
   :: MonadCleveland caps m
-  => U.Contract -> Set (Address, Address) -> Set Address -> m Address
+  => U.Contract -> Set (ImplicitAddress, ImplicitAddress) -> Set ImplicitAddress -> m ContractAddress
 originateTransferlistExternal externalTransferlistContract transfers receivers = do
   testOwner <- newAddress "testOwner"
-  originateUntypedSimple
+  originate
     "nettest.transferlist_internal"
     (untypeValue @(ToT External.Storage) . toVal
       $ External.convertToExternalStorage
-          (Internal.Storage transfers receivers)
-          testOwner -- issuer
-          testOwner -- admin
+          (Internal.Storage
+            (Set.map (bimap toAddress toAddress) transfers)
+            (Set.map toAddress receivers)
           )
+          (toAddress testOwner) -- issuer
+          (toAddress testOwner) -- admin
+    )
     externalTransferlistContract
 
 -- | Indicates whether we're using the external safelist (the one parsed from @transferlist.tz@)
@@ -76,7 +83,7 @@ data TransferlistType = External | Internal
 
 scNettestScenario
   :: Monad m
-  => (forall m' caps. MonadCleveland caps m' => Set (Address, Address) -> Set Address -> m' Address)
+  => (forall m' caps. MonadCleveland caps m' => Set (ImplicitAddress, ImplicitAddress) -> Set ImplicitAddress -> m' ContractAddress)
   -> TransferlistType
   -> Scenario m
 scNettestScenario originateTransferlist transferlistType = scenario do
@@ -112,12 +119,11 @@ scNettestScenario originateTransferlist transferlistType = scenario do
           (#owner :! nettestOwner)
           (#pauser :! nettestPauser)
           (#masterMinter :! nettestMasterMinter)
-          ){ opMetadataUri = RemoteContract $ toAddress cmrAddress
+          ){ opMetadataUri = RemoteContract $ toContractAddress cmrAddress
           }
 
   comment "Originating stablecoin contract"
-  sc <- originateSimple "nettest.Stablecoin"
-    (mkInitialStorage originationParams) stablecoinContract
+  sc <- originateStablecoin originationParams
 
   comment "Originating transferlist contract"
 
@@ -140,99 +146,101 @@ scNettestScenario originateTransferlist transferlistType = scenario do
       (#to_ :! to)
       (#amount :! value)
 
+    callTransferWithOperator :: MonadCleveland caps m => ImplicitAddress -> ImplicitAddress -> ImplicitAddress -> Natural -> m ()
     callTransferWithOperator op from to value =
-      withSender op $ call sc (Call @"Transfer") (tp from to value)
+      withSender op $ transfer sc $ calling (ep @"Transfer") (tp (toAddress from) (toAddress to) value)
 
-    callTransfer = join callTransferWithOperator
+    callTransfer :: MonadCleveland caps m => ImplicitAddress -> ImplicitAddress -> Natural -> m ()
+    callTransfer op = callTransferWithOperator op op
 
     callTransfers
       :: MonadCleveland caps m
-      => [("from_" :! Address, [("to_" :! Address, "amount" :! Natural)])]
+      => [("from_" :! ImplicitAddress, [("to_" :! ImplicitAddress, "amount" :! Natural)])]
       -> m ()
     callTransfers = mapM_ $ \(from@(arg #from_ -> from_), destinations) ->
       withSender from_ $
-        call sc (Call @"Transfer") (constructTransfersFromSender from destinations)
+        transfer sc $ calling (ep @"Transfer") (constructTransfersFromSender from destinations)
 
-    configureMinter :: MonadCleveland caps m => Address -> Address -> Maybe Natural -> Natural -> m ()
+    configureMinter :: MonadCleveland caps m => ImplicitAddress -> ImplicitAddress -> Maybe Natural -> Natural -> m ()
     configureMinter = configureMinter' sc
 
     configureMinter'
       :: MonadCleveland caps m
-      => ContractHandle Parameter Storage () -> Address -> Address -> Maybe Natural -> Natural -> m ()
+      => ContractHandle Parameter Storage () -> ImplicitAddress -> ImplicitAddress -> Maybe Natural -> Natural -> m ()
     configureMinter' sc' from for' expectedAllowance newAllowance =
       withSender from $
-        call sc' (Call @"Configure_minter") (ConfigureMinterParam for' expectedAllowance newAllowance)
+        transfer sc' $ calling (ep @"Configure_minter") (ConfigureMinterParam (toAddress for') expectedAllowance newAllowance)
 
-    removeMinter :: MonadCleveland caps m => Address -> Address -> m ()
+    removeMinter :: MonadCleveland caps m => ImplicitAddress -> ImplicitAddress -> m ()
     removeMinter from whom =
       withSender from $
-        call sc (Call @"Remove_minter") whom
+        transfer sc $ calling (ep @"Remove_minter") (toAddress whom)
 
-    addOperatorNettest :: MonadCleveland caps m => Address -> Address -> m ()
+    addOperatorNettest :: MonadCleveland caps m => ImplicitAddress -> ImplicitAddress -> m ()
     addOperatorNettest from op =
       withSender from $
-        call sc (Call @"Update_operators")
+        transfer sc $ calling (ep @"Update_operators")
           [ FA2.AddOperator
-            FA2.OperatorParam { opOwner = from, opOperator = op, opTokenId = FA2.theTokenId }
+            FA2.OperatorParam { opOwner = toAddress from, opOperator = toAddress op, opTokenId = FA2.theTokenId }
           ]
 
-    removeOperator :: MonadCleveland caps m => Address -> Address -> m ()
+    removeOperator :: MonadCleveland caps m => ImplicitAddress -> ImplicitAddress -> m ()
     removeOperator from op =
       withSender from $
-        call sc (Call @"Update_operators")
+        transfer sc $ calling (ep @"Update_operators")
           [ FA2.RemoveOperator
-            FA2.OperatorParam { opOwner = from, opOperator = op, opTokenId = FA2.theTokenId }
+            FA2.OperatorParam { opOwner = toAddress from, opOperator = toAddress op, opTokenId = FA2.theTokenId }
           ]
 
-    mint :: MonadCleveland caps m => Address -> Natural -> m ()
+    mint :: MonadCleveland caps m => ImplicitAddress -> Natural -> m ()
     mint to_ value =
       withSender to_ $
-        call sc (Call @"Mint") [MintParam to_ value]
+        transfer sc $ calling (ep @"Mint") [MintParam (toAddress to_) value]
 
-    burn :: MonadCleveland caps m => Address -> Natural -> m ()
+    burn :: MonadCleveland caps m => ImplicitAddress -> Natural -> m ()
     burn from amount_ =
       withSender from $
-        call sc (Call @"Burn") [amount_]
+        transfer sc $ calling (ep @"Burn") [amount_]
 
-    pause :: MonadCleveland caps m => Address -> m ()
+    pause :: MonadCleveland caps m => ImplicitAddress -> m ()
     pause from =
       withSender from $
-        call sc (Call @"Pause") ()
+        transfer sc $ calling (ep @"Pause") ()
 
-    unpause :: MonadCleveland caps m => Address -> m ()
+    unpause :: MonadCleveland caps m => ImplicitAddress -> m ()
     unpause from =
       withSender from $
-        call sc (Call @"Unpause") ()
+        transfer sc $ calling (ep @"Unpause") ()
 
-    transferOwnership :: MonadCleveland caps m => Address -> Address -> m ()
+    transferOwnership :: MonadCleveland caps m => ImplicitAddress -> ImplicitAddress -> m ()
     transferOwnership from to =
       withSender from $
-        call sc (Call @"Transfer_ownership") to
+        transfer sc $ calling (ep @"Transfer_ownership") (toAddress to)
 
-    acceptOwnership :: MonadCleveland caps m => Address -> m ()
+    acceptOwnership :: MonadCleveland caps m => ImplicitAddress -> m ()
     acceptOwnership from =
       withSender from $
-        call sc (Call @"Accept_ownership") ()
+        transfer sc $ calling (ep @"Accept_ownership") ()
 
-    changeMasterMinter :: MonadCleveland caps m => Address -> Address -> m ()
+    changeMasterMinter :: MonadCleveland caps m => ImplicitAddress -> ImplicitAddress -> m ()
     changeMasterMinter from to =
       withSender from $
-        call sc (Call @"Change_master_minter") to
+        transfer sc $ calling (ep @"Change_master_minter") (toAddress to)
 
-    changePauser :: MonadCleveland caps m => Address -> Address -> m ()
+    changePauser :: MonadCleveland caps m => ImplicitAddress -> ImplicitAddress -> m ()
     changePauser from to =
       withSender from $
-        call sc (Call @"Change_pauser") to
+        transfer sc $ calling (ep @"Change_pauser") (toAddress to)
 
-    setTransferlist :: MonadCleveland caps m => Address -> Address -> m ()
+    setTransferlist :: MonadCleveland caps m => ImplicitAddress -> ContractAddress -> m ()
     setTransferlist from transferlistAddress =
       withSender from $
-        call sc (Call @"Set_transferlist") (Just transferlistAddress)
+        transfer sc $ calling (ep @"Set_transferlist") (Just $ toAddress transferlistAddress)
 
-    unsetTransferlist :: MonadCleveland caps m => Address -> m ()
+    unsetTransferlist :: MonadCleveland caps m => ImplicitAddress -> m ()
     unsetTransferlist from =
       withSender from $
-        call sc (Call @"Set_transferlist") (Nothing :: Maybe Address)
+        transfer sc $ calling (ep @"Set_transferlist") (Nothing :: Maybe Address)
 
   let
     transferScenario = do
@@ -364,21 +372,13 @@ scNettestScenario originateTransferlist transferlistType = scenario do
       comment $ "Adding minters to limit"
 
       -- We originate a new contract to make sure the minters list is empty
-      sc' <- do
-        let str = mkInitialStorage (originationParams { opMinters = mempty })
-        originateSimple "nettest.Stablecoin_for_minter_test" str stablecoinContract
+      sc' <- originateStablecoin $ originationParams { opMinters = mempty }
 
       let
         addMinter' ma = configureMinter' sc' nettestMasterMinter ma Nothing 100
 
       comment "Send some tez to master minter"
-      withSender superuser $ transfer $
-        TransferData
-          { tdTo = nettestMasterMinter
-          , tdAmount = [tz|100|]
-          , tdEntrypoint = DefEpName
-          , tdParameter = ()
-          }
+      withSender superuser $ transfer nettestMasterMinter [tz|100|]
       replicateM_ minterLimit (newAddress auto >>= addMinter')
 
   transferScenario

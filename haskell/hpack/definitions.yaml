@@ -52,6 +52,7 @@ _definitions:
         - RecursiveDo
         - ScopedTypeVariables
         - StandaloneDeriving
+        - StandaloneKindSignatures
         - TemplateHaskell
         - TupleSections
         - TypeApplications

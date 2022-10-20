@@ -42,16 +42,16 @@ import Lorentz.Contracts.Spec.TZIP16Interface (MetadataMap)
 import Morley.AsRPC (HasRPCRepr(..), deriveRPCWithStrategy)
 import Morley.Michelson.Typed (Notes(..))
 import Morley.Michelson.Untyped (noAnn)
-import Morley.Tezos.Address.Alias (AddressOrAlias(..))
 import Morley.Tezos.Crypto qualified as Hash
+import Stablecoin.Client.L1AddressOrAlias (L1AddressOrAlias)
 
 ------------------------------------------------------------------
 -- Parameter
 
 -- | Data needed to add or remove an operator.
 data UpdateOperatorData
-  = AddOperator AddressOrAlias
-  | RemoveOperator AddressOrAlias
+  = AddOperator L1AddressOrAlias
+  | RemoveOperator L1AddressOrAlias
   deriving stock Show
 
 data ConfigureMinterParam = ConfigureMinterParam

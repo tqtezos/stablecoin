@@ -8,18 +8,17 @@ module Stablecoin.Client.Cleveland.StablecoinImpl
 
 import Data.Text (isInfixOf)
 import Fmt (Buildable(build), pretty)
-import Morley.Tezos.Address (Address)
-import Morley.Tezos.Address.Alias (AddressOrAlias)
+import Morley.Tezos.Address (ContractAddress, ImplicitAddress, L1Address)
 import Morley.Tezos.Core (Mutez)
 import Morley.Util.Named (pattern (:!), (:!))
 import Test.Cleveland (MorleyClientEnv)
 import Test.Cleveland.Internal.Client (ClientM, revealKeyUnlessRevealed)
 
-import Stablecoin.Client
-  (AddressAndAlias(..), InitialStorageData(..), UpdateOperatorData(AddOperator, RemoveOperator))
+import Stablecoin.Client (AddressAndAlias(..), UpdateOperatorData(AddOperator, RemoveOperator))
 import Stablecoin.Client.Cleveland.IO
-  (OutputParseError(..), addressAndAliasParser, addressParser, callStablecoinClient,
+  (OutputParseError(..), addressAndAliasParser, callStablecoinClient, contractAddressParser,
   encodeMaybeOption, labelled, mutezParser, naturalParser, runParser, textParser)
+import Stablecoin.Client.Contract (InitialStorageOptions(..))
 
 data StablecoinTestError where
   STEDiff :: forall a. (Show a, Buildable a) => a -> a -> StablecoinTestError
@@ -36,80 +35,80 @@ instance Exception StablecoinTestError where
   displayException = pretty
 
 data StablecoinImpl m = StablecoinImpl
-  { siDeploy :: "sender" :! AddressOrAlias -> InitialStorageData AddressOrAlias -> m Address
+  { siDeploy :: "sender" :! ImplicitAddress -> InitialStorageOptions -> m ContractAddress
   , siTransfer
-      :: "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias
-      -> AddressOrAlias -> AddressOrAlias -> Natural -> m ()
+      :: "sender" :! ImplicitAddress -> "contract" :! ContractAddress
+      -> L1Address -> L1Address -> Natural -> m ()
   , siGetBalanceOf
-      :: "contract" :! AddressOrAlias
-      -> AddressOrAlias -> m Natural
+      :: "contract" :! ContractAddress
+      -> L1Address -> m Natural
   , siUpdateOperators
-      :: "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias
+      :: "sender" :! ImplicitAddress -> "contract" :! ContractAddress
       -> NonEmpty UpdateOperatorData -> m ()
   , siIsOperator
-      :: "contract" :! AddressOrAlias
-      -> AddressOrAlias -> AddressOrAlias -> m Bool
-  , siPause :: "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias -> m ()
-  , siUnpause :: "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias -> m ()
+      :: "contract" :! ContractAddress
+      -> L1Address -> L1Address -> m Bool
+  , siPause :: "sender" :! ImplicitAddress -> "contract" :! ContractAddress -> m ()
+  , siUnpause :: "sender" :! ImplicitAddress -> "contract" :! ContractAddress -> m ()
   , siConfigureMinter
-      :: "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias
-      -> AddressOrAlias -> Maybe Natural -> Natural -> m ()
+      :: "sender" :! ImplicitAddress -> "contract" :! ContractAddress
+      -> L1Address -> Maybe Natural -> Natural -> m ()
   , siRemoveMinter
-      :: "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias
-      -> AddressOrAlias -> m ()
+      :: "sender" :! ImplicitAddress -> "contract" :! ContractAddress
+      -> L1Address -> m ()
   , siMint
-      :: "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias
-      -> AddressOrAlias -> Natural -> m ()
+      :: "sender" :! ImplicitAddress -> "contract" :! ContractAddress
+      -> L1Address -> Natural -> m ()
   , siBurn
-      :: "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias
+      :: "sender" :! ImplicitAddress -> "contract" :! ContractAddress
       -> NonEmpty Natural -> m ()
   , siTransferOwnership
-      :: "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias
-      -> AddressOrAlias -> m ()
+      :: "sender" :! ImplicitAddress -> "contract" :! ContractAddress
+      -> L1Address -> m ()
   , siAcceptOwnership
-      :: "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias
+      :: "sender" :! ImplicitAddress -> "contract" :! ContractAddress
       -> m ()
   , siChangeMasterMinter
-      :: "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias
-      -> AddressOrAlias -> m ()
+      :: "sender" :! ImplicitAddress -> "contract" :! ContractAddress
+      -> L1Address -> m ()
   , siChangePauser
-      :: "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias
-      -> AddressOrAlias -> m ()
+      :: "sender" :! ImplicitAddress -> "contract" :! ContractAddress
+      -> L1Address -> m ()
   , siSetTransferlist
-      :: "sender" :! AddressOrAlias -> "contract" :! AddressOrAlias
-      -> Maybe AddressOrAlias -> m ()
-  , siGetBalance :: "contract" :! AddressOrAlias -> m Mutez
-  , siGetPaused :: "contract" :! AddressOrAlias -> m Bool
-  , siGetContractOwner :: "contract" :! AddressOrAlias -> m AddressAndAlias
-  , siGetPendingContractOwner :: "contract" :! AddressOrAlias -> m (Maybe AddressAndAlias)
-  , siGetMasterMinter :: "contract" :! AddressOrAlias -> m AddressAndAlias
-  , siGetPauser :: "contract" :! AddressOrAlias -> m AddressAndAlias
-  , siGetTransferlist :: "contract" :! AddressOrAlias -> m (Maybe AddressAndAlias)
-  , siGetMintingAllowance :: "contract" :! AddressOrAlias -> AddressOrAlias -> m Natural
+      :: "sender" :! ImplicitAddress -> "contract" :! ContractAddress
+      -> Maybe ContractAddress -> m ()
+  , siGetBalance :: "contract" :! ContractAddress -> m Mutez
+  , siGetPaused :: "contract" :! ContractAddress -> m Bool
+  , siGetContractOwner :: "contract" :! ContractAddress -> m AddressAndAlias
+  , siGetPendingContractOwner :: "contract" :! ContractAddress -> m (Maybe AddressAndAlias)
+  , siGetMasterMinter :: "contract" :! ContractAddress -> m AddressAndAlias
+  , siGetPauser :: "contract" :! ContractAddress -> m AddressAndAlias
+  , siGetTransferlist :: "contract" :! ContractAddress -> m (Maybe AddressAndAlias)
+  , siGetMintingAllowance :: "contract" :! ContractAddress -> L1Address -> m Natural
   , siGetTokenMetadata
-      :: "contract" :! AddressOrAlias
+      :: "contract" :! ContractAddress
       -> m ("symbol" :! Text, "name" :! Text, "decimals" :! Natural)
   , siAssertEq :: forall a. (Eq a, Show a, Buildable a) => a -> a -> m ()
-  , siRevealKeyUnlessRevealed :: Address -> m ()
+  , siRevealKeyUnlessRevealed :: ImplicitAddress -> m ()
   }
 
 -- | Implementation of `StablecoinImpl` that defers to `stablecoin-client`.
 stablecoinImplClient :: MorleyClientEnv -> StablecoinImpl ClientM
 stablecoinImplClient env = StablecoinImpl
-  { siDeploy = \sender (InitialStorageData {..}) -> liftIO $ do
+  { siDeploy = \sender (InitialStorageOptions {..}) -> liftIO $ do
       output <- liftIO $ callStablecoinClient env $
         [ "deploy"
-        , "--master-minter", pretty isdMasterMinter
-        , "--contract-owner", pretty isdContractOwner
-        , "--pauser", pretty isdPauser
-        , "--transferlist", pretty isdTransferlist
-        , "--token-name", pretty isdTokenName
-        , "--token-symbol", pretty isdTokenSymbol
-        , "--token-decimals", pretty isdTokenDecimals
-        , "--default-expiry", pretty isdDefaultExpiry
+        , "--master-minter", pretty isoMasterMinter
+        , "--contract-owner", pretty isoContractOwner
+        , "--pauser", pretty isoPauser
+        , "--transferlist", pretty isoTransferlist
+        , "--token-name", pretty isoTokenName
+        , "--token-symbol", pretty isoTokenSymbol
+        , "--token-decimals", pretty isoTokenDecimals
+        , "--default-expiry", pretty isoDefaultExpiry
         , "--replace-alias"
         ] <> mkUserOpt sender
-      runParser output (labelled "Contract address" addressParser)
+      runParser output (labelled "Contract address" contractAddressParser)
   , siTransfer = \sender contract from to amount -> liftIO $
       void $ callStablecoinClient env $
         [ "transfer"
@@ -246,8 +245,8 @@ stablecoinImplClient env = StablecoinImpl
   , siRevealKeyUnlessRevealed = liftIO . revealKeyUnlessRevealed env
   }
   where
-    mkUserOpt :: "sender" :! AddressOrAlias -> [String]
+    mkUserOpt :: "sender" :! ImplicitAddress -> [String]
     mkUserOpt (_ :! sender) = ["--user", pretty sender]
 
-    mkContractOpt :: "contract" :! AddressOrAlias -> [String]
+    mkContractOpt :: "contract" :! ContractAddress -> [String]
     mkContractOpt (_ :! contract) = ["--contract", pretty contract]

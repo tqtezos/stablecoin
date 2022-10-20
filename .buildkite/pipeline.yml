@@ -10,6 +10,36 @@ env:
     && cp "./nix/sources.json" "./haskell/test/resources/"
   TEZOS_CLIENT_UNSAFE_DISABLE_DISCLAIMER: "Y"
 
+.local-chain-env: &local-chain-env
+  TASTY_CLEVELAND_NODE_ENDPOINT: "http://localhost:8733"
+  CHAIN_TEST_MONEYBAG_SECRET_KEY: "unencrypted:edsk3AvAoPS5jFov49aWBQ9oVtCPwNSne2CriHvkFxfeCg4Srr5bak"
+  # this key is defined in local-chain bootstrap accounts list in
+  # https://github.com/serokell/aquarius-infra/blob/master/servers/albali/chain.nix
+
+.kathmandunet-env: &kathmandunet-env
+  TASTY_CLEVELAND_NODE_ENDPOINT: "https://kathmandu.testnet.tezos.serokell.team"
+  CHAIN_TEST_MONEYBAG_SECRET_KEY: "$TESTNET_MONEYBAG"
+  CHAIN_TEST_MONEYBAG_PASSWORD: "$TESTNET_MONEYBAG_PASSWORD"
+
+.network-tests: &network-tests
+  commands:
+    - eval "$FETCH_CONTRACT"
+    - cd haskell/
+    - export PATH=$(nix-build ../ -A stablecoin-client)/bin:$PATH
+    - nix build -L -f .. test
+    # Note that 'refill-balance' below is the initial 'TASTY_CLEVELAND_MONEYBAG_SECRET_KEY' balance
+    # which may need to be adjusted in case of insufficient balance errors
+    - $(nix-build ../ -A run-chain-tests
+        --argstr refill-balance 1100
+        --argstr node-endpoint "$$TASTY_CLEVELAND_NODE_ENDPOINT"
+        --argstr step-moneybag "$$CHAIN_TEST_MONEYBAG_SECRET_KEY"
+        --argstr step-moneybag-password "$$CHAIN_TEST_MONEYBAG_PASSWORD"
+        --no-out-link
+        --argstr scenario './result/bin/stablecoin-test --cleveland-mode=only-network')
+  retry:
+    automatic:
+      limit: 1
+
 steps:
  - label: hlint
    if: &not_scheduled
@@ -71,47 +101,25 @@ steps:
      - nix build -L -f .. test
      - ./result/bin/stablecoin-test --cleveland-mode=disable-network
 
- - label: nettest-local-chain-013
-   key: nettest-local-chain-013
+ - label: nettest-local-chain-014
+   key: nettest-local-chain-014
    if: *not_scheduled
    depends_on: build_library
+   <<: *network-tests
    env:
-     TASTY_CLEVELAND_NODE_ENDPOINT: "http://localhost:8734"
-     # this key is defined in local-chain bootstrap accounts list in
-     # https://github.com/serokell/aquarius-infra/blob/master/servers/albali/chain.nix
-     CHAIN_TEST_MONEYBAG_SECRET_KEY: "unencrypted:edsk3GjD83F7oj2LrnRGYQer99Fj69U2QLyjWGiJ4UoBZNQwS38J4v"
-   commands: &run-nettest
-     - eval "$FETCH_CONTRACT"
-     - cd haskell/
-     - export PATH=$(nix-build ../ -A stablecoin-client)/bin:$PATH
-     - nix build -L -f .. test
-     # Note that 'refill-balance' below is the initial 'TASTY_CLEVELAND_MONEYBAG_SECRET_KEY' balance
-     # which may need to be adjusted in case of insufficient balance errors
-     - $(nix-build ../ -A run-chain-tests
-         --argstr refill-balance 1100
-         --argstr node-endpoint "$$TASTY_CLEVELAND_NODE_ENDPOINT"
-         --argstr step-moneybag "$$CHAIN_TEST_MONEYBAG_SECRET_KEY"
-         --argstr step-moneybag-password "$$CHAIN_TEST_MONEYBAG_PASSWORD"
-         --no-out-link
-         --argstr scenario './result/bin/stablecoin-test --cleveland-mode=only-network')
-   retry: &retry-nettest
-      automatic:
-        limit: 1
+     <<: *local-chain-env
 
- - label: nettest-scheduled-jakartanet
-   key: nettest-scheduled-jakartanet
+ - label: nettest-scheduled-kathmandunet
+   key: nettest-scheduled-kathmandunet
    if: build.source == "schedule"
    depends_on:
      - build_library
      - LIGO-contract
+   <<: *network-tests
    env:
-     TASTY_CLEVELAND_NODE_ENDPOINT: "https://jakarta.testnet.tezos.serokell.team"
-     CHAIN_TEST_MONEYBAG_SECRET_KEY: "$JAKARTANET_MONEYBAG"
-     CHAIN_TEST_MONEYBAG_PASSWORD: "$JAKARTANET_MONEYBAG_PASSWORD"
+     <<: *kathmandunet-env
      # Running all of the tests on network will end up draining the moneybag; for now, only FA1.2 tests are run
      TASTY_PATTERN: '/Test.FA1_2/||/Lorentz.Contracts.Nettest/'
-   commands: *run-nettest
-   retry: *retry-nettest
    timeout_in_minutes: 360
 
  - label: weeder
@@ -130,8 +138,8 @@ steps:
    if: *not_scheduled
    depends_on:
      - test
-     - nettest-local-chain-013
-     - nettest-scheduled-jakartanet
+     - nettest-local-chain-014
+     - nettest-scheduled-kathmandunet
      - weeder
    commands:
      - eval "$FETCH_CONTRACT"
