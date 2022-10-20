@@ -56,6 +56,7 @@ import Morley.Tezos.Address
   (Address, ConstrainedAddress(..), ContractAddress, KindedAddress(..), L1Address, TxRollupAddress)
 import Morley.Tezos.Address.Alias (AddressOrAlias(..), Alias(..), ContractAlias, unAlias)
 import Morley.Tezos.Core (Mutez, zeroMutez)
+import Morley.Util.Default (def)
 import Morley.Util.Interpolate (itu)
 import Morley.Util.Named (arg, pattern (:!), (:!))
 
@@ -65,8 +66,7 @@ import Lorentz.Contracts.Stablecoin
   Roles(..), Storage(..), StorageRPC(..), UpdateOperatorData(..), contractMetadataContract,
   metadataJSON, metadataMap, mkContractMetadataRegistryStorage, parseMetadataUri,
   stablecoinContract)
-import Stablecoin.Client.Contract
-  (InitialStorageData(..), InitialStorageOptions(..), mkInitialStorage)
+import Stablecoin.Client.Contract (InitialStorageOptions(..))
 import Stablecoin.Client.L1AddressOrAlias
 import Stablecoin.Client.Metadata (ViewParam(..), callOffChainView)
 import Stablecoin.Client.Parser (ContractMetadataOptions(..))
@@ -120,19 +120,25 @@ deploy (arg #sender -> sender) alias InitialStorageOptions {..} = do
           Nothing
         pure $ RemoteContract contractMetadataRegistryAddress
 
-  let initialStorageData = InitialStorageData
-            { isdMasterMinter = masterMinter
-            , isdContractOwner = contractOwner
-            , isdPauser = pauser
-            , isdTransferlist = transferlist
-            , isdContractMetadataStorage = metadataMap contractMetadataUri
-            , isdTokenSymbol = isoTokenSymbol
-            , isdTokenName = isoTokenName
-            , isdTokenDecimals = isoTokenDecimals
-            , isdDefaultExpiry = isoDefaultExpiry
-            }
-
-  let initialStorage = mkInitialStorage initialStorageData
+  let initialStorage =
+        Storage
+          { sDefaultExpiry = isoDefaultExpiry
+          , sLedger = def
+          , sMintingAllowances = mempty
+          , sOperators = def
+          , sPaused = False
+          , sPermitCounter = 0
+          , sPermits = def
+          , sRoles = Roles
+              { rMasterMinter = toAddress masterMinter
+              , rOwner = toAddress contractOwner
+              , rPauser = toAddress pauser
+              , rPendingOwner = Nothing
+              }
+          , sTransferlistContract = toAddress <$> transferlist
+          , sMetadata = metadataMap contractMetadataUri
+          , sTotalSupply = 0
+          }
 
   let cmdAddress = case contractMetadataUri of
         RemoteContract addr -> Just addr

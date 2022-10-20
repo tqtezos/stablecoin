@@ -3,7 +3,7 @@
 
 module Stablecoin.Client
   ( module Stablecoin.Client.Impl
-  , InitialStorageData(..)
+  , InitialStorageOptions(..)
   , Alias
   ) where
 
