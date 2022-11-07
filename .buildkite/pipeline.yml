@@ -56,9 +56,8 @@ steps:
    if: *not_scheduled
 
  - label: xrefcheck
-   command: "nix run -f https://github.com/serokell/xrefcheck/archive/b54c38d91bd45e5c402ebf51d68c653faf959c2c.tar.gz -c xrefcheck"
+   command: "nix shell -f . xrefcheck -c xrefcheck"
    if: *not_scheduled
-   soft_fail: true
 
  - label: LIGO-contract
    key: LIGO-contract

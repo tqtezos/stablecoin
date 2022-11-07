@@ -69,16 +69,16 @@
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "xrefcheck": {
-        "branch": "v0.1.3",
+        "branch": "v0.2.2",
         "description": "Check cross-references in repository documents",
         "homepage": "",
         "owner": "serokell",
         "repo": "xrefcheck",
-        "rev": "9520c2d2b0c38d61ebd9ebe17e3d6b2b4b0b2daf",
-        "sha256": "1c2vlbcp82pik26y583fc5m17k3s7ir8gvvli6pri4f6njfr8x8c",
+        "rev": "887803d61c0dfb3726484f00a882101117725c62",
+        "sha256": "1ymlp4g494aig6mzi7bx3r73hpd9c5qsxznka7kjfy2lv0y5gyxy",
         "type": "tarball",
-        "url": "https://github.com/serokell/xrefcheck/archive/9520c2d2b0c38d61ebd9ebe17e3d6b2b4b0b2daf.tar.gz",
+        "url": "https://github.com/serokell/xrefcheck/archive/887803d61c0dfb3726484f00a882101117725c62.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
-        "version": "0.1.3"
+        "version": "0.2.2"
     }
 }
