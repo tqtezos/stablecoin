@@ -7,10 +7,10 @@
         "url_template": "https://gitlab.com/ligolang/ligo/-/jobs/2702841321/artifacts/raw/ligo"
     },
     "morley": {
-        "rev": "1.16.2",
-        "sha256": "1ci1n4vyda5xqm1w9byq40gkhc9rqd6lb01s1d5p4qp8i87sndcr",
+        "rev": "1.19.0",
+        "sha256": "1nh27nxvv8yl4088cmpsg1550dvrk0j1kggflwh2ik6hq4y5bv2v",
         "type": "tarball",
-        "url": "https://gitlab.com/morley-framework/morley/-/archive/morley-1.16.2/morley-morley-1.16.2.tar.gz",
+        "url": "https://gitlab.com/morley-framework/morley/-/archive/morley-1.19.0/morley-morley-1.19.0.tar.gz",
         "url_template": "https://gitlab.com/morley-framework/morley/-/archive/morley-<rev>/morley-morley-<rev>.tar.gz"
     },
     "morley-infra": {

@@ -28,7 +28,6 @@ library:
     - aeson-casing
     - bytestring
     - cleveland
-    - colourista
     - constraints
     - containers
     - directory
@@ -37,7 +36,6 @@ library:
     - lens
     - lorentz
     - megaparsec
-    - memory
     - morley
     - morley-client
     - morley-ledgers

@@ -46,15 +46,17 @@ import Lorentz.Contracts.Spec.TZIP16Interface qualified as TZ
 import Morley.Michelson.Typed (BigMapId(..), Dict(..), IsoValue, fromVal, toVal)
 
 import Morley.Client
-  (MorleyClientM, TezosClientError(UnknownAddress), getAlias, getContractScript, lTransfer,
-  originateContract, readBigMapValue, readBigMapValueMaybe, revealKeyUnlessRevealed)
+  (AliasBehavior(..), MorleyClientM, getAliasMaybe, getContractScript, lTransfer, originateContract,
+  readBigMapValue, readBigMapValueMaybe, resolveAddress, revealKeyUnlessRevealed)
 import Morley.Client qualified as Client
 import Morley.Client.RPC (OperationHash, OriginationScript(OriginationScript))
 import Morley.Micheline (Expression, FromExpressionError, fromExpression)
 import Morley.Michelson.Text
 import Morley.Tezos.Address
-  (Address, ConstrainedAddress(..), ContractAddress, KindedAddress(..), L1Address, TxRollupAddress)
-import Morley.Tezos.Address.Alias (AddressOrAlias(..), Alias(..), ContractAlias, unAlias)
+  (Address, Constrained(..), ContractAddress, KindedAddress(..), L1Address, TxRollupAddress)
+import Morley.Tezos.Address.Alias
+  (AddressOrAlias(..), Alias(..), ContractAddressOrAlias, ContractAlias, ImplicitAddressOrAlias,
+  SomeAddressOrAlias, unAlias)
 import Morley.Tezos.Core (Mutez, zeroMutez)
 import Morley.Util.Default (def)
 import Morley.Util.Interpolate (itu)
@@ -67,7 +69,6 @@ import Lorentz.Contracts.Stablecoin
   metadataJSON, metadataMap, mkContractMetadataRegistryStorage, parseMetadataUri,
   stablecoinContract)
 import Stablecoin.Client.Contract (InitialStorageOptions(..))
-import Stablecoin.Client.L1AddressOrAlias
 import Stablecoin.Client.Metadata (ViewParam(..), callOffChainView)
 import Stablecoin.Client.Parser (ContractMetadataOptions(..))
 
@@ -87,7 +88,6 @@ instance Buildable AddressAndAlias where
 -- If the given alias already exists, nothing happens.
 deploy :: "sender" :! ImplicitAddressOrAlias -> ContractAlias -> InitialStorageOptions -> MorleyClientM (OperationHash, ContractAddress, Maybe ContractAddress)
 deploy (arg #sender -> sender) alias InitialStorageOptions {..} = do
-  sender' <- convertImplicitAddressOrAlias sender
   masterMinter <- resolveAddress isoMasterMinter
   contractOwner <- resolveAddress isoContractOwner
   pauser <- resolveAddress isoPauser
@@ -111,12 +111,13 @@ deploy (arg #sender -> sender) alias InitialStorageOptions {..} = do
         let mdrStorage = mkContractMetadataRegistryStorage
               (metadataMap $ CurrentContract metadata False)
         contractMetadataRegistryAddress <- snd <$> originateContract
-          False
+          KeepDuplicateAlias
           (ContractAlias "stablecoin-tzip16-metadata")
-          sender'
+          sender
           zeroMutez
           (toMichelsonContract contractMetadataContract)
           (toVal mdrStorage)
+          Nothing
           Nothing
         pure $ RemoteContract contractMetadataRegistryAddress
 
@@ -145,18 +146,19 @@ deploy (arg #sender -> sender) alias InitialStorageOptions {..} = do
         _ -> Nothing
 
   (cName, cAddr) <- originateContract
-    False
+    KeepDuplicateAlias
     alias
-    sender'
+    sender
     zeroMutez
     (toMichelsonContract stablecoinContract)
     (toVal initialStorage)
+    Nothing
     Nothing
   pure (cName, cAddr, cmdAddress)
 
 transfer
   :: "sender" :! ImplicitAddressOrAlias -> "contract" :! ContractAddressOrAlias
-  -> L1AddressOrAlias -> L1AddressOrAlias -> Natural -> MorleyClientM ()
+  -> SomeAddressOrAlias -> SomeAddressOrAlias -> Natural -> MorleyClientM ()
 transfer sender contract from to amount = do
   fromAddr <- resolveAddress from
   toAddr <- resolveAddress to
@@ -165,7 +167,7 @@ transfer sender contract from to amount = do
 
 getBalanceOf
   :: "contract" :! ContractAddressOrAlias
-  -> L1AddressOrAlias -> MorleyClientM Natural
+  -> SomeAddressOrAlias -> MorleyClientM Natural
 getBalanceOf contract owner = do
   ownerAddr <- resolveAddress owner
   ledgerId <- sLedgerRPC <$> getStorage contract
@@ -181,21 +183,21 @@ updateOperators (arg #sender -> sender) contract ops = do
   -- "In each update_operator item `owner` MUST be equal to `SENDER`"
   let ownerAddr = toAddress senderAddr
   param <- traverse (mkUpdateOperator ownerAddr) (toList ops)
-  call (#sender :! KAOAAddress senderAddr) contract (Call @"Update_operators") param
+  call (#sender :! AddressResolved senderAddr) contract (Call @"Update_operators") param
   where
     mkUpdateOperator :: Address -> UpdateOperatorData -> MorleyClientM FA2.UpdateOperator
     mkUpdateOperator ownerAddr = \case
       AddOperator op -> FA2.AddOperator <$> mkOperatorParam ownerAddr op
       RemoveOperator op -> FA2.RemoveOperator <$> mkOperatorParam ownerAddr op
 
-    mkOperatorParam :: Address -> L1AddressOrAlias -> MorleyClientM FA2.OperatorParam
+    mkOperatorParam :: Address -> SomeAddressOrAlias -> MorleyClientM FA2.OperatorParam
     mkOperatorParam ownerAddr operator =
       resolveAddress operator <&> \operatorAddr ->
         FA2.OperatorParam (toAddress ownerAddr) (toAddress operatorAddr) FA2.theTokenId
 
 isOperator
   :: "contract" :! ContractAddressOrAlias
-  -> L1AddressOrAlias -> L1AddressOrAlias -> MorleyClientM Bool
+  -> SomeAddressOrAlias -> SomeAddressOrAlias -> MorleyClientM Bool
 isOperator contract owner operator = do
   ownerAddr <- resolveAddress owner
   operatorAddr <- resolveAddress operator
@@ -216,7 +218,7 @@ unpause sender contract = call sender contract (Call @"Unpause") ()
 -- (if minter is not in the list already).
 configureMinter
   :: "sender" :! ImplicitAddressOrAlias -> "contract" :! ContractAddressOrAlias
-  -> L1AddressOrAlias -> Maybe Natural -> Natural -> MorleyClientM ()
+  -> SomeAddressOrAlias -> Maybe Natural -> Natural -> MorleyClientM ()
 configureMinter sender contract minter currentMintingAllowance newMintingAllowance = do
   minterAddr <- resolveAddress minter
   call sender contract (Call @"Configure_minter") ConfigureMinterParam
@@ -229,7 +231,7 @@ configureMinter sender contract minter currentMintingAllowance newMintingAllowan
 -- Once minter is removed it will no longer be able to mint or burn tokens.
 removeMinter
   :: "sender" :! ImplicitAddressOrAlias -> "contract" :! ContractAddressOrAlias
-  -> L1AddressOrAlias -> MorleyClientM ()
+  -> SomeAddressOrAlias -> MorleyClientM ()
 removeMinter sender contract minter = do
   minterAddr <- resolveAddress minter
   call sender contract (Call @"Remove_minter") (toAddress minterAddr)
@@ -238,7 +240,7 @@ removeMinter sender contract minter = do
 -- with the given addresses.
 mint
   :: "sender" :! ImplicitAddressOrAlias -> "contract" :! ContractAddressOrAlias
-  -> L1AddressOrAlias -> Natural -> MorleyClientM ()
+  -> SomeAddressOrAlias -> Natural -> MorleyClientM ()
 mint sender contract to amount = do
   toAddr <- resolveAddress to
   call sender contract (Call @"Mint") [MintParam (toAddress toAddr) amount]
@@ -253,7 +255,7 @@ burn sender contract amounts =
 -- | Initiate transfer of contract ownership to a new address.
 transferOwnership
   :: "sender" :! ImplicitAddressOrAlias -> "contract" :! ContractAddressOrAlias
-  -> L1AddressOrAlias -> MorleyClientM ()
+  -> SomeAddressOrAlias -> MorleyClientM ()
 transferOwnership sender contract to = do
   toAddr <- resolveAddress to
   call sender contract (Call @"Transfer_ownership") (toAddress toAddr)
@@ -268,7 +270,7 @@ acceptOwnership sender contract =
 -- | Set master minter to a new address.
 changeMasterMinter
   :: "sender" :! ImplicitAddressOrAlias -> "contract" :! ContractAddressOrAlias
-  -> L1AddressOrAlias -> MorleyClientM ()
+  -> SomeAddressOrAlias -> MorleyClientM ()
 changeMasterMinter sender contract to = do
   toAddr <- resolveAddress to
   call sender contract (Call @"Change_master_minter") (toAddress toAddr)
@@ -276,7 +278,7 @@ changeMasterMinter sender contract to = do
 -- | Set pauser to a new address.
 changePauser
   :: "sender" :! ImplicitAddressOrAlias -> "contract" :! ContractAddressOrAlias
-  -> L1AddressOrAlias -> MorleyClientM ()
+  -> SomeAddressOrAlias -> MorleyClientM ()
 changePauser sender contract to = do
   toAddr <- resolveAddress to
   call sender contract (Call @"Change_pauser") (toAddress toAddr)
@@ -332,7 +334,7 @@ getTransferlist contract = do
   traverse (unsafeAddressToL1Address "transferlist" >=> pairWithAlias) transferlistMb
 
 -- | Get the minting allowance for the given minter.
-getMintingAllowance :: "contract" :! ContractAddressOrAlias -> L1AddressOrAlias -> MorleyClientM Natural
+getMintingAllowance :: "contract" :! ContractAddressOrAlias -> SomeAddressOrAlias -> MorleyClientM Natural
 getMintingAllowance contract minter = do
   minterAddr <- resolveAddress minter
   mintingAllowances <- sMintingAllowancesRPC <$> getStorage contract
@@ -378,16 +380,14 @@ throwMdErr toMsg f = either (throwM . SCEMetadataError . toMsg) pure f
 
 unsafeAddressToL1Address :: Text -> Address -> MorleyClientM L1Address
 unsafeAddressToL1Address fieldName = \case
-  MkAddress (ca@ContractAddress{}) -> pure $ MkConstrainedAddress ca
-  MkAddress (ia@ImplicitAddress{}) -> pure $ MkConstrainedAddress ia
-  MkAddress (tra@TxRollupAddress{}) -> throwM $ SCEUnexpectedTxRollupAddress fieldName tra
+  Constrained (ca@ContractAddress{}) -> pure $ Constrained ca
+  Constrained (ia@ImplicitAddress{}) -> pure $ Constrained ia
+  Constrained (tra@TxRollupAddress{}) -> throwM $ SCEUnexpectedTxRollupAddress fieldName tra
 
 -- | Check if there's an alias associated with this address and, if so, return both.
 pairWithAlias :: L1Address -> MorleyClientM AddressAndAlias
-pairWithAlias addr@(MkConstrainedAddress aa) = do
-  aliasMb <- (Just <$> getAlias (AddressResolved aa)) `catch` \case
-    UnknownAddress _ -> pure Nothing
-    err -> throwM err
+pairWithAlias addr@(Constrained aa) = do
+  aliasMb <- getAliasMaybe (AddressResolved aa)
   pure $ AddressAndAlias (toAddress addr) (unAlias <$> aliasMb)
 
 -- | Call an entrypoint of the stablecoin contract with the given argument.

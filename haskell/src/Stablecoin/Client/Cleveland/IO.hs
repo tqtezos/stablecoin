@@ -21,7 +21,7 @@ module Stablecoin.Client.Cleveland.IO
 
 import Data.Char (isAlpha, isDigit)
 import Fmt (Buildable, pretty, (+|), (|+))
-import Morley.Client (MorleyClientEnv, MorleyClientEnv'(..))
+import Morley.Client (MorleyClientEnv(..))
 import Morley.Client qualified as MorleyClient
 import Morley.Client.TezosClient (TezosClientEnv(..))
 import Morley.Tezos.Address

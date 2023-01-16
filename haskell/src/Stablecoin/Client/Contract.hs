@@ -6,14 +6,14 @@ module Stablecoin.Client.Contract
   ) where
 
 import Lorentz.Contracts.Stablecoin (Expiry)
-import Stablecoin.Client.L1AddressOrAlias (ContractAddressOrAlias, L1AddressOrAlias)
+import Morley.Tezos.Address.Alias (ContractAddressOrAlias, SomeAddressOrAlias)
 import Stablecoin.Client.Parser (ContractMetadataOptions(..))
 
 -- | The options needed to create the data for the contract's initial storage.
 data InitialStorageOptions = InitialStorageOptions
-  { isoMasterMinter :: L1AddressOrAlias
-  , isoContractOwner :: L1AddressOrAlias
-  , isoPauser :: L1AddressOrAlias
+  { isoMasterMinter :: SomeAddressOrAlias
+  , isoContractOwner :: SomeAddressOrAlias
+  , isoPauser :: SomeAddressOrAlias
   , isoTransferlist :: Maybe ContractAddressOrAlias
   , isoTokenSymbol :: Text
   , isoTokenName :: Text

@@ -17,6 +17,7 @@ import Test.Cleveland.Lorentz (toContractAddress)
 import Test.Cleveland.Tasty (whenNetworkEnabled)
 
 import Indigo.Contracts.Transferlist.Internal qualified as Transferlist
+import Morley.Tezos.Address.Alias (AddressOrAlias(..), SomeAddressOrAlias(..))
 import Stablecoin.Client (AddressAndAlias(..), UpdateOperatorData(AddOperator, RemoveOperator))
 import Stablecoin.Client.Cleveland
   (StablecoinT, acceptOwnership, assertEq, burn, changeMasterMinter, changePauser, configureMinter,
@@ -26,7 +27,6 @@ import Stablecoin.Client.Cleveland
 import Stablecoin.Client.Cleveland qualified as SC
 import Stablecoin.Client.Cleveland.Caps (runStablecoinClient)
 import Stablecoin.Client.Contract (InitialStorageOptions(..))
-import Stablecoin.Client.L1AddressOrAlias (KindedAddressOrAlias(..), L1AddressOrAlias(..))
 import Stablecoin.Client.Parser (ContractMetadataOptions(..))
 
 test_stablecoinClientScenario :: TestTree
@@ -52,10 +52,10 @@ stablecoinClientScenario = do
 
   comment "Deploying contract"
   contractAddr <- deploy (#sender :! originator) InitialStorageOptions
-    { isoMasterMinter = L1AOAKindSpecified $ KAOAAddress masterMinter
-    , isoContractOwner = L1AOAKindSpecified $ KAOAAddress contractOwner
-    , isoPauser = L1AOAKindSpecified $ KAOAAddress pauser
-    , isoTransferlist = Just $ KAOAAddress $ toContractAddress transferlist
+    { isoMasterMinter = SAOAKindSpecified $ AddressResolved masterMinter
+    , isoContractOwner = SAOAKindSpecified $ AddressResolved contractOwner
+    , isoPauser = SAOAKindSpecified $ AddressResolved pauser
+    , isoTransferlist = Just $ AddressResolved $ toContractAddress transferlist
     , isoTokenSymbol = "a"
     , isoTokenName = "b"
     , isoTokenDecimals = 3
@@ -102,9 +102,9 @@ stablecoinClientScenario = do
   getMintingAllowance contract (toL1Address minter) >>= \allowance -> allowance `assertEq` 0
 
   comment "Testing operators"
-  updateOperators (#sender :! minter) contract (one $ AddOperator $ L1AOAKindSpecified $ KAOAAddress pauser)
+  updateOperators (#sender :! minter) contract (one $ AddOperator $ SAOAKindSpecified $ AddressResolved pauser)
   isOperator contract (toL1Address minter) (toL1Address pauser) >>= (`assertEq` True)
-  updateOperators (#sender :! minter) contract (one $ RemoveOperator $ L1AOAKindSpecified $ KAOAAddress pauser)
+  updateOperators (#sender :! minter) contract (one $ RemoveOperator $ SAOAKindSpecified $ AddressResolved pauser)
   isOperator contract (toL1Address minter) (toL1Address pauser) >>= (`assertEq` False)
 
   comment "Testing change-master-minter"

@@ -193,7 +193,7 @@ getBalanceView =
     , vImplementations = one $
         VIMichelsonStorageView $
           mkMichelsonStorageView @Storage @Natural Nothing [] $
-            $$(compileViewCodeTH $ WithParam @BalanceViewParam $ mkLambda $
+            $$(compileViewCodeTH $ WithParam @BalanceViewParam $
               L.dip (L.toField #sLedger) #
               L.car #
               L.get #
@@ -210,7 +210,7 @@ getTotalSupplyView =
     , vImplementations = one $
         VIMichelsonStorageView $
           mkMichelsonStorageView @Storage @Natural Nothing [] $
-            $$(compileViewCodeTH $ WithParam @Natural $ mkLambda $
+            $$(compileViewCodeTH $ WithParam @Natural $
               L.int #
               L.assertEq0 [mt|Unknown TOKEN ID|] #
               L.toField #sTotalSupply
@@ -226,7 +226,7 @@ getAllTokensView =
     , vImplementations = one $
         VIMichelsonStorageView $
           mkMichelsonStorageView @Storage Nothing [] $
-            $$(compileViewCodeTH $ WithoutParam $ mkLambda $
+            $$(compileViewCodeTH $ WithoutParam $
               L.drop # L.nil # L.push (0 :: Natural) # L.cons
             )
     }
@@ -240,7 +240,7 @@ isOperatorView =
     , vImplementations = one $
         VIMichelsonStorageView $
           mkMichelsonStorageView @Storage @Bool Nothing [] $
-            $$(compileViewCodeTH $ WithParam @FA2.OperatorParam $ mkLambda $
+            $$(compileViewCodeTH $ WithParam @FA2.OperatorParam $
               L.dip (L.toField #sOperators) #
 
               L.getField #opTokenId # forcedCoerce_ @FA2.TokenId @Natural #
@@ -257,7 +257,7 @@ isOperatorView =
 
 mkTokenMetadataView :: FA2.TokenMetadata -> TZ.View (ToT Storage)
 mkTokenMetadataView md =
-  let vc = unsafeCompileViewCode $ WithParam @Natural $ mkLambda $
+  let vc = unsafeCompileViewCode $ WithParam @Natural $
           L.dip L.drop #
           L.int #
           L.assertEq0 [mt|Unknown TOKEN ID|] #
@@ -280,7 +280,7 @@ getDefaultExpiryView =
     , vImplementations = one $
         VIMichelsonStorageView $
           mkMichelsonStorageView @Storage  @Natural Nothing [] $
-            $$(compileViewCodeTH $ WithoutParam $ mkLambda $
+            $$(compileViewCodeTH $ WithoutParam $
               L.toField #sDefaultExpiry
             )
     }
@@ -294,7 +294,7 @@ getCounterView =
     , vImplementations = one $
         VIMichelsonStorageView $
           mkMichelsonStorageView @Storage @Natural Nothing [] $
-            $$(compileViewCodeTH $ WithoutParam $ mkLambda $
+            $$(compileViewCodeTH $ WithoutParam $
               L.toField #sPermitCounter
             )
     }

@@ -8,10 +8,10 @@ module Stablecoin.Client.Metadata
   )
   where
 
-import Data.Constraint (evidence, (\\))
+import Data.Constraint (evidence)
 import Data.Singletons (demote)
 import Fmt (Buildable(build), indentF, pretty, unlinesF, (+|), (|+))
-import Lorentz (NiceParameter, NiceStorage, ToT, def, niceParameterEvi, niceStorageEvi)
+import Lorentz (NiceParameter, NiceStorage, ToT, def, zeroMutez)
 import Lorentz qualified as L
 import Lorentz.Contracts.Spec.TZIP16Interface (MichelsonStorageView(..), View)
 import Lorentz.Contracts.Spec.TZIP16Interface qualified as TZ
@@ -53,12 +53,8 @@ callOffChainView offChainViews st addr viewName viewParam = do
 
   balance <- Client.getBalance addr
 
-  Dict <- pure $ evidence $ niceStorageEvi @storage
   Dict <- pure $ evidence $ rpcHasNoOpEvi @(ToT storage)
-  Dict <- pure $ evidence $ niceStorageEvi @viewRet
-
   Dict <- pure $ viewInstrParamDict @storage viewParam
-  Dict <- pure $ evidence $ niceParameterEvi @(ViewInstrParam viewParamMaybe storage)
 
   instr <- typeCheckOffChainView @storage @viewRet viewParam offChainViewImpl
     & evalRight (METypeCheckingFailed viewName)
@@ -88,7 +84,7 @@ callOffChainView offChainViews st addr viewName viewParam = do
           NoParam -> untypeValue $ toVal st
 
     , rcpStorage = untypeValue $ toVal $ Nothing @viewRet
-    , rcpAmount = 0
+    , rcpAmount = zeroMutez
     , rcpBalance = balance
     , rcpSource = Nothing
     , rcpLevel = Nothing
@@ -166,7 +162,7 @@ viewInstrParamDict
   => ViewParam viewParamMaybe
   -> Dict (NiceParameter (ViewInstrParam viewParamMaybe storage))
 viewInstrParamDict = \case
-  ViewParam (_ :: viewParam) -> Dict \\ niceParameterEvi @viewParam
+  ViewParam (_ :: viewParam) -> Dict
   NoParam {} -> Dict
 
 

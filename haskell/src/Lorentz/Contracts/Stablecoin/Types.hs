@@ -39,19 +39,19 @@ import Text.Show qualified
 import Lorentz as L
 import Lorentz.Contracts.Spec.FA2Interface qualified as FA2
 import Lorentz.Contracts.Spec.TZIP16Interface (MetadataMap)
-import Morley.AsRPC (HasRPCRepr(..), deriveRPCWithStrategy)
+import Morley.AsRPC (DeriveRPCOptions(..), HasRPCRepr(..), deriveRPCWithOptions)
 import Morley.Michelson.Typed (Notes(..))
 import Morley.Michelson.Untyped (noAnn)
+import Morley.Tezos.Address.Alias (SomeAddressOrAlias)
 import Morley.Tezos.Crypto qualified as Hash
-import Stablecoin.Client.L1AddressOrAlias (L1AddressOrAlias)
 
 ------------------------------------------------------------------
 -- Parameter
 
 -- | Data needed to add or remove an operator.
 data UpdateOperatorData
-  = AddOperator L1AddressOrAlias
-  | RemoveOperator L1AddressOrAlias
+  = AddOperator SomeAddressOrAlias
+  | RemoveOperator SomeAddressOrAlias
   deriving stock Show
 
 data ConfigureMinterParam = ConfigureMinterParam
@@ -256,7 +256,8 @@ data Storage = Storage
   }
 
 customGeneric "Storage" ligoLayout
-deriveRPCWithStrategy "Storage" ligoLayout
+-- TODO [morley#922]: drop 'droRecursive' here.
+deriveRPCWithOptions "Storage" def{droStrategy=ligoLayout, droRecursive=False}
 
 deriving stock instance Show Storage
 deriving anyclass instance IsoValue Storage
