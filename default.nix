@@ -3,16 +3,14 @@
 
 { sources ? import ./nix/sources.nix
 , static ? true
-, haskell-nix ? import sources."haskell.nix" {
-    sourcesOverride = { hackage = sources."hackage.nix"; stackage = sources."stackage.nix"; };
-  }
-, pkgs ? import sources.nixpkgs haskell-nix.nixpkgsArgs
+, haskell-nix ? pkgs.haskell-nix
+, pkgs ? morley-infra.legacyPackages.${builtins.currentSystem}
 , ligo ? (pkgs.runCommand "ligo" {} "mkdir -p $out/bin; cp ${sources.ligo} $out/bin/ligo; chmod +x $out/bin/ligo")
 , morley ? (import "${sources.morley}/ci.nix").packages.morley.exes.morley
 , morley-infra ? (import sources.morley-infra)
 }:
 let
-  inherit (morley-infra) tezos-client weeder-hacks run-chain-tests;
+  inherit (morley-infra) weeder-hacks run-chain-tests;
   haskell-nix =
     if static
     then pkgs.pkgsCross.musl64.haskell-nix
@@ -91,7 +89,6 @@ let
     hs-pkgs = project;
     inherit local-packages;
   };
-  xrefcheck = import sources.xrefcheck;
 
 in
 {
@@ -102,7 +99,6 @@ in
     '' + o.buildPhase;
   });
   test = project.stablecoin.components.tests.stablecoin-test;
-  nettest = project.stablecoin.components.tests.stablecoin-nettest;
   stablecoin-client = project.stablecoin.components.exes.stablecoin-client;
-  inherit tezos-contract tezos-contract-fa1-2 tezos-metadata-contract tezos-client pkgs weeder-script morley run-chain-tests xrefcheck;
+  inherit tezos-contract tezos-contract-fa1-2 tezos-metadata-contract pkgs weeder-script morley run-chain-tests;
 }

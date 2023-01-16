@@ -1,28 +1,4 @@
 {
-    "hackage.nix": {
-        "branch": "master",
-        "description": "Automatically generated Nix expressions for Hackage",
-        "homepage": "",
-        "owner": "input-output-hk",
-        "repo": "hackage.nix",
-        "rev": "987ffa5675745c059cb5d9148bdf8c582b154300",
-        "sha256": "0rvij1csfibqlx14q2gbcdh7i4dd6rizm22cwc0ghrq84k0hzn2y",
-        "type": "tarball",
-        "url": "https://github.com/input-output-hk/hackage.nix/archive/987ffa5675745c059cb5d9148bdf8c582b154300.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
-    },
-    "haskell.nix": {
-        "branch": "master",
-        "description": "Alternative Haskell Infrastructure for Nixpkgs",
-        "homepage": "https://input-output-hk.github.io/haskell.nix",
-        "owner": "input-output-hk",
-        "repo": "haskell.nix",
-        "rev": "0e493268a58415adf1e373e13a2b7adc32303ee0",
-        "sha256": "0h6zsv4s7ah15b4gw055y6qam6dw7j0rcax6l66396frh3h2sahn",
-        "type": "tarball",
-        "url": "https://github.com/input-output-hk/haskell.nix/archive/0e493268a58415adf1e373e13a2b7adc32303ee0.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
-    },
     "ligo": {
         "rev": "0.46.1",
         "sha256": "167lq0kjxq1m48sp7cpwka9c3jgypryww5xwkp3j065rrw4y9di3",
@@ -38,47 +14,10 @@
         "url_template": "https://gitlab.com/morley-framework/morley/-/archive/morley-<rev>/morley-morley-<rev>.tar.gz"
     },
     "morley-infra": {
-        "rev": "d2f8d163188f1cfef38fca75fb30fec98dbfc4c7",
-        "sha256": "1kjcjvwmp0prqcfxsaq90cb3097fnfmp7q1wb45i2an8i5rh0dhy",
+        "rev": "4fb8c45107f4266075c2da81742341ad440a699a",
+        "sha256": "0g2walab21ra2al9sl2ahd884hmn251cl80sw4h5pxan6v9lrgas",
         "type": "tarball",
-        "url": "https://gitlab.com/morley-framework/morley-infra/-/archive/d2f8d163188f1cfef38fca75fb30fec98dbfc4c7/morley-infra-d2f8d163188f1cfef38fca75fb30fec98dbfc4c7.tar.gz",
+        "url": "https://gitlab.com/morley-framework/morley-infra/-/archive/4fb8c45107f4266075c2da81742341ad440a699a/morley-infra-4fb8c45107f4266075c2da81742341ad440a699a.tar.gz",
         "url_template": "https://gitlab.com/morley-framework/morley-infra/-/archive/<rev>/morley-infra-<rev>.tar.gz"
-    },
-    "nixpkgs": {
-        "branch": "master",
-        "description": "Pinned Nixpkgs tree (master follows nixos-unstable-small, only tags have stable history)",
-        "homepage": "",
-        "owner": "serokell",
-        "repo": "nixpkgs",
-        "rev": "7887e272ab2ad8376d54ca5f58df0ed7f67676e6",
-        "sha256": "0sx7ff2ps79izkaqnigyj85vs6jffvx8x9kgl0qf4wv0n3b2wwmj",
-        "type": "tarball",
-        "url": "https://github.com/serokell/nixpkgs/archive/7887e272ab2ad8376d54ca5f58df0ed7f67676e6.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
-    },
-    "stackage.nix": {
-        "branch": "master",
-        "description": "Automatically generated Nix expressions of Stackage snapshots",
-        "homepage": "",
-        "owner": "input-output-hk",
-        "repo": "stackage.nix",
-        "rev": "5c48fc444f9323b0bab35759158186cbb252f83f",
-        "sha256": "19gza2hq1cq9kjq9vvplk1n9spzmmwhab1fpbx896hq7vnzwvyj7",
-        "type": "tarball",
-        "url": "https://github.com/input-output-hk/stackage.nix/archive/5c48fc444f9323b0bab35759158186cbb252f83f.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
-    },
-    "xrefcheck": {
-        "branch": "v0.2.2",
-        "description": "Check cross-references in repository documents",
-        "homepage": "",
-        "owner": "serokell",
-        "repo": "xrefcheck",
-        "rev": "887803d61c0dfb3726484f00a882101117725c62",
-        "sha256": "1ymlp4g494aig6mzi7bx3r73hpd9c5qsxznka7kjfy2lv0y5gyxy",
-        "type": "tarball",
-        "url": "https://github.com/serokell/xrefcheck/archive/887803d61c0dfb3726484f00a882101117725c62.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
-        "version": "0.2.2"
     }
 }

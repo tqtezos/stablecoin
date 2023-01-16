@@ -56,7 +56,7 @@ steps:
    if: *not_scheduled
 
  - label: xrefcheck
-   command: "nix shell -f . xrefcheck -c xrefcheck"
+   command: "nix shell -f . pkgs.xrefcheck -c xrefcheck"
    if: *not_scheduled
 
  - label: LIGO-contract
