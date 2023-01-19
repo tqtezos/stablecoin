@@ -25,7 +25,7 @@ import Morley.Michelson.Runtime.GState (BigMapCounter(..))
 import Morley.Michelson.Text
 import Morley.Michelson.Typed qualified as T
 import Morley.Michelson.Typed.Haskell.Value (bmMap)
-import Morley.Tezos.Address (ConstrainedAddress(..), GlobalCounter(..), KindedAddress(..))
+import Morley.Tezos.Address (Constrained(..), GlobalCounter(..), KindedAddress(..))
 import Morley.Tezos.Core (zeroMutez)
 import Test.Cleveland
 
@@ -528,7 +528,7 @@ callEntrypoint
   :: ContractCall Parameter
   -> Storage
   -> ContractEnv
-  -> Either InterpretError (T.Value (ToT Storage))
+  -> Either (InterpretError Void) (T.Value (ToT Storage))
 callEntrypoint cc st env = case ccParameter cc of
   Pause -> call' (Call @"Pause") ()
   Unpause -> call' (Call @"Unpause") ()
@@ -552,7 +552,7 @@ callEntrypoint cc st env = case ccParameter cc of
       :: IsoValue (GetEntrypointArgCustom Parameter ep)
       => EntrypointRef ep
       -> GetEntrypointArgCustom Parameter ep
-      -> Either InterpretError (T.Value (ToT Storage))
+      -> Either (InterpretError Void) (T.Value (ToT Storage))
     call' epRef param =
       case
         interpret
@@ -797,6 +797,6 @@ vectorOf n = Gen.list (Range.linear 1 n)
 
 unsafeAddressToImplicitAddress :: HasCallStack => Address -> ImplicitAddress
 unsafeAddressToImplicitAddress = \case
-  MkAddress (ia@ImplicitAddress{}) -> ia
-  MkAddress (ContractAddress{}) -> error "Unexpected contract address"
-  MkAddress (TxRollupAddress{}) -> error "Unexpected transaction rollup address"
+  Constrained (ia@ImplicitAddress{}) -> ia
+  Constrained (ContractAddress{}) -> error "Unexpected contract address"
+  Constrained (TxRollupAddress{}) -> error "Unexpected transaction rollup address"

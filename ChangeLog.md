@@ -9,6 +9,9 @@ SPDX-License-Identifier: MIT
 <!-- Don't forget to update the gas/transaction costs tables in the
 README when a new version is released. -->
 
+* [#203](https://github.com/tqtezos/stablecoin/pull/203)
+  Add suport for the Lima protocol.
+
 ## 1.7.4
 
 * [#198](https://github.com/tqtezos/stablecoin/pull/198)

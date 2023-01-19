@@ -10,10 +10,11 @@ import Control.Exception.Uncaught (displayUncaughtException)
 import Data.Map (lookup)
 import Fmt (pretty)
 import Morley.Client
-  (MorleyClientM, TezosClientError(UnknownAddressAlias), mkMorleyClientEnv, rememberContract,
-  runMorleyClientM)
+  (AliasBehavior(..), MorleyClientM, ResolveError(..), TezosClientError(ResolveError),
+  mkMorleyClientEnv, rememberContract, runMorleyClientM)
+import Morley.Client.TezosClient.Impl (resolveAddressEither)
 import Morley.Michelson.Text (mt)
-import Morley.Tezos.Address.Alias (Alias(..), ContractAlias)
+import Morley.Tezos.Address.Alias (AddressOrAlias(..), Alias(..), ContractAlias)
 import Morley.Util.Named (pattern (:!))
 import Options.Applicative qualified as Opt
 
@@ -23,7 +24,6 @@ import Stablecoin.Client.Impl
   deploy, getBalance, getBalanceOf, getContractOwner, getMasterMinter, getMintingAllowance,
   getPaused, getPauser, getPendingContractOwner, getTokenMetadata, getTransferlist, isOperator,
   mint, pause, removeMinter, setTransferlist, transfer, transferOwnership, unpause, updateOperators)
-import Stablecoin.Client.L1AddressOrAlias (KindedAddressOrAlias(..), resolveAddress)
 import Stablecoin.Client.Parser
   (BurnOptions(..), ChangeMasterMinterOptions(..), ChangePauserOptions(..), ClientArgs(..),
   ClientArgsRaw(..), ConfigureMinterOptions(..), DeployContractOptions(..), GetBalanceOfOptions(..),
@@ -69,7 +69,7 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
         then if dcoReplaceAlias
           then do
             -- silently replace existing alias
-            rememberContract True contractAddr contractAlias
+            rememberContract OverwriteDuplicateAlias contractAddr contractAlias
             printAlias
           else do
             -- ask the user whether they want to replace the existing alias
@@ -78,7 +78,7 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
             confirmAction "Would you like to replace it with the newly deployed contract?" >>= \case
               Canceled -> pass
               Confirmed -> do
-                rememberContract True contractAddr contractAlias
+                rememberContract OverwriteDuplicateAlias contractAddr contractAlias
                 printAlias
         else
           printAlias
@@ -178,9 +178,10 @@ mainProgram (ClientArgs _ globalOptions cmd) = do
 
     checkIfAliasExists :: ContractAlias -> MorleyClientM Bool
     checkIfAliasExists alias = do
-      (resolveAddress (KAOAAlias alias) $> True) `catch` \case
-        UnknownAddressAlias _ -> pure False
-        err -> throwM err
+      resolveAddressEither (AddressAlias alias) >>= \case
+        Right{} -> pure True
+        Left REAliasNotFound{} -> pure False
+        Left err -> throwM (ResolveError err)
 
     confirmAction :: Text -> MorleyClientM ConfirmationResult
     confirmAction msg = do

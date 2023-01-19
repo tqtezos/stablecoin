@@ -10,17 +10,6 @@ env:
     && cp "./nix/sources.json" "./haskell/test/resources/"
   TEZOS_CLIENT_UNSAFE_DISABLE_DISCLAIMER: "Y"
 
-.local-chain-env: &local-chain-env
-  TASTY_CLEVELAND_NODE_ENDPOINT: "http://localhost:8733"
-  CHAIN_TEST_MONEYBAG_SECRET_KEY: "unencrypted:edsk3AvAoPS5jFov49aWBQ9oVtCPwNSne2CriHvkFxfeCg4Srr5bak"
-  # this key is defined in local-chain bootstrap accounts list in
-  # https://github.com/serokell/aquarius-infra/blob/master/servers/albali/chain.nix
-
-.kathmandunet-env: &kathmandunet-env
-  TASTY_CLEVELAND_NODE_ENDPOINT: "https://kathmandu.testnet.tezos.serokell.team"
-  CHAIN_TEST_MONEYBAG_SECRET_KEY: "$TESTNET_MONEYBAG"
-  CHAIN_TEST_MONEYBAG_PASSWORD: "$TESTNET_MONEYBAG_PASSWORD"
-
 .network-tests: &network-tests
   commands:
     - eval "$FETCH_CONTRACT"
@@ -41,111 +30,117 @@ env:
       limit: 1
 
 steps:
- - label: hlint
-   if: &not_scheduled
-     build.source != "schedule"
-   command:
-     nix run -f. pkgs.hlint -c ./scripts/lint.sh
+  - label: hlint
+    if: &not_scheduled
+      build.source != "schedule"
+    command:
+      nix run -f. pkgs.hlint -c ./scripts/lint.sh
 
- - label: reuse lint
-   command: nix run -f. pkgs.reuse -c reuse lint
-   if: *not_scheduled
+  - label: reuse lint
+    command: nix run -f. pkgs.reuse -c reuse lint
+    if: *not_scheduled
 
- - label: check trailing whitespace
-   command: .buildkite/check-trailing-whitespace.sh
-   if: *not_scheduled
+  - label: check trailing whitespace
+    command: .buildkite/check-trailing-whitespace.sh
+    if: *not_scheduled
 
- - label: xrefcheck
-   command: "nix shell -f . xrefcheck -c xrefcheck"
-   if: *not_scheduled
+  - label: xrefcheck
+    command: "nix shell -f . pkgs.xrefcheck -c xrefcheck"
+    if: *not_scheduled
 
- - label: LIGO-contract
-   key: LIGO-contract
-   commands:
-     - nix-build -A tezos-contract -o stablecoin_raw.tz
-     - nix run -f. morley -c morley optimize --contract stablecoin_raw.tz --output stablecoin.tz
-     - nix-build -A tezos-contract-fa1-2 -o stablecoin.fa1.2_raw.tz
-     - nix run -f. morley -c morley optimize --contract stablecoin.fa1.2_raw.tz --output stablecoin.fa1.2.tz
-     - nix-build -A tezos-metadata-contract -o metadata.tz
-   artifact_paths:
-     - stablecoin.tz
-     - stablecoin.fa1.2.tz
-     - metadata.tz
+  - label: LIGO-contract
+    key: LIGO-contract
+    commands:
+      - nix-build -A tezos-contract -o stablecoin_raw.tz
+      - nix run -f. morley -c morley optimize --contract stablecoin_raw.tz --output stablecoin.tz
+      - nix-build -A tezos-contract-fa1-2 -o stablecoin.fa1.2_raw.tz
+      - nix run -f. morley -c morley optimize --contract stablecoin.fa1.2_raw.tz --output stablecoin.fa1.2.tz
+      - nix-build -A tezos-metadata-contract -o metadata.tz
+    artifact_paths:
+      - stablecoin.tz
+      - stablecoin.fa1.2.tz
+      - metadata.tz
 
- # wait for the contract step to complete, so the next steps can download generated contract
- - wait
+  # wait for the contract step to complete, so the next steps can download generated contract
+  - wait
 
- - label: build library
-   key: build_library
-   if: *not_scheduled
-   timeout_in_minutes: 180
-   commands:
-     - eval "$FETCH_CONTRACT"
-     - nix build -L -f. lib
+  - label: build library
+    key: build_library
+    if: *not_scheduled
+    timeout_in_minutes: 180
+    commands:
+      - eval "$FETCH_CONTRACT"
+      - nix build -L -f. lib
 
- - label: haddock
-   if: *not_scheduled
-   depends_on: build_library
-   commands:
-     - eval "$FETCH_CONTRACT"
-     - nix build -L -f. haddock
+  - label: haddock
+    if: *not_scheduled
+    depends_on: build_library
+    commands:
+      - eval "$FETCH_CONTRACT"
+      - nix build -L -f. haddock
 
- - label: test
-   key: test
-   if: *not_scheduled
-   depends_on: build_library
-   commands:
-     - eval "$FETCH_CONTRACT"
-     - cd haskell
-     - nix build -L -f .. test
-     - ./result/bin/stablecoin-test --cleveland-mode=disable-network
+  - label: test
+    key: test
+    if: *not_scheduled
+    depends_on: build_library
+    commands:
+      - eval "$FETCH_CONTRACT"
+      - cd haskell
+      - nix build -L -f .. test
+      - ./result/bin/stablecoin-test --cleveland-mode=disable-network
 
- - label: nettest-local-chain-014
-   key: nettest-local-chain-014
-   if: *not_scheduled
-   depends_on: build_library
-   <<: *network-tests
-   env:
-     <<: *local-chain-env
+  - label: nettest-local-chain-015
+    key: nettest-local-chain-015
+    if: *not_scheduled
+    depends_on: build_library
+    <<: *network-tests
+    env:
+      TASTY_CLEVELAND_NODE_ENDPOINT: "http://localhost:8734"
+      CHAIN_TEST_MONEYBAG_SECRET_KEY: "unencrypted:edsk3AvAoPS5jFov49aWBQ9oVtCPwNSne2CriHvkFxfeCg4Srr5bak"
+      # this key is defined in local-chain bootstrap accounts list in
+      # https://github.com/serokell/aquarius-infra/blob/master/servers/albali/chain.nix
 
- - label: nettest-scheduled-kathmandunet
-   key: nettest-scheduled-kathmandunet
-   if: build.source == "schedule"
-   depends_on:
-     - build_library
-     - LIGO-contract
-   <<: *network-tests
-   env:
-     <<: *kathmandunet-env
-     # Running all of the tests on network will end up draining the moneybag; for now, only FA1.2 tests are run
-     TASTY_PATTERN: '/Test.FA1_2/||/Lorentz.Contracts.Nettest/'
-   timeout_in_minutes: 360
 
- - label: weeder
-   key: weeder
-   if: *not_scheduled
-   depends_on: build_library
-   commands:
-     - eval "$FETCH_CONTRACT"
-     - cd haskell
-     - nix-build .. -A weeder-script
-     # weeder needs .cabal file:
-     - nix run -f.. pkgs.haskellPackages.hpack -c hpack
-     - ./result
+  - label: nettest-scheduled-limanet
+    key: nettest-scheduled-limanet
+    if: build.source == "schedule"
+    depends_on:
+      - build_library
+      - LIGO-contract
+    <<: *network-tests
+    env:
+      TASTY_CLEVELAND_NODE_ENDPOINT: "https://lima.testnet.tezos.serokell.team"
+      CHAIN_TEST_MONEYBAG_SECRET_KEY: "$TESTNET_MONEYBAG"
+      CHAIN_TEST_MONEYBAG_PASSWORD: "$TESTNET_MONEYBAG_PASSWORD"
+      # Running all of the tests on network will end up draining the moneybag; for now, only FA1.2 tests are run
+      TASTY_PATTERN: '/Test.FA1_2/||/Lorentz.Contracts.Nettest/'
+    timeout_in_minutes: 360
 
- - label: packaging
-   if: *not_scheduled
-   depends_on:
-     - test
-     - nettest-local-chain-014
-     - nettest-scheduled-kathmandunet
-     - weeder
-   commands:
-     - eval "$FETCH_CONTRACT"
-     - nix-build -A stablecoin-client -o stablecoin-static
-     - nix run -f . pkgs.upx -c upx stablecoin-static/bin/stablecoin-client -o stablecoin-client
-   artifact_paths:
-     - ./stablecoin-client
+  - label: weeder
+    key: weeder
+    if: *not_scheduled
+    depends_on: build_library
+    commands:
+      - eval "$FETCH_CONTRACT"
+      - cd haskell
+      - nix-build .. -A weeder-script
+      # weeder needs .cabal file:
+      - nix run -f.. pkgs.haskellPackages.hpack -c hpack
+      - ./result
+
+  - label: packaging
+    if: *not_scheduled
+    depends_on:
+      - test
+      - nettest-local-chain-015
+      - nettest-scheduled-limanet
+      - weeder
+    commands:
+      - eval "$FETCH_CONTRACT"
+      - nix-build -A stablecoin-client -o stablecoin-static
+      - nix run -f . pkgs.upx -c upx stablecoin-static/bin/stablecoin-client -o stablecoin-client
+    artifact_paths:
+      - ./stablecoin-client
 
 notify:
   - email: "tezos-alerts@serokell.io"
