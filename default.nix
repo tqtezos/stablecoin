@@ -59,7 +59,17 @@ let
       {
         packages.stablecoin.components.library = {
           preBuild = ''
+            echo "PREBUILD"
+            echo ${projectSrc}
+            ls ${projectSrc}
+            ls ${projectSrc}/test
+            ls ${projectSrc}/test/resources
+            pwd
+            ls
+            ls test
+            ls test/resources
             cp -rT ${projectSrc}/test/resources test/resources/
+            ls test/resources
           '';
         };
       }
