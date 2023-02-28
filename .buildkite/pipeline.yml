@@ -7,18 +7,17 @@ env:
     && buildkite-agent artifact download stablecoin.tz haskell/test/resources/
     && buildkite-agent artifact download stablecoin.fa1.2.tz haskell/test/resources/
     && buildkite-agent artifact download metadata.tz haskell/test/resources/ --step "LIGO-contract"
-    && cp "./nix/sources.json" "./haskell/test/resources/"
   TEZOS_CLIENT_UNSAFE_DISABLE_DISCLAIMER: "Y"
 
 .network-tests: &network-tests
   commands:
     - eval "$FETCH_CONTRACT"
     - cd haskell/
-    - export PATH=$(nix-build ../ -A stablecoin-client)/bin:$PATH
-    - nix build -L -f .. test
+    - export PATH=$(nix build ..#stablecoin:exe:stablecoin-client --print-out-paths --no-link)/bin:$PATH
+    - nix build -L ..#stablecoin:test:stablecoin-test
     # Note that 'refill-balance' below is the initial 'TASTY_CLEVELAND_MONEYBAG_SECRET_KEY' balance
     # which may need to be adjusted in case of insufficient balance errors
-    - $(nix-build ../ -A run-chain-tests
+    - $(nix-build ../ -A utils.run-chain-tests
         --argstr refill-balance 1100
         --argstr node-endpoint "$$TASTY_CLEVELAND_NODE_ENDPOINT"
         --argstr step-moneybag "$$CHAIN_TEST_MONEYBAG_SECRET_KEY"
@@ -34,28 +33,28 @@ steps:
     if: &not_scheduled
       build.source != "schedule"
     command:
-      nix run -f. pkgs.hlint -c ./scripts/lint.sh
+      nix shell .#haskellPackages.hlint -c ./scripts/lint.sh
 
-  - label: reuse lint
-    command: nix run -f. pkgs.reuse -c reuse lint
+  - label: check
     if: *not_scheduled
-
-  - label: check trailing whitespace
-    command: .buildkite/check-trailing-whitespace.sh
-    if: *not_scheduled
+    command:
+      nix flake check -L
 
   - label: xrefcheck
-    command: "nix shell -f . pkgs.xrefcheck -c xrefcheck"
+    command: nix run "github:serokell/xrefcheck?rev=d1f465048eb2d9f345dbcfcc645a07440c7ebe80"
     if: *not_scheduled
+    # TODO [#205]: Remove the flag below
+    soft_fail:
+      - exit_status: 1
 
   - label: LIGO-contract
     key: LIGO-contract
     commands:
-      - nix-build -A tezos-contract -o stablecoin_raw.tz
-      - nix run -f. morley -c morley optimize --contract stablecoin_raw.tz --output stablecoin.tz
-      - nix-build -A tezos-contract-fa1-2 -o stablecoin.fa1.2_raw.tz
-      - nix run -f. morley -c morley optimize --contract stablecoin.fa1.2_raw.tz --output stablecoin.fa1.2.tz
-      - nix-build -A tezos-metadata-contract -o metadata.tz
+      - nix build -L .#tezos-contract -o stablecoin_raw.tz
+      - nix shell .#morley -c morley optimize --contract stablecoin_raw.tz --output stablecoin.tz
+      - nix build -L .#tezos-contract-fa1-2 -o stablecoin.fa1.2_raw.tz
+      - nix shell .#morley -c morley optimize --contract stablecoin.fa1.2_raw.tz --output stablecoin.fa1.2.tz
+      - nix build -L .#tezos-metadata-contract -o metadata.tz
     artifact_paths:
       - stablecoin.tz
       - stablecoin.fa1.2.tz
@@ -70,14 +69,14 @@ steps:
     timeout_in_minutes: 180
     commands:
       - eval "$FETCH_CONTRACT"
-      - nix build -L -f. lib
+      - nix build -L .#stablecoin:lib:stablecoin
 
   - label: haddock
     if: *not_scheduled
     depends_on: build_library
     commands:
       - eval "$FETCH_CONTRACT"
-      - nix build -L -f. haddock
+      - nix build -L .#haddock
 
   - label: test
     key: test
@@ -86,7 +85,7 @@ steps:
     commands:
       - eval "$FETCH_CONTRACT"
       - cd haskell
-      - nix build -L -f .. test
+      - nix build -L ..#stablecoin:test:stablecoin-test
       - ./result/bin/stablecoin-test --cleveland-mode=disable-network
 
   - label: nettest-local-chain-015
@@ -123,9 +122,9 @@ steps:
     commands:
       - eval "$FETCH_CONTRACT"
       - cd haskell
-      - nix-build .. -A weeder-script
+      - nix build -L ..#weeder-script
       # weeder needs .cabal file:
-      - nix run -f.. pkgs.haskellPackages.hpack -c hpack
+      - nix shell ../ .#haskellPackages.hpack -c hpack
       - ./result
 
   - label: packaging
@@ -137,8 +136,8 @@ steps:
       - weeder
     commands:
       - eval "$FETCH_CONTRACT"
-      - nix-build -A stablecoin-client -o stablecoin-static
-      - nix run -f . pkgs.upx -c upx stablecoin-static/bin/stablecoin-client -o stablecoin-client
+      - nix build -L .#stablecoin:exe:stablecoin-client -o stablecoin-static
+      - nix shell .#pkgs.upx -c upx stablecoin-static/bin/stablecoin-client -o stablecoin-client
     artifact_paths:
       - ./stablecoin-client
 

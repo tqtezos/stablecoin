@@ -30,7 +30,6 @@ library:
     - cleveland
     - constraints
     - containers
-    - directory
     - fmt
     - indigo
     - lens
