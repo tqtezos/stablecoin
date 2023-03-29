@@ -3,6 +3,10 @@ SPDX-FileCopyrightText: 2021 Oxhead Alpha
 SPDX-License-Identifier: MIT
 -->
 
+> :warning: **Note:** [Morley framework](https://gitlab.com/morley-framework/) and set of tools are planned for deprecation after protocol "N".
+>
+> This smart contract will no longer be actively developed then, but future bugs or security issues will be addressed.
+
 # Tezos Stablecoin
 
 [![Build status](https://badge.buildkite.com/c38c76106a10aeaea23f487d41b52514f4ffb84974852021f7.svg?branch=master)](https://buildkite.com/serokell/stablecoin)
