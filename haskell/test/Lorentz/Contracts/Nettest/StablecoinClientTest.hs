@@ -8,42 +8,34 @@ module Lorentz.Contracts.Nettest.StablecoinClientTest
   ) where
 
 import Test.Tasty (TestTree)
-import Test.Tasty.HUnit (testCase)
 
 import Morley.Tezos.Address (Address)
 import Test.Cleveland as NT
-import Test.Cleveland.Internal.Abstract (Moneybag(..), ccMoneybag)
-import Test.Cleveland.Tasty (whenNetworkEnabled)
+import Test.Cleveland.Internal.Abstract (Moneybag(..), moneybagL)
 
 import Indigo.Contracts.Transferlist.Internal qualified as Transferlist
 import Morley.Tezos.Address.Alias (AddressOrAlias(..), SomeAddressOrAlias(..))
-import Stablecoin.Client (AddressAndAlias(..), UpdateOperatorData(AddOperator, RemoveOperator))
+import Morley.Util.SizedList.Types
+import Stablecoin.Client (UpdateOperatorData(AddOperator, RemoveOperator))
 import Stablecoin.Client.Cleveland
-  (StablecoinT, acceptOwnership, assertEq, burn, changeMasterMinter, changePauser, configureMinter,
-  deploy, getBalanceOf, getContractOwner, getMasterMinter, getMintingAllowance, getPaused,
-  getPauser, getPendingContractOwner, getTokenMetadata, getTransferlist, isOperator, mint, pause,
-  removeMinter, setTransferlist, transferOwnership, unpause, updateOperators)
 import Stablecoin.Client.Cleveland qualified as SC
-import Stablecoin.Client.Cleveland.Caps (runStablecoinClient)
 import Stablecoin.Client.Contract (InitialStorageOptions(..))
 import Stablecoin.Client.Parser (ContractMetadataOptions(..))
 
 test_stablecoinClientScenario :: TestTree
 test_stablecoinClientScenario =
-  whenNetworkEnabled $ \withEnv ->
-    testCase "stablecoinClientScenario" do
-      withEnv (`runStablecoinClient` stablecoinClientScenario)
+  testScenarioOnNetwork "stablecoinClientScenario" stablecoinClientScenario
 
 -- | Check that all the `stablecoin-client` commands work.
-stablecoinClientScenario :: StablecoinT m ()
-stablecoinClientScenario = do
-  Moneybag (toImplicitAddress -> originator) <- asks $ ccMoneybag . SC.scCleveland
+stablecoinClientScenario :: Scenario ClientM
+stablecoinClientScenario = scenarioNetwork do
+  Moneybag (toImplicitAddress -> originator) <- view moneybagL
 
   comment "Creating roles"
-  masterMinter <- toImplicitAddress <$> newAddress "master-minter"
-  pauser <- toImplicitAddress <$> newAddress "pauser"
-  contractOwner <- toImplicitAddress <$> newAddress "contract-owner"
-  minter <- toImplicitAddress <$> newAddress "minter"
+  masterMinter ::< pauser ::< contractOwner ::< minter ::< Nil' <-
+    (fmap . fmap) toImplicitAddress $ newAddresses $
+      "master-minter" :< "pauser" :< "contract-owner" :< "minter" :< Nil
+
   transferlist <-
     originate "transferlist"
       (Transferlist.Storage mempty mempty)

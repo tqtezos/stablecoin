@@ -32,7 +32,6 @@ library:
     - containers
     - fmt
     - indigo
-    - lens
     - lorentz
     - megaparsec
     - morley
