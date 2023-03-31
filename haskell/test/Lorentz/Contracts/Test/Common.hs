@@ -22,9 +22,7 @@ module Lorentz.Contracts.Test.Common
   ) where
 
 import Data.Aeson (ToJSON)
-import Data.Either.Validation (Validation(..))
 import Data.Map qualified as Map
-import Fmt (pretty)
 
 import Lorentz.Contracts.Spec.TZIP16Interface qualified as MD
 import Lorentz.Value
@@ -34,7 +32,6 @@ import Test.Cleveland as NT
 import Indigo.Contracts.Transferlist.Internal qualified as Transferlist
 import Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin as SC
-import Test.Cleveland.Internal.Abstract
 import Test.Cleveland.Internal.Actions
 
 -- | A 'TokenId' with the value of `1`.
@@ -45,7 +42,9 @@ oneTokenId = TokenId 1
 
 type LedgerType = Map Address Natural
 
-addAccount :: (KindedAddress kind1, ([KindedAddress kind2], Natural)) -> OriginationParams -> OriginationParams
+addAccount
+  :: (ToAddress addr1)
+  => (addr1, ([ImplicitAddressWithAlias], Natural)) -> OriginationParams -> OriginationParams
 addAccount (addr, (operators, bal)) op = let
   withAccount = op
     { opBalances =
@@ -53,7 +52,9 @@ addAccount (addr, (operators, bal)) op = let
     }
   in foldl' (\oparams operator -> addOperator (addr, operator) oparams) withAccount operators
 
-addOperator :: (KindedAddress kind1, KindedAddress kind2) -> OriginationParams -> OriginationParams
+addOperator
+  :: (ToAddress addr1, ToAddress addr2)
+  => (addr1, addr2) -> OriginationParams -> OriginationParams
 addOperator (toAddress -> owner_, toAddress -> operator) op = op
   { opOwnerToOperators =
       Map.alter (\case
@@ -62,9 +63,7 @@ addOperator (toAddress -> owner_, toAddress -> operator) op = op
   }
 
 failedWithAny :: TransferFailurePredicate
-failedWithAny = TransferFailurePredicate \case
-  TransferFailure _ FailedWith{} -> pass
-  x -> Failure $ "Expected contract to fail with FAILWITH, instead got " <> pretty x
+failedWithAny = failedWithPredicate "Expected contract to fail with FAILWITH" $ const True
 
 -- TODO: seems like a good idea to move this to cleveland
 expectFailedWithAny :: MonadCleveland caps m => m () -> m ()
@@ -86,7 +85,11 @@ data OriginationParams = OriginationParams
   }
 
 defaultOriginationParams
-  :: "owner" :! KindedAddress kind1 -> "pauser" :! KindedAddress kind2 -> "masterMinter" :! KindedAddress kind3 -> OriginationParams
+  :: (ToAddress owner, ToAddress pauser, ToAddress masterMinter)
+  => "owner" :! owner
+  -> "pauser" :! pauser
+  -> "masterMinter" :! masterMinter
+  -> OriginationParams
 defaultOriginationParams
   (arg #owner -> owner)
   (arg #pauser -> pauser)
@@ -117,26 +120,29 @@ addMinter (toAddress -> minter, mintingAllowance) op@OriginationParams{ opMinter
   op { opMinters = Map.insert minter mintingAllowance currentMinters }
 
 constructDestination
-  :: ("to_" :! ImplicitAddress, "amount" :! Natural)
+  :: ToImplicitAddress to
+  => ("to_" :! to, "amount" :! Natural)
   -> TransferDestination
 constructDestination (arg #to_ -> to, arg #amount -> amount) = TransferDestination
-  { tdTo = toAddress to
+  { tdTo = toAddress $ toImplicitAddress to
   , tdTokenId = FA2.theTokenId
   , tdAmount = amount
   }
 
 constructTransfers
-  :: [("from_" :! ImplicitAddress, [("to_" :! ImplicitAddress, "amount" :! Natural)])]
+  :: [ ( "from_" :! ImplicitAddressWithAlias
+       , [("to_" :! ImplicitAddressWithAlias, "amount" :! Natural)])
+     ]
   -> TransferParams
 constructTransfers pairs = pairs >>= uncurry constructTransfersFromSender
 
 constructTransfersFromSender
-  :: "from_" :! ImplicitAddress
-  -> [("to_" :! ImplicitAddress, "amount" :! Natural)]
+  :: "from_" :! ImplicitAddressWithAlias
+  -> [("to_" :! ImplicitAddressWithAlias, "amount" :! Natural)]
   -> TransferParams
 constructTransfersFromSender (arg #from_ -> from) txs =
   [ TransferItem
-      { tiFrom = toAddress from
+      { tiFrom = toAddress $ toImplicitAddress from
       , tiTxs  = constructDestination <$> txs
       }
   ]

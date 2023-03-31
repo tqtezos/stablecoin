@@ -21,7 +21,6 @@ import Lorentz.Contracts.Test.Common
 import Lorentz.Value
 import Morley.Util.Named
 import Test.Cleveland
-import Test.Cleveland.Lorentz (toContractAddress)
 import Test.Cleveland.Lorentz.Consumer
 import Test.Morley.Metadata
 
@@ -765,7 +764,12 @@ test_FA2 =
   , -- These tests require permission descriptor to be configured that allows for operator transfer.
     -- We have such a configuration set by default in$  defaultOriginationParams.
     let
-      checkForOperator :: MonadCleveland caps m => ContractHandle Parameter Storage () -> ImplicitAddress -> ImplicitAddress -> Bool -> m ()
+      checkForOperator
+        :: MonadCleveland caps m => ContractHandle Parameter Storage ()
+        -> ImplicitAddressWithAlias
+        -> ImplicitAddressWithAlias
+        -> Bool
+        -> m ()
       checkForOperator stablecoinContract owner operator expectation = do
           storage <- getStorage stablecoinContract
           val <- getBigMapValueMaybe (sOperatorsRPC storage) (toAddress owner, toAddress operator)

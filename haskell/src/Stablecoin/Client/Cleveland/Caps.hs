@@ -35,7 +35,6 @@ module Stablecoin.Client.Cleveland.Caps
   , getMintingAllowance
   , getTokenMetadata
   , assertEq
-  , revealKeyUnlessRevealed
   ) where
 
 import Control.Exception.Uncaught (displayUncaughtException)
@@ -235,6 +234,3 @@ getTokenMetadata c = implActionToCaps (`siGetTokenMetadata` c)
 
 assertEq :: MonadStablecoin caps m => (Eq a, Buildable a, Show a) => a -> a -> m ()
 assertEq a b = implActionToCaps \cap -> siAssertEq cap a b
-
-revealKeyUnlessRevealed :: MonadStablecoin caps m => ImplicitAddress -> m ()
-revealKeyUnlessRevealed a = implActionToCaps (`siRevealKeyUnlessRevealed` a)

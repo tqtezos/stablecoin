@@ -9,7 +9,7 @@
   inputs.morley-infra.url = "gitlab:morley-framework/morley-infra";
   inputs.morley.url = "gitlab:morley-framework/morley";
 
-  outputs = { self, flake-utils, haskell-nix, morley-infra, morley, ... }:
+  outputs = { self, flake-utils, morley-infra, morley, ... }:
     (flake-utils.lib.eachSystem [ "x86_64-linux" ] (system:
       let
         pkgs = morley-infra.legacyPackages.${system};
@@ -90,11 +90,7 @@
               cabal = {};
               hlint = { version = "3.4"; };
               hpack = { version = "0.34.4"; };
-              haskell-language-server = {};
             };
-            buildInputs = with pkgs; [
-              haskellPackages.implicit-hie
-            ];
           };
         };
 

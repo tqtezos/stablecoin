@@ -19,7 +19,6 @@ import Lorentz.Contracts.Stablecoin
 import Lorentz.Contracts.Test.Common
   (OriginationParams(..), addAccount, defaultOriginationParams,
   nettestOriginateContractMetadataContract, originateStablecoin, testFA2TokenMetadata)
-import Test.Cleveland.Lorentz (toContractAddress)
 
 test_permitScenario :: TestTree
 test_permitScenario = testScenario "permitScenario" permitScenario
@@ -51,7 +50,7 @@ permitScenario = scenario do
   chainId <- getChainId
 
   let
-    issuePermit :: MonadCleveland caps m => Natural -> ImplicitAddress -> Parameter -> m ()
+    issuePermit :: MonadCleveland caps m => Natural -> ImplicitAddressWithAlias -> Parameter -> m ()
     issuePermit counter addr param = do
       -- NOTE: A couples of changes were introduced in #124. Crucially:
       --

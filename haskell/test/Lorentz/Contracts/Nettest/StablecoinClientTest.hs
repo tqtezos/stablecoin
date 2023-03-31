@@ -13,7 +13,6 @@ import Test.Tasty.HUnit (testCase)
 import Morley.Tezos.Address (Address)
 import Test.Cleveland as NT
 import Test.Cleveland.Internal.Abstract (Moneybag(..), ccMoneybag)
-import Test.Cleveland.Lorentz (toContractAddress)
 import Test.Cleveland.Tasty (whenNetworkEnabled)
 
 import Indigo.Contracts.Transferlist.Internal qualified as Transferlist
@@ -38,13 +37,13 @@ test_stablecoinClientScenario =
 -- | Check that all the `stablecoin-client` commands work.
 stablecoinClientScenario :: StablecoinT m ()
 stablecoinClientScenario = do
-  Moneybag originator <- asks $ ccMoneybag . SC.scCleveland
+  Moneybag (toImplicitAddress -> originator) <- asks $ ccMoneybag . SC.scCleveland
 
   comment "Creating roles"
-  masterMinter <- newAddress "master-minter"
-  pauser <- newAddress "pauser"
-  contractOwner <- newAddress "contract-owner"
-  minter <- newAddress "minter"
+  masterMinter <- toImplicitAddress <$> newAddress "master-minter"
+  pauser <- toImplicitAddress <$> newAddress "pauser"
+  contractOwner <- toImplicitAddress <$> newAddress "contract-owner"
+  minter <- toImplicitAddress <$> newAddress "minter"
   transferlist <-
     originate "transferlist"
       (Transferlist.Storage mempty mempty)

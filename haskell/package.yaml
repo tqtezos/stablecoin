@@ -67,7 +67,6 @@ tests:
       - aeson
       - cleveland
       - containers
-      - either
       - fmt
       - hedgehog
       - lorentz

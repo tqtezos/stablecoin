@@ -20,7 +20,7 @@ import Lorentz.Contracts.StablecoinFA1_2
 
 alOriginationFunction
   :: MonadCleveland caps m
-  => ImplicitAddress -> AlSettings -> m (ContractHandle Parameter Storage ())
+  => ImplicitAddressWithAlias -> AlSettings -> m (ContractHandle Parameter Storage ())
 alOriginationFunction adminAddr (AlInitAddresses addrBalances) = do
   let storage = Storage
         { sDefaultExpiry = 1000

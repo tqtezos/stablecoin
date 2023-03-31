@@ -520,7 +520,7 @@ stablecoinMichelsonModel cc@(ContractCall {..}) cs = let
     Right iRes -> let
       newStorage = resultToSs iRes
       in cs { csStorage = newStorage }
-    Left (InterpretError (mfwsFailed -> MichelsonFailedWith (T.VString tval), _))
+    Left (InterpretError _ (mfwsFailed -> MichelsonFailedWith (T.VString tval)))
       -> cs { csError = (ccIdx, contractErrorToModelError tval):(csError cs) }
     Left err -> error $ "Unexpected error:" <> pretty err
 
@@ -554,17 +554,18 @@ callEntrypoint cc st env = case ccParameter cc of
       -> GetEntrypointArgCustom Parameter ep
       -> Either (InterpretError Void) (T.Value (ToT Storage))
     call' epRef param =
-      case
-        interpret
-          (toMichelsonContract stablecoinContract)
-          (parameterEntrypointCallCustom @Parameter epRef)
-          (toVal param)
-          (toVal st)
-          (GlobalCounter 0)
-          (BigMapCounter 0)
-          env of
-        (Left e, s) -> Left $ InterpretError (e, snd s)
-        (Right (_, newSt), _) -> Right newSt
+      let ResultStateLogs{..} =
+            interpret
+              (toMichelsonContract stablecoinContract)
+              (parameterEntrypointCallCustom @Parameter epRef)
+              (toVal param)
+              (toVal st)
+              (GlobalCounter 0)
+              (BigMapCounter 0)
+              env
+      in case rslResult of
+        Left e -> Left $ InterpretError rslLogs e
+        Right store -> Right $ snd $ extractValOps store
 
 
 ensureOwner :: ImplicitAddress -> SimpleStorage -> Either ModelError ()
@@ -799,4 +800,4 @@ unsafeAddressToImplicitAddress :: HasCallStack => Address -> ImplicitAddress
 unsafeAddressToImplicitAddress = \case
   Constrained (ia@ImplicitAddress{}) -> ia
   Constrained (ContractAddress{}) -> error "Unexpected contract address"
-  Constrained (TxRollupAddress{}) -> error "Unexpected transaction rollup address"
+  Constrained (SmartRollupAddress{}) -> error "Unexpected smart rollup address"

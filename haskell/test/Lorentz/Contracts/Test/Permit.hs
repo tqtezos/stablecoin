@@ -33,7 +33,7 @@ testScenario' = testScenarioOnEmulator
 mkPermit
   :: MonadCleveland caps m
   => ContractHandle Parameter Storage ()
-  -> ImplicitAddress
+  -> ImplicitAddressWithAlias
   -> Natural
   -> Parameter
   -> m (PermitHash, ByteString, Signature)
@@ -47,7 +47,7 @@ mkPermit contractAddr signer counter param = do
 callPermit
   :: (HasCallStack, MonadCleveland caps m)
   => ContractHandle Parameter Storage ()
-  -> ImplicitAddress
+  -> ImplicitAddressWithAlias
   -> Natural
   -> Parameter
   -> m PermitHash

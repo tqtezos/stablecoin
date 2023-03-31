@@ -12,7 +12,7 @@ import Morley.Tezos.Address (ContractAddress, ImplicitAddress, L1Address)
 import Morley.Tezos.Core (Mutez)
 import Morley.Util.Named (pattern (:!), (:!))
 import Test.Cleveland (MorleyClientEnv)
-import Test.Cleveland.Internal.Client (ClientM, revealKeyUnlessRevealed)
+import Test.Cleveland.Internal.Client (ClientM)
 
 import Stablecoin.Client (AddressAndAlias(..), UpdateOperatorData(AddOperator, RemoveOperator))
 import Stablecoin.Client.Cleveland.IO
@@ -89,7 +89,6 @@ data StablecoinImpl m = StablecoinImpl
       :: "contract" :! ContractAddress
       -> m ("symbol" :! Text, "name" :! Text, "decimals" :! Natural)
   , siAssertEq :: forall a. (Eq a, Show a, Buildable a) => a -> a -> m ()
-  , siRevealKeyUnlessRevealed :: ImplicitAddress -> m ()
   }
 
 -- | Implementation of `StablecoinImpl` that defers to `stablecoin-client`.
@@ -242,7 +241,6 @@ stablecoinImplClient env = StablecoinImpl
       if actual == expected
         then pass
         else throwM $ STEDiff actual expected
-  , siRevealKeyUnlessRevealed = liftIO . revealKeyUnlessRevealed env
   }
   where
     mkUserOpt :: "sender" :! ImplicitAddress -> [String]
