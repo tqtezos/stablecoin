@@ -4,10 +4,7 @@
 {-# LANGUAGE InstanceSigs #-}
 
 module Stablecoin.Client.Cleveland.Caps
-  ( StablecoinT
-  , MonadStablecoin
-  , StablecoinCaps(..)
-  , runStablecoinClient
+  ( MonadNetwork
   -- * Operations
   , deploy
   , transfer
@@ -35,206 +32,293 @@ module Stablecoin.Client.Cleveland.Caps
   , getMintingAllowance
   , getTokenMetadata
   , assertEq
-  , revealKeyUnlessRevealed
   ) where
 
-import Control.Exception.Uncaught (displayUncaughtException)
-import Control.Lens (makeLensesFor)
-import Fmt (Buildable(..))
+import Data.Text (isInfixOf)
+import Fmt (Buildable(..), pretty)
 
-import Morley.Client (disableAlphanetWarning)
 import Morley.Tezos.Address (ContractAddress, ImplicitAddress, L1Address)
 import Morley.Tezos.Core (Mutez)
-import Morley.Util.Named ((:!))
-import Test.Cleveland (NetworkEnv(..))
-import Test.Cleveland.Internal.Abstract
-  (ClevelandCaps(..), DefaultAliasCounter(..), HasClevelandCaps(..), MonadCleveland, Moneybag(..),
-  Sender(..))
-import Test.Cleveland.Internal.Client
-  (ClientM(..), ClientState(..), networkMiscImpl, networkOpsImpl, setupMoneybagAddress)
+import Morley.Util.Named (pattern (:!), (:!))
+import Test.Cleveland (ToImplicitAddress(..), getMorleyClientEnv, runIO)
+import Test.Cleveland.Internal.Abstract (MonadCleveland, MonadNetwork, cmiThrow, getMiscCap)
+import Test.Cleveland.Internal.Actions.Helpers (withCap)
 
-import Stablecoin.Client (AddressAndAlias(..), UpdateOperatorData)
-import Stablecoin.Client.Cleveland.StablecoinImpl (StablecoinImpl(..), stablecoinImplClient)
+import Stablecoin.Client (AddressAndAlias(..), UpdateOperatorData(AddOperator, RemoveOperator))
+import Stablecoin.Client.Cleveland.IO
+  (OutputParseError(..), addressAndAliasParser, contractAddressParser, encodeMaybeOption, labelled,
+  mutezParser, naturalParser, textParser)
+import Stablecoin.Client.Cleveland.IO qualified as IO
 import Stablecoin.Client.Contract (InitialStorageOptions(..))
 
-data StablecoinCaps m = StablecoinCaps
-  { scCleveland :: ClevelandCaps m
-  , scStablecoin :: StablecoinImpl m
-  }
+data StablecoinTestError where
+  STEDiff :: forall a. (Show a, Buildable a) => a -> a -> StablecoinTestError
 
-type StablecoinT m a = Monad m => ReaderT (StablecoinCaps m) m a
+deriving stock instance Show StablecoinTestError
 
-type MonadStablecoin caps m =
-  ( MonadCleveland caps m
-  , HasStablecoinCaps caps
-  )
+instance Buildable StablecoinTestError where
+  build (STEDiff actual expected) =
+    "--- Diff ---\n" <>
+    "Expected: " <> pretty expected <> "\n" <>
+    "Actual:   " <> pretty actual
 
-class HasClevelandCaps caps => HasStablecoinCaps caps where
-  getStablecoinCap :: caps -> StablecoinImpl (ClevelandBaseMonad caps)
+instance Exception StablecoinTestError where
+  displayException = pretty
 
-makeLensesFor [("scCleveland", "scClevelandL")] ''StablecoinCaps
+mkUserOpt :: ToImplicitAddress addr => "sender" :! addr -> [String]
+mkUserOpt (_ :! sender) = ["--user", pretty $ toImplicitAddress sender]
 
-instance Monad m => HasClevelandCaps (StablecoinCaps m) where
-  type ClevelandBaseMonad (StablecoinCaps m) = m
-  clevelandCapsL = scClevelandL
+mkContractOpt :: "contract" :! ContractAddress -> [String]
+mkContractOpt (_ :! contract) = ["--contract", pretty contract]
 
-instance Monad m => HasStablecoinCaps (StablecoinCaps m) where
-  getStablecoinCap = scStablecoin
 
-runStablecoinClient :: NetworkEnv -> StablecoinT ClientM () -> IO ()
-runStablecoinClient env scenario = displayUncaughtException $ do
-  disableAlphanetWarning
-  moneybag <- setupMoneybagAddress env
-  let caps = ClevelandCaps
-        { ccSender = Sender $ unMoneybag moneybag
-        , ccMoneybag = moneybag
-        , ccMiscCap = networkMiscImpl env
-        , ccOpsCap = networkOpsImpl clientEnv
-        }
-      clientEnv = neMorleyClientEnv env
-  ist <- newIORef ClientState
-    { csDefaultAliasCounter = DefaultAliasCounter 0
-    , csRefillableAddresses = mempty
-    , csMoneybagAddress = moneybag
-    }
-  runReaderT (unClientM $ uncapsStablecoin scenario (stablecoinImplClient clientEnv) caps) ist
-  where
-    uncapsStablecoin
-      :: forall m a. Monad m => StablecoinT m a -> StablecoinImpl m -> ClevelandCaps m -> m a
-    uncapsStablecoin action scStablecoin scCleveland =
-      runReaderT action StablecoinCaps { .. }
+callStablecoinClient :: MonadNetwork caps m => [String] -> m Text
+callStablecoinClient x = do
+  env <- getMorleyClientEnv
+  runIO $ IO.callStablecoinClient env x
 
-----------------------------------------------------------------------------
--- Operations
-----------------------------------------------------------------------------
+runParser :: MonadCleveland caps m => Text -> IO.Parser r -> m r
+runParser = runIO ... IO.runParser
 
-implActionToCaps
-  :: MonadStablecoin caps m
-  => (StablecoinImpl (ClevelandBaseMonad caps) -> ClevelandBaseMonad caps a)
-  -> m a
-implActionToCaps useCap = do
-  cap <- asks getStablecoinCap
-  lift $ useCap cap
-
-deploy :: MonadStablecoin caps m => "sender" :! ImplicitAddress -> InitialStorageOptions -> m ContractAddress
-deploy s st = implActionToCaps \cap -> siDeploy cap s st
+deploy
+  :: (MonadNetwork caps m, ToImplicitAddress addr)
+  => "sender" :! addr -> InitialStorageOptions -> m ContractAddress
+deploy sender (InitialStorageOptions {..}) = do
+  output <- callStablecoinClient $
+    [ "deploy"
+    , "--master-minter", pretty isoMasterMinter
+    , "--contract-owner", pretty isoContractOwner
+    , "--pauser", pretty isoPauser
+    , "--transferlist", pretty isoTransferlist
+    , "--token-name", pretty isoTokenName
+    , "--token-symbol", pretty isoTokenSymbol
+    , "--token-decimals", pretty isoTokenDecimals
+    , "--default-expiry", pretty isoDefaultExpiry
+    , "--replace-alias"
+    ] <> mkUserOpt sender
+  runParser output (labelled "Contract address" contractAddressParser)
 
 transfer
-  :: MonadStablecoin caps m
+  :: MonadNetwork caps m
   => "sender" :! ImplicitAddress -> "contract" :! ContractAddress
   -> L1Address -> L1Address -> Natural -> m ()
-transfer s c a1 a2 n = implActionToCaps \caps -> siTransfer caps s c a1 a2 n
+transfer sender contract from to amount =
+  void $ callStablecoinClient $
+    [ "transfer"
+    , "--from", pretty from
+    , "--to", pretty to
+    , "--amount", pretty amount
+    ] <> mkUserOpt sender <> mkContractOpt contract
 
 getBalanceOf
-  :: MonadStablecoin caps m
+  :: MonadNetwork caps m
   => "contract" :! ContractAddress
   -> L1Address -> m Natural
-getBalanceOf c a = implActionToCaps \caps -> siGetBalanceOf caps c a
+getBalanceOf contract owner = do
+  output <- callStablecoinClient $
+    [ "get-balance-of"
+    , "--owner", pretty owner
+    ] <> mkContractOpt contract
+  runParser output (labelled "Current balance" naturalParser)
 
 updateOperators
-  :: MonadStablecoin caps m
+  :: MonadNetwork caps m
   => "sender" :! ImplicitAddress -> "contract" :! ContractAddress
   -> NonEmpty UpdateOperatorData -> m ()
-updateOperators s c d = implActionToCaps \caps -> siUpdateOperators caps s c d
+updateOperators sender contract updateOperators' =
+  void $ callStablecoinClient $
+    [ "update-operators" ]
+    <> (toList updateOperators' >>= \case
+          AddOperator operator -> ["--add", pretty operator]
+          RemoveOperator operator -> ["--remove", pretty operator]
+        )
+    <> mkUserOpt sender <> mkContractOpt contract
 
 isOperator
-  :: MonadStablecoin caps m
+  :: MonadNetwork caps m
   => "contract" :! ContractAddress
   -> L1Address -> L1Address -> m Bool
-isOperator c a1 a2 = implActionToCaps \caps -> siIsOperator caps c a1 a2
+isOperator contract owner operator = do
+  output <- callStablecoinClient $
+    [ "is-operator"
+    , "--owner", pretty owner
+    , "--operator", pretty operator
+    ] <> mkContractOpt contract
+  if | "This account is an operator" `isInfixOf` output -> pure True
+      | "This account is not an operator" `isInfixOf` output -> pure False
+      | otherwise ->
+          withCap getMiscCap \cap -> cmiThrow cap $ toException $ OutputParseError "is-operator" $
+            "Unexpected stablecoin-client output: " <> pretty output
 
-pause :: MonadStablecoin caps m => "sender" :! ImplicitAddress -> "contract" :! ContractAddress -> m ()
-pause s c = implActionToCaps \cap -> siPause cap s c
+pause :: MonadNetwork caps m => "sender" :! ImplicitAddress -> "contract" :! ContractAddress -> m ()
+pause sender contract =
+  void $ callStablecoinClient $
+    [ "pause" ]
+    <> mkUserOpt sender <> mkContractOpt contract
 
-unpause :: MonadStablecoin caps m => "sender" :! ImplicitAddress -> "contract" :! ContractAddress -> m ()
-unpause s c = implActionToCaps \cap -> siUnpause cap s c
+unpause :: MonadNetwork caps m => "sender" :! ImplicitAddress -> "contract" :! ContractAddress -> m ()
+unpause sender contract =
+  void $ callStablecoinClient $
+    [ "unpause" ]
+    <> mkUserOpt sender <> mkContractOpt contract
 
 configureMinter
-  :: MonadStablecoin caps m
+  :: MonadNetwork caps m
   => "sender" :! ImplicitAddress -> "contract" :! ContractAddress
   -> L1Address -> Maybe Natural -> Natural -> m ()
-configureMinter s c a mn n = implActionToCaps \cap -> siConfigureMinter cap s c a mn n
+configureMinter sender contract minter currentAllowance newAllowance =
+  void $ callStablecoinClient $
+    [ "configure-minter"
+    , "--minter", pretty minter
+    , "--new-minting-allowance", pretty newAllowance
+    ] <> encodeMaybeOption "--current-minting-allowance" currentAllowance
+      <> mkUserOpt sender <> mkContractOpt contract
 
 removeMinter
-  :: MonadStablecoin caps m
+  :: MonadNetwork caps m
   => "sender" :! ImplicitAddress -> "contract" :! ContractAddress
   -> L1Address -> m ()
-removeMinter s c a = implActionToCaps \cap -> siRemoveMinter cap s c a
+removeMinter sender contract minter =
+  void $ callStablecoinClient $
+    [ "remove-minter"
+    , "--minter", pretty minter
+    ] <> mkUserOpt sender <> mkContractOpt contract
 
 mint
-  :: MonadStablecoin caps m
+  :: MonadNetwork caps m
   => "sender" :! ImplicitAddress -> "contract" :! ContractAddress
   -> L1Address -> Natural -> m ()
-mint s c a n = implActionToCaps \cap -> siMint cap s c a n
+mint sender contract to amount =
+  void $ callStablecoinClient $
+    [ "mint"
+    , "--to", pretty to
+    , "--amount", pretty amount
+    ] <> mkUserOpt sender <> mkContractOpt contract
 
 burn
-  :: MonadStablecoin caps m
+  :: MonadNetwork caps m
   => "sender" :! ImplicitAddress -> "contract" :! ContractAddress
   -> NonEmpty Natural -> m ()
-burn s c ns = implActionToCaps \cap -> siBurn cap s c ns
+burn sender contract amounts =
+  void $ callStablecoinClient $
+    [ "burn" ]
+    <> (toList amounts >>= \amount -> ["--amount", pretty amount])
+    <> mkUserOpt sender <> mkContractOpt contract
 
 transferOwnership
-  :: MonadStablecoin caps m
+  :: MonadNetwork caps m
   => "sender" :! ImplicitAddress -> "contract" :! ContractAddress
   -> L1Address -> m ()
-transferOwnership s c a = implActionToCaps \cap -> siTransferOwnership cap s c a
+transferOwnership sender contract to =
+  void $ callStablecoinClient $
+    [ "transfer-ownership"
+    , "--to", pretty to
+    ] <> mkUserOpt sender <> mkContractOpt contract
 
 acceptOwnership
-  :: MonadStablecoin caps m
+  :: MonadNetwork caps m
   => "sender" :! ImplicitAddress -> "contract" :! ContractAddress
   -> m ()
-acceptOwnership s c = implActionToCaps \cap -> siAcceptOwnership cap s c
+acceptOwnership sender contract =
+  void $ callStablecoinClient $
+    [ "accept-ownership"
+    ] <> mkUserOpt sender <> mkContractOpt contract
 
 changeMasterMinter
-  :: MonadStablecoin caps m
+  :: MonadNetwork caps m
   => "sender" :! ImplicitAddress -> "contract" :! ContractAddress
   -> L1Address -> m ()
-changeMasterMinter s c a = implActionToCaps \cap -> siChangeMasterMinter cap s c a
+changeMasterMinter sender contract to =
+  void $ callStablecoinClient $
+    [ "change-master-minter"
+    , "--to", pretty to
+    ] <> mkUserOpt sender <> mkContractOpt contract
 
 changePauser
-  :: MonadStablecoin caps m
+  :: MonadNetwork caps m
   => "sender" :! ImplicitAddress -> "contract" :! ContractAddress
   -> L1Address -> m ()
-changePauser s c a = implActionToCaps \cap -> siChangePauser cap s c a
+changePauser sender contract to =
+  void $ callStablecoinClient $
+    [ "change-pauser"
+    , "--to", pretty to
+    ] <> mkUserOpt sender <> mkContractOpt contract
 
 setTransferlist
-  :: MonadStablecoin caps m
+  :: MonadNetwork caps m
   => "sender" :! ImplicitAddress -> "contract" :! ContractAddress
   -> Maybe ContractAddress -> m ()
-setTransferlist s c a = implActionToCaps \cap -> siSetTransferlist cap s c a
+setTransferlist sender contract transferlist =
+  void $ callStablecoinClient $
+    [ "set-transferlist"]
+    <> encodeMaybeOption "--transferlist" transferlist
+    <> mkUserOpt sender <> mkContractOpt contract
 
-getBalance :: MonadStablecoin caps m => "contract" :! ContractAddress -> m Mutez
-getBalance c = implActionToCaps (`siGetBalance` c)
+getBalance :: MonadNetwork caps m => "contract" :! ContractAddress -> m Mutez
+getBalance contract = do
+  output <- callStablecoinClient $ [ "get-balance" ] <> mkContractOpt contract
+  runParser output (labelled "Current balance" mutezParser)
 
-getPaused :: MonadStablecoin caps m => "contract" :! ContractAddress -> m Bool
-getPaused c = implActionToCaps (`siGetPaused` c)
+getPaused :: MonadNetwork caps m => "contract" :! ContractAddress -> m Bool
+getPaused contract = do
+  output <- callStablecoinClient $ [ "get-paused" ] <> mkContractOpt contract
+  if | "Contract is paused" `isInfixOf` output -> pure True
+      | "Contract is not paused" `isInfixOf` output -> pure False
+      | otherwise ->
+          withCap getMiscCap \cap -> cmiThrow cap $ toException $ OutputParseError "get-paused" $
+            "Unexpected stablecoin-client output: " <> pretty output
 
-getContractOwner :: MonadStablecoin caps m => "contract" :! ContractAddress -> m AddressAndAlias
-getContractOwner c = implActionToCaps (`siGetContractOwner` c)
+getContractOwner :: MonadNetwork caps m => "contract" :! ContractAddress -> m AddressAndAlias
+getContractOwner contract = do
+  output <- callStablecoinClient $ [ "get-contract-owner" ] <> mkContractOpt contract
+  runParser output (addressAndAliasParser "Contract owner")
 
-getPendingContractOwner :: MonadStablecoin caps m => "contract" :! ContractAddress -> m (Maybe AddressAndAlias)
-getPendingContractOwner c = implActionToCaps (`siGetPendingContractOwner` c)
+getPendingContractOwner :: MonadNetwork caps m => "contract" :! ContractAddress -> m (Maybe AddressAndAlias)
+getPendingContractOwner contract = do
+  output <- callStablecoinClient $ [ "get-pending-contract-owner" ] <> mkContractOpt contract
+  if "There is no pending contract owner" `isInfixOf` output
+    then pure Nothing
+    else Just <$> runParser output (addressAndAliasParser "Pending contract owner")
 
-getMasterMinter :: MonadStablecoin caps m => "contract" :! ContractAddress -> m AddressAndAlias
-getMasterMinter c = implActionToCaps (`siGetMasterMinter` c)
+getMasterMinter :: MonadNetwork caps m => "contract" :! ContractAddress -> m AddressAndAlias
+getMasterMinter contract = do
+  output <- callStablecoinClient $ [ "get-master-minter" ] <> mkContractOpt contract
+  runParser output (addressAndAliasParser "Master minter")
 
-getPauser :: MonadStablecoin caps m => "contract" :! ContractAddress -> m AddressAndAlias
-getPauser c = implActionToCaps (`siGetPauser` c)
+getPauser :: MonadNetwork caps m => "contract" :! ContractAddress -> m AddressAndAlias
+getPauser contract = do
+  output <- callStablecoinClient $ [ "get-pauser" ] <> mkContractOpt contract
+  runParser output (addressAndAliasParser "Pauser")
 
-getTransferlist :: MonadStablecoin caps m => "contract" :! ContractAddress -> m (Maybe AddressAndAlias)
-getTransferlist c = implActionToCaps (`siGetTransferlist` c)
+getTransferlist :: MonadNetwork caps m => "contract" :! ContractAddress -> m (Maybe AddressAndAlias)
+getTransferlist contract = do
+  output <- callStablecoinClient $ [ "get-transferlist" ] <> mkContractOpt contract
+  if "Transferlist contract is not set" `isInfixOf` output
+    then pure Nothing
+    else Just <$> runParser output (addressAndAliasParser "Transferlist contract")
 
-getMintingAllowance :: MonadStablecoin caps m => "contract" :! ContractAddress -> L1Address -> m Natural
-getMintingAllowance c a = implActionToCaps \cap -> siGetMintingAllowance cap c a
+getMintingAllowance :: MonadNetwork caps m => "contract" :! ContractAddress -> L1Address -> m Natural
+getMintingAllowance contract minter = do
+  output <- callStablecoinClient $
+    [ "get-minting-allowance"
+    , "--minter", pretty minter
+    ] <> mkContractOpt contract
+  runParser output (labelled "Minting allowance" naturalParser)
 
 getTokenMetadata
-  :: MonadStablecoin caps m
+  :: MonadNetwork caps m
   => "contract" :! ContractAddress
   -> m ("symbol" :! Text, "name" :! Text, "decimals" :! Natural)
-getTokenMetadata c = implActionToCaps (`siGetTokenMetadata` c)
+getTokenMetadata contract = do
+  output <- callStablecoinClient $ [ "get-token-metadata" ] <> mkContractOpt contract
+  runParser output $
+    (,,)
+    <$> ((#symbol :!) <$> labelled "Token symbol" textParser)
+    <*> ((#name :!) <$> labelled "Token name" textParser)
+    <*> ((#decimals :!) <$> labelled "Token decimals" naturalParser)
 
-assertEq :: MonadStablecoin caps m => (Eq a, Buildable a, Show a) => a -> a -> m ()
-assertEq a b = implActionToCaps \cap -> siAssertEq cap a b
-
-revealKeyUnlessRevealed :: MonadStablecoin caps m => ImplicitAddress -> m ()
-revealKeyUnlessRevealed a = implActionToCaps (`siRevealKeyUnlessRevealed` a)
+assertEq :: MonadNetwork caps m => (Eq a, Buildable a, Show a) => a -> a -> m ()
+assertEq actual expected =
+  if actual == expected
+    then pass
+    else withCap getMiscCap \cap -> cmiThrow cap $ toException $ STEDiff actual expected

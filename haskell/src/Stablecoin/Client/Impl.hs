@@ -53,7 +53,7 @@ import Morley.Client.RPC (OperationHash, OriginationScript(OriginationScript))
 import Morley.Micheline (Expression, FromExpressionError, fromExpression)
 import Morley.Michelson.Text
 import Morley.Tezos.Address
-  (Address, Constrained(..), ContractAddress, KindedAddress(..), L1Address, TxRollupAddress)
+  (Address, Constrained(..), ContractAddress, KindedAddress(..), L1Address, SmartRollupAddress)
 import Morley.Tezos.Address.Alias
   (AddressOrAlias(..), Alias(..), ContractAddressOrAlias, ContractAlias, ImplicitAddressOrAlias,
   SomeAddressOrAlias, unAlias)
@@ -92,6 +92,7 @@ deploy (arg #sender -> sender) alias InitialStorageOptions {..} = do
   contractOwner <- resolveAddress isoContractOwner
   pauser <- resolveAddress isoPauser
   transferlist <- traverse resolveAddress isoTransferlist
+  senderWithAlias <- Client.resolveAddressWithAlias sender
 
   -- Make the metadata bigmap
   contractMetadataUri  <-
@@ -113,7 +114,7 @@ deploy (arg #sender -> sender) alias InitialStorageOptions {..} = do
         contractMetadataRegistryAddress <- snd <$> originateContract
           KeepDuplicateAlias
           (ContractAlias "stablecoin-tzip16-metadata")
-          sender
+          senderWithAlias
           zeroMutez
           (toMichelsonContract contractMetadataContract)
           (toVal mdrStorage)
@@ -148,7 +149,7 @@ deploy (arg #sender -> sender) alias InitialStorageOptions {..} = do
   (cName, cAddr) <- originateContract
     KeepDuplicateAlias
     alias
-    sender
+    senderWithAlias
     zeroMutez
     (toMichelsonContract stablecoinContract)
     (toVal initialStorage)
@@ -382,7 +383,7 @@ unsafeAddressToL1Address :: Text -> Address -> MorleyClientM L1Address
 unsafeAddressToL1Address fieldName = \case
   Constrained (ca@ContractAddress{}) -> pure $ Constrained ca
   Constrained (ia@ImplicitAddress{}) -> pure $ Constrained ia
-  Constrained (tra@TxRollupAddress{}) -> throwM $ SCEUnexpectedTxRollupAddress fieldName tra
+  Constrained (tra@SmartRollupAddress{}) -> throwM $ SCEUnexpectedSmartRollupAddress fieldName tra
 
 -- | Check if there's an alias associated with this address and, if so, return both.
 pairWithAlias :: L1Address -> MorleyClientM AddressAndAlias
@@ -402,9 +403,9 @@ call
 call (arg #sender -> sender) (arg #contract -> contract) epRef epArg =
   case useHasEntrypointArg @Parameter @epRef @epArg epRef of
     (Dict, epName) -> do
-      senderAddr <- resolveAddress sender
+      senderAddr <- Client.resolveAddressWithAlias sender
       env <- ask
-      liftIO $ Client.runMorleyClientM env $ revealKeyUnlessRevealed senderAddr Nothing
+      liftIO $ Client.runMorleyClientM env $ revealKeyUnlessRevealed senderAddr
       contractAddr <- resolveAddress contract
       void $ lTransfer
         senderAddr
@@ -438,10 +439,10 @@ getMetadataRegistryStorage (arg #contract -> contract) = do
 data StablecoinClientError
   = SCEExpressionParseError Expression FromExpressionError
   | SCEMetadataError Text
-  | SCEUnexpectedTxRollupAddress
+  | SCEUnexpectedSmartRollupAddress
       -- ^ A @txr1@ address was found where a contract or an implicit account address was expected.
       Text -- ^ The name of the storage field where the address was found.
-      TxRollupAddress
+      SmartRollupAddress
 
 deriving stock instance Show StablecoinClientError
 
@@ -459,10 +460,10 @@ instance Buildable StablecoinClientError where
         There was an error during the processing of metadata:
           #{err}
         |]
-    SCEUnexpectedTxRollupAddress storageFieldName addr ->
+    SCEUnexpectedSmartRollupAddress storageFieldName addr ->
       [itu|
         Expected storage field '#{storageFieldName}' to be an implicit account or contract address,
-        but it was a transaction rollup address:
+        but it was a smart rollup address:
           #{addr}
         |]
 

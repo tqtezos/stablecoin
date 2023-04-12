@@ -88,27 +88,27 @@ steps:
       - nix build -L ..#stablecoin:test:stablecoin-test
       - ./result/bin/stablecoin-test --cleveland-mode=disable-network
 
-  - label: nettest-local-chain-015
-    key: nettest-local-chain-015
+  - label: nettest-local-chain-016
+    key: nettest-local-chain-016
     if: *not_scheduled
     depends_on: build_library
     <<: *network-tests
     env:
-      TASTY_CLEVELAND_NODE_ENDPOINT: "http://localhost:8734"
+      TASTY_CLEVELAND_NODE_ENDPOINT: "http://localhost:8733"
       CHAIN_TEST_MONEYBAG_SECRET_KEY: "unencrypted:edsk3AvAoPS5jFov49aWBQ9oVtCPwNSne2CriHvkFxfeCg4Srr5bak"
       # this key is defined in local-chain bootstrap accounts list in
       # https://github.com/serokell/aquarius-infra/blob/master/servers/albali/chain.nix
 
 
-  - label: nettest-scheduled-limanet
-    key: nettest-scheduled-limanet
+  - label: nettest-scheduled-mumbainet
+    key: nettest-scheduled-mumbainet
     if: build.source == "schedule"
     depends_on:
       - build_library
       - LIGO-contract
     <<: *network-tests
     env:
-      TASTY_CLEVELAND_NODE_ENDPOINT: "https://lima.testnet.tezos.serokell.team"
+      TASTY_CLEVELAND_NODE_ENDPOINT: "https://mumbai.testnet.tezos.serokell.team"
       CHAIN_TEST_MONEYBAG_SECRET_KEY: "$TESTNET_MONEYBAG"
       CHAIN_TEST_MONEYBAG_PASSWORD: "$TESTNET_MONEYBAG_PASSWORD"
       # Running all of the tests on network will end up draining the moneybag; for now, only FA1.2 tests are run
@@ -131,8 +131,8 @@ steps:
     if: *not_scheduled
     depends_on:
       - test
-      - nettest-local-chain-015
-      - nettest-scheduled-limanet
+      - nettest-local-chain-016
+      - nettest-scheduled-mumbainet
       - weeder
     commands:
       - eval "$FETCH_CONTRACT"

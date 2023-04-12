@@ -10,7 +10,6 @@ import Test.Tasty (TestTree)
 
 import Morley.Michelson.Typed (mkBigMap)
 import Test.Cleveland
-import Test.Cleveland.Lorentz (toContractAddress)
 
 import Lorentz.Contracts.Spec.FA2Interface as FA2
 import Lorentz.Contracts.Stablecoin as SFA2

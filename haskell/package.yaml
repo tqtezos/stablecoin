@@ -32,7 +32,6 @@ library:
     - containers
     - fmt
     - indigo
-    - lens
     - lorentz
     - megaparsec
     - morley
@@ -67,7 +66,6 @@ tests:
       - aeson
       - cleveland
       - containers
-      - either
       - fmt
       - hedgehog
       - lorentz
