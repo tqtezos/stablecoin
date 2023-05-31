@@ -7,7 +7,7 @@ module SMT
   ) where
 
 import Data.Map qualified as Map
-import Fmt
+import Fmt (Buildable(..), pretty)
 import Hedgehog hiding (failure)
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
@@ -157,9 +157,7 @@ data ModelError
   | CONTRACT_NOT_IN_TRANSFER
   | SOME_ERROR Text
   deriving stock (Generic, Eq, Show)
-
-instance Buildable ModelError where
-  build = genericF
+  deriving anyclass Buildable
 
 data SimpleStorage = SimpleStorage
   { ssMintingAllowances :: Map ImplicitAddress Natural
@@ -173,9 +171,7 @@ data SimpleStorage = SimpleStorage
   , ssPaused :: Bool
   , ssTotalSupply :: Natural
   } deriving stock (Eq, Generic, Show)
-
-instance Buildable SimpleStorage where
-  build = genericF
+    deriving anyclass Buildable
 
 resultToSs :: T.Value (ToT Storage) -> SimpleStorage
 resultToSs sval =
@@ -228,23 +224,16 @@ data ContractCall p = ContractCall
   , ccParameter :: p
   , ccIdx :: Int
   } deriving stock Generic
-
-instance (Buildable p) => Buildable (ContractCall p) where
-  build = genericF
+    deriving anyclass Buildable
 
 instance (Buildable p) => Show (ContractCall p) where
   show = pretty
-
-instance Buildable (Map Address Natural) where
-  build = pretty . Map.assocs
 
 data ContractState = ContractState
   { csStorage :: SimpleStorage
   , csError :: [(Int, ModelError)]
   } deriving stock (Eq, Generic)
-
-instance Buildable ContractState where
-  build = genericF
+    deriving anyclass Buildable
 
 instance Show ContractState where
   show = pretty

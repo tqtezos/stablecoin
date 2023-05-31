@@ -26,11 +26,11 @@ library:
   dependencies:
     - aeson
     - aeson-casing
+    - base64-bytestring
     - bytestring
     - cleveland
     - constraints
     - containers
-    - fmt
     - indigo
     - lorentz
     - megaparsec
@@ -66,7 +66,6 @@ tests:
       - aeson
       - cleveland
       - containers
-      - fmt
       - hedgehog
       - lorentz
       - morley
