@@ -43,9 +43,6 @@ steps:
   - label: xrefcheck
     command: nix run "github:serokell/xrefcheck?rev=d1f465048eb2d9f345dbcfcc645a07440c7ebe80"
     if: *not_scheduled
-    # TODO [#205]: Remove the flag below
-    soft_fail:
-      - exit_status: 1
 
   - label: LIGO-contract
     key: LIGO-contract
