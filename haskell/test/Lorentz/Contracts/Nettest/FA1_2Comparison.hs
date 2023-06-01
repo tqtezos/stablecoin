@@ -1,6 +1,8 @@
 -- SPDX-FileCopyrightText: 2021 Oxhead Alpha
 -- SPDX-License-Identifier: MIT
 
+{-# LANGUAGE ApplicativeDo #-}
+
 module Lorentz.Contracts.Nettest.FA1_2Comparison
   ( test_fa1_2ComparisonScenario
   ) where
@@ -9,6 +11,8 @@ import Data.Map qualified as Map
 import Test.Tasty (TestTree)
 
 import Morley.Michelson.Typed (mkBigMap)
+import Morley.Util.SizedList qualified as SL
+import Morley.Util.SizedList.Types
 import Test.Cleveland
 
 import Lorentz.Contracts.Spec.FA2Interface as FA2
@@ -35,11 +39,9 @@ fa1_2ComparisonScenario = scenario do
   comment "-- FA1.2 vs FA2 comparison tests --"
 
   comment "Creating accounts"
-  nettest <- refillable $ newAddress "minter"
-  owner1 <- newAddress auto
-  owner2 <- newAddress auto
+  nettest ::< owner1 ::< owner2 ::< Nil' <- newAddresses $ "minter" :< SL.replicateT auto
+  void $ refillable $ pure nettest
 
-  comment "Originating Stablecoin FA1.2 contract"
   let balances =
         [ (toAddress owner1, 10)
         , (toAddress owner2, 10)
@@ -53,7 +55,10 @@ fa1_2ComparisonScenario = scenario do
 
   let metadata = SFA2.metadataJSON Nothing Nothing
 
-  cmrFA1_2Address <- nettestOriginateContractMetadataContract metadata
+  (cmrFA1_2Address, cmrAddress) <- inBatch $ (,)
+    <$> nettestOriginateContractMetadataContract "ContractMetadataFA1.2" metadata
+    <*> nettestOriginateContractMetadataContract "ContractMetadataFA2" metadata
+
   let fa1_2Storage = SFA1_2.Storage
         { sDefaultExpiry = 1000
         , sLedger = mkBigMap balances
@@ -68,18 +73,6 @@ fa1_2ComparisonScenario = scenario do
         , sMetadata = metadataMap @(()) (RemoteContract $ toContractAddress cmrFA1_2Address)
         }
 
-  fa1_2ContractAddr <-
-    originate
-      "Stablecoin FA1.2"
-      fa1_2Storage
-      stablecoinFA1_2Contract
-
-  comment "Calling transfer"
-  withSender owner1 $
-    transfer fa1_2ContractAddr $ calling (ep @"Transfer")
-      (#from :! toAddress owner1, #to :! toAddress owner2, #value :! 2)
-
-  cmrAddress <- nettestOriginateContractMetadataContract metadata
   let fa2Storage = SFA2.Storage
         { sDefaultExpiry = 1000
         , sLedger = mkBigMap balances
@@ -94,17 +87,24 @@ fa1_2ComparisonScenario = scenario do
         , sTotalSupply = 0
         }
 
-  comment "Originating Stablecoin FA2 contract"
-  fa2ContractAddr <- originate "Stablecoin FA2" fa2Storage stablecoinContract
+  comment "Originating Stablecoin contracts"
 
-  comment "Calling transfer"
-  withSender owner1 $ transfer fa2ContractAddr $ calling (ep @"Transfer") [FA2.TransferItem
-    { tiFrom = toAddress owner1
-    , tiTxs =
-        [ TransferDestination
-          { tdTo = toAddress owner2
-          , tdTokenId = FA2.theTokenId
-          , tdAmount = 2
-          }
-        ]
-    }]
+  (fa1_2ContractAddr, fa2ContractAddr) <- (,)
+    <$> originate "Stablecoin FA1.2" fa1_2Storage stablecoinFA1_2Contract
+    <*> originate "Stablecoin FA2" fa2Storage stablecoinContract
+
+  comment "Calling transfers to contracts"
+  withSender owner1 $ inBatch do
+    transfer fa1_2ContractAddr $ calling (ep @"Transfer")
+      (#from :! toAddress owner1, #to :! toAddress owner2, #value :! 2)
+    transfer fa2ContractAddr $ calling (ep @"Transfer") [FA2.TransferItem
+      { tiFrom = toAddress owner1
+      , tiTxs =
+          [ TransferDestination
+            { tdTo = toAddress owner2
+            , tdTokenId = FA2.theTokenId
+            , tdAmount = 2
+            }
+          ]
+      }]
+    pure ()

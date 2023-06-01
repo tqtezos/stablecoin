@@ -21,6 +21,8 @@ import Lorentz.Address
 import Lorentz.Contracts.Spec.FA2Interface qualified as FA2
 import Morley.Tezos.Address (detGenKeyAddress)
 import Morley.Util.Named
+import Morley.Util.SizedList qualified as SL
+import Morley.Util.SizedList.Types
 import Test.Cleveland
 import Test.Cleveland.Lorentz.Consumer
 
@@ -62,16 +64,43 @@ mgmAllowanceExceeded = expectFailedWith [mt|ALLOWANCE_EXCEEDED|]
 mgmBadTransferlist = expectFailedWith [mt|BAD_TRANSFERLIST|]
 mgmMinterLimitExceeded = expectFailedWith [mt|MINTER_LIMIT_REACHED|]
 
+data TestAddresses = TestAddresses
+  { testOwner        :: ImplicitAddressWithAlias
+  , testPauser       :: ImplicitAddressWithAlias
+  , testMasterMinter :: ImplicitAddressWithAlias
+  , wallet1          :: ImplicitAddressWithAlias
+  , wallet2          :: ImplicitAddressWithAlias
+  , wallet3          :: ImplicitAddressWithAlias
+  , commonOperator   :: ImplicitAddressWithAlias
+  }
+
+setupAddresses
+  :: forall m caps.
+     ( MonadFail m
+     , MonadCleveland caps m)
+  => m TestAddresses
+setupAddresses = do
+  testOwner
+    ::< testPauser
+    ::< testMasterMinter
+    ::< commonOperator
+    ::< wallet1
+    ::< wallet2
+    ::< wallet3
+    ::< Nil'
+    <- newAddresses $ "testOwner"
+      :< "testPauser"
+      :< "testMasterMinter"
+      :< "commonOperator"
+      :< SL.generate @3 (\n -> fromString $ "wallet" <> show (n + 1))
+  pure TestAddresses{..}
+
 test_Management :: [TestTree]
 test_Management =
   [ testGroup "Contract meta" $
       [ testScenario "fails if contract receives non-zero amount of xtz" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addAccount (wallet1, (commonOperators, 0)) $
@@ -90,9 +119,7 @@ test_Management =
   , testGroup "Contract pausing" $
       [ testScenario "pauses contract as expected" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
+            TestAddresses{..} <- setupAddresses
             stablecoinContract <-
               originateStablecoin $
                 ( defaultOriginationParams
@@ -106,10 +133,7 @@ test_Management =
             unless (sPausedRPC storage) $ failure "Contract is not paused as was expected"
       , testScenario "cannot pause if sender does not have corresponding permissions" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet2 <- newAddress "wallet2"
+            TestAddresses{..} <- setupAddresses
             stablecoinContract <-
               originateStablecoin $
                 ( defaultOriginationParams
@@ -122,9 +146,7 @@ test_Management =
                 transfer stablecoinContract $ calling (ep @"Pause") ()
       , testScenario "pause cannot be called multiple times in a row" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
+            TestAddresses{..} <- setupAddresses
             stablecoinContract <-
               originateStablecoin $
                 ( defaultOriginationParams
@@ -139,9 +161,7 @@ test_Management =
                   transfer stablecoinContract $ calling (ep @"Pause") ()
       , testScenario "unpauses contract as expected" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
+            TestAddresses{..} <- setupAddresses
             let originationParams =
                   ( defaultOriginationParams
                       (#owner :! testOwner)
@@ -157,10 +177,7 @@ test_Management =
             when (sPausedRPC storage) $ failure "Contract is paused which wasn't expected"
       , testScenario "cannot unpause if sender does not have corresponding permissions" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet2 <- newAddress "wallet2"
+            TestAddresses{..} <- setupAddresses
             let originationParams =
                   ( defaultOriginationParams
                       (#owner :! testOwner)
@@ -175,9 +192,7 @@ test_Management =
                 transfer stablecoinContract $ calling (ep @"Unpause") ()
       , testScenario "unpause cannot be called multiple times in a row" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
+            TestAddresses{..} <- setupAddresses
             let originationParams =
                   ( defaultOriginationParams
                       (#owner :! testOwner)
@@ -193,12 +208,7 @@ test_Management =
                 transfer stablecoinContract $ calling (ep @"Unpause") ()
       , testScenario "prevents transfers while contract is paused" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addAccount (wallet1, (commonOperators, 10)) $
@@ -217,13 +227,7 @@ test_Management =
                 transfer stablecoinContract $ calling (ep @"Transfer") transfers
       , testScenario "can successfully transfer tokens after contract unpause" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            wallet3 <- newAddress "wallet3"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addAccount (wallet1, (commonOperators, 10)) $
@@ -286,11 +290,7 @@ test_Management =
   , testGroup "Configure minter" $
       [ testScenario "configures minter properly" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
+            TestAddresses{..} <- setupAddresses
             stablecoinContract <-
               originateStablecoin $
                 ( defaultOriginationParams
@@ -330,10 +330,7 @@ test_Management =
                   failure "Configure_minter call produced a malformed minter list"
       , testScenario "fails if expected and actual minting allowances do not match" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet2 <- newAddress "wallet2"
+            TestAddresses{..} <- setupAddresses
             stablecoinContract <-
               originateStablecoin $
                 ( defaultOriginationParams
@@ -361,10 +358,7 @@ test_Management =
                 transfer stablecoinContract $ calling (ep @"Configure_minter") configureMinterParam2
       , testScenario "fails if minter is present in list of minters which was not expected" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet2 <- newAddress "wallet2"
+            TestAddresses{..} <- setupAddresses
             stablecoinContract <-
               originateStablecoin $
                 ( defaultOriginationParams
@@ -392,10 +386,7 @@ test_Management =
                 transfer stablecoinContract $ calling (ep @"Configure_minter") configureMinterParam2
       , testScenario "fails if sender does not have master minter permissions" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet2 <- newAddress "wallet2"
+            TestAddresses{..} <- setupAddresses
             stablecoinContract <-
               originateStablecoin $
                 ( defaultOriginationParams
@@ -415,10 +406,7 @@ test_Management =
                 transfer stablecoinContract $ calling (ep @"Configure_minter") configureMinterParam1
       , testScenario "fails if contract is paused" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet2 <- newAddress "wallet2"
+            TestAddresses{..} <- setupAddresses
             stablecoinContract <-
               originateStablecoin $
                 ( defaultOriginationParams
@@ -449,9 +437,7 @@ test_Management =
      in testGroup "Minter limit check" $
           [ testScenario "Can add minter until minter limit" $
               scenario do
-                testOwner <- newAddress "testOwner"
-                testPauser <- newAddress "testPauser"
-                testMasterMinter <- newAddress "testMasterMinter"
+                TestAddresses{..} <- setupAddresses
                 stablecoinContract <-
                   originateStablecoin $
                     ( defaultOriginationParams
@@ -468,9 +454,7 @@ test_Management =
                     failure "Configure_minter call produced a malformed minter list"
           , testScenario "Throws error when minter limit is exceeded" $
               scenario do
-                testOwner <- newAddress "testOwner"
-                testPauser <- newAddress "testPauser"
-                testMasterMinter <- newAddress "testMasterMinter"
+                TestAddresses{..} <- setupAddresses
                 stablecoinContract <-
                   originateStablecoin $
                     ( defaultOriginationParams
@@ -487,12 +471,7 @@ test_Management =
   , testGroup "Remove minter" $
       [ testScenario "successfully removes minter from minting list" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            wallet3 <- newAddress "wallet3"
+            TestAddresses{..} <- setupAddresses
             let originationParams =
                   addMinter (wallet1, 10) $
                     addMinter (wallet2, 0) $
@@ -512,11 +491,7 @@ test_Management =
                   failure "Remove minter does not change minter list"
       , testScenario "fails if sender is not master minter" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
+            TestAddresses{..} <- setupAddresses
             let originationParams =
                   addMinter (wallet1, 0) $
                     ( defaultOriginationParams
@@ -530,10 +505,7 @@ test_Management =
                 transfer stablecoinContract $ calling (ep @"Remove_minter") $ toAddress wallet1
       , testScenario "cannot remove the same wallet if testScenario's already removed" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
+            TestAddresses{..} <- setupAddresses
             let originationParams =
                   addMinter (wallet1, 0) $
                     ( defaultOriginationParams
@@ -548,10 +520,7 @@ test_Management =
                 transfer stablecoinContract $ calling (ep @"Remove_minter") $ toAddress wallet1
       , testScenario "cannot remove non-minter" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
+            TestAddresses{..} <- setupAddresses
             stablecoinContract <-
               originateStablecoin $
                 ( defaultOriginationParams
@@ -566,12 +535,7 @@ test_Management =
   , testGroup "Minting" $
       [ testScenario "successfully mints tokens and updates total_supply" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            wallet3 <- newAddress "wallet3"
+            TestAddresses{..} <- setupAddresses
             let originationParams =
                   addMinter (wallet1, 30) $
                     ( defaultOriginationParams
@@ -620,12 +584,7 @@ test_Management =
               failure "Total supply was not updated as expected"
       , testScenario "aborts whole transaction if the sum of minting tokens at a given step exceeds current minting allowance" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            wallet3 <- newAddress "wallet3"
+            TestAddresses{..} <- setupAddresses
             let originationParams =
                   addMinter (wallet1, 10) $
                     ( defaultOriginationParams
@@ -645,10 +604,7 @@ test_Management =
                 transfer stablecoinContract $ calling (ep @"Mint") mintings
       , testScenario "fails if sender is not minter" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
+            TestAddresses{..} <- setupAddresses
             stablecoinContract <-
               originateStablecoin $
                 ( defaultOriginationParams
@@ -662,10 +618,7 @@ test_Management =
                 transfer stablecoinContract $ calling (ep @"Mint") mintings
       , testScenario "fails minting if contract is paused" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
+            TestAddresses{..} <- setupAddresses
             let originationParams =
                   addMinter (wallet1, 10) $
                     ( defaultOriginationParams
@@ -684,12 +637,7 @@ test_Management =
   , testGroup "Burning" $
       [ testScenario "burns tokens and updates total_supply as expected" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addMinter (wallet1, 0) $
@@ -733,11 +681,7 @@ test_Management =
               failure "Total supply was not updated as expected"
       , testScenario "removes account if balance after burning is zero" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addMinter (wallet1, 0) $
@@ -757,11 +701,7 @@ test_Management =
               failure "Zero balance account was not removed after burning"
       , testScenario "fails to burn tokens if sender is not minter" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addAccount (wallet1, (commonOperators, 10)) $
@@ -776,11 +716,7 @@ test_Management =
                 transfer stablecoinContract $ calling (ep @"Burn") [10]
       , testScenario "fails to burn if sender has insufficient amount of tokens" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addMinter (wallet1, 0) $
@@ -796,11 +732,7 @@ test_Management =
                 transfer stablecoinContract $ calling (ep @"Burn") [10, 10]
       , testScenario "burning tokens will not increase the minting allowance of the address doing the burning" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addMinter (wallet1, 0) $
@@ -818,11 +750,7 @@ test_Management =
                 transfer stablecoinContract $ calling (ep @"Mint") mintings
       , testScenario "fails if contract is paused" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addMinter (wallet1, 0) $
@@ -842,11 +770,7 @@ test_Management =
   , testGroup "Contract ownership" $
       [ testScenario "transfers ownership properly" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
+            TestAddresses{..} <- setupAddresses
             stablecoinContract <-
               originateStablecoin $
                 ( defaultOriginationParams
@@ -866,10 +790,7 @@ test_Management =
               failure "Owner was not changed"
       , testScenario "current contract owner retains its privileges if ownership weren't accepted yet" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
+            TestAddresses{..} <- setupAddresses
             stablecoinContract <-
               originateStablecoin $
                 ( defaultOriginationParams
@@ -884,10 +805,7 @@ test_Management =
               failure "Owner was changed"
       , testScenario "transferring ownership fails if sender is not contract owner" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
+            TestAddresses{..} <- setupAddresses
             stablecoinContract <-
               originateStablecoin $
                 ( defaultOriginationParams
@@ -900,11 +818,7 @@ test_Management =
                 transfer stablecoinContract $ calling (ep @"Transfer_ownership") $ toAddress wallet1
       , testScenario "fails if previous contract owner tries to use ownership privileges" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
+            TestAddresses{..} <- setupAddresses
             stablecoinContract <-
               originateStablecoin $
                 ( defaultOriginationParams
@@ -921,11 +835,7 @@ test_Management =
                 transfer stablecoinContract $ calling (ep @"Transfer_ownership") $ toAddress wallet2
       , testScenario "accepting ownership fails if sender is not pending contract owner" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
+            TestAddresses{..} <- setupAddresses
             stablecoinContract <-
               originateStablecoin $
                 ( defaultOriginationParams
@@ -940,10 +850,7 @@ test_Management =
                 transfer stablecoinContract $ calling (ep @"Accept_ownership") ()
       , testScenario "accepting ownership fails if pending owner is not set" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet2 <- newAddress "wallet2"
+            TestAddresses{..} <- setupAddresses
             stablecoinContract <-
               originateStablecoin $
                 ( defaultOriginationParams
@@ -956,12 +863,7 @@ test_Management =
                 transfer stablecoinContract $ calling (ep @"Accept_ownership") ()
       , testScenario "transfer ownership can be called multiple times each of which invalidates the previous call" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            wallet3 <- newAddress "wallet3"
+            TestAddresses{..} <- setupAddresses
             stablecoinContract <-
               originateStablecoin $
                 ( defaultOriginationParams
@@ -980,11 +882,7 @@ test_Management =
               failure "Owner was not changed"
       , testScenario "contract cannot retain ownership privileges if pending owner was changed by subsequent transfer ownership call" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
+            TestAddresses{..} <- setupAddresses
             stablecoinContract <-
               originateStablecoin $
                 ( defaultOriginationParams
@@ -1000,10 +898,7 @@ test_Management =
                 transfer stablecoinContract $ calling (ep @"Accept_ownership") ()
       , testScenario "contract owner changes master minter properly" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
+            TestAddresses{..} <- setupAddresses
             stablecoinContract <-
               originateStablecoin $
                 ( defaultOriginationParams
@@ -1018,10 +913,7 @@ test_Management =
               failure "Master minter was not changed"
       , testScenario "contract owner changes contract pauser properly" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
+            TestAddresses{..} <- setupAddresses
             stablecoinContract <-
               originateStablecoin $
                 ( defaultOriginationParams
@@ -1040,10 +932,7 @@ test_Management =
   , testGroup "Master minter" $
       [ testScenario "cannot change master minter" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
+            TestAddresses{..} <- setupAddresses
             stablecoinContract <-
               originateStablecoin $
                 ( defaultOriginationParams
@@ -1056,11 +945,7 @@ test_Management =
                 transfer stablecoinContract $ calling (ep @"Change_master_minter") $ toAddress wallet1
       , testScenario "fails to change contract master minter if sender is not contract owner" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
+            TestAddresses{..} <- setupAddresses
             stablecoinContract <-
               originateStablecoin $
                 ( defaultOriginationParams
@@ -1073,10 +958,7 @@ test_Management =
                 transfer stablecoinContract $ calling (ep @"Change_master_minter") $ toAddress wallet2
       , testScenario "master minter cannot change contract owner" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
+            TestAddresses{..} <- setupAddresses
             stablecoinContract <-
               originateStablecoin $
                 ( defaultOriginationParams
@@ -1089,10 +971,7 @@ test_Management =
                 transfer stablecoinContract $ calling (ep @"Transfer_ownership") $ toAddress wallet1
       , testScenario "master minter cannot change contract pauser" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
+            TestAddresses{..} <- setupAddresses
             stablecoinContract <-
               originateStablecoin $
                 ( defaultOriginationParams
@@ -1109,10 +988,7 @@ test_Management =
   , testGroup "Pauser" $
       [ testScenario "changes contract pauser properly" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
+            TestAddresses{..} <- setupAddresses
             stablecoinContract <-
               originateStablecoin $
                 ( defaultOriginationParams
@@ -1125,11 +1001,7 @@ test_Management =
                 transfer stablecoinContract $ calling (ep @"Change_pauser") $ toAddress wallet1
       , testScenario "fails to change contract pauser if sender is not contract owner" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
+            TestAddresses{..} <- setupAddresses
             stablecoinContract <-
               originateStablecoin $
                 ( defaultOriginationParams
@@ -1142,10 +1014,7 @@ test_Management =
                 transfer stablecoinContract $ calling (ep @"Change_pauser") $ toAddress wallet2
       , testScenario "pauser cannot change contract owner" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
+            TestAddresses{..} <- setupAddresses
             stablecoinContract <-
               originateStablecoin $
                 ( defaultOriginationParams
@@ -1158,10 +1027,7 @@ test_Management =
                 transfer stablecoinContract $ calling (ep @"Transfer_ownership") $ toAddress wallet1
       , testScenario "pauser cannot change master minter" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
+            TestAddresses{..} <- setupAddresses
             stablecoinContract <-
               originateStablecoin $
                 ( defaultOriginationParams
@@ -1181,9 +1047,7 @@ test_Management =
      in testGroup "Set_transferlist entrypoint" $
           [ testScenario "can set transferlist contract address in storage" $
               scenario do
-                testOwner <- newAddress "testOwner"
-                testPauser <- newAddress "testPauser"
-                testMasterMinter <- newAddress "testMasterMinter"
+                TestAddresses{..} <- setupAddresses
                 let originationParams =
                       ( defaultOriginationParams
                           (#owner :! testOwner)
@@ -1204,9 +1068,7 @@ test_Management =
                     failure "Transferlist contract address was not set"
           , testScenario "can unset transferlist contract address in storage" $
               scenario do
-                testOwner <- newAddress "testOwner"
-                testPauser <- newAddress "testPauser"
-                testMasterMinter <- newAddress "testMasterMinter"
+                TestAddresses{..} <- setupAddresses
                 transferlistContract <- originate "Transferlist test dummy" transferlistStorage Transferlist.transferlistContract
                 let originationParams =
                       ( defaultOriginationParams
@@ -1226,10 +1088,7 @@ test_Management =
                   Nothing -> pass
           , testScenario "should fail if parameter of transferlist contract does not have the required entrypoints" $
               scenario do
-                testOwner <- newAddress "testOwner"
-                testPauser <- newAddress "testPauser"
-                testMasterMinter <- newAddress "testMasterMinter"
-                wallet1 <- newAddress "wallet1"
+                TestAddresses{..} <- setupAddresses
                 let originationParams =
                       ( defaultOriginationParams
                           (#owner :! testOwner)
@@ -1249,12 +1108,7 @@ test_Management =
      in testGroup "Transferlist contract interaction: fail behavior" $
           [ testScenario "can make the transfer fail" $
               scenario do
-                testOwner <- newAddress "testOwner"
-                testPauser <- newAddress "testPauser"
-                testMasterMinter <- newAddress "testMasterMinter"
-                wallet1 <- newAddress "wallet1"
-                wallet2 <- newAddress "wallet2"
-                commonOperator <- newAddress "commonOperator"
+                TestAddresses{..} <- setupAddresses
                 let commonOperators = [commonOperator]
                 transferlistContract <- originate "Transferlist test dummy" transferlistStorage Transferlist.transferlistContract
                 let originationParams =
@@ -1275,11 +1129,7 @@ test_Management =
                     transfer stablecoinContract $ calling (ep @"Transfer") transfers
           , testScenario "can make mint operation fail" $
               scenario do
-                testOwner <- newAddress "testOwner"
-                testPauser <- newAddress "testPauser"
-                testMasterMinter <- newAddress "testMasterMinter"
-                wallet1 <- newAddress "wallet1"
-                commonOperator <- newAddress "commonOperator"
+                TestAddresses{..} <- setupAddresses
                 let commonOperators = [commonOperator]
                 transferlistContract <- originate "Transferlist test dummy" transferlistStorage Transferlist.transferlistContract
                 let originationParams =
@@ -1299,11 +1149,7 @@ test_Management =
                     transfer stablecoinContract $ calling (ep @"Mint") mintings
           , testScenario "can make burn operation fail" $
               scenario do
-                testOwner <- newAddress "testOwner"
-                testPauser <- newAddress "testPauser"
-                testMasterMinter <- newAddress "testMasterMinter"
-                wallet1 <- newAddress "wallet1"
-                commonOperator <- newAddress "commonOperator"
+                TestAddresses{..} <- setupAddresses
                 let commonOperators = [commonOperator]
                 transferlistContract <- originate "Transferlist test dummy" transferlistStorage Transferlist.transferlistContract
                 let originationParams =
@@ -1324,17 +1170,12 @@ test_Management =
   , testGroup "Transferlist contract interaction: approve behavior" $
       [ testScenario "can approve transfers" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
+            TestAddresses{..} <- setupAddresses
             let transferlistStorage =
                   Transferlist.Storage
                     { sTransfers = Set.fromList [(toAddress wallet1, toAddress wallet2)]
                     , sReceivers = Set.fromList [toAddress wallet1, toAddress wallet2]
                     }
-            commonOperator <- newAddress "commonOperator"
             let commonOperators = [commonOperator]
             transferlistContract <- originate "Transferlist test dummy" transferlistStorage Transferlist.transferlistContract
             let originationParams =
@@ -1358,17 +1199,12 @@ test_Management =
               transfer stablecoinContract $ calling (ep @"Transfer") transfers
       , testScenario "can approve mint operation" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
+            TestAddresses{..} <- setupAddresses
             let transferlistStorage =
                   Transferlist.Storage
                     { sTransfers = Set.fromList [(toAddress wallet1, toAddress wallet2)]
                     , sReceivers = Set.fromList [toAddress wallet1, toAddress wallet2]
                     }
-            commonOperator <- newAddress "commonOperator"
             let commonOperators = [commonOperator]
             transferlistContract <- originate "Transferlist test dummy" transferlistStorage Transferlist.transferlistContract
             let originationParams =
@@ -1387,17 +1223,12 @@ test_Management =
               transfer stablecoinContract $ calling (ep @"Mint") mintings
       , testScenario "can approve burn operation" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
+            TestAddresses{..} <- setupAddresses
             let transferlistStorage =
                   Transferlist.Storage
                     { sTransfers = Set.fromList [(toAddress wallet1, toAddress wallet2)]
                     , sReceivers = Set.fromList [toAddress wallet1, toAddress wallet2]
                     }
-            commonOperator <- newAddress "commonOperator"
             let commonOperators = [commonOperator]
             transferlistContract <- originate "Transferlist test dummy" transferlistStorage Transferlist.transferlistContract
             let originationParams =

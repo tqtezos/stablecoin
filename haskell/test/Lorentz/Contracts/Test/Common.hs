@@ -155,7 +155,7 @@ constructSingleTransfer
 constructSingleTransfer (arg #from_ -> from) (arg #to_ -> to) (arg #amount -> amount)
     = [TransferItem from [TransferDestination to FA2.theTokenId amount]]
 
-originateStablecoin :: MonadCleveland caps m => OriginationParams -> m (ContractHandle SC.Parameter SC.Storage ())
+originateStablecoin :: MonadOps m => OriginationParams -> m (ContractHandle SC.Parameter SC.Storage ())
 originateStablecoin originationParams =
   originate
     "Stablecoin contract"
@@ -193,10 +193,12 @@ mkInitialStorage OriginationParams{..} =
 mgmContractPaused :: MonadCleveland caps m => m () -> m ()
 mgmContractPaused = expectFailedWith [mt|CONTRACT_PAUSED|]
 
-nettestOriginateContractMetadataContract :: (ToJSON metadata) => MonadCleveland caps m => metadata -> m (ContractHandle () MetadataRegistryStorage ())
-nettestOriginateContractMetadataContract mdata =
+nettestOriginateContractMetadataContract
+  :: (ToJSON metadata, MonadOps m)
+  => ContractAlias -> metadata -> m (ContractHandle () MetadataRegistryStorage ())
+nettestOriginateContractMetadataContract name mdata =
   originate
-    "nettest.ContractMetadata"
+    name
     (mkContractMetadataRegistryStorage $  metadataMap (CurrentContract mdata False))
     contractMetadataContract
 

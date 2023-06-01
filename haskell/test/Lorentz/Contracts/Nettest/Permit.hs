@@ -11,6 +11,7 @@ import Test.Tasty (TestTree)
 
 import Lorentz.Contracts.Spec.FA2Interface (TransferDestination(..), TransferItem(..))
 import Lorentz.Contracts.Spec.FA2Interface qualified as FA2
+import Morley.Util.SizedList.Types
 import Test.Cleveland
 
 import Lorentz.Contracts.Stablecoin
@@ -27,17 +28,12 @@ permitScenario :: Scenario m
 permitScenario = scenario do
   comment "-- Permits tests --"
   comment "Creating accounts"
-  owner1 <- newAddress "nettestOwner1"
-  owner2 <- newAddress "nettestOwner2"
-  pauser <- newAddress "nettestPauser"
-  masterMinter <- newAddress "nettestMasterMinter"
-
-  -- user with no privileges
-  user1 <- newAddress auto
+  owner1 ::< owner2 ::< pauser ::< masterMinter ::< user1 ::< Nil' <- newAddresses $
+    "nettestOwner1" :< "nettestOwner2" :< "nettestPauser" :< "nettestMasterMinter" :< auto :< Nil
 
   comment "Originating contracts"
   let metadata = metadataJSON (Just testFA2TokenMetadata) Nothing
-  cmrAddress <- nettestOriginateContractMetadataContract metadata
+  cmrAddress <- nettestOriginateContractMetadataContract "ContractMetadata" metadata
   let originationParams =
         addAccount (owner1 , ([], 1000)) $
           (defaultOriginationParams

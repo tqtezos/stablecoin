@@ -15,6 +15,8 @@ import Time (sec)
 import Lorentz.Contracts.Spec.FA2Interface qualified as FA2
 import Morley.Tezos.Crypto (Signature(..))
 import Morley.Tezos.Crypto.Hash qualified as Hash
+import Morley.Util.SizedList qualified as SL
+import Morley.Util.SizedList.Types
 import Test.Cleveland
 import Test.Morley.Metadata
 
@@ -23,6 +25,39 @@ import Lorentz.Contracts.Test.Common
 import Lorentz.Contracts.Test.FA2 (fa2NotOperator, fa2NotOwner)
 import Lorentz.Contracts.Test.Management
   (mgmNotContractOwner, mgmNotMasterMinter, mgmNotPauser, mgmNotPendingOwner)
+
+data TestAddresses = TestAddresses
+  { testOwner        :: ImplicitAddressWithAlias
+  , testPauser       :: ImplicitAddressWithAlias
+  , testMasterMinter :: ImplicitAddressWithAlias
+  , wallet1          :: ImplicitAddressWithAlias
+  , wallet2          :: ImplicitAddressWithAlias
+  , wallet3          :: ImplicitAddressWithAlias
+  , wallet4          :: ImplicitAddressWithAlias
+  , commonOperator   :: ImplicitAddressWithAlias
+  }
+
+setupAddresses
+  :: forall m caps.
+     ( MonadFail m
+     , MonadCleveland caps m)
+  => m TestAddresses
+setupAddresses = do
+  testOwner
+    ::< testPauser
+    ::< testMasterMinter
+    ::< commonOperator
+    ::< wallet1
+    ::< wallet2
+    ::< wallet3
+    ::< wallet4
+    ::< Nil'
+    <- newAddresses $ "testOwner"
+      :< "testPauser"
+      :< "testMasterMinter"
+      :< "commonOperator"
+      :< SL.generate @4 (\n -> fromString $ "wallet" <> show (n + 1))
+  pure TestAddresses{..}
 
 -- NB: Some of these tests are too timing-sensitive to run on network successfully,
 -- and otherwise they would take way too long. So for the time being we only run
@@ -86,9 +121,7 @@ test_Permit =
   [ testGroup
       "Permits"
       [ testScenario "The counter used to sign the permit must match the contract's counter" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -101,10 +134,7 @@ test_Permit =
             errMissignedPermit expectedSignedBytes $
               transfer stablecoinContract $ calling (ep @"Permit") (PermitParam testPauserPK sig permitHash)
       , testScenario "The public key must match the private key used to sign the permit" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -115,11 +145,7 @@ test_Permit =
             errMissignedPermit signedBytes $
               transfer stablecoinContract $ calling (ep @"Permit") (PermitParam wallet1PK sig permitHash)
       , testScenario "The permit can be sent to the contract by a user other than the signer" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
-          wallet2 <- newAddress "wallet2"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -130,10 +156,7 @@ test_Permit =
           withSender wallet2 $
             transfer stablecoinContract $ calling (ep @"Pause") ()
       , testScenario "Admins do not consume permits" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -146,9 +169,7 @@ test_Permit =
           withSender wallet1 $
             transfer stablecoinContract $ calling (ep @"Pause") ()
       , testScenario "Counter is increased every time a permit is issued" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -165,10 +186,7 @@ test_Permit =
           issuePermit 2 >> consumePermitAndUnpause
           issuePermit 3 >> consumePermitAndUnpause
       , testScenario "`Unpause` permit cannot be used to pause" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet2 <- newAddress "wallet2"
+          TestAddresses{..} <- setupAddresses
           -- More generally, we want to assert that if two entrypoints X and Y have the same
           -- parameter type (in this case, both `Pause` and `Unpause` are of type `Unit`),
           -- then a permit issued for X cannot be used to access entrypoint Y.
@@ -181,10 +199,7 @@ test_Permit =
             mgmNotPauser $
               transfer stablecoinContract $ calling (ep @"Pause") ()
       , testScenario' "Permits expire after some time (set by the contract)" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
+          TestAddresses{..} <- setupAddresses
           let originationParams = (defaultOriginationParams
                 (#owner :! testOwner)
                 (#pauser :! testPauser)
@@ -200,10 +215,7 @@ test_Permit =
             errExpiredPermit $
               transfer stablecoinContract $ calling (ep @"Pause") ()
       , testScenario "Permits cannot be re-uploaded if they haven't expired" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -214,10 +226,7 @@ test_Permit =
               & void
               & errDupPermit
       , testScenario' "Permits can be re-uploaded after they've expired" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
+          TestAddresses{..} <- setupAddresses
           let defaultExpiry = 1
           let originationParams = (defaultOriginationParams
                 (#owner :! testOwner)
@@ -233,9 +242,7 @@ test_Permit =
             void $ callPermit stablecoinContract testPauser 1 Pause
             transfer stablecoinContract $ calling (ep @"Pause") ()
       , testScenario' "Re-uploading an expired permit hash resets its `created_at`/`expiry` settings" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
+          TestAddresses{..} <- setupAddresses
           let defaultExpiry = 5
           let originationParams = (defaultOriginationParams
                 (#owner :! testOwner)
@@ -258,9 +265,7 @@ test_Permit =
             advanceTime $ sec 3
           transfer stablecoinContract $ calling (ep @"Pause") ()
       , testScenario' "When a permit is issued, the issuer's expired permits are purged" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
+          TestAddresses{..} <- setupAddresses
           let originationParams = (defaultOriginationParams
                 (#owner :! testOwner)
                 (#pauser :! testPauser)
@@ -277,9 +282,7 @@ test_Permit =
   , testGroup
       "Set_expiry"
       [ testScenario "does not fail when permit does not exist" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -288,9 +291,7 @@ test_Permit =
           withSender testPauser $
             transfer stablecoinContract $ calling (ep @"Set_expiry") $ SetExpiryParam (toAddress testPauser) 1 $ Just hash
       , testScenario "does not allow too big expiry" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -301,10 +302,7 @@ test_Permit =
               transfer stablecoinContract $
                 calling (ep @"Set_expiry") (SetExpiryParam (toAddress testPauser) 31557600000 $ Just hash)
       , testScenario' "a user can set a default expiry for all permits signed with their secret key" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -317,10 +315,7 @@ test_Permit =
             errExpiredPermit $
               transfer stablecoinContract $ calling (ep @"Pause") ()
       , testScenario' "a permit's expiry takes precedence over a user's default expiry" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -334,10 +329,7 @@ test_Permit =
             errExpiredPermit $
               transfer stablecoinContract $ calling (ep @"Pause") ()
       , testScenario' "overrides permit's previous expiry" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -351,10 +343,7 @@ test_Permit =
             errExpiredPermit $
               transfer stablecoinContract $ calling (ep @"Pause") ()
       , testScenario' "setting expiry of an expired permit does not prolong its life" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -369,10 +358,7 @@ test_Permit =
             errExpiredPermit $
               transfer stablecoinContract $ calling (ep @"Pause") ()
       , testScenario "can only be accessed by the issuer of the permit" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -383,10 +369,7 @@ test_Permit =
               transfer stablecoinContract $
                 calling (ep @"Set_expiry") (SetExpiryParam (toAddress testPauser) 10 $ Just pausePermitHash)
       , testScenario' "can be accessed via a permit" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
+          TestAddresses{..} <- setupAddresses
           let defaultExpiry = 1
           let originationParams = (defaultOriginationParams
                 (#owner :! testOwner)
@@ -403,9 +386,7 @@ test_Permit =
             advanceTime $ sec 3
             transfer stablecoinContract $ calling (ep @"Pause") ()
       , testScenario "should revoke the permit when set to zero" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -417,10 +398,7 @@ test_Permit =
           mgmNotPauser $
             transfer stablecoinContract $ calling (ep @"Pause") ()
       , testScenario' "overrides user's previous expiry" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -437,9 +415,7 @@ test_Permit =
   , testGroup
       "GetDefaultExpiry"
       [ testScenarioOnEmulator "retrieves the contract's default expiry" $ scenarioEmulated do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
+          TestAddresses{..} <- setupAddresses
           let originationParams = defaultOriginationParams
                 (#owner :! testOwner)
                 (#pauser :! testPauser)
@@ -451,9 +427,7 @@ test_Permit =
   , testGroup
       "GetCounter"
       [ testScenarioOnEmulator "retrieves the contract's current counter" $ scenarioEmulated do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -468,10 +442,7 @@ test_Permit =
   , testGroup
       "Pause"
       [ testScenario "can be accessed via a permit" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -483,10 +454,7 @@ test_Permit =
             transfer stablecoinContract $ calling (ep @"Pause") ()
             assertPermitCount stablecoinContract 0
       , testScenario "cannot be accessed when permit is not signed by the pauser" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -496,9 +464,7 @@ test_Permit =
             mgmNotPauser $
               transfer stablecoinContract $ calling (ep @"Pause") ()
       , testScenario "pauser does not consume 'pause' permits" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -511,10 +477,7 @@ test_Permit =
   , testGroup
       "Unpause"
       [ testScenario "can be accessed via a permit" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -528,10 +491,7 @@ test_Permit =
             transfer stablecoinContract $ calling (ep @"Unpause") ()
             assertPermitCount stablecoinContract 0
       , testScenario "cannot be accessed when permit is not signed by the pauser" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -544,9 +504,7 @@ test_Permit =
             mgmNotPauser $
               transfer stablecoinContract $ calling (ep @"Unpause") ()
       , testScenario "pauser does not consume 'unpause' permits" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -560,11 +518,7 @@ test_Permit =
   , testGroup
       "Transfer_ownership"
       [ testScenario "can be accessed via a permit" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
-          wallet2 <- newAddress "wallet2"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -576,11 +530,7 @@ test_Permit =
             transfer stablecoinContract $ calling (ep @"Transfer_ownership") $ toAddress wallet2
             assertPermitCount stablecoinContract 0
       , testScenario "cannot be accessed when permit is not signed by the contract owner" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
-          wallet2 <- newAddress "wallet2"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -590,10 +540,7 @@ test_Permit =
             mgmNotContractOwner $
               transfer stablecoinContract $ calling (ep @"Transfer_ownership") $ toAddress wallet2
       , testScenario "contract owner does not consume permits" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet2 <- newAddress "wallet2"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -606,11 +553,7 @@ test_Permit =
   , testGroup
       "Accept_ownership"
       [ testScenario "can be accessed via a permit" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
-          wallet2 <- newAddress "wallet2"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -624,11 +567,7 @@ test_Permit =
             transfer stablecoinContract $ calling (ep @"Accept_ownership") ()
             assertPermitCount stablecoinContract 0
       , testScenario "cannot be accessed when permit is not signed by the pending owner" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
-          wallet2 <- newAddress "wallet2"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -640,10 +579,7 @@ test_Permit =
             mgmNotPendingOwner $
               transfer stablecoinContract $ calling (ep @"Accept_ownership") ()
       , testScenario "pending owner does not consume permits" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet2 <- newAddress "wallet2"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -658,11 +594,7 @@ test_Permit =
   , testGroup
       "Change_master_minter"
       [ testScenario "can be accessed via a permit" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
-          wallet2 <- newAddress "wallet2"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -674,11 +606,7 @@ test_Permit =
             transfer stablecoinContract $ calling (ep @"Change_master_minter") $ toAddress wallet2
             assertPermitCount stablecoinContract 0
       , testScenario "cannot be accessed when permit is not signed by the contract owner" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
-          wallet2 <- newAddress "wallet2"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -688,10 +616,7 @@ test_Permit =
             mgmNotContractOwner $
               transfer stablecoinContract $ calling (ep @"Change_master_minter") $ toAddress wallet2
       , testScenario "contract owner does not consume permits" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet2 <- newAddress "wallet2"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -704,11 +629,7 @@ test_Permit =
   , testGroup
       "Change_pauser"
       [ testScenario "can be accessed via a permit" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
-          wallet2 <- newAddress "wallet2"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -720,11 +641,7 @@ test_Permit =
             transfer stablecoinContract $ calling (ep @"Change_pauser") $ toAddress wallet2
             assertPermitCount stablecoinContract 0
       , testScenario "cannot be accessed when permit is not signed by the contract owner" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
-          wallet2 <- newAddress "wallet2"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -734,10 +651,7 @@ test_Permit =
             mgmNotContractOwner $
               transfer stablecoinContract $ calling (ep @"Change_pauser") $ toAddress wallet2
       , testScenario "contract owner does not consume permits" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet2 <- newAddress "wallet2"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -750,10 +664,7 @@ test_Permit =
   , testGroup
       "Set_transferlist"
       [ testScenario "can be accessed via a permit" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -765,10 +676,7 @@ test_Permit =
             transfer stablecoinContract $ calling (ep @"Set_transferlist") Nothing
             assertPermitCount stablecoinContract 0
       , testScenario "cannot be accessed when permit is not signed by the contract owner" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -778,9 +686,7 @@ test_Permit =
             mgmNotContractOwner $
               transfer stablecoinContract $ calling (ep @"Set_transferlist") Nothing
       , testScenario "contract owner does not consume permits" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -793,10 +699,7 @@ test_Permit =
   , testGroup
       "Configure_minter"
       [ testScenario "can be accessed via a permit" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -809,10 +712,7 @@ test_Permit =
             transfer stablecoinContract $ calling (ep @"Configure_minter") param
             assertPermitCount stablecoinContract 0
       , testScenario "cannot be accessed when permit is not signed by the master minter" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -823,10 +723,7 @@ test_Permit =
             mgmNotMasterMinter $
               transfer stablecoinContract $ calling (ep @"Configure_minter") param
       , testScenario "master minter does not consume permits" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -840,11 +737,7 @@ test_Permit =
   , testGroup
       "Remove_minter"
       [ testScenario "can be accessed via a permit" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
-          wallet2 <- newAddress "wallet2"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -860,11 +753,7 @@ test_Permit =
             transfer stablecoinContract $ calling (ep @"Remove_minter") $ toAddress minter
             assertPermitCount stablecoinContract 0
       , testScenario "cannot be accessed when permit is not signed by the master minter" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
-          wallet2 <- newAddress "wallet2"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -875,10 +764,7 @@ test_Permit =
             mgmNotMasterMinter $
               transfer stablecoinContract $ calling (ep @"Remove_minter") $ toAddress minter
       , testScenario "master minter does not consume permits" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet2 <- newAddress "wallet2"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -895,11 +781,7 @@ test_Permit =
   , testGroup
       "Transfer"
       [ testScenario "can be accessed via a permit" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
-          wallet2 <- newAddress "wallet2"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -920,12 +802,7 @@ test_Permit =
             transfer stablecoinContract $ calling (ep @"Transfer") transferParams
             assertPermitCount stablecoinContract 0
       , testScenario "A user X cannot sign a permit allowing other users to transfer tokens from user Y's account" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
-          wallet2 <- newAddress "wallet2"
-          wallet3 <- newAddress "wallet3"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -944,10 +821,7 @@ test_Permit =
             fa2NotOperator $
               transfer stablecoinContract $ calling (ep @"Transfer") transferParams
       , testScenario "transferring from own account does not consume permits" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet2 <- newAddress "wallet2"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -962,11 +836,7 @@ test_Permit =
             transfer stablecoinContract $ calling (ep @"Transfer") transferParams
             assertPermitCount stablecoinContract 1
       , testScenario "operators do not consume permits" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet2 <- newAddress "wallet2"
-          wallet3 <- newAddress "wallet3"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -988,13 +858,7 @@ test_Permit =
   , testGroup
       "Update_operators"
       [ testScenario "can be accessed via a permit" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
-          wallet2 <- newAddress "wallet2"
-          wallet3 <- newAddress "wallet3"
-          wallet4 <- newAddress "wallet4"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -1015,13 +879,7 @@ test_Permit =
             transfer stablecoinContract $ calling (ep @"Update_operators") params
             assertPermitCount stablecoinContract 0
       , testScenario "A user X cannot sign a permit allowing other users to modify user Y's operators" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet1 <- newAddress "wallet1"
-          wallet2 <- newAddress "wallet2"
-          wallet3 <- newAddress "wallet3"
-          wallet4 <- newAddress "wallet4"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)
@@ -1040,11 +898,7 @@ test_Permit =
             fa2NotOwner $
               transfer stablecoinContract $ calling (ep @"Update_operators") params
       , testScenario "updating own operators does not consume permits" $ scenario do
-          testOwner <- newAddress "testOwner"
-          testPauser <- newAddress "testPauser"
-          testMasterMinter <- newAddress "testMasterMinter"
-          wallet2 <- newAddress "wallet2"
-          wallet3 <- newAddress "wallet3"
+          TestAddresses{..} <- setupAddresses
           stablecoinContract <- originateStablecoin $ defaultOriginationParams
             (#owner :! testOwner)
             (#pauser :! testPauser)

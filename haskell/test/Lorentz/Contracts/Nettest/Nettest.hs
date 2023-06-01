@@ -9,6 +9,7 @@ module Lorentz.Contracts.Nettest.Nettest
   , test_scenarioWithExternalTransferlist
   ) where
 
+import Data.List.NonEmpty (groupBy)
 import Data.Set qualified as Set
 import Data.Text.IO.Utf8 qualified as Utf8
 import Test.Tasty (TestTree)
@@ -21,6 +22,8 @@ import Morley.Michelson.Runtime (parseExpandContract)
 import Morley.Michelson.Typed (untypeValue)
 import Morley.Michelson.Untyped qualified as U (Contract)
 import Morley.Util.Named
+import Morley.Util.SizedList qualified as SL
+import Morley.Util.SizedList.Types
 import Test.Cleveland
 
 import Indigo.Contracts.Transferlist.External qualified as External
@@ -31,7 +34,7 @@ test_scenarioWithInternalTransferlist :: TestTree
 test_scenarioWithInternalTransferlist =
   testScenario "Stablecoin contract nettest scenarioWithInternalTransferlist" $
     scNettestScenario
-      originateTransferlistInternal
+      (const originateTransferlistInternal)
       Internal
 
 test_scenarioWithExternalTransferlist :: IO TestTree
@@ -48,7 +51,7 @@ test_scenarioWithExternalTransferlist = do
 externalTransferlistContractPath :: FilePath
 externalTransferlistContractPath = "test/resources/transferlist.tz"
 
-originateTransferlistInternal :: MonadCleveland caps m => Set (ImplicitAddressWithAlias, ImplicitAddressWithAlias) -> Set ImplicitAddressWithAlias -> m ContractAddress
+originateTransferlistInternal :: MonadOps m => Set (ImplicitAddressWithAlias, ImplicitAddressWithAlias) -> Set ImplicitAddressWithAlias -> m ContractAddress
 originateTransferlistInternal transfers receivers = toContractAddress <$>
   originate
     "nettest.transferlist_internal"
@@ -59,10 +62,13 @@ originateTransferlistInternal transfers receivers = toContractAddress <$>
     (Internal.transferlistContract)
 
 originateTransferlistExternal
-  :: MonadCleveland caps m
-  => U.Contract -> Set (ImplicitAddressWithAlias, ImplicitAddressWithAlias) -> Set ImplicitAddressWithAlias -> m ContractAddress
-originateTransferlistExternal externalTransferlistContract transfers receivers = do
-  testOwner <- newAddress "testOwner"
+  :: (MonadOps m, ToAddress addr)
+  => U.Contract
+  -> addr
+  -> Set (ImplicitAddressWithAlias, ImplicitAddressWithAlias)
+  -> Set ImplicitAddressWithAlias
+  -> m ContractAddress
+originateTransferlistExternal externalTransferlistContract testOwner transfers receivers = do
   originate
     "nettest.transferlist_internal"
     (untypeValue @(ToT External.Storage) . toVal
@@ -85,30 +91,33 @@ data TransferlistType = External | Internal
 
 scNettestScenario
   :: Monad m
-  => (forall m' caps. MonadCleveland caps m' => Set (ImplicitAddressWithAlias, ImplicitAddressWithAlias) -> Set ImplicitAddressWithAlias -> m' ContractAddress)
+  => (forall m'. MonadOps m'
+      => ImplicitAddressWithAlias
+      -> Set (ImplicitAddressWithAlias, ImplicitAddressWithAlias)
+      -> Set ImplicitAddressWithAlias
+      -> m' ContractAddress)
   -> TransferlistType
   -> Scenario m
 scNettestScenario originateTransferlist transferlistType = scenario do
-  comment "Resolving contract managers"
+  comment "Creating accounts"
 
-  superuser <- refillable $ newAddress "superuser"
-
-  nettestOwner <- newAddress auto
-  nettestPauser <- newAddress auto
-  nettestMasterMinter <- newAddress auto
-
-  comment "Resolving owners and operators"
-
-  owner1 <- newAddress auto
-  owner2 <- newAddress auto
-  owner3 <- newAddress auto
-
-  operator <- newAddress auto
-  otherOperator <- newAddress auto
+  superuser
+    ::< testOwner
+    ::< nettestOwner
+    ::< nettestPauser
+    ::< nettestMasterMinter
+    ::< owner1
+    ::< owner2
+    ::< owner3
+    ::< operator
+    ::< otherOperator
+    ::< Nil'
+    <- newAddresses $ "superuser" :< "testOwner" :< SL.replicateT auto
+  void $ refillable $ pure superuser
 
   comment "Originating metadata contract"
   let metadata =  metadataJSON Nothing Nothing
-  cmrAddress <- nettestOriginateContractMetadataContract metadata
+  cmrAddress <- nettestOriginateContractMetadataContract "ContractMetadata" metadata
   let
     originationParams =
         addAccount (superuser , ([operator], 1110000))
@@ -123,12 +132,6 @@ scNettestScenario originateTransferlist transferlistType = scenario do
           (#masterMinter :! nettestMasterMinter)
           ){ opMetadataUri = RemoteContract $ toContractAddress cmrAddress
           }
-
-  comment "Originating stablecoin contract"
-  sc <- originateStablecoin originationParams
-
-  comment "Originating transferlist contract"
-
   let
     transfers =
       Set.fromList
@@ -136,10 +139,12 @@ scNettestScenario originateTransferlist transferlistType = scenario do
         , (owner2, owner3)
         , (owner3, owner1)
         ]
-
     receivers = Set.fromList [owner1, owner2]
 
-  sfAddress <- originateTransferlist transfers receivers
+  comment "Originating stablecoin and transferlist contracts"
+  (sc, sfAddress) <- inBatch $ (,)
+    <$> originateStablecoin originationParams
+    <*> originateTransferlist testOwner transfers receivers
 
   let
     tp :: Address -> Address -> Natural -> FA2.TransferParams
@@ -148,48 +153,51 @@ scNettestScenario originateTransferlist transferlistType = scenario do
       (#to_ :! to)
       (#amount :! value)
 
-    callTransferWithOperator
+    callTransfersWithOperator
       :: MonadCleveland caps m
       => ImplicitAddressWithAlias
-      -> ImplicitAddressWithAlias
-      -> ImplicitAddressWithAlias
-      -> Natural -> m ()
-    callTransferWithOperator op from to value =
-      withSender op $ transfer sc $ calling (ep @"Transfer") (tp (toAddress from) (toAddress to) value)
+      -> [("from" :! ImplicitAddressWithAlias, "to" :! ImplicitAddressWithAlias, Natural)]
+      -> m ()
+    callTransfersWithOperator op ts =
+      withSender op $ inBatch $
+        for_ ts \(arg #from -> from, arg #to -> to, value)
+          -> transfer sc $ calling (ep @"Transfer") (tp (toAddress from) (toAddress to) value)
 
     callTransfer
       :: MonadCleveland caps m
       => ImplicitAddressWithAlias
-      -> ImplicitAddressWithAlias
-      -> Natural -> m ()
-    callTransfer op = callTransferWithOperator op op
+      -> [(ImplicitAddressWithAlias, Natural)]
+      -> m ()
+    callTransfer op = callTransfersWithOperator op
+      . Prelude.map \(to, val) -> (#from :! op, #to :! to, val)
 
     callTransfers
       :: MonadCleveland caps m
       => [("from_" :! ImplicitAddressWithAlias, [("to_" :! ImplicitAddressWithAlias, "amount" :! Natural)])]
       -> m ()
-    callTransfers = mapM_ $ \(from@(arg #from_ -> from_), destinations) ->
-      withSender from_ $
-        transfer sc $ calling (ep @"Transfer") (constructTransfersFromSender from destinations)
+    callTransfers ts = forM_ (groupBy ((==) `on` fst) ts) $
+      \((from@(arg #from_ -> from_), _):|(fmap snd -> destinations)) ->
+          withSender from_ $ inBatch $
+            for destinations \destinations' ->
+              transfer sc $ calling (ep @"Transfer") (constructTransfersFromSender from destinations')
 
-    configureMinter
+    configureMinters
       :: MonadCleveland caps m
       => ImplicitAddressWithAlias
-      -> ImplicitAddressWithAlias
-      -> Maybe Natural -> Natural -> m ()
-    configureMinter = configureMinter' sc
+      -> [(ImplicitAddressWithAlias, Maybe Natural, Natural)]
+      -> m ()
+    configureMinters = configureMinters' sc
 
-    configureMinter'
+    configureMinters'
       :: MonadCleveland caps m
       => ContractHandle Parameter Storage ()
       -> ImplicitAddressWithAlias
-      -> ImplicitAddressWithAlias
-      -> Maybe Natural
-      -> Natural
+      -> [(ImplicitAddressWithAlias, Maybe Natural, Natural)]
       -> m ()
-    configureMinter' sc' from for' expectedAllowance newAllowance =
-      withSender from $
-        transfer sc' $ calling (ep @"Configure_minter") (ConfigureMinterParam (toAddress for') expectedAllowance newAllowance)
+    configureMinters' sc' from minters =
+      withSender from $ inBatch $
+        for_ minters \(for', expectedAllowance, newAllowance) ->
+          transfer sc' $ calling (ep @"Configure_minter") (ConfigureMinterParam (toAddress for') expectedAllowance newAllowance)
 
     removeMinter
       :: MonadCleveland caps m
@@ -273,8 +281,11 @@ scNettestScenario originateTransferlist transferlistType = scenario do
   let
     transferScenario = do
       comment "Transfers from superuser"
-      callTransfer superuser superuser 111
-      callTransfer superuser owner1 40
+      callTransfer superuser
+        [ (superuser, 111)
+        , (owner1, 40)
+        , (nettestPauser, 600000)
+        ]
 
       comment "Transfers between owners"
       callTransfers
@@ -284,54 +295,59 @@ scNettestScenario originateTransferlist transferlistType = scenario do
         ]
 
       comment "Pausing contract for transfers"
-      callTransfer superuser nettestPauser 600000 -- storage fee
       expectError [mt|NOT_PAUSER|] $ pause owner1 -- Not enough permissions
       pause nettestPauser
       expectError [mt|CONTRACT_PAUSED|] $ pause nettestPauser -- Cannot be called multiple times
 
-      expectError [mt|CONTRACT_PAUSED|] $ callTransfer owner3 owner2 10
+      expectError [mt|CONTRACT_PAUSED|] $ callTransfer owner3 [(owner2, 10)]
 
       comment "Unpausing contract for transfers"
       expectError [mt|NOT_PAUSER|] $ unpause owner3 -- Not enough permissions
       unpause nettestPauser
       expectError [mt|CONTRACT_NOT_PAUSED|] $ unpause nettestPauser -- Cannot be called multiple times
 
-      callTransfer owner1 owner2 10
-      callTransfer owner2 owner1 10
+      callTransfer owner1 [(owner2, 10)]
+      callTransfer owner2 [(owner1, 10)]
 
       comment $ "Updating transfer operators for owners"
-      callTransfer superuser owner1 10
+      callTransfer superuser [(owner1, 10)]
       addOperatorNettest owner1 otherOperator
-      callTransferWithOperator otherOperator owner1 owner2 10
-      expectError [mt|FA2_NOT_OPERATOR|] $ callTransferWithOperator otherOperator owner2 owner1 10
+      callTransfersWithOperator otherOperator [(#from :! owner1, #to :! owner2, 10)]
+      callTransfersWithOperator otherOperator [(#from :! owner2, #to :! owner1, 10)]
+        & expectError [mt|FA2_NOT_OPERATOR|]
       removeOperator owner1 otherOperator
-      expectError [mt|FA2_NOT_OPERATOR|] $ callTransferWithOperator otherOperator owner1 owner2 10
+      callTransfersWithOperator otherOperator [(#from :! owner1, #to :! owner2, 10)]
+        & expectError [mt|FA2_NOT_OPERATOR|]
 
-      callTransfer owner2 owner1 10
+      callTransfer owner2 [(owner1, 10)]
 
     mintScenario = do
       comment $ "Mint to superuser"
       mint superuser 200
-      callTransfer superuser nettestMasterMinter 1200 -- Needed to pay transfer fee
+      callTransfer superuser
+        [ (nettestMasterMinter, 1200)
+        , (owner1, 20)
+        ]
+        -- Needed to pay transfer fee
 
       comment "Configuring minter for owner1 and owner2"
-      configureMinter nettestMasterMinter owner1 Nothing 100
-      expectError [mt|ALLOWANCE_MISMATCH|] $ configureMinter nettestMasterMinter owner1 (Just 20) 10 -- Mismatched expected allowance
-      configureMinter nettestMasterMinter owner1 (Just 100) 50
-      expectError [mt|ADDR_NOT_MINTER|] $ configureMinter nettestMasterMinter owner2 (Just 20) 10 -- Not a minter
-      configureMinter nettestMasterMinter owner2 Nothing 10
+      configureMinters nettestMasterMinter [(owner1, Nothing, 100)]
+      configureMinters nettestMasterMinter [(owner1, Just 20, 10)] -- Mismatched expected allowance
+        & expectError [mt|ALLOWANCE_MISMATCH|]
+      configureMinters nettestMasterMinter [(owner1, Just 100, 50)]
+      configureMinters nettestMasterMinter [(owner2, Just 20, 10)] -- Not a minter
+        & expectError [mt|ADDR_NOT_MINTER|]
+      configureMinters nettestMasterMinter [(owner2, Nothing, 10)]
 
       comment $ "Minting for owner1 and owner2"
-      callTransfer superuser owner1 10 -- Needed to pay transfer fee
       mint owner1 20
       expectError [mt|ALLOWANCE_EXCEEDED|] $ mint owner1 200 -- Allowance exceeded
 
       comment "Transfer between owner1 and owner2"
-      callTransfer superuser owner1 10 -- Needed to pay transfer fee
-      callTransfer owner1 owner2 20
+      callTransfer owner1 [(owner2, 20)]
       mint owner2 10
 
-      callTransfer owner2 owner1 30
+      callTransfer owner2 [(owner1, 30)]
 
       comment "Remove owner1 and owner2 from minters"
       removeMinter nettestMasterMinter owner2
@@ -340,14 +356,17 @@ scNettestScenario originateTransferlist transferlistType = scenario do
 
     burnScenario = do
       comment $ "Burning for owner1"
-      callTransfer superuser owner1 10 -- Needed to pay transfer fee
-      callTransfer superuser nettestMasterMinter 1000
-      configureMinter nettestMasterMinter owner1 Nothing 100
+      callTransfer superuser
+        [ (owner1, 10)  -- Needed to pay transfer fee
+        , (nettestMasterMinter, 1000)
+        ]
+      configureMinters nettestMasterMinter [(owner1, Nothing, 100)]
       mint owner1 100
       burn owner1 20
-      expectError [mt|FA2_INSUFFICIENT_BALANCE|] $ burn owner1 2000 -- Not enough tokens to burn
+      burn owner1 2000 -- Not enough tokens to burn
+        & expectError [mt|FA2_INSUFFICIENT_BALANCE|]
       comment "Transfer rest of the tokens after burn from owner1"
-      callTransfer owner1 owner2 80
+      callTransfer owner1 [(owner2, 80)]
       removeMinter nettestMasterMinter owner1
 
     permissionReassigmentScenario = do
@@ -361,7 +380,7 @@ scNettestScenario originateTransferlist transferlistType = scenario do
 
       comment "Changing master minter"
       changeMasterMinter nettestOwner owner1
-      configureMinter owner1 owner2 Nothing 10
+      configureMinters owner1 [(owner2, Nothing, 10)]
       mint owner2 10
       changeMasterMinter nettestOwner nettestMasterMinter
       removeMinter nettestMasterMinter owner2
@@ -379,16 +398,18 @@ scNettestScenario originateTransferlist transferlistType = scenario do
 
       setTransferlist nettestOwner sfAddress
 
-      callTransfer owner2 owner3 10
+      callTransfer owner2 [(owner3, 10)]
 
       -- transfer is not in transferlist
-      let action = callTransfer owner3 owner2 9
+      let action = callTransfer owner3 [(owner2, 9)]
       case transferlistType of
         Internal -> expectCustomError_ #assertionFailure action
         External -> expectError [mt|outbound not transferlisted|] action
 
-      configureMinter nettestMasterMinter owner1 Nothing 100
-      configureMinter nettestMasterMinter owner2 Nothing 100
+      configureMinters nettestMasterMinter
+        [ (owner1, Nothing, 100)
+        , (owner2, Nothing, 100)
+        ]
 
       mint owner2 20
       expectError [mt|NOT_MINTER|] $ mint owner3 20 -- Minter is not set in transferlist
@@ -402,12 +423,13 @@ scNettestScenario originateTransferlist transferlistType = scenario do
       -- We originate a new contract to make sure the minters list is empty
       sc' <- originateStablecoin $ originationParams { opMinters = mempty }
 
-      let
-        addMinter' ma = configureMinter' sc' nettestMasterMinter ma Nothing 100
-
       comment "Send some tez to master minter"
       withSender superuser $ transfer nettestMasterMinter [tz|100|]
-      replicateM_ minterLimit (newAddress auto >>= addMinter')
+
+      addrs <- traverse newFreshAddress $ replicate minterLimit auto
+
+      configureMinters' sc' nettestMasterMinter $
+        (, Nothing, 100) <$> addrs
 
   transferScenario
   mintScenario

@@ -20,6 +20,8 @@ import Lorentz.Contracts.Test.Common
 
 import Lorentz.Value
 import Morley.Util.Named
+import Morley.Util.SizedList qualified as SL
+import Morley.Util.SizedList.Types
 import Test.Cleveland
 import Test.Cleveland.Lorentz.Consumer
 import Test.Morley.Metadata
@@ -36,6 +38,41 @@ fa2InsufficientBalance = expectFailedWith [mt|FA2_INSUFFICIENT_BALANCE|]
 fa2NotOwner = expectFailedWith [mt|NOT_TOKEN_OWNER|]
 fa2NotOperator = expectFailedWith [mt|FA2_NOT_OPERATOR|]
 
+data TestAddresses = TestAddresses
+  { testOwner        :: ImplicitAddressWithAlias
+  , testPauser       :: ImplicitAddressWithAlias
+  , testMasterMinter :: ImplicitAddressWithAlias
+  , wallet1          :: ImplicitAddressWithAlias
+  , wallet2          :: ImplicitAddressWithAlias
+  , wallet3          :: ImplicitAddressWithAlias
+  , wallet4          :: ImplicitAddressWithAlias
+  , wallet5          :: ImplicitAddressWithAlias
+  , commonOperator   :: ImplicitAddressWithAlias
+  }
+
+setupAddresses
+  :: forall m caps.
+     ( MonadFail m
+     , MonadCleveland caps m)
+  => m TestAddresses
+setupAddresses = do
+  testOwner
+    ::< testPauser
+    ::< testMasterMinter
+    ::< commonOperator
+    ::< wallet1
+    ::< wallet2
+    ::< wallet3
+    ::< wallet4
+    ::< wallet5
+    ::< Nil
+    <- newAddresses $ "testOwner"
+      :< "testPauser"
+      :< "testMasterMinter"
+      :< "commonOperator"
+      :< SL.generate @5 (\n -> fromString $ "wallet" <> show (n + 1))
+  pure TestAddresses{..}
+
 {- | Test suite for an FA2-specific entrypoints for stablecoin smart-contract which:
 
  1. Supports a single token type.
@@ -47,18 +84,9 @@ test_FA2 =
       "Operator Transfer"
       -- Transfer tests or tests for core transfer behavior, as per FA2
       [ testScenario
-          "is allowed to transfer and \
-          \executes transfers in the given order"
+          "is allowed to transfer and executes transfers in the given order"
           $ scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            wallet3 <- newAddress "wallet3"
-            wallet4 <- newAddress "wallet4"
-            wallet5 <- newAddress "wallet5"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             -- Tests transactions are applied in order
             -- Update balances exactly
@@ -118,12 +146,7 @@ test_FA2 =
             getStorage consumer @@== [balanceExpected]
       , testScenario "allows zero transfer from non-existent accounts" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let originationParams =
                   addOperator (wallet1, commonOperator) $
                     defaultOriginationParams
@@ -141,15 +164,7 @@ test_FA2 =
               withSender commonOperator $ transfer fa2contract $ calling (ep @"Transfer") transfers
       , testScenario "aborts if there is a failure (due to low balance)" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            wallet3 <- newAddress "wallet3"
-            wallet4 <- newAddress "wallet4"
-            wallet5 <- newAddress "wallet5"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addAccount (wallet1, (commonOperators, 10)) $
@@ -175,12 +190,7 @@ test_FA2 =
                 withSender commonOperator $ transfer fa2contract $ calling (ep @"Transfer") transfers
       , testScenario "aborts if there is a failure (due to non existent source account)" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addOperator (wallet2, commonOperator) $
@@ -201,15 +211,7 @@ test_FA2 =
                 withSender commonOperator $ transfer fa2contract $ calling (ep @"Transfer") transfers
       , testScenario "aborts if there is a failure (due to bad operator)" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            wallet3 <- newAddress "wallet3"
-            wallet4 <- newAddress "wallet4"
-            wallet5 <- newAddress "wallet5"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addAccount (wallet1, (commonOperators, 10)) $
@@ -241,14 +243,7 @@ test_FA2 =
                 withSender commonOperator $ transfer fa2contract $ calling (ep @"Transfer") transfers
       , testScenario "aborts if there is a failure (due to bad operator for zero transfer)" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            wallet3 <- newAddress "wallet3"
-            wallet4 <- newAddress "wallet4"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addAccount (wallet1, (commonOperators, 10)) $
@@ -279,11 +274,7 @@ test_FA2 =
                 withSender commonOperator $ transfer fa2contract $ calling (ep @"Transfer") transfers
       , testScenario "accepts an empty list of transfers" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addAccount (wallet1, (commonOperators, 10)) $
@@ -298,14 +289,7 @@ test_FA2 =
               withSender commonOperator $ transfer fa2contract $ calling (ep @"Transfer") transfers
       , testScenario "validates token id" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            wallet3 <- newAddress "wallet3"
-            wallet4 <- newAddress "wallet4"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addAccount (wallet1, (commonOperators, 10)) $
@@ -330,12 +314,7 @@ test_FA2 =
                 withSender commonOperator $ transfer fa2contract $ calling (ep @"Transfer") transfers
       , testScenario "cannot transfer foreign money" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addAccount (wallet2, ([], 10)) $
@@ -356,12 +335,7 @@ test_FA2 =
                 withSender commonOperator $ transfer fa2contract $ calling (ep @"Transfer") transfers
       , testScenario "will create target account if it does not already exist" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addAccount (wallet1, (commonOperators, 10)) $
@@ -388,13 +362,7 @@ test_FA2 =
               getStorage consumer @@== [balanceExpected]
       , testScenario "removes zero balance accounts after transfer" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            wallet3 <- newAddress "wallet3"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addAccount (wallet1, (commonOperators, 10)) $
@@ -422,12 +390,7 @@ test_FA2 =
   , testGroup "Self transfer" $
       [ testScenario "Cannot transfer foreign money" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   ( addAccount (wallet1, (commonOperators, 10)) $
@@ -448,12 +411,7 @@ test_FA2 =
                 withSender wallet2 $ transfer fa2contract $ calling (ep @"Transfer") transfers
       , testScenario "is permitted" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addAccount (wallet1, (commonOperators, 10)) $
@@ -479,12 +437,7 @@ test_FA2 =
               getStorage consumer @@== [balanceExpected]
       , testScenario "validates token id" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addAccount (wallet1, (commonOperators, 10)) $
@@ -511,11 +464,7 @@ test_FA2 =
                 withSender wallet1 $ transfer fa2contract $ calling (ep @"Transfer") transfers
       , testScenario "allows zero transfer from non-existent accounts" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
+            TestAddresses{..} <- setupAddresses
             -- Tests transactions are applied in order
             -- Update balances exactly
             fa2contract <-
@@ -534,14 +483,7 @@ test_FA2 =
               withSender wallet1 $ transfer fa2contract $ calling (ep @"Transfer") transfers
       , testScenario "aborts if there is a failure (due to low source balance)" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            wallet3 <- newAddress "wallet3"
-            wallet4 <- newAddress "wallet4"
-            wallet5 <- newAddress "wallet5"
+            TestAddresses{..} <- setupAddresses
             let originationParams =
                   addAccount (wallet1, ([], 10)) $
                     defaultOriginationParams
@@ -563,12 +505,7 @@ test_FA2 =
               fa2InsufficientBalance $ withSender wallet1 $ transfer fa2contract $ calling (ep @"Transfer") transfers
       , testScenario "aborts if there is a failure (due to non existent source for non-zero transfer)" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet3 <- newAddress "wallet3"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let originationParams =
                   addOperator (wallet3, commonOperator) $
                     addAccount (wallet1, ([], 10)) $
@@ -588,14 +525,7 @@ test_FA2 =
               fa2InsufficientBalance $ withSender commonOperator $ transfer fa2contract $ calling (ep @"Transfer") transfers
       , testScenario "aborts if there is a failure (due to bad token id)" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            wallet3 <- newAddress "wallet3"
-            wallet4 <- newAddress "wallet4"
-            wallet5 <- newAddress "wallet5"
+            TestAddresses{..} <- setupAddresses
             let originationParams =
                   addAccount (wallet1, ([], 10)) $
                     defaultOriginationParams
@@ -620,11 +550,7 @@ test_FA2 =
               fa2TokenUndefined $ withSender wallet1 $ transfer fa2contract $ calling (ep @"Transfer") transfers
       , testScenario "will create target account if it does not already exist" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
+            TestAddresses{..} <- setupAddresses
             let originationParams =
                   addAccount (wallet1, ([], 10)) $
                     defaultOriginationParams
@@ -653,15 +579,7 @@ test_FA2 =
     testGroup "Balance_of entrypoint" $
       [ testScenario "returns results in the expected order and without de-duplication" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            wallet3 <- newAddress "wallet3"
-            wallet4 <- newAddress "wallet4"
-            wallet5 <- newAddress "wallet5"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addAccount (wallet1, (commonOperators, 10)) $
@@ -698,11 +616,7 @@ test_FA2 =
               getStorage consumer @@== [balanceExpected]
       , testScenario "validates token id" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addAccount (wallet1, (commonOperators, 10)) $
@@ -719,10 +633,7 @@ test_FA2 =
               fa2TokenUndefined $ transfer fa2contract $ calling (ep @"Balance_of") balanceRequest
       , testScenario "returns zero if the account does not exist" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
+            TestAddresses{..} <- setupAddresses
             let originationParams =
                   defaultOriginationParams
                     (#owner :! testOwner)
@@ -742,9 +653,7 @@ test_FA2 =
               getStorage consumer @@== [balanceExpected]
       , testScenario "accepts an empty list" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
+            TestAddresses{..} <- setupAddresses
             let originationParams =
                   defaultOriginationParams
                     (#owner :! testOwner)
@@ -785,11 +694,7 @@ test_FA2 =
      in testGroup "Configure operators entrypoint" $
           [ testScenario "add operator call adds operator as expected" $
               scenario do
-                testOwner <- newAddress "testOwner"
-                testPauser <- newAddress "testPauser"
-                testMasterMinter <- newAddress "testMasterMinter"
-                wallet1 <- newAddress "wallet1"
-                wallet2 <- newAddress "wallet2"
+                TestAddresses{..} <- setupAddresses
                 let originationParams =
                       addAccount (wallet1, ([], 10)) $
                         defaultOriginationParams
@@ -807,11 +712,7 @@ test_FA2 =
                     checkForOperator fa2contract wallet1 wallet2 True
           , testScenario "remove operator call removes operator as expected" $
               scenario do
-                testOwner <- newAddress "testOwner"
-                testPauser <- newAddress "testPauser"
-                testMasterMinter <- newAddress "testMasterMinter"
-                wallet1 <- newAddress "wallet1"
-                commonOperator <- newAddress "commonOperator"
+                TestAddresses{..} <- setupAddresses
                 let commonOperators = [commonOperator]
                 let originationParams =
                       addAccount (wallet1, (commonOperators, 10)) $
@@ -830,11 +731,7 @@ test_FA2 =
                     checkForOperator fa2contract wallet1 commonOperator False
           , testScenario "retains the last operation in case of conflicting operations - Expect removal" $
               scenario do
-                testOwner <- newAddress "testOwner"
-                testPauser <- newAddress "testPauser"
-                testMasterMinter <- newAddress "testMasterMinter"
-                wallet1 <- newAddress "wallet1"
-                wallet2 <- newAddress "wallet2"
+                TestAddresses{..} <- setupAddresses
                 let originationParams =
                       addAccount (wallet1, ([], 10)) $
                         defaultOriginationParams
@@ -851,12 +748,7 @@ test_FA2 =
                     checkForOperator fa2contract wallet1 wallet2 False
           , testScenario "retains the last operation in case of conflicting operations - Expect addition" $
               scenario do
-                testOwner <- newAddress "testOwner"
-                testPauser <- newAddress "testPauser"
-                testMasterMinter <- newAddress "testMasterMinter"
-                wallet1 <- newAddress "wallet1"
-                wallet2 <- newAddress "wallet2"
-                commonOperator <- newAddress "commonOperator"
+                TestAddresses{..} <- setupAddresses
                 let commonOperators = [commonOperator]
                 let originationParams =
                       addAccount (wallet1, (commonOperators, 10)) $
@@ -874,11 +766,7 @@ test_FA2 =
                     checkForOperator fa2contract wallet1 wallet2 True
           , testScenario "add operator call validates token id" $
               scenario do
-                testOwner <- newAddress "testOwner"
-                testPauser <- newAddress "testPauser"
-                testMasterMinter <- newAddress "testMasterMinter"
-                wallet1 <- newAddress "wallet1"
-                commonOperator <- newAddress "commonOperator"
+                TestAddresses{..} <- setupAddresses
                 let originationParams =
                       addAccount (wallet1, ([], 10)) $
                         defaultOriginationParams
@@ -896,11 +784,7 @@ test_FA2 =
                         calling (ep @"Update_operators") [AddOperator operatorParam]
           , testScenario "remove operator call validates token id" $
               scenario do
-                testOwner <- newAddress "testOwner"
-                testPauser <- newAddress "testPauser"
-                testMasterMinter <- newAddress "testMasterMinter"
-                wallet1 <- newAddress "wallet1"
-                commonOperator <- newAddress "commonOperator"
+                TestAddresses{..} <- setupAddresses
                 let commonOperators = [commonOperator]
                 let originationParams =
                       addAccount (wallet1, (commonOperators, 10)) $
@@ -919,11 +803,7 @@ test_FA2 =
                         calling (ep @"Update_operators") [RemoveOperator operatorParam]
           , testScenario "add operator call can be paused" $
               scenario do
-                testOwner <- newAddress "testOwner"
-                testPauser <- newAddress "testPauser"
-                testMasterMinter <- newAddress "testMasterMinter"
-                wallet1 <- newAddress "wallet1"
-                commonOperator <- newAddress "commonOperator"
+                TestAddresses{..} <- setupAddresses
                 let originationParams =
                       addAccount (wallet1, ([], 10)) $
                         defaultOriginationParams
@@ -943,11 +823,7 @@ test_FA2 =
                         calling (ep @"Update_operators") [AddOperator operatorParam]
           , testScenario "remove operator call can be paused" $
               scenario do
-                testOwner <- newAddress "testOwner"
-                testPauser <- newAddress "testPauser"
-                testMasterMinter <- newAddress "testMasterMinter"
-                wallet1 <- newAddress "wallet1"
-                commonOperator <- newAddress "commonOperator"
+                TestAddresses{..} <- setupAddresses
                 let commonOperators = [commonOperator]
                 let originationParams =
                       addAccount (wallet1, (commonOperators, 10)) $
@@ -971,12 +847,7 @@ test_FA2 =
     testGroup "Configure operators entrypoint" $
       [ testScenario "denies addOperator call for non-owners" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addAccount (wallet1, (commonOperators, 10)) $
@@ -993,12 +864,7 @@ test_FA2 =
                 fa2NotOwner $ transfer stablecoinContract $ calling (ep @"Update_operators") [addOperatorParam]
       , testScenario "denies removeOperator call for non-owners" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addAccount (wallet1, (commonOperators, 10)) $
@@ -1015,12 +881,7 @@ test_FA2 =
                 fa2NotOwner $ transfer stablecoinContract $ calling (ep @"Update_operators") [removeOperatorParam]
       , testScenario "denies addOperator for operators" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addAccount (wallet1, (commonOperators, 10)) $
@@ -1037,11 +898,7 @@ test_FA2 =
                 fa2NotOwner $ transfer stablecoinContract $ calling (ep @"Update_operators") [addOperatorParam]
       , testScenario "denies removeOperator for operators" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addAccount (wallet1, (commonOperators, 10)) $
@@ -1064,11 +921,7 @@ test_FA2 =
     testGroup "Owner hook behavior on transfer" $
       [ testScenario "does not call sender's transfer hook on transfer" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet2 <- newAddress "wallet2"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             senderWithHook <- originate "Sender hook consumer" [] $ contractConsumer @FA2OwnerHook
             let originationParams =
@@ -1090,11 +943,7 @@ test_FA2 =
               getStorage senderWithHook @@== []
       , testScenario "does not call receiver's transfer hook on transfer" $
           scenario do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             receiverWithHook <- originate "Receiver hook consumer" [] (contractConsumer @FA2OwnerHook)
             let originationParams =
@@ -1119,14 +968,7 @@ test_FA2 =
       "Off-chain storage view getBalance"
       [ testScenarioOnEmulator "computes the balance of the address correctly" $
           scenarioEmulated do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            wallet3 <- newAddress "wallet3"
-            wallet4 <- newAddress "wallet4"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addAccount (wallet1, (commonOperators, 10)) $
@@ -1144,14 +986,7 @@ test_FA2 =
   , testGroup "Off-chain storage view getTotalSupply" $
       [ testScenarioOnEmulator "Returns the total supply value correctly" $
           scenarioEmulated do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            wallet3 <- newAddress "wallet3"
-            wallet4 <- newAddress "wallet4"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addAccount (wallet1, (commonOperators, 10)) $
@@ -1169,14 +1004,7 @@ test_FA2 =
   , testGroup "Off-chain storage view getAllTokens" $
       [ testScenarioOnEmulator "Returns only token id of Zero" $
           scenarioEmulated do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            wallet3 <- newAddress "wallet3"
-            wallet4 <- newAddress "wallet4"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addAccount (wallet1, (commonOperators, 10)) $
@@ -1194,14 +1022,7 @@ test_FA2 =
   , testGroup "Off-chain storage view isOperator" $
       [ testScenarioOnEmulator "Returns the status of operator" $
           scenarioEmulated do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            wallet3 <- newAddress "wallet3"
-            wallet4 <- newAddress "wallet4"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addAccount (wallet1, (commonOperators, 10)) $
@@ -1219,14 +1040,7 @@ test_FA2 =
   , testGroup "Off-chain storage view GetTokenMetadata" $
       [ testScenarioOnEmulator "Returns the metadata of token" $
           scenarioEmulated do
-            testOwner <- newAddress "testOwner"
-            testPauser <- newAddress "testPauser"
-            testMasterMinter <- newAddress "testMasterMinter"
-            wallet1 <- newAddress "wallet1"
-            wallet2 <- newAddress "wallet2"
-            wallet3 <- newAddress "wallet3"
-            wallet4 <- newAddress "wallet4"
-            commonOperator <- newAddress "commonOperator"
+            TestAddresses{..} <- setupAddresses
             let commonOperators = [commonOperator]
             let originationParams =
                   addAccount (wallet1, (commonOperators, 10)) $
