@@ -27,7 +27,6 @@ library:
     - base64-bytestring
     - bytestring
     - cleveland
-    - constraints
     - containers
     - indigo
     - lorentz
@@ -40,7 +39,6 @@ library:
     - optparse-applicative
     - process
     - servant-client
-    - singletons
     - template-haskell
     - text
     - uncaught-exception
