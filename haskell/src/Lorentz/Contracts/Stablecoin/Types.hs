@@ -35,6 +35,7 @@ module Lorentz.Contracts.Stablecoin.Types
 
 import Fmt
 import Text.Show qualified
+import Data.ByteString.Base64 qualified as B64
 
 import Lorentz as L
 import Lorentz.Contracts.Spec.FA2Interface qualified as FA2
@@ -60,10 +61,7 @@ data ConfigureMinterParam = ConfigureMinterParam
  , cmpNewMintingAllowance :: Natural
  }
  deriving stock (Generic, Show)
- deriving anyclass (IsoValue, HasAnnotation)
-
-instance Buildable ConfigureMinterParam where
-  build = genericF
+ deriving anyclass (IsoValue, HasAnnotation, Buildable)
 
 type RemoveMinterParam = Address
 
@@ -72,10 +70,7 @@ data MintParam = MintParam
   , mpAmount :: Natural
   }
   deriving stock (Show, Generic)
-  deriving anyclass (IsoValue, HasAnnotation)
-
-instance Buildable MintParam where
-  build = genericF
+  deriving anyclass (IsoValue, HasAnnotation, Buildable)
 
 type MintParams = [MintParam]
 
@@ -91,7 +86,7 @@ newtype PermitHash = PermitHash ByteString
   deriving newtype (IsoValue, L.HasAnnotation, Eq, Ord)
 
 instance Buildable PermitHash where
-  build (PermitHash bs) = base64F bs
+  build (PermitHash bs) = build @LText . decodeUtf8 $ B64.encode bs
 
 data PermitParam = PermitParam
   { ppKey :: PublicKey
@@ -99,10 +94,7 @@ data PermitParam = PermitParam
   , ppPermitHash :: PermitHash
   }
  deriving stock (Generic, Show)
- deriving anyclass (IsoValue, HasAnnotation)
-
-instance Buildable PermitParam where
-  build = genericF
+ deriving anyclass (IsoValue, HasAnnotation, Buildable)
 
 type Expiry = Natural
 
@@ -112,11 +104,7 @@ data SetExpiryParam = SetExpiryParam
   , sepPermitHash :: Maybe PermitHash
   }
   deriving stock (Show, Generic)
-
-deriving anyclass instance IsoValue SetExpiryParam
-deriving anyclass instance HasAnnotation SetExpiryParam
-instance Buildable SetExpiryParam where
-  build = genericF
+  deriving anyclass (IsoValue, HasAnnotation, Buildable)
 
 -- | Similar to 'FA2.Parameter' from @morley-ledgers@, but with a layout compatible with
 -- the ligo implementation
@@ -167,10 +155,8 @@ data Parameter
 
 customGeneric "Parameter" ligoLayout
 
-deriving anyclass instance IsoValue Parameter
-
-instance Buildable Parameter where
-  build = genericF
+instance IsoValue Parameter
+instance Buildable Parameter
 
 instance Show Parameter where
   show = pretty

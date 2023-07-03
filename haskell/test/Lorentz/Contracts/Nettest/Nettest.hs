@@ -27,8 +27,6 @@ import Indigo.Contracts.Transferlist.External qualified as External
 import Indigo.Contracts.Transferlist.Internal qualified as Internal
 import Lorentz.Contracts.Stablecoin
 
-deriving stock instance Ord ImplicitAddressWithAlias
-
 test_scenarioWithInternalTransferlist :: TestTree
 test_scenarioWithInternalTransferlist =
   testScenario "Stablecoin contract nettest scenarioWithInternalTransferlist" $
