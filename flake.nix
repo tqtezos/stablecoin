@@ -14,6 +14,8 @@
       let
         pkgs = morley-infra.legacyPackages.${system};
 
+        inherit (morley-infra.utils.${system}) ci-apps;
+
         ligo = pkgs.stdenv.mkDerivation {
           name = "ligo";
           src = pkgs.fetchurl {
@@ -50,13 +52,8 @@
           ignorePackageYaml = true;
           modules = [
             {
-              packages = pkgs.lib.genAttrs local-packages-names (packageName: {
-                  ghcOptions = [
-                    "-ddump-to-file" "-ddump-hi"
-                    "-O0" "-Werror"
-                  ];
-                  postInstall = morley-infra.utils.${system}.weeder-hacks.collect-dump-hi-files;
-
+              packages = pkgs.lib.genAttrs local-packages-names (packageName: ci-apps.collect-hie false {
+                  ghcOptions = [ "-O0" "-Werror" ];
                   # enable haddock for local packages
                   doHaddock = true;
               });
@@ -88,8 +85,8 @@
           shell = {
             tools = {
               cabal = {};
-              hlint = { version = "3.4"; };
-              hpack = { version = "0.34.4"; };
+              hlint = { version = "3.5"; };
+              hpack = { version = "0.35.1"; };
             };
           };
         };
@@ -120,12 +117,6 @@
           legacyPackages = pkgs;
 
           packages = {
-            # a derivation which generates a script for running weeder
-            weeder-script = morley-infra.utils.${system}.weeder-script {
-              hs-pkgs = hs-pkgs-development;
-              inherit local-packages;
-            };
-
             haddock = self.packages.${system}."stablecoin:lib:stablecoin".haddock;
 
             all-components = pkgs.linkFarmFromDrvs "all-components" (builtins.attrValues flake.packages);
@@ -139,6 +130,13 @@
             trailing-whitespace = pkgs.build.checkTrailingWhitespace ./.;
 
             reuse-lint = pkgs.build.reuseLint ./.;
+          };
+        }
+
+        {
+          apps = ci-apps.apps {
+            hs-pkgs = hs-pkgs-development;
+            inherit local-packages projectSrc;
           };
         }
       ]

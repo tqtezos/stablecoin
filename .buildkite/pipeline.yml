@@ -123,10 +123,7 @@ steps:
     commands:
       - eval "$FETCH_CONTRACT"
       - cd haskell
-      - nix build -L ..#weeder-script
-      # weeder needs .cabal file:
-      - nix shell ../ .#haskellPackages.hpack -c hpack
-      - ./result
+      - nix run -L ..#ci:weeder
 
   - label: packaging
     if: *not_scheduled

@@ -77,6 +77,10 @@ _definitions:
         - -Wno-implicit-prelude
         - -Wno-prepositive-qualified-module
         - -Wno-missing-safe-haskell-mode
+        - -Wno-unticked-promoted-constructors
+        - -Wno-missing-kind-signatures
+        - -Wno-operator-whitespace
+        - -Wno-implicit-lift
 
   _utils:
     # Additional options, they will be merged with the ones above when both

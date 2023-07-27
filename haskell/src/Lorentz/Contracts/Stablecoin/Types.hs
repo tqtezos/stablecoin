@@ -9,7 +9,6 @@ module Lorentz.Contracts.Stablecoin.Types
   , SetTransferlistParam
   , RemoveMinterParam
   , mkContractMetadataRegistryStorage
-  , defaultContractMetadataStorage
   , MintParams
   , MintParam(..)
   , BurnParams
@@ -278,10 +277,3 @@ mkContractMetadataRegistryStorage m = MetadataRegistryStorage
   { cmrsDummyField = ()
   , cmrsMetadata = m
   }
-
--- The default storage of metadata contract with some hardcoded token metadata.
--- Useful for testing.
-defaultContractMetadataStorage :: MetadataRegistryStorage
-defaultContractMetadataStorage =
-  mkContractMetadataRegistryStorage
-    (mkBigMap [([mt|TEST|], "TEST"), ([mt|Test|], "Test")])

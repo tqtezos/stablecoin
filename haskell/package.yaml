@@ -8,7 +8,6 @@ version:             1.7.4
 
 extra-source-files:
 - README.md
-- ChangeLog.md
 - test/resources/stablecoin.tz
 - test/resources/metadata.tz
 
@@ -25,7 +24,6 @@ library:
 
   dependencies:
     - aeson
-    - aeson-casing
     - base64-bytestring
     - bytestring
     - cleveland

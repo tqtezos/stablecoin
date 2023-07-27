@@ -18,3 +18,5 @@ TAGS
 /haskell/test/resources/stablecoin.tz
 /haskell/test/resources/stablecoin.fa1.2.tz
 /haskell/test/resources/metadata.tz
+
+weeder.dhall

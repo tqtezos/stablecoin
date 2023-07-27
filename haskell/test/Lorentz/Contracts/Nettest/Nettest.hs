@@ -84,8 +84,10 @@ originateTransferlistExternal externalTransferlistContract transfers receivers =
 data TransferlistType = External | Internal
 
 scNettestScenario
-  :: Monad m
-  => (forall m' caps. MonadCleveland caps m' => Set (ImplicitAddressWithAlias, ImplicitAddressWithAlias) -> Set ImplicitAddressWithAlias -> m' ContractAddress)
+  :: (forall m' caps. MonadCleveland caps m'
+      => Set (ImplicitAddressWithAlias, ImplicitAddressWithAlias)
+      -> Set ImplicitAddressWithAlias
+      -> m' ContractAddress)
   -> TransferlistType
   -> Scenario m
 scNettestScenario originateTransferlist transferlistType = scenario do
