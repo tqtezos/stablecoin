@@ -50,6 +50,7 @@ import Morley.Client
   readBigMapValue, readBigMapValueMaybe, resolveAddress, revealKeyUnlessRevealed)
 import Morley.Client qualified as Client
 import Morley.Client.RPC (OperationHash, OriginationScript(OriginationScript))
+import Morley.Metadata.Util.CallView (ViewParam(..), callOffChainView)
 import Morley.Micheline (Expression, FromExpressionError, fromExpression)
 import Morley.Michelson.Text
 import Morley.Tezos.Address
@@ -69,7 +70,6 @@ import Lorentz.Contracts.Stablecoin
   metadataJSON, metadataMap, mkContractMetadataRegistryStorage, parseMetadataUri,
   stablecoinContract)
 import Stablecoin.Client.Contract (InitialStorageOptions(..))
-import Stablecoin.Client.Metadata (ViewParam(..), callOffChainView)
 import Stablecoin.Client.Parser (ContractMetadataOptions(..))
 
 -- | An address and an optional alias, if one is found.
