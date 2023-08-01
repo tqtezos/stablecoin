@@ -8,11 +8,8 @@
 module Indigo.Contracts.Transferlist.Internal
   ( Parameter
   , Storage (..)
-  , mkStorage
   , transferlistContract
   ) where
-
-import Data.Set qualified as Set
 
 import Indigo
 import Lorentz.Run (Contract)
@@ -24,12 +21,6 @@ data Storage = Storage
   }
   deriving stock Generic
   deriving anyclass (IsoValue, HasAnnotation)
-
-mkStorage :: Set (Address, Address) -> [Address] -> Storage
-mkStorage transfers receivers = Storage
-  { sTransfers = transfers
-  , sReceivers = Set.fromList receivers
-  }
 
 data Parameter
   = AssertTransfers [("from" :! Address, "tos" :! [Address])]
