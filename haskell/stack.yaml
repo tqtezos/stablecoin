@@ -9,14 +9,11 @@ packages:
 - .
 
 extra-deps:
-- git: https://gitlab.com/morley-framework/morley.git
-  commit: 617305fa08b659a72be6071b49f502ece670a1f5
-  subdirs:
-  - code/morley-prelude
-  - code/morley
-  - code/lorentz
-  - code/morley-client
-  - code/cleveland
+- morley-prelude-0.6.0
+- morley-1.20.0
+- lorentz-0.16.0
+- morley-client-0.4.0
+- cleveland-0.4.0
 
 - git: https://gitlab.com/morley-framework/indigo.git
   commit: f586424abfd352f55edfb14f42221b9c01c3857a # master
